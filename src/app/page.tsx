@@ -1,65 +1,123 @@
-import Image from "next/image";
+import Nav from "@/components/Nav";
+import Footer from "@/components/Footer";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+    <>
+      <Nav />
+
+      <main className="pt-16">
+        {/* HERO */}
+        <section id="hero" className="min-h-[90vh] flex items-center justify-center bg-black">
+          <div className="container mx-auto max-w-5xl px-6 text-center">
+            <p className="text-white/60 text-sm uppercase tracking-widest mb-4">Charlotte&apos;s Premier Community</p>
+            <h1 className="text-5xl md:text-7xl font-extrabold leading-tight mb-6">
+              Your City.<br />Your People.
+            </h1>
+            <p className="text-white/70 text-lg md:text-xl max-w-2xl mx-auto mb-10">
+              [Hero subheadline — we&apos;ll refine this later]
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <a href="https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04" className="bg-white text-black font-bold px-8 py-4 rounded-lg text-lg hover:bg-white/90 transition">
+                Become a Member
+              </a>
+              <a href="#events" className="border border-white/30 text-white font-bold px-8 py-4 rounded-lg text-lg hover:border-white/60 transition">
+                Upcoming Events
+              </a>
+            </div>
+          </div>
+        </section>
+
+        {/* SOCIAL PROOF / PHOTO GALLERY */}
+        <section id="social-proof" className="py-20 bg-charcoal">
+          <div className="container mx-auto max-w-7xl px-6 text-center">
+            <p className="text-white/40 uppercase tracking-widest text-sm">[Photo gallery / social proof section]</p>
+          </div>
+        </section>
+
+        {/* HOW IT WORKS */}
+        <section id="how-it-works" className="py-20 bg-black">
+          <div className="container mx-auto max-w-5xl px-6 text-center">
+            <h2 className="text-3xl md:text-4xl font-extrabold mb-16">How It Works</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+              <div>
+                <div className="text-4xl font-extrabold text-white/20 mb-4">1</div>
+                <h3 className="text-xl font-bold mb-2">Join</h3>
+                <p className="text-white/60">[Step 1 description]</p>
+              </div>
+              <div>
+                <div className="text-4xl font-extrabold text-white/20 mb-4">2</div>
+                <h3 className="text-xl font-bold mb-2">Show Up</h3>
+                <p className="text-white/60">[Step 2 description]</p>
+              </div>
+              <div>
+                <div className="text-4xl font-extrabold text-white/20 mb-4">3</div>
+                <h3 className="text-xl font-bold mb-2">Build Your Circle</h3>
+                <p className="text-white/60">[Step 3 description]</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* UPCOMING EVENTS */}
+        <section id="events" className="py-20 bg-charcoal">
+          <div className="container mx-auto max-w-5xl px-6">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-center mb-16">Upcoming Events</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="bg-black border border-white/10 rounded-xl p-6">
+                  <p className="text-white/40 text-sm">[Event {i} placeholder]</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-white/40 text-sm text-center mt-8">*Dates and times subject to change</p>
+          </div>
+        </section>
+
+        {/* IS 704 SOCIAL RIGHT FOR YOU */}
+        <section id="right-for-you" className="py-20 bg-black">
+          <div className="container mx-auto max-w-4xl px-6">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-center mb-12">Is 704 Social Right for You?</h2>
+            <p className="text-white/40 text-center">[Right for you content — we&apos;ll build this out later]</p>
+          </div>
+        </section>
+
+        {/* VALUE BREAKDOWN - IS IT WORTH IT */}
+        <section id="value" className="py-20 bg-charcoal">
+          <div className="container mx-auto max-w-5xl px-6">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-center mb-4">Is it worth it?</h2>
+            <p className="text-white/40 text-center">[Value breakdown cards — we&apos;ll port the existing code block here]</p>
+          </div>
+        </section>
+
+        {/* MEMBERSHIP / PRICING */}
+        <section id="pricing" className="py-20 bg-black">
+          <div className="container mx-auto max-w-3xl px-6 text-center">
+            <h2 className="text-3xl md:text-4xl font-extrabold mb-12">Membership</h2>
+            <p className="text-white/40">[Pricing card — 704 Social $30/mo]</p>
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section id="faq" className="py-20 bg-charcoal">
+          <div className="container mx-auto max-w-3xl px-6">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-center mb-12">Common Questions</h2>
+            <p className="text-white/40 text-center">[FAQ accordion — we&apos;ll build this out later]</p>
+          </div>
+        </section>
+
+        {/* CONTACT */}
+        <section id="contact" className="py-20 bg-black">
+          <div className="container mx-auto max-w-3xl px-6 text-center">
+            <h2 className="text-3xl md:text-4xl font-extrabold mb-6">Get in Touch</h2>
+            <a href="mailto:hello@704collective.com" className="text-white/60 text-lg hover:text-white transition">
+              hello@704collective.com
+            </a>
+          </div>
+        </section>
       </main>
-    </div>
+
+      <Footer />
+    </>
   );
 }
