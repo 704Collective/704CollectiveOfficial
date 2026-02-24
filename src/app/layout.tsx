@@ -1,28 +1,29 @@
 import type { Metadata } from "next";
-import { Nunito } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
+import SmoothScroll from "@/components/SmoothScroll";
+import ScrollProgress from "@/components/ScrollProgress";
 import "./globals.css";
 
-const nunito = Nunito({
+const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-body",
-  weight: ["400", "700", "800"],
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
-// Using Nunito ExtraBold for headings until Renogare font file is added
-const headingFont = Nunito({
+const headingFont = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-heading",
-  weight: ["800"],
+  weight: ["600", "700", "800"],
 });
 
 export const metadata: Metadata = {
   title: "704 Collective | Charlotte's Premier Community",
   description:
-    "A membership community for young professionals in Charlotte. Curated social experiences, real business connections, and a community that actually feels like community.",
+    "Charlotte's two-tier social club and business membership association. Curated events, real connections, and a community built for people who are building something.",
   openGraph: {
     title: "704 Collective | Charlotte's Premier Community",
     description:
-      "A membership community for young professionals in Charlotte. Curated social experiences, real business connections, and a community that actually feels like community.",
+      "Charlotte's two-tier social club and business membership association. Curated events, real connections, and a community built for people who are building something.",
     url: "https://704collective.com",
     siteName: "704 Collective",
     images: [
@@ -40,7 +41,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "704 Collective | Charlotte's Premier Community",
     description:
-      "A membership community for young professionals in Charlotte.",
+      "Charlotte's two-tier social club and business membership association.",
     images: ["/og-image.png"],
   },
   icons: {
@@ -59,8 +60,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${nunito.variable} ${headingFont.variable}`}>
-      <body>{children}</body>
+    <html lang="en" className={`${plusJakarta.variable} ${headingFont.variable}`}>
+<body>
+  <SmoothScroll />
+  <ScrollProgress />
+  {children}
+</body>
     </html>
   );
 }

@@ -3,55 +3,257 @@ import Link from "next/link";
 
 export default function Footer() {
   return (
-    <footer className="bg-charcoal border-t border-white/10">
-      <div className="container mx-auto max-w-7xl px-6 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
-          {/* Logo + Tagline */}
-          <div className="md:col-span-1">
-            <Image src="/logo-nav.png" alt="704 Collective" width={50} height={50} />
-            <p className="text-white/60 text-sm mt-4 leading-relaxed">
-              Your city. Your people.<br />
-              Charlotte&apos;s premier community for young professionals.
+    <footer
+      style={{
+        backgroundColor: "#1A1A1A",
+        borderTop: "1px solid rgba(255, 255, 255, 0.06)",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: "1200px",
+          margin: "0 auto",
+          padding: "64px 24px",
+        }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1.5fr 1fr 1fr 1fr",
+            gap: "48px",
+          }}
+          className="footer-grid"
+        >
+          {/* Brand */}
+          <div>
+            <Image src="/logo-nav.png" alt="704 Collective" width={44} height={44} />
+            <p
+              style={{
+                color: "rgba(255, 255, 255, 0.4)",
+                fontSize: "0.875rem",
+                marginTop: "16px",
+                lineHeight: 1.6,
+              }}
+            >
+              Your city. Your people.
+              <br />
+              Charlotte{"'"}s premier social club and
+              <br />
+              business membership association.
             </p>
           </div>
 
-          {/* Quick Links */}
+          {/* Community */}
           <div>
-            <h4 className="text-white font-bold text-sm mb-4 uppercase tracking-wider">Community</h4>
-            <div className="flex flex-col gap-2">
-              <Link href="/#how-it-works" className="text-white/60 text-sm hover:text-white transition">How It Works</Link>
-              <Link href="/#events" className="text-white/60 text-sm hover:text-white transition">Events</Link>
-              <Link href="/faq" className="text-white/60 text-sm hover:text-white transition">FAQ</Link>
-              <Link href="/blog" className="text-white/60 text-sm hover:text-white transition">Blog</Link>
-            </div>
+            <h4
+              style={{
+                color: "rgba(255, 255, 255, 0.35)",
+                fontSize: "0.6875rem",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.12em",
+                marginBottom: "16px",
+              }}
+            >
+              Community
+            </h4>
+            <nav style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <Link
+                href="/#about"
+                style={{
+                  color: "rgba(255, 255, 255, 0.5)",
+                  fontSize: "0.875rem",
+                  textDecoration: "none",
+                  transition: "color 200ms ease",
+                }}
+              >
+                About
+              </Link>
+              <Link
+                href="/#how-it-works"
+                style={{
+                  color: "rgba(255, 255, 255, 0.5)",
+                  fontSize: "0.875rem",
+                  textDecoration: "none",
+                  transition: "color 200ms ease",
+                }}
+              >
+                How It Works
+              </Link>
+              <Link
+                href="/#events"
+                style={{
+                  color: "rgba(255, 255, 255, 0.5)",
+                  fontSize: "0.875rem",
+                  textDecoration: "none",
+                  transition: "color 200ms ease",
+                }}
+              >
+                Events
+              </Link>
+              <Link
+                href="/#faq"
+                style={{
+                  color: "rgba(255, 255, 255, 0.5)",
+                  fontSize: "0.875rem",
+                  textDecoration: "none",
+                  transition: "color 200ms ease",
+                }}
+              >
+                FAQ
+              </Link>
+              <Link
+                href="/blog"
+                style={{
+                  color: "rgba(255, 255, 255, 0.5)",
+                  fontSize: "0.875rem",
+                  textDecoration: "none",
+                  transition: "color 200ms ease",
+                }}
+              >
+                Blog
+              </Link>
+            </nav>
           </div>
 
           {/* Membership */}
           <div>
-            <h4 className="text-white font-bold text-sm mb-4 uppercase tracking-wider">Membership</h4>
-            <div className="flex flex-col gap-2">
-              <Link href="https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04" className="text-white/60 text-sm hover:text-white transition">Join 704 Social</Link>
-              <Link href="/business" className="text-white/60 text-sm hover:text-white transition">704 Business</Link>
-              <Link href="/vendor" className="text-white/60 text-sm hover:text-white transition">Partner With Us</Link>
-            </div>
+            <h4
+              style={{
+                color: "rgba(255, 255, 255, 0.35)",
+                fontSize: "0.6875rem",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.12em",
+                marginBottom: "16px",
+              }}
+            >
+              Membership
+            </h4>
+            <nav style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <a
+                href="https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04"
+                style={{
+                  color: "rgba(255, 255, 255, 0.5)",
+                  fontSize: "0.875rem",
+                  textDecoration: "none",
+                  transition: "color 200ms ease",
+                }}
+              >
+                Join 704 Social
+              </a>
+              <Link
+                href="/business"
+                style={{
+                  color: "rgba(255, 255, 255, 0.5)",
+                  fontSize: "0.875rem",
+                  textDecoration: "none",
+                  transition: "color 200ms ease",
+                }}
+              >
+                704 Business
+              </Link>
+              <Link
+                href="/vendor"
+                style={{
+                  color: "rgba(255, 255, 255, 0.5)",
+                  fontSize: "0.875rem",
+                  textDecoration: "none",
+                  transition: "color 200ms ease",
+                }}
+              >
+                Partner With Us
+              </Link>
+            </nav>
           </div>
 
-          {/* Contact + Social */}
+          {/* Connect */}
           <div>
-            <h4 className="text-white font-bold text-sm mb-4 uppercase tracking-wider">Connect</h4>
-            <div className="flex flex-col gap-2">
-              <a href="mailto:hello@704collective.com" className="text-white/60 text-sm hover:text-white transition">hello@704collective.com</a>
-              <a href="https://instagram.com/704collective" target="_blank" rel="noopener noreferrer" className="text-white/60 text-sm hover:text-white transition">Instagram</a>
-            </div>
+            <h4
+              style={{
+                color: "rgba(255, 255, 255, 0.35)",
+                fontSize: "0.6875rem",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.12em",
+                marginBottom: "16px",
+              }}
+            >
+              Connect
+            </h4>
+            <nav style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <a
+                href="mailto:hello@704collective.com"
+                style={{
+                  color: "rgba(255, 255, 255, 0.5)",
+                  fontSize: "0.875rem",
+                  textDecoration: "none",
+                  transition: "color 200ms ease",
+                }}
+              >
+                hello@704collective.com
+              </a>
+              <a
+                href="https://instagram.com/704collective"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  color: "rgba(255, 255, 255, 0.5)",
+                  fontSize: "0.875rem",
+                  textDecoration: "none",
+                  transition: "color 200ms ease",
+                }}
+              >
+                Instagram
+              </a>
+            </nav>
           </div>
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-white/10 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-white/40 text-xs">&copy; {new Date().getFullYear()} 704 Collective. All rights reserved.</p>
-          <div className="flex gap-6">
-            <Link href="/privacy" className="text-white/40 text-xs hover:text-white/60 transition">Privacy Policy</Link>
-            <Link href="/terms" className="text-white/40 text-xs hover:text-white/60 transition">Terms of Service</Link>
+        <div
+          style={{
+            borderTop: "1px solid rgba(255, 255, 255, 0.06)",
+            marginTop: "48px",
+            paddingTop: "32px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "16px",
+          }}
+        >
+          <p
+            style={{
+              color: "rgba(255, 255, 255, 0.25)",
+              fontSize: "0.75rem",
+            }}
+          >
+            &copy; {new Date().getFullYear()} 704 Collective. All rights reserved.
+          </p>
+          <div style={{ display: "flex", gap: "24px" }}>
+            <Link
+              href="/privacy"
+              style={{
+                color: "rgba(255, 255, 255, 0.25)",
+                fontSize: "0.75rem",
+                textDecoration: "none",
+                transition: "color 200ms ease",
+              }}
+            >
+              Privacy Policy
+            </Link>
+            <Link
+              href="/terms"
+              style={{
+                color: "rgba(255, 255, 255, 0.25)",
+                fontSize: "0.75rem",
+                textDecoration: "none",
+                transition: "color 200ms ease",
+              }}
+            >
+              Terms of Service
+            </Link>
           </div>
         </div>
       </div>
