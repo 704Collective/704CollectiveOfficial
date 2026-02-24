@@ -14,6 +14,8 @@ import {
   WordReveal,
 } from "@/components/Animations";
 import TiltCard from "@/components/TiltCard";
+import HeroDots from "@/components/HeroDots";
+import GradientShift from "@/components/GradientShift";
 
 export const metadata: Metadata = {
   title: "704 Collective | Charlotte's Premier Community",
@@ -95,6 +97,9 @@ export default function Home() {
               pointerEvents: "none",
             }}
           />
+
+          {/* Animated dot grid */}
+          <HeroDots />
 
           <div
             style={{
@@ -1379,7 +1384,7 @@ export default function Home() {
         {/* ════════════════════════════════════════════
             SECTION 8: APPLY CTAs
         ════════════════════════════════════════════ */}
-        <section
+        <GradientShift
           style={{
             backgroundColor: "#1A1A1A",
             padding: "96px 24px",
@@ -1445,7 +1450,7 @@ export default function Home() {
               </div>
             </ScaleUp>
           </div>
-        </section>
+        </GradientShift>
 
         {/* ════════════════════════════════════════════
             SECTION 9: SMALL FAQ
