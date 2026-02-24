@@ -13,6 +13,7 @@ import {
   Parallax,
   WordReveal,
 } from "@/components/Animations";
+import TiltCard from "@/components/TiltCard";
 
 export const metadata: Metadata = {
   title: "704 Collective | Charlotte's Premier Community",
@@ -590,7 +591,7 @@ export default function Home() {
             >
               {/* Social Tier */}
               <ScaleUp delay={0.2}>
-                <div
+                <TiltCard
                   className="card-hover"
                   style={{
                     backgroundColor: "#1A1A1A",
@@ -695,12 +696,12 @@ export default function Home() {
                   >
                     Join 704 Social
                   </a>
-                </div>
+                </TiltCard>
               </ScaleUp>
 
               {/* Business Tier */}
               <ScaleUp delay={0.35}>
-                <div
+                <TiltCard
                   className="card-hover"
                   style={{
                     backgroundColor: "#1A1A1A",
@@ -832,7 +833,7 @@ export default function Home() {
                   >
                     Apply for 704 Business
                   </Link>
-                </div>
+                </TiltCard>
               </ScaleUp>
             </div>
           </div>
