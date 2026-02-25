@@ -208,7 +208,7 @@ a {
   color: #FFFFFF;
 }
 
-/* ─── RESPONSIVE: HOMEPAGE GRIDS ─── */
+/* ─── RESPONSIVE: GRIDS ─── */
 
 @media (max-width: 768px) {
   .how-it-works-grid,
@@ -220,13 +220,26 @@ a {
   .testimonial-grid {
     grid-template-columns: 1fr !important;
   }
+  .pillars-grid,
+  .benefits-grid,
+  .partner-types-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .audience-grid {
+    grid-template-columns: 1fr !important;
+  }
   .footer-grid {
     grid-template-columns: 1fr 1fr !important;
   }
 }
 
 @media (min-width: 769px) and (max-width: 1024px) {
-  .perks-grid {
+  .perks-grid,
+  .benefits-grid,
+  .partner-types-grid {
     grid-template-columns: 1fr 1fr !important;
   }
 }
@@ -234,6 +247,69 @@ a {
 @media (max-width: 480px) {
   .footer-grid {
     grid-template-columns: 1fr !important;
+  }
+}
+
+/* ─── RESPONSIVE: MOBILE GLOBAL ─── */
+
+@media (max-width: 768px) {
+  /* Reduce section padding */
+  section,
+  .gradient-section {
+    padding-top: 64px !important;
+    padding-bottom: 64px !important;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  /* Hero adjustments */
+  #hero {
+    min-height: calc(100vh - 64px) !important;
+    min-height: calc(100dvh - 64px) !important;
+  }
+
+  /* Buttons go full width on mobile */
+  .btn-primary,
+  .btn-ghost,
+  .btn-gold,
+  .btn-ghost-gold {
+    width: 100%;
+    text-align: center;
+    padding: 14px 24px !important;
+  }
+
+  /* Pricing card inner padding */
+  .pricing-inner {
+    padding: 32px 20px !important;
+  }
+
+  /* Pricing features single column */
+  .pricing-features {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Application steps stack vertically */
+  .apply-steps {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+}
+
+/* ─── RESPONSIVE: SMALL PHONES ─── */
+
+@media (max-width: 380px) {
+  section {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .btn-primary,
+  .btn-ghost,
+  .btn-gold,
+  .btn-ghost-gold {
+    font-size: 0.8125rem !important;
+    padding: 12px 20px !important;
   }
 }
 
