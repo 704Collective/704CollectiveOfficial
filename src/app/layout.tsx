@@ -20,6 +20,7 @@ export const metadata: Metadata = {
   title: "704 Collective | Charlotte's Premier Community",
   description:
     "Charlotte's two-tier social club and business membership association. Curated events, real connections, and a community built for people who are building something.",
+  metadataBase: new URL("https://704collective.com"),
   openGraph: {
     title: "704 Collective | Charlotte's Premier Community",
     description:
@@ -52,6 +53,10 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-touch-icon.png",
   },
+  manifest: "/manifest.json",
+  other: {
+    "msapplication-TileColor": "#1A1A1A",
+  },
 };
 
 export default function RootLayout({
@@ -61,11 +66,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${plusJakarta.variable} ${headingFont.variable}`}>
-<body>
-  <SmoothScroll />
-  <ScrollProgress />
-  {children}
-</body>
+      <head>
+        <meta name="theme-color" content="#1A1A1A" />
+        <link rel="dns-prefetch" href="https://xgikkvvvdghqdisrzpqm.supabase.co" />
+        <link rel="preconnect" href="https://xgikkvvvdghqdisrzpqm.supabase.co" crossOrigin="anonymous" />
+      </head>
+      <body>
+        <SmoothScroll />
+        <ScrollProgress />
+        {children}
+      </body>
     </html>
   );
 }
