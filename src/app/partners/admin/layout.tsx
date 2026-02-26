@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { useRouter, usePathname } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 
 export default function AdminLayout({
@@ -10,11 +10,11 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [user, setUser] = useState<any>(null);
   const router = useRouter();
   const pathname = usePathname();
-  const [user, setUser] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function checkAdmin() {
@@ -27,7 +27,8 @@ export default function AdminLayout({
         return;
       }
 
-      // Check admin_users table
+      setUser(session.user);
+
       const { data: adminData } = await supabase
         .from("admin_users")
         .select("*")
@@ -35,12 +36,10 @@ export default function AdminLayout({
         .single();
 
       if (!adminData) {
-        // Not an admin — redirect to partner dashboard
         router.push("/partners/dashboard");
         return;
       }
 
-      setUser(session.user);
       setIsAdmin(true);
       setLoading(false);
     }
@@ -82,12 +81,18 @@ export default function AdminLayout({
   if (!isAdmin) return null;
 
   const navItems = [
-    { href: "/partners/admin", label: "Applications", icon: "◻" },
-    { href: "/partners/admin/partners", label: "Partners", icon: "◈" },
+    { label: "Applications", href: "/partners/admin" },
+    { label: "Partners", href: "/partners/admin/partners" },
   ];
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", backgroundColor: "#000000" }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        backgroundColor: "#000000",
+        display: "flex",
+      }}
+    >
       {/* Sidebar */}
       <aside
         style={{
@@ -100,50 +105,39 @@ export default function AdminLayout({
           flexShrink: 0,
         }}
       >
-        {/* Brand */}
-        <div
+        {/* Logo */}
+        <Link
+          href="/"
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            padding: "8px 12px",
-            marginBottom: "8px",
+            textDecoration: "none",
+            marginBottom: "32px",
+            paddingLeft: "8px",
           }}
         >
-          <div
-            style={{
-              width: "8px",
-              height: "8px",
-              borderRadius: "50%",
-              backgroundColor: "#EF4444",
-            }}
-          />
           <span
             style={{
-              color: "#EF4444",
-              fontSize: "0.6875rem",
+              fontSize: "1.125rem",
               fontWeight: 700,
-              textTransform: "uppercase",
-              letterSpacing: "0.15em",
+              color: "#FFFFFF",
+              letterSpacing: "-0.02em",
             }}
           >
-            704 Admin
+            704
           </span>
-        </div>
+          <span
+            style={{
+              fontSize: "0.75rem",
+              fontWeight: 400,
+              color: "rgba(198, 166, 100, 0.5)",
+              marginLeft: "6px",
+            }}
+          >
+            Admin
+          </span>
+        </Link>
 
-        <p
-          style={{
-            fontSize: "0.6875rem",
-            color: "rgba(255, 255, 255, 0.2)",
-            padding: "0 12px",
-            marginBottom: "24px",
-          }}
-        >
-          Founder Access
-        </p>
-
-        {/* Nav */}
-        <nav style={{ display: "flex", flexDirection: "column", gap: "4px", flex: 1 }}>
+        {/* Navigation */}
+        <nav style={{ display: "flex", flexDirection: "column", gap: "2px", flex: 1 }}>
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -151,69 +145,75 @@ export default function AdminLayout({
                 key={item.href}
                 href={item.href}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
+                  display: "block",
                   padding: "10px 12px",
                   borderRadius: "8px",
-                  backgroundColor: isActive
-                    ? "rgba(239, 68, 68, 0.06)"
-                    : "transparent",
-                  color: isActive ? "#FAF6F0" : "rgba(255, 255, 255, 0.4)",
                   fontSize: "0.875rem",
                   fontWeight: isActive ? 600 : 400,
+                  color: isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.4)",
+                  backgroundColor: isActive
+                    ? "rgba(255, 255, 255, 0.06)"
+                    : "transparent",
                   textDecoration: "none",
                   transition: "all 150ms ease",
                 }}
               >
-                <span style={{ fontSize: "0.75rem", opacity: 0.6 }}>
-                  {item.icon}
-                </span>
                 {item.label}
               </Link>
             );
           })}
 
-          {/* Divider */}
           <div
             style={{
               height: "1px",
               backgroundColor: "rgba(255, 255, 255, 0.04)",
-              margin: "12px 0",
+              margin: "8px 0",
             }}
           />
 
           <Link
             href="/partners/dashboard"
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
+              display: "block",
               padding: "10px 12px",
               borderRadius: "8px",
-              color: "rgba(255, 255, 255, 0.3)",
               fontSize: "0.8125rem",
+              color: "rgba(255, 255, 255, 0.25)",
               textDecoration: "none",
+              transition: "all 150ms ease",
             }}
           >
             ← Partner Dashboard
           </Link>
         </nav>
 
-        {/* Logout */}
+        {/* User + Logout */}
         <div
           style={{
             borderTop: "1px solid rgba(255, 255, 255, 0.06)",
             paddingTop: "16px",
-            marginTop: "auto",
+            marginTop: "16px",
           }}
         >
           <p
             style={{
+              fontSize: "0.6875rem",
+              color: "rgba(198, 166, 100, 0.35)",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              marginBottom: "4px",
+              paddingLeft: "8px",
+            }}
+          >
+            Admin
+          </p>
+          <p
+            style={{
               fontSize: "0.75rem",
-              color: "rgba(255, 255, 255, 0.35)",
-              padding: "0 12px",
+              color: "rgba(255, 255, 255, 0.25)",
               marginBottom: "8px",
+              paddingLeft: "8px",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -224,34 +224,27 @@ export default function AdminLayout({
           <button
             onClick={handleLogout}
             style={{
+              display: "block",
               width: "100%",
               padding: "8px 12px",
+              borderRadius: "6px",
               backgroundColor: "transparent",
               border: "1px solid rgba(255, 255, 255, 0.06)",
-              borderRadius: "6px",
-              color: "rgba(255, 255, 255, 0.4)",
+              color: "rgba(255, 255, 255, 0.35)",
               fontSize: "0.8125rem",
               cursor: "pointer",
-              textAlign: "left",
               fontFamily: "inherit",
+              textAlign: "left",
               transition: "all 150ms ease",
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "rgba(220, 38, 38, 0.3)";
-              e.currentTarget.style.color = "#EF4444";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.06)";
-              e.currentTarget.style.color = "rgba(255, 255, 255, 0.4)";
-            }}
           >
-            Log out
+            Sign Out
           </button>
         </div>
       </aside>
 
-      {/* Main */}
-      <main style={{ flex: 1, padding: "32px 40px", overflow: "auto" }}>
+      {/* Main Content */}
+      <main style={{ flex: 1, padding: "32px 40px", overflowY: "auto" }}>
         {children}
       </main>
     </div>

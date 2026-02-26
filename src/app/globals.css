@@ -234,6 +234,9 @@ a {
   .footer-grid {
     grid-template-columns: 1fr 1fr !important;
   }
+  .blog-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 @media (min-width: 769px) and (max-width: 1024px) {
