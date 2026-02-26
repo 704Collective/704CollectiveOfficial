@@ -154,7 +154,7 @@ export default function Footer() {
                 704 Business
               </Link>
               <Link
-                href="/vendor"
+                href="/partners"
                 style={{
                   color: "rgba(255, 255, 255, 0.5)",
                   fontSize: "0.875rem",
@@ -194,7 +194,7 @@ export default function Footer() {
                 hello@704collective.com
               </a>
               <a
-                href="https://instagram.com/704collective"
+                href="https://www.instagram.com/704_collective"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
@@ -205,6 +205,32 @@ export default function Footer() {
                 }}
               >
                 Instagram
+              </a>
+              <a
+                href="https://www.facebook.com/704collectiveclt/"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  color: "rgba(255, 255, 255, 0.5)",
+                  fontSize: "0.875rem",
+                  textDecoration: "none",
+                  transition: "color 200ms ease",
+                }}
+              >
+                Facebook
+              </a>
+              <a
+                href="https://www.tiktok.com/@704_collective"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  color: "rgba(255, 255, 255, 0.5)",
+                  fontSize: "0.875rem",
+                  textDecoration: "none",
+                  transition: "color 200ms ease",
+                }}
+              >
+                TikTok
               </a>
             </nav>
           </div>
