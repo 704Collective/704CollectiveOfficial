@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import SmoothScroll from "@/components/SmoothScroll";
 import ScrollProgress from "@/components/ScrollProgress";
+import ScrollToTop from "@/components/ScrollToTop";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import JsonLd from "@/components/JsonLd";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -70,11 +73,15 @@ export default function RootLayout({
         <meta name="theme-color" content="#1A1A1A" />
         <link rel="dns-prefetch" href="https://xgikkvvvdghqdisrzpqm.supabase.co" />
         <link rel="preconnect" href="https://xgikkvvvdghqdisrzpqm.supabase.co" crossOrigin="anonymous" />
+        <JsonLd />
       </head>
       <body>
-        <SmoothScroll />
-        <ScrollProgress />
-        {children}
+        <ErrorBoundary>
+          <SmoothScroll />
+          <ScrollProgress />
+          {children}
+          <ScrollToTop />
+        </ErrorBoundary>
       </body>
     </html>
   );
