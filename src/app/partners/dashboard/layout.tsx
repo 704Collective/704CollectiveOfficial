@@ -78,6 +78,10 @@ export default function DashboardLayout({
         display: "flex",
       }}
     >
+      <head>
+        <meta name="robots" content="noindex, nofollow" />
+      </head>
+
       {/* Sidebar */}
       <aside
         style={{

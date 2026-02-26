@@ -208,6 +208,48 @@ a {
   color: #FFFFFF;
 }
 
+/* ─── FOCUS-VISIBLE (Accessibility) ─── */
+
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible,
+.btn-ghost:focus-visible,
+.btn-gold:focus-visible,
+.btn-ghost-gold:focus-visible {
+  outline: 2px solid #C6A664;
+  outline-offset: 2px;
+}
+
+.nav-link:focus-visible {
+  outline: 2px solid #C6A664;
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
+a:focus-visible {
+  outline: 2px solid #C6A664;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+button:focus-visible {
+  outline: 2px solid #C6A664;
+  outline-offset: 2px;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #C6A664;
+  outline-offset: 0px;
+  border-color: #C6A664;
+}
+
+summary:focus-visible {
+  outline: 2px solid #C6A664;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* ─── RESPONSIVE: GRIDS ─── */
 
 @media (max-width: 768px) {
@@ -341,7 +383,9 @@ a {
     display: flex !important;
     flex-direction: column;
   }
-}/* ─── REDUCED MOTION ─── */
+}
+
+/* ─── REDUCED MOTION ─── */
 
 @media (prefers-reduced-motion: reduce) {
   *,

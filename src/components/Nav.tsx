@@ -1,12 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
 export default function Nav() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [membershipOpen, setMembershipOpen] = useState(false);
+
+  /* Close mobile menu on Escape key */
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && mobileOpen) {
+        setMobileOpen(false);
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [mobileOpen]);
 
   return (
     <nav
@@ -20,6 +32,7 @@ export default function Nav() {
         backdropFilter: "blur(12px)",
         borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
       }}
+      aria-label="Main navigation"
     >
       <div
         style={{
@@ -67,6 +80,8 @@ export default function Nav() {
           >
             <button
               className="nav-link"
+              aria-expanded={membershipOpen}
+              aria-haspopup="true"
               style={{
                 background: "none",
                 border: "none",
@@ -84,6 +99,7 @@ export default function Nav() {
                 height="6"
                 viewBox="0 0 10 6"
                 fill="none"
+                aria-hidden="true"
                 style={{
                   transform: membershipOpen ? "rotate(180deg)" : "rotate(0)",
                   transition: "transform 200ms ease",
@@ -110,6 +126,7 @@ export default function Nav() {
                 }}
               >
                 <div
+                  role="menu"
                   style={{
                     backgroundColor: "#1A1A1A",
                     border: "1px solid rgba(255, 255, 255, 0.08)",
@@ -121,6 +138,7 @@ export default function Nav() {
                 >
                   <Link
                     href="/#membership"
+                    role="menuitem"
                     style={{
                       display: "block",
                       padding: "10px 16px",
@@ -154,6 +172,7 @@ export default function Nav() {
                   </Link>
                   <Link
                     href="/business"
+                    role="menuitem"
                     style={{
                       display: "block",
                       padding: "10px 16px",
@@ -207,7 +226,7 @@ export default function Nav() {
               aria-label="Instagram"
               style={{ display: "flex", alignItems: "center" }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
                 <circle cx="12" cy="12" r="5" />
                 <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
@@ -221,7 +240,7 @@ export default function Nav() {
               aria-label="Facebook"
               style={{ display: "flex", alignItems: "center" }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
               </svg>
             </a>
@@ -233,15 +252,17 @@ export default function Nav() {
               aria-label="TikTok"
               style={{ display: "flex", alignItems: "center" }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.71a8.21 8.21 0 0 0 4.76 1.52V6.78a4.86 4.86 0 0 1-1-.09z" />
               </svg>
             </a>
           </div>
 
           {/* CTA */}
-          <Link
+          <a
             href="https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04"
+            target="_blank"
+            rel="noopener noreferrer"
             style={{
               backgroundColor: "#FFFFFF",
               color: "#000000",
@@ -264,14 +285,16 @@ export default function Nav() {
             }}
           >
             Join Now
-          </Link>
+          </a>
         </div>
 
         {/* Mobile Hamburger */}
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
           className="mobile-nav-toggle"
-          aria-label="Toggle menu"
+          aria-label={mobileOpen ? "Close menu" : "Open menu"}
+          aria-expanded={mobileOpen}
+          aria-controls="mobile-menu"
           style={{
             flexDirection: "column",
             gap: "5px",
@@ -282,6 +305,7 @@ export default function Nav() {
           }}
         >
           <span
+            aria-hidden="true"
             style={{
               display: "block",
               width: "22px",
@@ -294,6 +318,7 @@ export default function Nav() {
             }}
           />
           <span
+            aria-hidden="true"
             style={{
               display: "block",
               width: "22px",
@@ -304,6 +329,7 @@ export default function Nav() {
             }}
           />
           <span
+            aria-hidden="true"
             style={{
               display: "block",
               width: "22px",
@@ -321,6 +347,8 @@ export default function Nav() {
       {/* Mobile Menu */}
       {mobileOpen && (
         <div
+          id="mobile-menu"
+          role="menu"
           className="mobile-nav-menu"
           style={{
             backgroundColor: "#000000",
@@ -333,6 +361,7 @@ export default function Nav() {
           >
             <Link
               href="/#about"
+              role="menuitem"
               onClick={() => setMobileOpen(false)}
               style={{
                 color: "rgba(255, 255, 255, 0.7)",
@@ -346,6 +375,7 @@ export default function Nav() {
             </Link>
             <Link
               href="/#how-it-works"
+              role="menuitem"
               onClick={() => setMobileOpen(false)}
               style={{
                 color: "rgba(255, 255, 255, 0.7)",
@@ -378,6 +408,7 @@ export default function Nav() {
               </span>
               <Link
                 href="/#membership"
+                role="menuitem"
                 onClick={() => setMobileOpen(false)}
                 style={{
                   display: "block",
@@ -391,6 +422,7 @@ export default function Nav() {
               </Link>
               <Link
                 href="/business"
+                role="menuitem"
                 onClick={() => setMobileOpen(false)}
                 style={{
                   display: "block",
@@ -406,6 +438,7 @@ export default function Nav() {
 
             <Link
               href="/#events"
+              role="menuitem"
               onClick={() => setMobileOpen(false)}
               style={{
                 color: "rgba(255, 255, 255, 0.7)",
@@ -419,6 +452,7 @@ export default function Nav() {
             </Link>
             <Link
               href="/blog"
+              role="menuitem"
               onClick={() => setMobileOpen(false)}
               style={{
                 color: "rgba(255, 255, 255, 0.7)",
@@ -448,7 +482,7 @@ export default function Nav() {
                   style={{ color: "rgba(255, 255, 255, 0.5)" }}
                   aria-label="Instagram"
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
                     <circle cx="12" cy="12" r="5" />
                     <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
@@ -461,7 +495,7 @@ export default function Nav() {
                   style={{ color: "rgba(255, 255, 255, 0.5)" }}
                   aria-label="Facebook"
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
                   </svg>
                 </a>
@@ -472,13 +506,15 @@ export default function Nav() {
                   style={{ color: "rgba(255, 255, 255, 0.5)" }}
                   aria-label="TikTok"
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.71a8.21 8.21 0 0 0 4.76 1.52V6.78a4.86 4.86 0 0 1-1-.09z" />
                   </svg>
                 </a>
               </div>
-              <Link
+              <a
                 href="https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04"
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={() => setMobileOpen(false)}
                 style={{
                   backgroundColor: "#FFFFFF",
@@ -492,7 +528,7 @@ export default function Nav() {
                 }}
               >
                 Join Now
-              </Link>
+              </a>
             </div>
           </div>
         </div>

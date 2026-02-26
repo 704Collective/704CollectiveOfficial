@@ -133,6 +133,8 @@ export default function Footer() {
             <nav style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               <a
                 href="https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04"
+                target="_blank"
+                rel="noopener noreferrer"
                 style={{
                   color: "rgba(255, 255, 255, 0.5)",
                   fontSize: "0.875rem",

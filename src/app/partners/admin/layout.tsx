@@ -93,6 +93,10 @@ export default function AdminLayout({
         display: "flex",
       }}
     >
+      <head>
+        <meta name="robots" content="noindex, nofollow" />
+      </head>
+
       {/* Sidebar */}
       <aside
         style={{

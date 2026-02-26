@@ -641,7 +641,7 @@ export default function PartnersPage() {
                       {item.step}
                     </span>
                     <div>
-                      <h4
+                      <h3
                         style={{
                           fontSize: "1rem",
                           fontWeight: 700,
@@ -650,7 +650,7 @@ export default function PartnersPage() {
                         }}
                       >
                         {item.title}
-                      </h4>
+                      </h3>
                       <p
                         style={{
                           fontSize: "0.875rem",

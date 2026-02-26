@@ -166,6 +166,8 @@ export default function Home() {
               >
                 <a
                   href="https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="btn-primary"
                 >
                   Join 704 Social
@@ -383,7 +385,7 @@ export default function Home() {
                             {item.step}
                           </span>
                           <div>
-                            <h4
+                            <h3
                               style={{
                                 fontSize: "1rem",
                                 fontWeight: 700,
@@ -392,7 +394,7 @@ export default function Home() {
                               }}
                             >
                               {item.title}
-                            </h4>
+                            </h3>
                             <p
                               style={{
                                 fontSize: "0.875rem",
@@ -410,6 +412,8 @@ export default function Home() {
 
                   <a
                     href="https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="btn-primary"
                     style={{
                       display: "inline-block",
@@ -490,7 +494,7 @@ export default function Home() {
                             {item.step}
                           </span>
                           <div>
-                            <h4
+                            <h3
                               style={{
                                 fontSize: "1rem",
                                 fontWeight: 700,
@@ -499,7 +503,7 @@ export default function Home() {
                               }}
                             >
                               {item.title}
-                            </h4>
+                            </h3>
                             <p
                               style={{
                                 fontSize: "0.875rem",
@@ -690,6 +694,8 @@ export default function Home() {
 
                   <a
                     href="https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="btn-primary"
                     style={{
                       display: "block",
@@ -1435,6 +1441,8 @@ export default function Home() {
               >
                 <a
                   href="https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="btn-primary"
                   style={{ padding: "16px 36px", fontSize: "0.9375rem" }}
                 >
