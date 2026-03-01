@@ -1,287 +1,36 @@
-import Image from "next/image";
-import Link from "next/link";
+'use client';
 
-export default function Footer() {
+import Link from 'next/link';
+import { Instagram } from 'lucide-react';
+
+function TikTokIcon({ className }: { className?: string }) {
   return (
-    <footer
-      style={{
-        backgroundColor: "#1A1A1A",
-        borderTop: "1px solid rgba(255, 255, 255, 0.06)",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: "1200px",
-          margin: "0 auto",
-          padding: "64px 24px",
-        }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.5fr 1fr 1fr 1fr",
-            gap: "48px",
-          }}
-          className="footer-grid"
-        >
-          {/* Brand */}
-          <div>
-            <Image src="/logo-nav.png" alt="704 Collective" width={44} height={44} />
-            <p
-              style={{
-                color: "rgba(255, 255, 255, 0.4)",
-                fontSize: "0.875rem",
-                marginTop: "16px",
-                lineHeight: 1.6,
-              }}
-            >
-              Your city. Your people.
-              <br />
-              Charlotte{"'"}s premier social club and
-              <br />
-              business membership association.
-            </p>
-          </div>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5" />
+    </svg>
+  );
+}
 
-          {/* Community */}
-          <div>
-            <h4
-              style={{
-                color: "rgba(255, 255, 255, 0.35)",
-                fontSize: "0.6875rem",
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "0.12em",
-                marginBottom: "16px",
-              }}
-            >
-              Community
-            </h4>
-            <nav style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <Link
-                href="/#about"
-                style={{
-                  color: "rgba(255, 255, 255, 0.5)",
-                  fontSize: "0.875rem",
-                  textDecoration: "none",
-                  transition: "color 200ms ease",
-                }}
-              >
-                About
-              </Link>
-              <Link
-                href="/#how-it-works"
-                style={{
-                  color: "rgba(255, 255, 255, 0.5)",
-                  fontSize: "0.875rem",
-                  textDecoration: "none",
-                  transition: "color 200ms ease",
-                }}
-              >
-                How It Works
-              </Link>
-              <Link
-                href="/#events"
-                style={{
-                  color: "rgba(255, 255, 255, 0.5)",
-                  fontSize: "0.875rem",
-                  textDecoration: "none",
-                  transition: "color 200ms ease",
-                }}
-              >
-                Events
-              </Link>
-              <Link
-                href="/#faq"
-                style={{
-                  color: "rgba(255, 255, 255, 0.5)",
-                  fontSize: "0.875rem",
-                  textDecoration: "none",
-                  transition: "color 200ms ease",
-                }}
-              >
-                FAQ
-              </Link>
-              <Link
-                href="/blog"
-                style={{
-                  color: "rgba(255, 255, 255, 0.5)",
-                  fontSize: "0.875rem",
-                  textDecoration: "none",
-                  transition: "color 200ms ease",
-                }}
-              >
-                Blog
-              </Link>
-            </nav>
-          </div>
-
-          {/* Membership */}
-          <div>
-            <h4
-              style={{
-                color: "rgba(255, 255, 255, 0.35)",
-                fontSize: "0.6875rem",
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "0.12em",
-                marginBottom: "16px",
-              }}
-            >
-              Membership
-            </h4>
-            <nav style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <a
-                href="https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  color: "rgba(255, 255, 255, 0.5)",
-                  fontSize: "0.875rem",
-                  textDecoration: "none",
-                  transition: "color 200ms ease",
-                }}
-              >
-                Join 704 Social
-              </a>
-              <Link
-                href="/business"
-                style={{
-                  color: "rgba(255, 255, 255, 0.5)",
-                  fontSize: "0.875rem",
-                  textDecoration: "none",
-                  transition: "color 200ms ease",
-                }}
-              >
-                704 Business
-              </Link>
-              <Link
-                href="/partners"
-                style={{
-                  color: "rgba(255, 255, 255, 0.5)",
-                  fontSize: "0.875rem",
-                  textDecoration: "none",
-                  transition: "color 200ms ease",
-                }}
-              >
-                Partner With Us
-              </Link>
-            </nav>
-          </div>
-
-          {/* Connect */}
-          <div>
-            <h4
-              style={{
-                color: "rgba(255, 255, 255, 0.35)",
-                fontSize: "0.6875rem",
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "0.12em",
-                marginBottom: "16px",
-              }}
-            >
-              Connect
-            </h4>
-            <nav style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <a
-                href="mailto:hello@704collective.com"
-                style={{
-                  color: "rgba(255, 255, 255, 0.5)",
-                  fontSize: "0.875rem",
-                  textDecoration: "none",
-                  transition: "color 200ms ease",
-                }}
-              >
-                hello@704collective.com
-              </a>
-              <a
-                href="https://www.instagram.com/704_collective"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  color: "rgba(255, 255, 255, 0.5)",
-                  fontSize: "0.875rem",
-                  textDecoration: "none",
-                  transition: "color 200ms ease",
-                }}
-              >
-                Instagram
-              </a>
-              <a
-                href="https://www.facebook.com/704collectiveclt/"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  color: "rgba(255, 255, 255, 0.5)",
-                  fontSize: "0.875rem",
-                  textDecoration: "none",
-                  transition: "color 200ms ease",
-                }}
-              >
-                Facebook
-              </a>
-              <a
-                href="https://www.tiktok.com/@704_collective"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  color: "rgba(255, 255, 255, 0.5)",
-                  fontSize: "0.875rem",
-                  textDecoration: "none",
-                  transition: "color 200ms ease",
-                }}
-              >
-                TikTok
-              </a>
-            </nav>
-          </div>
-        </div>
-
-        {/* Bottom Bar */}
-        <div
-          style={{
-            borderTop: "1px solid rgba(255, 255, 255, 0.06)",
-            marginTop: "48px",
-            paddingTop: "32px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: "16px",
-          }}
-        >
-          <p
-            style={{
-              color: "rgba(255, 255, 255, 0.25)",
-              fontSize: "0.75rem",
-            }}
-          >
-            &copy; {new Date().getFullYear()} 704 Collective. All rights reserved.
-          </p>
-          <div style={{ display: "flex", gap: "24px" }}>
-            <Link
-              href="/privacy"
-              style={{
-                color: "rgba(255, 255, 255, 0.25)",
-                fontSize: "0.75rem",
-                textDecoration: "none",
-                transition: "color 200ms ease",
-              }}
-            >
-              Privacy Policy
-            </Link>
-            <Link
-              href="/terms"
-              style={{
-                color: "rgba(255, 255, 255, 0.25)",
-                fontSize: "0.75rem",
-                textDecoration: "none",
-                transition: "color 200ms ease",
-              }}
-            >
-              Terms of Service
-            </Link>
+export function Footer() {
+  return (
+    <footer className="py-8 border-t border-border" role="contentinfo">
+      <div className="container">
+        <div className="flex flex-col items-center gap-4">
+          <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2" aria-label="Footer navigation">
+            <Link href="/about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">About</Link>
+            <Link href="/events" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Events</Link>
+            <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contact</Link>
+            <Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Terms</Link>
+            <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Privacy</Link>
+          </nav>
+          <div className="flex items-center gap-4">
+            <p className="text-xs text-muted-foreground whitespace-nowrap">© {new Date().getFullYear()} 704 Collective. All rights reserved.</p>
+            <a href="https://www.instagram.com/704_collective/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="704 Collective on Instagram">
+              <Instagram className="w-4 h-4" />
+            </a>
+            <a href="https://www.tiktok.com/@704_collective" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="704 Collective on TikTok">
+              <TikTokIcon className="w-4 h-4" />
+            </a>
           </div>
         </div>
       </div>

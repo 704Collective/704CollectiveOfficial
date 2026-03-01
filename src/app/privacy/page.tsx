@@ -1,244 +1,163 @@
-import type { Metadata } from "next";
-import Nav from "@/components/Nav";
-import Footer from "@/components/Footer";
-import { FadeUp, FadeIn } from "@/components/Animations";
+'use client';
 
-export const metadata: Metadata = {
-  title: "Privacy Policy | 704 Collective",
-  description: "How 704 Collective collects, uses, and protects your information.",
-  openGraph: {
-    title: "Privacy Policy | 704 Collective",
-    description: "How 704 Collective collects, uses, and protects your information.",
-    url: "https://704collective.com/privacy",
-  },
-};
+import { useAuth } from '@/hooks/useAuth';
+import { Header } from '@/components/Header';
+import { usePageTitle } from '@/hooks/usePageTitle';
 
-export default function PrivacyPage() {
-  const lastUpdated = "February 25, 2026";
+export default function Privacy() {
+  const { user, profile, isAdmin } = useAuth();
+  usePageTitle('Privacy Policy | 704 Collective');
 
   return (
-    <>
-      <Nav />
-      <main style={{ paddingTop: "64px" }}>
-        {/* Header */}
-        <section style={{ backgroundColor: "#000000", padding: "80px 24px 48px" }}>
-          <div style={{ maxWidth: "680px", margin: "0 auto" }}>
-            <FadeIn delay={0.1}>
-              <span style={labelStyle}>Legal</span>
-            </FadeIn>
-            <FadeUp delay={0.15}>
-              <h1 style={headingStyle}>Privacy Policy</h1>
-            </FadeUp>
-            <FadeUp delay={0.25}>
-              <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.875rem" }}>
-                Last updated: {lastUpdated}
-              </p>
-            </FadeUp>
-          </div>
+    <div className="min-h-screen bg-background">
+      <Header
+        user={user ? { email: user.email, name: profile?.full_name || undefined, avatarUrl: profile?.avatar_url || undefined } : null}
+        isAdmin={isAdmin}
+      />
+      <main className="container max-w-3xl py-16 px-4">
+        <h1 className="text-4xl font-bold text-foreground mb-2">Privacy Policy</h1>
+        <p className="text-muted-foreground mb-12">Last Updated: February 2026</p>
+
+        <p className="text-foreground mb-8">
+          At 704 Collective, we take your privacy seriously. This Privacy Policy explains what information we collect, how we use it, and your choices regarding your personal data. By joining 704 Collective or using our services, you consent to the practices described in this policy.
+        </p>
+
+        <section className="mb-10">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">1. Information We Collect</h2>
+
+          <p className="text-foreground font-medium mb-2">Information You Provide Directly:</p>
+          <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-4">
+            <li>Name and contact information (email address, phone number)</li>
+            <li>Billing information (processed securely through Stripe — we do not store full credit card numbers)</li>
+            <li>Profile information you choose to share (profession, interests, social media handles)</li>
+            <li>Communications you send to us (emails, feedback, support requests)</li>
+          </ul>
+
+          <p className="text-foreground font-medium mb-2">Information Collected Automatically:</p>
+          <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-4">
+            <li>Device and browser information when you visit our website</li>
+            <li>IP address and general location data</li>
+            <li>Website usage data (pages visited, time spent, clicks)</li>
+            <li>Event attendance and RSVP history</li>
+          </ul>
+
+          <p className="text-foreground font-medium mb-2">Information From Third Parties:</p>
+          <ul className="list-disc list-inside text-muted-foreground space-y-1">
+            <li>Payment confirmation from Stripe</li>
+            <li>Authentication data from Google (if you use Google sign-in)</li>
+            <li>Information from event and communication platforms we use</li>
+          </ul>
         </section>
 
-        {/* Content */}
-        <section style={{ backgroundColor: "#1A1A1A", padding: "64px 24px 96px" }}>
-          <div style={{ maxWidth: "680px", margin: "0 auto" }}>
-            <FadeUp>
-              <div style={proseContainer}>
-                <p style={introStyle}>
-                  704 Collective (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) operates
-                  704collective.com and related services. This Privacy Policy explains how we
-                  collect, use, disclose, and safeguard your information when you visit our
-                  website, use our services, or interact with us. Please read this policy
-                  carefully. If you do not agree with the terms, please discontinue use of our
-                  services.
-                </p>
+        <section className="mb-10">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">2. How We Use Your Information</h2>
+          <p className="text-muted-foreground mb-2">We use your information to:</p>
+          <ul className="list-disc list-inside text-muted-foreground space-y-1">
+            <li>Process your membership and payments</li>
+            <li>Send you event invitations, updates, and community announcements</li>
+            <li>Communicate with you about your account and membership</li>
+            <li>Improve our events, services, and member experience</li>
+            <li>Facilitate connections within the community (with your consent)</li>
+            <li>Send you information about partner offers and discounts</li>
+            <li>Comply with legal obligations</li>
+          </ul>
+        </section>
 
-                <h2 style={h2Style}>1. Information We Collect</h2>
+        <section className="mb-10">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">3. How We Share Your Information</h2>
+          <p className="text-muted-foreground mb-4">We do not sell your personal information. We may share your information in the following limited circumstances:</p>
 
-                <h3 style={h3Style}>Personal Information</h3>
-                <p style={pStyle}>
-                  We may collect personal information that you voluntarily provide when you
-                  register for a membership, apply to become a partner, subscribe to our
-                  newsletter, fill out a form, or otherwise contact us. This includes your name,
-                  email address, phone number, business name, website URL, and any other
-                  information you choose to provide.
-                </p>
+          <p className="text-muted-foreground mb-3">
+            <strong className="text-foreground">Service Providers:</strong> We share data with third-party services that help us operate (e.g., Stripe for payments, email marketing platforms, event management tools). These providers are contractually obligated to protect your data and use it only for the services they provide to us.
+          </p>
+          <p className="text-muted-foreground mb-3">
+            <strong className="text-foreground">Event Venues &amp; Partners:</strong> We may share your name and basic contact information with event venues or partners for check-in and event management purposes.
+          </p>
+          <p className="text-muted-foreground mb-3">
+            <strong className="text-foreground">Community Directory:</strong> If you opt in, your name, profession, and social handles may be visible to other members in our member directory.
+          </p>
+          <p className="text-muted-foreground">
+            <strong className="text-foreground">Legal Requirements:</strong> We may disclose information if required by law, court order, or government request, or to protect the rights, property, or safety of 704 Collective, our members, or others.
+          </p>
+        </section>
 
-                <h3 style={h3Style}>Automatically Collected Information</h3>
-                <p style={pStyle}>
-                  When you visit our website, we may automatically collect certain information
-                  about your device, including your IP address, browser type, operating system,
-                  referring URLs, pages viewed, and access times. We may also collect information
-                  about how you interact with our website through cookies and similar tracking
-                  technologies.
-                </p>
+        <section className="mb-10">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">4. Third-Party Services We Use</h2>
+          <p className="text-muted-foreground mb-3">We use the following third-party services that may collect or process your data:</p>
+          <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-3">
+            <li><strong className="text-foreground">Stripe</strong> — Payment processing</li>
+            <li><strong className="text-foreground">Supabase</strong> — Database, authentication, and hosting</li>
+            <li><strong className="text-foreground">Google</strong> — OAuth social login</li>
+            <li><strong className="text-foreground">HubSpot</strong> — Email communications and CRM</li>
+            <li><strong className="text-foreground">Resend</strong> — Transactional email delivery</li>
+            <li><strong className="text-foreground">Sentry</strong> — Error tracking and performance monitoring</li>
+          </ul>
+          <p className="text-muted-foreground">Each of these services has their own privacy policies, which we encourage you to review.</p>
+        </section>
 
-                <h3 style={h3Style}>Payment Information</h3>
-                <p style={pStyle}>
-                  If you purchase a membership, payment processing is handled by Stripe. We do
-                  not store your credit card number or full payment details on our servers.
-                  Stripe&apos;s use of your information is governed by their privacy policy.
-                </p>
+        <section className="mb-10">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">5. Cookies &amp; Tracking</h2>
+          <p className="text-muted-foreground mb-3">Our website uses cookies and similar technologies to:</p>
+          <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-3">
+            <li>Keep you logged in to your account</li>
+            <li>Remember your preferences</li>
+            <li>Analyze website traffic and usage</li>
+            <li>Improve our website and services</li>
+          </ul>
+          <p className="text-muted-foreground">You can control cookies through your browser settings. Note that disabling cookies may affect your ability to use certain features of our website.</p>
+        </section>
 
-                <h2 style={h2Style}>2. How We Use Your Information</h2>
-                <p style={pStyle}>
-                  We use the information we collect to operate and maintain our website and
-                  services, process membership applications and payments, communicate with you
-                  about events, updates, and membership benefits, respond to your inquiries and
-                  provide customer support, send marketing communications (with your consent),
-                  analyze website usage to improve our services, and comply with legal obligations.
-                </p>
+        <section className="mb-10">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">6. Data Security</h2>
+          <p className="text-muted-foreground">
+            We implement reasonable security measures to protect your personal information, including encryption, secure servers, and limited access controls. However, no method of transmission over the internet is 100% secure. While we strive to protect your data, we cannot guarantee absolute security.
+          </p>
+        </section>
 
-                <h2 style={h2Style}>3. Sharing Your Information</h2>
-                <p style={pStyle}>
-                  We do not sell your personal information to third parties. We may share your
-                  information with service providers who assist us in operating our website and
-                  services (such as Supabase for database management, Stripe for payment
-                  processing, and Vercel for website hosting), with other members in limited
-                  contexts such as member directories (only with your consent), and when required
-                  by law or to protect our rights.
-                </p>
+        <section className="mb-10">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">7. Data Retention</h2>
+          <p className="text-muted-foreground">
+            We retain your personal information for as long as your membership is active, and for a reasonable period afterward for legal, accounting, and business purposes. If you cancel your membership, we will retain basic records (name, email, billing history) for up to 3 years for tax and legal compliance, unless you request deletion.
+          </p>
+        </section>
 
-                <h2 style={h2Style}>4. Data Retention</h2>
-                <p style={pStyle}>
-                  We retain your personal information for as long as your account is active or as
-                  needed to provide you services. If you request deletion of your account, we will
-                  remove your personal information within 30 days, except where retention is
-                  required by law.
-                </p>
+        <section className="mb-10">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">8. Your Rights &amp; Choices</h2>
+          <p className="text-muted-foreground mb-2">You have the right to:</p>
+          <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-3">
+            <li><strong className="text-foreground">Access:</strong> Request a copy of the personal information we hold about you</li>
+            <li><strong className="text-foreground">Correction:</strong> Request correction of inaccurate information</li>
+            <li><strong className="text-foreground">Deletion:</strong> Request deletion of your personal information (subject to legal retention requirements)</li>
+            <li><strong className="text-foreground">Opt-Out:</strong> Unsubscribe from marketing emails at any time using the link in our emails</li>
+            <li><strong className="text-foreground">Portability:</strong> Request your data in a portable format</li>
+          </ul>
+          <p className="text-muted-foreground">To exercise any of these rights, please contact us at hello@704collective.com. We will respond to your request within 30 days.</p>
+        </section>
 
-                <h2 style={h2Style}>5. Data Security</h2>
-                <p style={pStyle}>
-                  We implement reasonable security measures to protect your personal information,
-                  including encryption of data in transit and at rest, secure authentication
-                  mechanisms, and regular security reviews. However, no method of transmission
-                  over the internet or electronic storage is 100% secure, and we cannot guarantee
-                  absolute security.
-                </p>
+        <section className="mb-10">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">9. Children&apos;s Privacy</h2>
+          <p className="text-muted-foreground">
+            704 Collective is intended for individuals 18 years of age or older. We do not knowingly collect personal information from children under 18. If we learn that we have collected information from a child under 18, we will delete it promptly.
+          </p>
+        </section>
 
-                <h2 style={h2Style}>6. Cookies and Tracking</h2>
-                <p style={pStyle}>
-                  Our website uses cookies and similar tracking technologies to enhance your
-                  experience. You can control cookie preferences through your browser settings.
-                  Disabling cookies may affect the functionality of certain features on our
-                  website.
-                </p>
+        <section className="mb-10">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">10. Changes to This Policy</h2>
+          <p className="text-muted-foreground">
+            We may update this Privacy Policy from time to time. If we make significant changes, we will notify you by email or through a prominent notice on our website. Your continued use of our services after the changes take effect constitutes acceptance of the updated policy.
+          </p>
+        </section>
 
-                <h2 style={h2Style}>7. Third-Party Links</h2>
-                <p style={pStyle}>
-                  Our website may contain links to third-party websites. We are not responsible
-                  for the privacy practices of these websites and encourage you to review their
-                  privacy policies.
-                </p>
-
-                <h2 style={h2Style}>8. Your Rights</h2>
-                <p style={pStyle}>
-                  Depending on your location, you may have the right to access the personal
-                  information we hold about you, request correction of inaccurate information,
-                  request deletion of your personal information, opt out of marketing
-                  communications, and request a copy of your data in a portable format. To
-                  exercise any of these rights, please contact us at hello@704collective.com.
-                </p>
-
-                <h2 style={h2Style}>9. Children&apos;s Privacy</h2>
-                <p style={pStyle}>
-                  Our services are not directed to individuals under the age of 18. We do not
-                  knowingly collect personal information from children. If we become aware that a
-                  child has provided us with personal information, we will take steps to delete
-                  such information.
-                </p>
-
-                <h2 style={h2Style}>10. Changes to This Policy</h2>
-                <p style={pStyle}>
-                  We may update this Privacy Policy from time to time. We will notify you of any
-                  material changes by posting the new policy on this page with an updated
-                  effective date. Your continued use of our services after any changes constitutes
-                  acceptance of the updated policy.
-                </p>
-
-                <h2 style={h2Style}>11. Contact Us</h2>
-                <p style={pStyle}>
-                  If you have questions about this Privacy Policy or our data practices, please
-                  contact us at:
-                </p>
-                <div
-                  style={{
-                    backgroundColor: "rgba(255,255,255,0.02)",
-                    border: "1px solid rgba(255,255,255,0.06)",
-                    borderRadius: "8px",
-                    padding: "20px 24px",
-                    marginTop: "8px",
-                  }}
-                >
-                  <p style={{ color: "#FAF6F0", fontWeight: 600, fontSize: "0.9375rem", marginBottom: "4px" }}>
-                    704 Collective
-                  </p>
-                  <p style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.875rem", lineHeight: 1.7 }}>
-                    Charlotte, North Carolina
-                    <br />
-                    <a
-                      href="mailto:hello@704collective.com"
-                      style={{ color: "#C6A664", textDecoration: "none" }}
-                    >
-                      hello@704collective.com
-                    </a>
-                  </p>
-                </div>
-              </div>
-            </FadeUp>
-          </div>
+        <section className="mb-10">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">11. Contact Us</h2>
+          <p className="text-muted-foreground mb-1">If you have any questions about this Privacy Policy or our data practices, please contact us:</p>
+          <p className="text-muted-foreground">704 Collective</p>
+          <p className="text-muted-foreground">
+            Email: <a href="mailto:hello@704collective.com" className="text-primary hover:underline">hello@704collective.com</a>
+          </p>
+          <p className="text-muted-foreground">Website: 704collective.com</p>
         </section>
       </main>
-      <Footer />
-    </>
+    </div>
   );
 }
-
-const labelStyle: React.CSSProperties = {
-  display: "inline-block",
-  fontSize: "0.75rem",
-  fontWeight: 700,
-  letterSpacing: "0.15em",
-  textTransform: "uppercase",
-  color: "rgba(255,255,255,0.35)",
-  marginBottom: "16px",
-};
-
-const headingStyle: React.CSSProperties = {
-  fontSize: "clamp(2rem, 5vw, 3rem)",
-  fontWeight: 700,
-  letterSpacing: "-0.03em",
-  lineHeight: 1.1,
-  color: "#FFFFFF",
-  marginBottom: "12px",
-};
-
-const proseContainer: React.CSSProperties = {};
-
-const introStyle: React.CSSProperties = {
-  color: "rgba(255,255,255,0.55)",
-  fontSize: "0.9375rem",
-  lineHeight: 1.7,
-  marginBottom: "40px",
-};
-
-const h2Style: React.CSSProperties = {
-  fontSize: "1.25rem",
-  fontWeight: 700,
-  color: "#FAF6F0",
-  marginBottom: "12px",
-  marginTop: "40px",
-};
-
-const h3Style: React.CSSProperties = {
-  fontSize: "1rem",
-  fontWeight: 600,
-  color: "rgba(255,255,255,0.7)",
-  marginBottom: "8px",
-  marginTop: "20px",
-};
-
-const pStyle: React.CSSProperties = {
-  color: "rgba(255,255,255,0.45)",
-  fontSize: "0.875rem",
-  lineHeight: 1.75,
-  marginBottom: "16px",
-};
