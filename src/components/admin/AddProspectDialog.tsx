@@ -17,7 +17,7 @@ interface AddProspectDialogProps {
 }
 
 export function AddProspectDialog({ open, onOpenChange, onSuccess }: AddProspectDialogProps) {
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setloading] = useState(false);
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
@@ -40,7 +40,7 @@ export function AddProspectDialog({ open, onOpenChange, onSuccess }: AddProspect
       return;
     }
 
-    setIsLoading(true);
+    setloading(true);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -74,7 +74,7 @@ export function AddProspectDialog({ open, onOpenChange, onSuccess }: AddProspect
       console.error("Error adding prospect:", error);
       toast.error(error.message || "Failed to add prospect");
     } finally {
-      setIsLoading(false);
+      setloading(false);
     }
   };
 
@@ -92,7 +92,7 @@ export function AddProspectDialog({ open, onOpenChange, onSuccess }: AddProspect
               value={formData.full_name}
               onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
               placeholder="Enter prospect's name"
-              disabled={isLoading}
+              disabled={loading}
               maxLength={100}
             />
           </div>
@@ -105,7 +105,7 @@ export function AddProspectDialog({ open, onOpenChange, onSuccess }: AddProspect
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="Enter prospect's email"
-              disabled={isLoading}
+              disabled={loading}
               maxLength={255}
             />
           </div>
@@ -117,7 +117,7 @@ export function AddProspectDialog({ open, onOpenChange, onSuccess }: AddProspect
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               placeholder="Add any notes about this prospect"
-              disabled={isLoading}
+              disabled={loading}
               rows={3}
               maxLength={2000}
             />
@@ -128,12 +128,12 @@ export function AddProspectDialog({ open, onOpenChange, onSuccess }: AddProspect
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isLoading}
+              disabled={loading}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? (
+            <Button type="submit" disabled={loading}>
+              {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Adding...

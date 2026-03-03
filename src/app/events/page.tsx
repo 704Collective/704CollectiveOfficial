@@ -40,7 +40,7 @@ interface Event {
 
 export default function Events() {
   const router = useRouter();
-  const { user, profile, isMember, isAdmin } = useAuth();
+  const { user, profile, isActiveMember, isAdmin } = useAuth();
   usePageTitle('Upcoming Events');
 
   const {
@@ -53,14 +53,14 @@ export default function Events() {
   } = useTicketActions();
 
   const [events, setEvents] = useState<Event[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setloading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [showMembersOnly, setShowMembersOnly] = useState(false);
   const [ticketCounts, setTicketCounts] = useState<Record<string, number>>({});
 
-  const isUserMember = isMember;
+  const isUserMember = isActiveMember;
 
   const fetchEvents = async () => {
     try {
@@ -80,7 +80,7 @@ export default function Events() {
       console.error('Error fetching events:', error);
       toast.error('Failed to load events');
     } finally {
-      setIsLoading(false);
+      setloading(false);
     }
   };
 
@@ -153,7 +153,6 @@ export default function Events() {
     if (isUserMember) {
       const success = await registerMemberTicket(event);
       if (success) {
-        // Refresh counts after successful RSVP
         fetchTicketCounts(events.map(e => e.id));
       }
     } else {
@@ -165,7 +164,6 @@ export default function Events() {
     router.push(`/events/${event.id}`);
   };
 
-  // Only show categories that have at least one upcoming event
   const activeCategories = useMemo(() => {
     const categoriesWithEvents = new Set<string>();
     events.forEach(event => {
@@ -186,14 +184,7 @@ export default function Events() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header 
-        user={user ? { 
-          email: user.email, 
-          name: profile?.full_name || undefined,
-          avatarUrl: profile?.avatar_url || undefined
-        } : null}
-        isAdmin={isAdmin}
-      />
+      <Header />
       
       <main className="container mx-auto px-4 py-10 md:py-14 max-w-6xl">
         {/* Header */}
@@ -264,7 +255,7 @@ export default function Events() {
         </div>
 
         {/* Content */}
-        {isLoading ? (
+        {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map(i => (
               <div key={i} className="rounded-xl border border-border overflow-hidden">
@@ -320,7 +311,7 @@ export default function Events() {
                     locationName={event.location_name || undefined}
                     imageUrl={event.image_url || undefined}
                     ticketPrice={event.ticket_price || 0}
-                    isMembersOnly={event.is_members_only || false}
+                    isActiveMembersOnly={event.is_members_only || false}
                     userHasTicket={userTicketIds.has(event.id)}
                     isUserMember={isUserMember}
                     isLoggedIn={!!user}
@@ -328,7 +319,7 @@ export default function Events() {
                     capacity={event.capacity}
                     ticketCount={ticketCounts[event.id] || 0}
                     tags={event.tags}
-                    isLoading={rsvpLoadingId === event.id}
+                    loading={rsvpLoadingId === event.id}
                     onGetTicket={() => handleGetTicket(event)}
                     onGuestPurchase={() => handleGuestPurchase(event)}
                     onClick={() => router.push(`/events/${event.id}`)}
@@ -353,7 +344,7 @@ export default function Events() {
                           locationName={event.location_name || undefined}
                           imageUrl={event.image_url || undefined}
                           ticketPrice={event.ticket_price || 0}
-                          isMembersOnly={event.is_members_only || false}
+                          isActiveMembersOnly={event.is_members_only || false}
                           userHasTicket={userTicketIds.has(event.id)}
                           isUserMember={isUserMember}
                           isLoggedIn={!!user}
@@ -361,7 +352,7 @@ export default function Events() {
                           capacity={event.capacity}
                           ticketCount={ticketCounts[event.id] || 0}
                           tags={event.tags}
-                          isLoading={rsvpLoadingId === event.id}
+                          loading={rsvpLoadingId === event.id}
                           onGetTicket={() => handleGetTicket(event)}
                           onGuestPurchase={() => handleGuestPurchase(event)}
                           onClick={() => router.push(`/events/${event.id}`)}

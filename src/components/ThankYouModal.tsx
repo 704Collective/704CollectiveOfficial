@@ -31,7 +31,7 @@ export function ThankYouModal({ open, onOpenChange, type, event }: ThankYouModal
 
   const handleNavigate = (path: string) => {
     onOpenChange(false);
-    navigate(path);
+    router.push(path);
   };
 
   return (
@@ -71,7 +71,7 @@ export function ThankYouModal({ open, onOpenChange, type, event }: ThankYouModal
             {type === 'new_member' && (
               <>
                 <Button 
-                  variant="hero" 
+                  variant="default" 
                   className="w-full"
                   onClick={() => handleNavigate('/dashboard')}
                 >
@@ -98,7 +98,7 @@ export function ThankYouModal({ open, onOpenChange, type, event }: ThankYouModal
                   </div>
                 )}
                 <Button 
-                  variant="hero" 
+                  variant="default" 
                   className="w-full"
                   onClick={() => handleNavigate('/events')}
                 >
@@ -125,7 +125,7 @@ export function ThankYouModal({ open, onOpenChange, type, event }: ThankYouModal
             {type === 'guest' && (
               <>
                 <Button 
-                  variant="hero" 
+                  variant="default" 
                   className="w-full"
                   onClick={() => handleNavigate('/events')}
                 >

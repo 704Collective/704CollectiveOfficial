@@ -29,7 +29,7 @@ interface EditProspectDialogProps {
 }
 
 export function EditProspectDialog({ open, onOpenChange, prospect, onSuccess }: EditProspectDialogProps) {
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setloading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [formData, setFormData] = useState({
@@ -54,7 +54,7 @@ export function EditProspectDialog({ open, onOpenChange, prospect, onSuccess }: 
     e.preventDefault();
     if (!prospect) return;
 
-    setIsLoading(true);
+    setloading(true);
     try {
       const { error } = await supabase
         .from('prospects')
@@ -74,7 +74,7 @@ export function EditProspectDialog({ open, onOpenChange, prospect, onSuccess }: 
     } catch (error: any) {
       toast.error(error.message || 'Failed to update prospect');
     } finally {
-      setIsLoading(false);
+      setloading(false);
     }
   };
 
@@ -175,12 +175,12 @@ export function EditProspectDialog({ open, onOpenChange, prospect, onSuccess }: 
                   type="button"
                   variant="outline"
                   onClick={() => onOpenChange(false)}
-                  disabled={isLoading}
+                  disabled={loading}
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? (
+                <Button type="submit" disabled={loading}>
+                  {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Saving...
@@ -201,7 +201,7 @@ export function EditProspectDialog({ open, onOpenChange, prospect, onSuccess }: 
         onConfirm={handleDelete}
         title="Delete Prospect"
         description={`Are you sure you want to delete "${prospect.full_name}"? This action cannot be undone.`}
-        isLoading={isDeleting}
+        loading={isDeleting}
       />
     </>
   );

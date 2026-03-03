@@ -18,11 +18,11 @@ import { toast } from 'sonner';
 
 interface MembershipDangerZoneProps {
   userId: string;
-  isMember: boolean;
+  isActiveMember: boolean;
   hasStripeSubscription: boolean;
 }
 
-export function MembershipDangerZone({ userId, isMember, hasStripeSubscription }: MembershipDangerZoneProps) {
+export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscription }: MembershipDangerZoneProps) {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelConfirmation, setCancelConfirmation] = useState('');
   const [loading, setLoading] = useState(false);
@@ -51,7 +51,7 @@ export function MembershipDangerZone({ userId, isMember, hasStripeSubscription }
     }
   };
 
-  if (!isMember || !hasStripeSubscription) {
+  if (!isActiveMember || !hasStripeSubscription) {
     return null;
   }
 

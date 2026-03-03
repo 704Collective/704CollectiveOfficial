@@ -41,7 +41,7 @@ interface Event {
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { user, profile, isMember, isAdmin, isLoading: authLoading } = useAuth();
+  const { user, profile, isActiveMember, isAdmin, loading: authLoading } = useAuth();
 
   const {
     hasTicket: checkHasTicket,
@@ -55,7 +55,7 @@ export default function EventDetail() {
   
   const [event, setEvent] = useState<Event | null>(null);
   usePageTitle(event ? event.title : 'Event Details');
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setloading] = useState(true);
   const [ticketId, setTicketId] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
@@ -104,7 +104,7 @@ export default function EventDetail() {
     }
 
     setEvent(data);
-    setIsLoading(false);
+    setloading(false);
   };
 
   /** We only need the ticket ID locally for cancel functionality */
@@ -317,10 +317,10 @@ export default function EventDetail() {
   // Use rsvpLoadingId from hook OR local isRegistering for purchase flows
   const isActionLoading = (rsvpLoadingId === id) || isRegistering;
 
-  if (isLoading || authLoading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Header user={user ? { email: user.email, name: profile?.full_name || undefined, avatarUrl: profile?.avatar_url || undefined } : null} isAdmin={isAdmin} />
+        <Header />
         <div className="container py-8">
           <Skeleton className="h-64 w-full rounded-xl mb-8" />
           <Skeleton className="h-10 w-2/3 mb-4" />
@@ -343,7 +343,7 @@ export default function EventDetail() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header user={user ? { email: user.email, name: profile?.full_name || undefined, avatarUrl: profile?.avatar_url || undefined } : null} isAdmin={isAdmin} />
+      <Header />
       <SEOJsonLd
         type="event"
         name={event.title}
@@ -585,7 +585,7 @@ export default function EventDetail() {
                       </div>
                     </div>
                   )
-                ) : isMember ? (
+                ) : isActiveMember ? (
                   isAtCapacity ? (
                     <div className="space-y-4">
                       <div className="text-center">
@@ -665,7 +665,7 @@ export default function EventDetail() {
         <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-background/95 backdrop-blur-sm border-t border-border p-4 safe-area-pb">
           <div className="flex items-center justify-between gap-4 max-w-lg mx-auto">
             <div className="text-sm">
-              {isMember || ticketPrice <= 0 ? (
+              {isActiveMember || ticketPrice <= 0 ? (
                 <span className="font-semibold text-primary">Free</span>
               ) : (
                 <span className="font-semibold">{formatPrice(ticketPrice)}</span>
@@ -685,7 +685,7 @@ export default function EventDetail() {
                   {isActionLoading ? 'Redirecting...' : 'Purchase Ticket'}
                 </Button>
               )
-            ) : isMember ? (
+            ) : isActiveMember ? (
               isAtCapacity ? (
                 <Button 
                   className="min-h-[44px] flex-1" 

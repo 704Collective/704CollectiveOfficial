@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Instagram } from 'lucide-react';
 
 function TikTokIcon({ className }: { className?: string }) {
@@ -11,14 +12,26 @@ function TikTokIcon({ className }: { className?: string }) {
   );
 }
 
+// Marketing pages that have their own footer — this Footer won't render on these
+const MARKETING_ROUTES = ['/'];
+
 export function Footer() {
+  const pathname = usePathname();
+
+  // Don't render on marketing pages (they have their own footer)
+  if (MARKETING_ROUTES.includes(pathname)) {
+    return null;
+  }
+
   return (
     <footer className="py-8 border-t border-border" role="contentinfo">
       <div className="container">
         <div className="flex flex-col items-center gap-4">
           <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2" aria-label="Footer navigation">
-            <Link href="/about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">About</Link>
+            <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Home</Link>
+            <Link href="/social" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Social</Link>
             <Link href="/events" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Events</Link>
+            <Link href="/about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">About</Link>
             <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contact</Link>
             <Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Terms</Link>
             <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Privacy</Link>

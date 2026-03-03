@@ -110,7 +110,7 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
   const { user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParams = useSearchParams();
 
   // UI-only state
   const [search, setSearch] = useState('');
@@ -128,9 +128,9 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
   const activeFilter = (searchParams.get('filter') as FilterType) || 'all';
 
   const setFilter = (filter: FilterType) => {
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams(searchParams.toString());
     if (filter === 'all') params.delete('filter'); else params.set('filter', filter);
-    setSearchParams(params);
+    router.replace(`?${params.toString()}`);
     setPage(1);
   };
 
@@ -230,9 +230,9 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
     setResendingWelcome(true);
     try {
       const { data: profile } = await supabase.from('profiles').select('calendar_token').eq('id', editingMember.id).single();
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const calendarToken = profile?.calendar_token ?? '';
-      const calendarUrl = `webcal://${supabaseUrl.replace('https://', '')}/functions/v1/calendar-feed?token=${calendarToken}`;
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const calendarToken = (profile as any)?.calendar_token ?? '';
+      const calendarUrl = `webcal://${(supabaseUrl || '').replace('https://', '')}/functions/v1/calendar-feed?token=${calendarToken}`;
       const { data, error } = await supabase.functions.invoke('send-email', {
         body: { to: editingMember.email, template: 'welcome', data: { name: editingMember.full_name || 'there', calendarUrl, origin: window.location.origin } },
       });
@@ -475,8 +475,8 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
       </Dialog>
 
       {/* Confirmation Dialogs */}
-      <DeleteConfirmDialog open={showRemoveAdminConfirm} onOpenChange={setShowRemoveAdminConfirm} onConfirm={() => editingMember && removeAdminMutation.mutate(editingMember.id)} title="Remove Admin Access" description={`Are you sure you want to remove admin access for "${editingMember?.full_name || editingMember?.email}"?`} isLoading={removeAdminMutation.isPending} />
-      <DeleteConfirmDialog open={showDeactivateConfirm} onOpenChange={setShowDeactivateConfirm} onConfirm={() => editingMember && deactivateMutation.mutate(editingMember.id)} title="Deactivate Member" description={`Are you sure you want to deactivate "${editingMember?.full_name || editingMember?.email}"? They will no longer be able to log in.`} isLoading={deactivateMutation.isPending} />
+      <DeleteConfirmDialog open={showRemoveAdminConfirm} onOpenChange={setShowRemoveAdminConfirm} onConfirm={() => editingMember && removeAdminMutation.mutate(editingMember.id)} title="Remove Admin Access" description={`Are you sure you want to remove admin access for "${editingMember?.full_name || editingMember?.email}"?`} loading={removeAdminMutation.isPending} />
+      <DeleteConfirmDialog open={showDeactivateConfirm} onOpenChange={setShowDeactivateConfirm} onConfirm={() => editingMember && deactivateMutation.mutate(editingMember.id)} title="Deactivate Member" description={`Are you sure you want to deactivate "${editingMember?.full_name || editingMember?.email}"? They will no longer be able to log in.`} loading={deactivateMutation.isPending} />
       <QuickAddMemberDialog open={quickAddOpen} onOpenChange={setQuickAddOpen} onSuccess={invalidateMembers} />
     </div>
   );

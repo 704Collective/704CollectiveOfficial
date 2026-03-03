@@ -5,6 +5,9 @@ import ScrollProgress from "@/components/ScrollProgress";
 import ScrollToTop from "@/components/ScrollToTop";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import JsonLd from "@/components/JsonLd";
+import { Providers } from "@/components/Providers";
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -71,16 +74,22 @@ export default function RootLayout({
     <html lang="en" className={`${plusJakarta.variable} ${headingFont.variable}`}>
       <head>
         <meta name="theme-color" content="#1A1A1A" />
-        <link rel="dns-prefetch" href="https://xgikkvvvdghqdisrzpqm.supabase.co" />
-        <link rel="preconnect" href="https://xgikkvvvdghqdisrzpqm.supabase.co" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://bnmtynevbuplqpuqvmna.supabase.co" />
+        <link rel="preconnect" href="https://bnmtynevbuplqpuqvmna.supabase.co" crossOrigin="anonymous" />
         <JsonLd />
       </head>
       <body>
         <ErrorBoundary>
-          <SmoothScroll />
-          <ScrollProgress />
-          {children}
-          <ScrollToTop />
+          <Providers>
+            <SmoothScroll />
+            <ScrollProgress />
+            <Header />
+            <main className="min-h-screen">
+              {children}
+            </main>
+            <Footer />
+            <ScrollToTop />
+          </Providers>
         </ErrorBoundary>
       </body>
     </html>

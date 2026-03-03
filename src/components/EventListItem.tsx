@@ -15,7 +15,7 @@ interface EventListItemProps {
   locationName?: string;
   imageUrl?: string;
   ticketPrice: number;
-  isMembersOnly: boolean;
+  isActiveMembersOnly: boolean;
   userHasTicket: boolean;
   isUserMember: boolean;
   isLoggedIn: boolean;
@@ -23,7 +23,7 @@ interface EventListItemProps {
   capacity?: number | null;
   ticketCount?: number;
   tags?: string[] | null;
-  isLoading?: boolean;
+  loading?: boolean;
   onGetTicket: () => void;
   onGuestPurchase: () => void;
   onClick: () => void;
@@ -36,7 +36,7 @@ export function EventListItem({
   locationName,
   imageUrl,
   ticketPrice,
-  isMembersOnly,
+  isActiveMembersOnly,
   userHasTicket,
   isUserMember,
   isLoggedIn,
@@ -44,7 +44,7 @@ export function EventListItem({
   capacity,
   ticketCount = 0,
   tags,
-  isLoading,
+  loading,
   onGetTicket,
   onGuestPurchase,
   onClick,
@@ -86,7 +86,7 @@ export function EventListItem({
       );
     }
 
-    if (isMembersOnly && !isUserMember) {
+    if (isActiveMembersOnly && !isUserMember) {
       return (
         <Badge variant="outline" className="whitespace-nowrap">
           <Users className="w-3 h-3 mr-1" />
@@ -96,8 +96,8 @@ export function EventListItem({
     }
 
     return (
-      <Button size="sm" variant="outline" className="min-h-[44px] min-w-[44px]" disabled={isLoading}>
-        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'RSVP'}
+      <Button size="sm" variant="outline" className="min-h-[44px] min-w-[44px]" disabled={loading}>
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'RSVP'}
       </Button>
     );
   };

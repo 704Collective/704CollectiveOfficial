@@ -29,7 +29,7 @@ interface Event {
 
 export default function Join() {
   const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   usePageTitle("Join 704 Collective - Charlotte's Young Professionals Community");
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,7 +130,8 @@ export default function Join() {
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-lg">
         <div className="container flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <img src={logo} alt="704 Collective" className="h-9 w-auto" />
+            <img src={logo.src}
+ alt="704 Collective" className="h-9 w-auto" />
             <span className="text-foreground text-lg font-medium">Social</span>
           </Link>
           <Link href="/login"
@@ -296,7 +297,8 @@ export default function Join() {
         <div className="container">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex flex-col sm:flex-row items-center gap-2">
-              <img src={logo} alt="704 Collective" className="h-8 w-auto" />
+              <img src={logo.src}
+ alt="704 Collective" className="h-8 w-auto" />
               <span className="text-foreground font-medium">Social</span>
             </div>
             <p className="text-sm text-muted-foreground">

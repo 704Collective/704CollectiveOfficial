@@ -50,7 +50,7 @@ export function TaskDialog({
   currentUserId,
   onSuccess 
 }: TaskDialogProps) {
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setloading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const UNASSIGNED_VALUE = '__unassigned__';
@@ -96,7 +96,7 @@ export function TaskDialog({
       return;
     }
 
-    setIsLoading(true);
+    setloading(true);
     try {
       const assignedToValue = formData.assigned_to === UNASSIGNED_VALUE ? null : formData.assigned_to;
       
@@ -157,7 +157,7 @@ export function TaskDialog({
     } catch (error: any) {
       toast.error(error.message || 'Failed to save task');
     } finally {
-      setIsLoading(false);
+      setloading(false);
     }
   };
 
@@ -323,12 +323,12 @@ export function TaskDialog({
                   type="button"
                   variant="outline"
                   onClick={() => onOpenChange(false)}
-                  disabled={isLoading}
+                  disabled={loading}
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? (
+                <Button type="submit" disabled={loading}>
+                  {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       {isEditing ? 'Saving...' : 'Creating...'}
@@ -350,7 +350,7 @@ export function TaskDialog({
           onConfirm={handleDelete}
           title="Delete Task"
           description={`Are you sure you want to delete "${task?.title}"? This action cannot be undone.`}
-          isLoading={isDeleting}
+          loading={isDeleting}
         />
       )}
     </>

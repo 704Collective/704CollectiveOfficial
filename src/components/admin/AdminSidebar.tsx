@@ -46,7 +46,8 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
           }}
           className="flex items-center gap-2.5 cursor-pointer"
         >
-          <img src={logo} alt="704 Collective" className="h-8 w-8 rounded-lg" />
+          <img src={logo.src}
+ alt="704 Collective" className="h-8 w-8 rounded-lg" />
           <span className="text-lg font-semibold">704 Collective</span>
         </button>
       </div>

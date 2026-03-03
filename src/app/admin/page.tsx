@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from "react";
@@ -19,11 +20,19 @@ import { TaskBoard } from "@/components/admin/TaskBoard";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
-export default function AdminDashboard() {
-  const { user, isLoading: authLoading, isAdmin } = useAuth();
+export default function AdminPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Skeleton className="h-8 w-48" /></div>}>
+      <AdminDashboard />
+    </Suspense>
+  );
+}
+
+function AdminDashboard() {
+  const { user, loading: authLoading, isAdmin } = useAuth();
   usePageTitle('Admin Dashboard');
   const router = useRouter();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParams = useSearchParams();
   const sectionFromUrl = searchParams.get('section') as AdminSection | null;
   const [activeSection, setActiveSection] = useState<AdminSection>(
     sectionFromUrl && ['dashboard','events','members','checkin','tasks','prospects','sponsors'].includes(sectionFromUrl)
@@ -31,7 +40,6 @@ export default function AdminDashboard() {
       : 'dashboard'
   );
 
-  // Sync activeSection when URL ?section= param changes (e.g. navigated from Settings)
   useEffect(() => {
     const s = searchParams.get('section') as AdminSection | null;
     if (s && ['dashboard','events','members','checkin','tasks','prospects','sponsors'].includes(s)) {
@@ -39,20 +47,19 @@ export default function AdminDashboard() {
     }
   }, [searchParams]);
 
-  // Auth guard
   useEffect(() => {
     if (!authLoading && (!user || !isAdmin)) {
       router.push("/admin/login");
     }
-  }, [user, isAdmin, authLoading, navigate]);
+  }, [user, isAdmin, authLoading, router]);
 
   const goToDashboard = () => setActiveSection('dashboard');
 
   const handleFilterChange = (filter: string) => {
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams(searchParams.toString());
     if (filter === 'all') params.delete('filter');
     else params.set('filter', filter);
-    setSearchParams(params);
+    router.replace(`?${params.toString()}`);
   };
 
   if (authLoading) {

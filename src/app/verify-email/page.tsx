@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -9,8 +10,17 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Mail, ArrowLeft } from 'lucide-react';
 import logo from '@/assets/704-logo.png';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export default function VerifyEmail() {
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Skeleton className="h-8 w-48" /></div>}>
+      <VerifyEmail />
+    </Suspense>
+  );
+}
+
+function VerifyEmail() {
   usePageTitle('Verify Your Email');
   const router = useRouter();
   const { user } = useAuth();
@@ -26,7 +36,7 @@ export default function VerifyEmail() {
     if (user?.email_confirmed_at) {
       router.push('/dashboard');
     }
-  }, [user, navigate]);
+  }, [user, router]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -48,7 +58,7 @@ export default function VerifyEmail() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <Link href="/" className="inline-flex flex-col sm:flex-row items-center justify-center gap-2">
-            <img src={logo} alt="704 Collective" className="h-12 w-auto" />
+            <img src={logo.src} alt="704 Collective" className="h-12 w-auto" />
             <span className="text-foreground text-2xl font-medium">Social</span>
           </Link>
         </div>

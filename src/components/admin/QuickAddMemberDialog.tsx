@@ -38,7 +38,7 @@ const defaultForm: FormData = {
 };
 
 export function QuickAddMemberDialog({ open, onOpenChange, onSuccess }: QuickAddMemberDialogProps) {
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setloading] = useState(false);
   const [formData, setFormData] = useState<FormData>({ ...defaultForm });
   const [error, setError] = useState<string | null>(null);
 
@@ -67,7 +67,7 @@ export function QuickAddMemberDialog({ open, onOpenChange, onSuccess }: QuickAdd
       return;
     }
 
-    setIsLoading(true);
+    setloading(true);
 
     try {
       const member: Record<string, string> = {
@@ -97,7 +97,7 @@ export function QuickAddMemberDialog({ open, onOpenChange, onSuccess }: QuickAdd
 
       if (result?.status === "already_exists") {
         setError(`${formData.email.trim()} already exists`);
-        setIsLoading(false);
+        setloading(false);
         return;
       }
 
@@ -109,7 +109,7 @@ export function QuickAddMemberDialog({ open, onOpenChange, onSuccess }: QuickAdd
     } catch (err: any) {
       setError(err.message || "Failed to add member");
     } finally {
-      setIsLoading(false);
+      setloading(false);
     }
   };
 
@@ -133,7 +133,7 @@ export function QuickAddMemberDialog({ open, onOpenChange, onSuccess }: QuickAdd
                 value={formData.first_name}
                 onChange={(e) => updateField("first_name", e.target.value)}
                 placeholder="First name"
-                disabled={isLoading}
+                disabled={loading}
               />
             </div>
             <div className="space-y-2">
@@ -143,7 +143,7 @@ export function QuickAddMemberDialog({ open, onOpenChange, onSuccess }: QuickAdd
                 value={formData.last_name}
                 onChange={(e) => updateField("last_name", e.target.value)}
                 placeholder="Last name"
-                disabled={isLoading}
+                disabled={loading}
               />
             </div>
           </div>
@@ -156,7 +156,7 @@ export function QuickAddMemberDialog({ open, onOpenChange, onSuccess }: QuickAdd
               value={formData.email}
               onChange={(e) => updateField("email", e.target.value)}
               placeholder="email@example.com"
-              disabled={isLoading}
+              disabled={loading}
             />
           </div>
 
@@ -167,7 +167,7 @@ export function QuickAddMemberDialog({ open, onOpenChange, onSuccess }: QuickAdd
               value={formData.phone}
               onChange={(e) => updateField("phone", e.target.value)}
               placeholder="(555) 123-4567"
-              disabled={isLoading}
+              disabled={loading}
             />
           </div>
 
@@ -178,7 +178,7 @@ export function QuickAddMemberDialog({ open, onOpenChange, onSuccess }: QuickAdd
               value={formData.stripe_customer_id}
               onChange={(e) => updateField("stripe_customer_id", e.target.value)}
               placeholder="cus_..."
-              disabled={isLoading}
+              disabled={loading}
             />
           </div>
 
@@ -187,7 +187,7 @@ export function QuickAddMemberDialog({ open, onOpenChange, onSuccess }: QuickAdd
             <Select
               value={formData.subscription_status}
               onValueChange={(v) => updateField("subscription_status", v)}
-              disabled={isLoading}
+              disabled={loading}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -204,7 +204,7 @@ export function QuickAddMemberDialog({ open, onOpenChange, onSuccess }: QuickAdd
               id="qa_send_email"
               checked={formData.send_email}
               onCheckedChange={(checked) => updateField("send_email", !!checked)}
-              disabled={isLoading}
+              disabled={loading}
             />
             <Label htmlFor="qa_send_email" className="text-sm font-normal cursor-pointer">
               Send password setup email
@@ -216,11 +216,11 @@ export function QuickAddMemberDialog({ open, onOpenChange, onSuccess }: QuickAdd
           )}
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isLoading}>
+            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={loading}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? (
+            <Button type="submit" disabled={loading}>
+              {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Adding...

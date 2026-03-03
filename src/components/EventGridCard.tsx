@@ -16,7 +16,7 @@ interface EventGridCardProps {
   locationName?: string;
   imageUrl?: string;
   ticketPrice: number;
-  isMembersOnly: boolean;
+  isActiveMembersOnly: boolean;
   userHasTicket: boolean;
   isUserMember: boolean;
   isLoggedIn: boolean;
@@ -24,7 +24,7 @@ interface EventGridCardProps {
   capacity?: number | null;
   ticketCount?: number;
   tags?: string[] | null;
-  isLoading?: boolean;
+  loading?: boolean;
   onGetTicket: () => void;
   onGuestPurchase: () => void;
   onClick: () => void;
@@ -38,7 +38,7 @@ export function EventGridCard({
   locationName,
   imageUrl,
   ticketPrice,
-  isMembersOnly,
+  isActiveMembersOnly,
   userHasTicket,
   isUserMember,
   isLoggedIn,
@@ -46,7 +46,7 @@ export function EventGridCard({
   capacity,
   ticketCount = 0,
   tags,
-  isLoading,
+  loading,
   onGetTicket,
   onGuestPurchase,
   onClick,
@@ -92,7 +92,7 @@ export function EventGridCard({
       );
     }
 
-    if (isMembersOnly && !isUserMember) {
+    if (isActiveMembersOnly && !isUserMember) {
       return (
         <Badge variant="outline" className="border-muted-foreground/30 text-muted-foreground">
           <Users className="w-3 h-3 mr-1" />
@@ -105,7 +105,7 @@ export function EventGridCard({
       <Button 
         size="sm" 
         className="bg-primary hover:bg-primary/90 text-primary-foreground min-h-[44px] min-w-[44px]"
-        disabled={isLoading}
+        disabled={loading}
         onClick={(e) => {
           e.stopPropagation();
           if (isLoggedIn) {
@@ -115,7 +115,7 @@ export function EventGridCard({
           }
         }}
       >
-        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'RSVP'}
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'RSVP'}
       </Button>
     );
   };

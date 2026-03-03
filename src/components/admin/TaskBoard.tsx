@@ -41,7 +41,7 @@ const mainColumns = [
 export function TaskBoard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setloading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string>('');
@@ -116,7 +116,7 @@ export function TaskBoard() {
     } catch (error: any) {
       toast.error('Failed to load tasks');
     } finally {
-      setIsLoading(false);
+      setloading(false);
     }
   };
 
@@ -226,7 +226,7 @@ export function TaskBoard() {
     return columnTasks;
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">

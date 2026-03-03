@@ -1,19 +1,12 @@
 'use client';
 
-import { useAuth } from '@/hooks/useAuth';
-import { Header } from '@/components/Header';
 import { usePageTitle } from '@/hooks/usePageTitle';
 
 export default function Privacy() {
-  const { user, profile, isAdmin } = useAuth();
   usePageTitle('Privacy Policy | 704 Collective');
 
   return (
     <div className="min-h-screen bg-background">
-      <Header
-        user={user ? { email: user.email, name: profile?.full_name || undefined, avatarUrl: profile?.avatar_url || undefined } : null}
-        isAdmin={isAdmin}
-      />
       <main className="container max-w-3xl py-16 px-4">
         <h1 className="text-4xl font-bold text-foreground mb-2">Privacy Policy</h1>
         <p className="text-muted-foreground mb-12">Last Updated: February 2026</p>
@@ -24,7 +17,6 @@ export default function Privacy() {
 
         <section className="mb-10">
           <h2 className="text-2xl font-semibold text-foreground mb-4">1. Information We Collect</h2>
-
           <p className="text-foreground font-medium mb-2">Information You Provide Directly:</p>
           <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-4">
             <li>Name and contact information (email address, phone number)</li>
@@ -32,7 +24,6 @@ export default function Privacy() {
             <li>Profile information you choose to share (profession, interests, social media handles)</li>
             <li>Communications you send to us (emails, feedback, support requests)</li>
           </ul>
-
           <p className="text-foreground font-medium mb-2">Information Collected Automatically:</p>
           <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-4">
             <li>Device and browser information when you visit our website</li>
@@ -40,7 +31,6 @@ export default function Privacy() {
             <li>Website usage data (pages visited, time spent, clicks)</li>
             <li>Event attendance and RSVP history</li>
           </ul>
-
           <p className="text-foreground font-medium mb-2">Information From Third Parties:</p>
           <ul className="list-disc list-inside text-muted-foreground space-y-1">
             <li>Payment confirmation from Stripe</li>
@@ -66,19 +56,10 @@ export default function Privacy() {
         <section className="mb-10">
           <h2 className="text-2xl font-semibold text-foreground mb-4">3. How We Share Your Information</h2>
           <p className="text-muted-foreground mb-4">We do not sell your personal information. We may share your information in the following limited circumstances:</p>
-
-          <p className="text-muted-foreground mb-3">
-            <strong className="text-foreground">Service Providers:</strong> We share data with third-party services that help us operate (e.g., Stripe for payments, email marketing platforms, event management tools). These providers are contractually obligated to protect your data and use it only for the services they provide to us.
-          </p>
-          <p className="text-muted-foreground mb-3">
-            <strong className="text-foreground">Event Venues &amp; Partners:</strong> We may share your name and basic contact information with event venues or partners for check-in and event management purposes.
-          </p>
-          <p className="text-muted-foreground mb-3">
-            <strong className="text-foreground">Community Directory:</strong> If you opt in, your name, profession, and social handles may be visible to other members in our member directory.
-          </p>
-          <p className="text-muted-foreground">
-            <strong className="text-foreground">Legal Requirements:</strong> We may disclose information if required by law, court order, or government request, or to protect the rights, property, or safety of 704 Collective, our members, or others.
-          </p>
+          <p className="text-muted-foreground mb-3"><strong className="text-foreground">Service Providers:</strong> We share data with third-party services that help us operate (e.g., Stripe for payments, email marketing platforms, event management tools). These providers are contractually obligated to protect your data and use it only for the services they provide to us.</p>
+          <p className="text-muted-foreground mb-3"><strong className="text-foreground">Event Venues &amp; Partners:</strong> We may share your name and basic contact information with event venues or partners for check-in and event management purposes.</p>
+          <p className="text-muted-foreground mb-3"><strong className="text-foreground">Community Directory:</strong> If you opt in, your name, profession, and social handles may be visible to other members in our member directory.</p>
+          <p className="text-muted-foreground"><strong className="text-foreground">Legal Requirements:</strong> We may disclose information if required by law, court order, or government request, or to protect the rights, property, or safety of 704 Collective, our members, or others.</p>
         </section>
 
         <section className="mb-10">
@@ -109,16 +90,12 @@ export default function Privacy() {
 
         <section className="mb-10">
           <h2 className="text-2xl font-semibold text-foreground mb-4">6. Data Security</h2>
-          <p className="text-muted-foreground">
-            We implement reasonable security measures to protect your personal information, including encryption, secure servers, and limited access controls. However, no method of transmission over the internet is 100% secure. While we strive to protect your data, we cannot guarantee absolute security.
-          </p>
+          <p className="text-muted-foreground">We implement reasonable security measures to protect your personal information, including encryption, secure servers, and limited access controls. However, no method of transmission over the internet is 100% secure. While we strive to protect your data, we cannot guarantee absolute security.</p>
         </section>
 
         <section className="mb-10">
           <h2 className="text-2xl font-semibold text-foreground mb-4">7. Data Retention</h2>
-          <p className="text-muted-foreground">
-            We retain your personal information for as long as your membership is active, and for a reasonable period afterward for legal, accounting, and business purposes. If you cancel your membership, we will retain basic records (name, email, billing history) for up to 3 years for tax and legal compliance, unless you request deletion.
-          </p>
+          <p className="text-muted-foreground">We retain your personal information for as long as your membership is active, and for a reasonable period afterward for legal, accounting, and business purposes. If you cancel your membership, we will retain basic records (name, email, billing history) for up to 3 years for tax and legal compliance, unless you request deletion.</p>
         </section>
 
         <section className="mb-10">
@@ -136,25 +113,19 @@ export default function Privacy() {
 
         <section className="mb-10">
           <h2 className="text-2xl font-semibold text-foreground mb-4">9. Children&apos;s Privacy</h2>
-          <p className="text-muted-foreground">
-            704 Collective is intended for individuals 18 years of age or older. We do not knowingly collect personal information from children under 18. If we learn that we have collected information from a child under 18, we will delete it promptly.
-          </p>
+          <p className="text-muted-foreground">704 Collective is intended for individuals 18 years of age or older. We do not knowingly collect personal information from children under 18. If we learn that we have collected information from a child under 18, we will delete it promptly.</p>
         </section>
 
         <section className="mb-10">
           <h2 className="text-2xl font-semibold text-foreground mb-4">10. Changes to This Policy</h2>
-          <p className="text-muted-foreground">
-            We may update this Privacy Policy from time to time. If we make significant changes, we will notify you by email or through a prominent notice on our website. Your continued use of our services after the changes take effect constitutes acceptance of the updated policy.
-          </p>
+          <p className="text-muted-foreground">We may update this Privacy Policy from time to time. If we make significant changes, we will notify you by email or through a prominent notice on our website. Your continued use of our services after the changes take effect constitutes acceptance of the updated policy.</p>
         </section>
 
         <section className="mb-10">
           <h2 className="text-2xl font-semibold text-foreground mb-4">11. Contact Us</h2>
           <p className="text-muted-foreground mb-1">If you have any questions about this Privacy Policy or our data practices, please contact us:</p>
           <p className="text-muted-foreground">704 Collective</p>
-          <p className="text-muted-foreground">
-            Email: <a href="mailto:hello@704collective.com" className="text-primary hover:underline">hello@704collective.com</a>
-          </p>
+          <p className="text-muted-foreground">Email: <a href="mailto:hello@704collective.com" className="text-primary hover:underline">hello@704collective.com</a></p>
           <p className="text-muted-foreground">Website: 704collective.com</p>
         </section>
       </main>

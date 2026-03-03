@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { WalletButtons } from '@/components/WalletButtons';
 
 interface MembershipStatusBarProps {
-  isMember: boolean;
+  isActiveMember: boolean;
   memberSince: string | null;
   subscriptionEnd: string | null;
   membershipOverride: boolean;
@@ -17,14 +17,14 @@ interface MembershipStatusBarProps {
 }
 
 export function MembershipStatusBar({
-  isMember,
+  isActiveMember,
   memberSince,
   subscriptionEnd,
   membershipOverride,
   onManageBilling,
   isPortalLoading,
 }: MembershipStatusBarProps) {
-  if (!isMember) {
+  if (!isActiveMember) {
     return (
       <div className="card-elevated p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:justify-between">
         <div className="flex items-center gap-3">

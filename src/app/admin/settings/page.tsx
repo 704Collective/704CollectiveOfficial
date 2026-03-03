@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -17,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface AdminRequest {
   id: string;
@@ -44,14 +46,26 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]['key'];
 
-export default function AdminSettings() {
+export default function AdminSettingsPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Skeleton className="h-8 w-48" /></div>}>
+      <AdminSettings />
+    </Suspense>
+  );
+}
+
+function AdminSettings() {
   const router = useRouter();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const { user, isAdmin, isLoading, profile } = useAuth();
+  const searchParams = useSearchParams();
+  const { user, isAdmin, loading, profile } = useAuth();
   usePageTitle('Admin Settings');
 
   const activeTab = (TABS.find(t => t.key === searchParams.get('tab'))?.key || 'team') as TabKey;
-  const setActiveTab = (tab: TabKey) => setSearchParams({ tab });
+  const setActiveTab = (tab: TabKey) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', tab);
+    router.replace(`?${params.toString()}`);
+  };
 
   const [pendingRequests, setPendingRequests] = useState<AdminRequest[]>([]);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
@@ -64,10 +78,10 @@ export default function AdminSettings() {
   const [inviteSubmitting, setInviteSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && (!user || !isAdmin)) {
+    if (!loading && (!user || !isAdmin)) {
       router.push('/admin/login');
     }
-  }, [user, isAdmin, isLoading, navigate]);
+  }, [user, isAdmin, loading, router]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -246,7 +260,7 @@ export default function AdminSettings() {
     }
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <AdminLayout title="Settings">
         <div className="space-y-6">
@@ -264,7 +278,6 @@ export default function AdminSettings() {
   return (
     <AdminLayout title="Settings">
       <div className="max-w-2xl">
-        {/* Tab bar — scrollable on mobile with scroll-snap */}
         <div className="overflow-x-auto -mx-4 px-4 lg:-mx-0 lg:px-0 mb-6 scrollbar-none">
           <div className="flex border-b border-border" style={{ minWidth: 'max-content' }}>
             {TABS.map((tab) => (
@@ -284,7 +297,6 @@ export default function AdminSettings() {
           </div>
         </div>
 
-        {/* Tab content */}
         <div className="space-y-4">
           {activeTab === 'team' && (
             <div className="card-elevated p-4 sm:p-6">
@@ -298,7 +310,6 @@ export default function AdminSettings() {
                 </div>
               </div>
 
-              {/* Current Admins */}
               <div className="mb-5">
                 <h4 className="text-sm font-medium mb-3">Current Admins</h4>
                 {loadingData ? (
@@ -346,7 +357,6 @@ export default function AdminSettings() {
                 )}
               </div>
 
-              {/* Invite Admin Form */}
               <div className="border-t border-border pt-5">
                 <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
                   <UserPlus className="w-4 h-4" />
@@ -402,7 +412,6 @@ export default function AdminSettings() {
                 </form>
               </div>
 
-              {/* Pending Requests */}
               {pendingRequests.length > 0 && (
                 <div className="border-t border-border pt-5 mt-5">
                   <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
@@ -442,7 +451,6 @@ export default function AdminSettings() {
             </div>
           )}
 
-
           {activeTab === 'appearance' && (
             <div className="card-elevated p-4 sm:p-6">
               <div className="flex items-center gap-3 mb-5">
@@ -464,7 +472,6 @@ export default function AdminSettings() {
             <div className="space-y-4">
               <HubSpotIntegrationCard />
 
-              {/* Google Card */}
               <div className="card-elevated p-4 sm:p-6">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
@@ -492,7 +499,6 @@ export default function AdminSettings() {
                 </div>
               </div>
 
-              {/* Apple Developer Card */}
               <div className="card-elevated p-4 sm:p-6">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">

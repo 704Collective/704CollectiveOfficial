@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -9,10 +10,19 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import logo from '@/assets/704-logo.png';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export default function PaymentSuccess() {
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Skeleton className="h-8 w-48" /></div>}>
+      <PaymentSuccess />
+    </Suspense>
+  );
+}
+
+function PaymentSuccess() {
   const searchParams = useSearchParams();
-  const { user, checkSubscription } = useAuth();
+  const { user } = useAuth();
   usePageTitle('Payment Successful');
   const [isProcessing, setIsProcessing] = useState(true);
   const [verified, setVerified] = useState(false);
@@ -30,7 +40,6 @@ export default function PaymentSuccess() {
     const processPayment = async () => {
       try {
         if (eventId) {
-          // Ticket purchase — verify via edge function
           const { data, error } = await supabase.functions.invoke('verify-ticket-payment', {
             body: { session_id: sessionId, event_id: eventId },
           });
@@ -40,16 +49,8 @@ export default function PaymentSuccess() {
             console.error('Ticket verification failed:', error || data?.error);
           }
         } else {
-          // Membership purchase — the webhook handles account creation.
-          // This page just confirms the redirect came from a real Stripe session.
-          // A brief delay lets the webhook finish processing in the background.
           await new Promise((resolve) => setTimeout(resolve, 2000));
           setVerified(true);
-        }
-
-        // Refresh subscription for logged-in users
-        if (user) {
-          await checkSubscription();
         }
       } catch (err) {
         console.error('Error processing payment:', err);
@@ -59,16 +60,15 @@ export default function PaymentSuccess() {
     };
 
     processPayment();
-  }, [user, checkSubscription, sessionId, eventId]);
+  }, [sessionId, eventId]);
 
-  // --- Error state ---
   if (!isProcessing && !verified) {
     return (
       <div className="min-h-screen bg-background">
         <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-lg">
           <div className="container flex h-16 items-center">
             <Link href="/" className="flex items-center gap-2">
-              <img src={logo} alt="704 Collective" className="h-9 w-auto" />
+              <img src={logo.src} alt="704 Collective" className="h-9 w-auto" />
               <span className="text-foreground text-lg font-medium">Social</span>
             </Link>
           </div>
@@ -96,7 +96,6 @@ export default function PaymentSuccess() {
     );
   }
 
-  // --- Loading state ---
   if (isProcessing) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -110,13 +109,12 @@ export default function PaymentSuccess() {
     );
   }
 
-  // --- Success state ---
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-lg">
         <div className="container flex h-16 items-center">
           <Link href="/" className="flex items-center gap-2">
-            <img src={logo} alt="704 Collective" className="h-9 w-auto" />
+            <img src={logo.src} alt="704 Collective" className="h-9 w-auto" />
             <span className="text-foreground text-lg font-medium">Social</span>
           </Link>
         </div>

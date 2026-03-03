@@ -14,7 +14,7 @@ interface EventCardProps {
   locationName?: string;
   imageUrl?: string;
   capacity?: number;
-  isMembersOnly?: boolean;
+  isActiveMembersOnly?: boolean;
   ticketPrice?: number;
   userHasTicket?: boolean;
   isUserMember?: boolean;
@@ -31,7 +31,7 @@ export function EventCard({
   locationName,
   imageUrl,
   capacity,
-  isMembersOnly,
+  isActiveMembersOnly,
   ticketPrice = 1000,
   userHasTicket,
   isUserMember,
@@ -54,15 +54,13 @@ export function EventCard({
     }
 
     if (!isLoggedIn) {
-      // If event is open to non-members, show guest purchase option
-      if (!isMembersOnly) {
+      if (!isActiveMembersOnly) {
         return (
-        <Button variant="hero" size="sm" className="min-h-[44px]" onClick={onGuestPurchase}>
+        <Button variant="default" size="sm" className="min-h-[44px]" onClick={onGuestPurchase}>
             Purchase Ticket - ${(ticketPrice / 100).toFixed(0)}
           </Button>
         );
       }
-      // Members-only events require sign in
       return (
         <Button variant="outline" size="sm" className="min-h-[44px]" onClick={onGetTicket}>
           Member? Login
@@ -72,14 +70,14 @@ export function EventCard({
 
     if (isUserMember) {
       return (
-        <Button variant="success" size="sm" className="min-h-[44px]" onClick={onGetTicket}>
+        <Button variant="default" size="sm" className="min-h-[44px] bg-green-600 hover:bg-green-700" onClick={onGetTicket}>
           RSVP Free
         </Button>
       );
     }
 
     return (
-        <Button variant="hero" size="sm" className="min-h-[44px]" onClick={onGetTicket}>
+        <Button variant="default" size="sm" className="min-h-[44px]" onClick={onGetTicket}>
         Buy Ticket - ${(ticketPrice / 100).toFixed(0)}
       </Button>
     );
@@ -109,7 +107,7 @@ export function EventCard({
         )}
 
         {/* Members only badge */}
-        {isMembersOnly && (
+        {isActiveMembersOnly && (
           <div className="absolute top-3 left-3 px-2 py-1 rounded-md bg-black/70 backdrop-blur-sm border border-white/10">
             <span className="text-xs font-medium text-white">Members Only</span>
           </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -30,7 +30,8 @@ export function HubSpotIntegrationCard() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   useEffect(() => {
     fetchIntegration();
@@ -39,11 +40,13 @@ export function HubSpotIntegrationCard() {
   useEffect(() => {
     if (searchParams.get('hubspot') === 'connected') {
       toast.success('HubSpot connected successfully!');
-      searchParams.delete('hubspot');
-      setSearchParams(searchParams, { replace: true });
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('hubspot');
+      const remaining = params.toString();
+      router.replace(remaining ? `?${remaining}` : window.location.pathname);
       fetchIntegration();
     }
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   const fetchIntegration = async () => {
     const { data, error } = await supabase
@@ -61,7 +64,7 @@ export function HubSpotIntegrationCard() {
   };
 
   const handleConnect = () => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const authorizeUrl = `${supabaseUrl}/functions/v1/hubspot-oauth-callback?action=authorize&origin=${encodeURIComponent(window.location.origin)}`;
     window.open(authorizeUrl, '_blank', 'width=600,height=700');
   };
@@ -76,7 +79,7 @@ export function HubSpotIntegrationCard() {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hubspot-sync`,
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/hubspot-sync`,
         {
           method: 'POST',
           headers: {
@@ -153,13 +156,11 @@ export function HubSpotIntegrationCard() {
             </div>
           ) : isConnected ? (
             <div className="mt-4 space-y-4">
-              {/* Account Info */}
               <div className="text-sm">
                 <span className="text-muted-foreground">Account: </span>
                 <span className="font-medium">{integration.account_name || 'HubSpot Account'}</span>
               </div>
 
-              {/* Sync Stats */}
               {settings?.sync_counts && (
                 <div className="grid grid-cols-2 gap-2">
                   <div className="flex items-center gap-2 text-sm p-2 rounded-lg bg-muted/50">
@@ -181,40 +182,19 @@ export function HubSpotIntegrationCard() {
                 </div>
               )}
 
-              {/* Last Synced */}
               {settings?.last_synced_at && (
                 <p className="text-xs text-muted-foreground">
                   Last synced: {new Date(settings.last_synced_at).toLocaleString()}
                 </p>
               )}
 
-              {/* Actions */}
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSync}
-                  disabled={syncing}
-                >
-                  {syncing ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4 mr-1" />
-                  )}
+                <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
+                  {syncing ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RefreshCw className="w-4 h-4 mr-1" />}
                   {syncing ? 'Syncing...' : 'Sync Now'}
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleDisconnect}
-                  disabled={disconnecting}
-                  className="text-destructive hover:text-destructive"
-                >
-                  {disconnecting ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                  ) : (
-                    <Unplug className="w-4 h-4 mr-1" />
-                  )}
+                <Button variant="ghost" size="sm" onClick={handleDisconnect} disabled={disconnecting} className="text-destructive hover:text-destructive">
+                  {disconnecting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Unplug className="w-4 h-4 mr-1" />}
                   Disconnect
                 </Button>
               </div>

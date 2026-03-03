@@ -35,7 +35,7 @@ export default function Signup() {
 
   useEffect(() => {
     if (user) router.push('/dashboard');
-  }, [user, navigate]);
+  }, [user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +44,7 @@ export default function Signup() {
     const result = signupSchema.safeParse({ name, email, password, confirm });
     if (!result.success) {
       const fieldErrors: typeof errors = {};
-      result.error.errors.forEach(err => {
+      result.error.issues.forEach(err => {
         const field = err.path[0] as keyof typeof errors;
         fieldErrors[field] = err.message;
       });
@@ -96,7 +96,8 @@ export default function Signup() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <Link href="/" className="inline-flex flex-col sm:flex-row items-center justify-center gap-2">
-            <img src={logo} alt="704 Collective" className="h-12 w-auto" />
+            <img src={logo.src}
+ alt="704 Collective" className="h-12 w-auto" />
             <span className="text-foreground text-2xl font-medium">Social</span>
           </Link>
         </div>

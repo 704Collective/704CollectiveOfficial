@@ -21,10 +21,7 @@ export default function About() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header
-        user={user ? { email: user.email, name: profile?.full_name || undefined, avatarUrl: profile?.avatar_url || undefined } : null}
-        isAdmin={isAdmin}
-      />
+     <Header />
       <main>
         {/* Hero */}
         <section className="py-24">
@@ -65,7 +62,7 @@ export default function About() {
                 <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
                   Get unlimited access to all events, exclusive networking opportunities, and become part of Charlotte&apos;s most active professional community.
                 </p>
-                <Button size="xl" variant="hero" asChild>
+                <Button size="lg" variant="hero" asChild>
                   <Link href="/join">
                     Join 704 Collective
                     <ArrowRight className="w-5 h-5" />

@@ -1,10 +1,12 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { LogOut, User, Settings, LayoutDashboard, Menu, X } from 'lucide-react';
+import { LogOut, User, Settings, LayoutDashboard, Menu, X, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import {
   DropdownMenu,
@@ -22,20 +24,59 @@ import {
 import logo from '@/assets/704-logo.png';
 import { cn } from '@/lib/utils';
 
-interface HeaderProps {
-  user?: {
-    email?: string;
-    name?: string;
-    avatarUrl?: string;
-  } | null;
-  isAdmin?: boolean;
-}
+// Marketing pages that have their own nav — Header won't render on these
+const MARKETING_ROUTES = ['/'];
 
-export function Header({ user, isAdmin }: HeaderProps) {
+export function Header() {
   const router = useRouter();
   const pathname = usePathname();
+  const { user, loading } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [profile, setProfile] = useState<{
+    full_name?: string | null;
+    avatar_url?: string | null;
+  } | null>(null);
 
-  const isActive = (path: string) => pathname === path;
+  // Fetch profile + admin status when user is available
+  useEffect(() => {
+    if (!user) {
+      setIsAdmin(false);
+      setProfile(null);
+      return;
+    }
+
+    const fetchUserData = async () => {
+      // Fetch profile
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('id', user.id)
+        .single();
+
+      if (profileData) {
+        setProfile(profileData);
+      }
+
+      // Check admin status
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+
+      setIsAdmin(!!roleData);
+    };
+
+    fetchUserData();
+  }, [user]);
+
+  // Don't render on marketing pages (they have their own nav)
+  if (MARKETING_ROUTES.includes(pathname)) {
+    return null;
+  }
+
+  const isActive = (path: string) => pathname === path || pathname.startsWith(path + '/');
 
   const navLinkClass = (path: string) =>
     cn(
@@ -53,6 +94,10 @@ export function Header({ user, isAdmin }: HeaderProps) {
         : "text-foreground hover:text-primary hover:bg-muted/50"
     );
 
+  const displayName = profile?.full_name || user?.user_metadata?.full_name || 'Member';
+  const displayEmail = user?.email || '';
+  const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url || null;
+
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -68,21 +113,18 @@ export function Header({ user, isAdmin }: HeaderProps) {
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <img src={logo} alt="704 Collective" className="h-9 w-auto" />
+          <img src={logo.src}
+ alt="704 Collective" className="h-9 w-auto" />
         </Link>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center justify-center gap-6 flex-1">
+          <Link href="/social" className={navLinkClass('/social')}>Social</Link>
+          <Link href="/events" className={navLinkClass('/events')}>Events</Link>
           {user ? (
-          <>
-              <Link href="/events" className={navLinkClass('/events')}>Events</Link>
-              <Link href="/dashboard" className={navLinkClass('/dashboard')}>Dashboard</Link>
-            </>
+            <Link href="/dashboard" className={navLinkClass('/dashboard')}>Dashboard</Link>
           ) : (
-            <>
-              <Link href="/events" className={navLinkClass('/events')}>Events</Link>
-              <Link href="/login" className={navLinkClass('/login')}>Member Login</Link>
-            </>
+            <Link href="/login" className={navLinkClass('/login')}>Member Login</Link>
           )}
         </nav>
 
@@ -100,7 +142,8 @@ export function Header({ user, isAdmin }: HeaderProps) {
               <div className="flex flex-col">
                 {/* Mobile menu header */}
                 <div className="flex items-center justify-between p-4 border-b border-border">
-                  <img src={logo} alt="704 Collective" className="h-7 w-auto" />
+                  <img src={logo.src}
+ alt="704 Collective" className="h-7 w-auto" />
                   <SheetClose asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8">
                       <X className="h-4 w-4" />
@@ -113,18 +156,18 @@ export function Header({ user, isAdmin }: HeaderProps) {
                 {user && (
                   <div className="px-4 py-3 border-b border-border">
                     <div className="flex items-center gap-3">
-                      {user.avatarUrl ? (
-                        <img src={user.avatarUrl} alt={user.name || 'User'} className="w-10 h-10 rounded-full object-cover" />
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt={displayName} className="w-10 h-10 rounded-full object-cover" />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
                           <span className="text-sm font-bold text-primary-foreground">
-                            {(user.name || user.email || 'U').charAt(0).toUpperCase()}
+                            {(displayName || displayEmail || 'U').charAt(0).toUpperCase()}
                           </span>
                         </div>
                       )}
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{user.name || 'Member'}</p>
-                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                        <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
+                        <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
                       </div>
                     </div>
                   </div>
@@ -132,11 +175,16 @@ export function Header({ user, isAdmin }: HeaderProps) {
 
                 {/* Navigation links */}
                 <nav className="flex flex-col gap-1 p-3">
+                  <SheetClose asChild>
+                    <Link href="/social" className={mobileLinkClass('/social')}>
+                      <Users className="inline-block w-4 h-4 mr-2 -mt-0.5" />Social
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link href="/events" className={mobileLinkClass('/events')}>Events</Link>
+                  </SheetClose>
                   {user ? (
-                  <>
-                      <SheetClose asChild>
-                        <Link href="/events" className={mobileLinkClass('/events')}>Events</Link>
-                      </SheetClose>
+                    <>
                       <SheetClose asChild>
                         <Link href="/dashboard" className={mobileLinkClass('/dashboard')}>
                           <LayoutDashboard className="inline-block w-4 h-4 mr-2 -mt-0.5" />Dashboard
@@ -156,18 +204,13 @@ export function Header({ user, isAdmin }: HeaderProps) {
                       )}
                     </>
                   ) : (
-                    <>
-                      <SheetClose asChild>
-                        <Link href="/events" className={mobileLinkClass('/events')}>Events</Link>
-                      </SheetClose>
-                      <SheetClose asChild>
+                    <SheetClose asChild>
                       <Link href="/login" className={mobileLinkClass('/login')}>Member Login</Link>
-                      </SheetClose>
-                    </>
+                    </SheetClose>
                   )}
                 </nav>
 
-                {/* CTA / Sign out - directly below nav */}
+                {/* CTA / Sign out */}
                 <div className="px-3 pb-4">
                   {user ? (
                     <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={handleSignOut}>
@@ -188,12 +231,12 @@ export function Header({ user, isAdmin }: HeaderProps) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative hidden md:flex">
-                  {user.avatarUrl ? (
-                    <img src={user.avatarUrl} alt={user.name || 'User'} className="w-8 h-8 rounded-full object-cover" />
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt={displayName} className="w-8 h-8 rounded-full object-cover" />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
                       <span className="text-sm font-bold text-primary-foreground">
-                        {(user.name || user.email || 'U').charAt(0).toUpperCase()}
+                        {(displayName || displayEmail || 'U').charAt(0).toUpperCase()}
                       </span>
                     </div>
                   )}
@@ -201,8 +244,8 @@ export function Header({ user, isAdmin }: HeaderProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <div className="px-2 py-1.5">
-                  <p className="text-sm font-medium">{user.name || 'Member'}</p>
-                  <p className="text-xs text-muted-foreground">{user.email}</p>
+                  <p className="text-sm font-medium">{displayName}</p>
+                  <p className="text-xs text-muted-foreground">{displayEmail}</p>
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => router.push('/dashboard')}>

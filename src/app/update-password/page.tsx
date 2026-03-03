@@ -36,7 +36,7 @@ export default function UpdatePassword() {
     const result = passwordSchema.safeParse({ password, confirm });
     if (!result.success) {
       const fieldErrors: typeof errors = {};
-      result.error.errors.forEach(err => {
+      result.error.issues.forEach(err => {
         if (err.path[0] === 'password') fieldErrors.password = err.message;
         if (err.path[0] === 'confirm') fieldErrors.confirm = err.message;
       });
@@ -66,7 +66,8 @@ export default function UpdatePassword() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <Link href="/" className="inline-flex flex-col sm:flex-row items-center justify-center gap-2">
-            <img src={logo} alt="704 Collective" className="h-12 w-auto" />
+            <img src={logo.src}
+ alt="704 Collective" className="h-12 w-auto" />
             <span className="text-foreground text-2xl font-medium">Social</span>
           </Link>
         </div>

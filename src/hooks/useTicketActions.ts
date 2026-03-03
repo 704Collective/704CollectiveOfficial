@@ -43,7 +43,7 @@ interface UseTicketActionsReturn {
  * across Index.tsx, Events.tsx, and EventDetail.tsx.
  */
 export function useTicketActions(): UseTicketActionsReturn {
-  const { user, profile, isMember } = useAuth();
+  const { user, profile, isActiveMember } = useAuth();
   const [userTicketIds, setUserTicketIds] = useState<Set<string>>(new Set());
   const [rsvpLoadingId, setRsvpLoadingId] = useState<string | null>(null);
   const [showThankYou, setShowThankYou] = useState(false);
@@ -95,7 +95,7 @@ export function useTicketActions(): UseTicketActionsReturn {
         return false;
       }
 
-      if (!isMember) {
+      if (!isActiveMember) {
         toast.info('Join as a member for free tickets!');
         return false;
       }
@@ -160,7 +160,7 @@ export function useTicketActions(): UseTicketActionsReturn {
         setRsvpLoadingId(null);
       }
     },
-    [user, profile, isMember, userTicketIds],
+    [user, profile, isActiveMember, userTicketIds],
   );
 
   return {

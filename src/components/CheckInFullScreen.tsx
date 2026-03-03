@@ -92,7 +92,7 @@ export function CheckInFullScreen({
     if (!error && data) {
       type ProfileJoin = { id: string; email: string; full_name: string | null; avatar_url: string | null } | null;
       const attendeeList: Attendee[] = data.map(ticket => {
-        const p = ticket.profiles as ProfileJoin;
+        const p = ticket.profiles as unknown as ProfileJoin;
         return {
           ticketId: ticket.id,
           userId: ticket.user_id || '',
@@ -125,7 +125,6 @@ export function CheckInFullScreen({
       return;
     }
 
-    // Start scanner with delay to ensure DOM is ready
     const timer = setTimeout(() => {
       startScanner();
     }, 500);
@@ -140,7 +139,6 @@ export function CheckInFullScreen({
     if (scannerRef.current) return;
     if (!containerRef.current) return;
     
-    // Create scanner element imperatively to avoid React DOM conflicts
     const existingEl = document.getElementById(scannerContainerId);
     if (existingEl) {
       existingEl.remove();
@@ -155,7 +153,6 @@ export function CheckInFullScreen({
     try {
       setCameraError(null);
       
-      // Request camera permission explicitly first
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ 
           video: { facingMode: 'environment' } 
@@ -184,7 +181,7 @@ export function CheckInFullScreen({
         (decodedText) => {
           handleQRScan(decodedText);
         },
-        () => {} // Ignore scan errors
+        () => {}
       );
       
       setIsScanning(true);
@@ -203,14 +200,13 @@ export function CheckInFullScreen({
     
     try {
       const state = scanner.getState();
-      if (state === 2) { // SCANNING state
+      if (state === 2) {
         await scanner.stop();
       }
     } catch (err) {
       // Ignore stop errors
     }
     
-    // Remove the scanner element entirely (outside React's control)
     const scannerEl = document.getElementById(scannerContainerId);
     if (scannerEl) {
       scannerEl.remove();
@@ -220,7 +216,6 @@ export function CheckInFullScreen({
   };
 
   const handleQRScan = async (scannedText: string) => {
-    // Pause scanning briefly to prevent duplicate scans
     if (scannerRef.current) {
       try {
         await scannerRef.current.pause(true);
@@ -228,7 +223,6 @@ export function CheckInFullScreen({
     }
 
     try {
-      // ── Guest Pass QR code handling ──
       if (scannedText.startsWith("GP-")) {
         if (!isOnline) {
           toast.error('Cannot verify guest passes while offline');
@@ -261,13 +255,11 @@ export function CheckInFullScreen({
           return;
         }
 
-        // Check event match if pass is for a specific event
         if (pass.event_id && pass.event_id !== eventId) {
           toast.error('This guest pass is for a different event');
           return;
         }
 
-        // Mark as used
         const { error: updateError } = await supabase
           .from('guest_passes')
           .update({ status: 'used', used_at: new Date().toISOString() })
@@ -278,7 +270,6 @@ export function CheckInFullScreen({
           return;
         }
 
-        // Get member name
         const { data: member } = await supabase
           .from('profiles')
           .select('full_name')
@@ -292,24 +283,20 @@ export function CheckInFullScreen({
         return;
       }
 
-      // ── Standard ticket/member QR code handling ──
       const scannedUserId = scannedText;
 
-      // Check if already in pending queue (offline)
       const inQueue = await isInPendingQueue(scannedUserId);
       if (inQueue) {
         toast.info('Already queued for check-in');
         return;
       }
 
-      // 1. Check for existing ticket
       const existingAttendee = attendees.find(a => a.userId === scannedUserId);
       
       if (existingAttendee) {
         if (existingAttendee.checkedInAt) {
           toast.info(`${existingAttendee.fullName || existingAttendee.email} is already checked in`);
         } else if (!isOnline) {
-          // OFFLINE: Queue the check-in
           await queueCheckIn(
             existingAttendee.ticketId,
             scannedUserId,
@@ -322,7 +309,6 @@ export function CheckInFullScreen({
           await checkInTicket(existingAttendee.ticketId, existingAttendee.fullName || existingAttendee.email, false);
         }
       } else {
-        // 2. No ticket - check if active member for walk-in
         if (!isOnline) {
           toast.error('Cannot verify membership while offline');
           return;
@@ -340,7 +326,6 @@ export function CheckInFullScreen({
         } else if (profile.subscription_status !== 'active') {
           toast.error(`${profile.full_name || profile.email} is not an active Social member`);
         } else {
-          // 3. Create walk-in ticket and check in immediately
           const { error: ticketError } = await supabase
             .from('tickets')
             .insert({
@@ -362,7 +347,6 @@ export function CheckInFullScreen({
         }
       }
     } finally {
-      // Resume scanning after a brief delay
       setTimeout(() => {
         if (scannerRef.current) {
           try {
@@ -392,7 +376,6 @@ export function CheckInFullScreen({
     fetchAttendees();
   };
 
-  // Play success sound using Web Audio API
   const playSuccessSound = useCallback(() => {
     try {
       if (!audioContextRef.current) {
@@ -400,7 +383,6 @@ export function CheckInFullScreen({
       }
       const ctx = audioContextRef.current;
       
-      // Create a pleasant two-tone chime
       const playTone = (freq: number, startTime: number, duration: number) => {
         const oscillator = ctx.createOscillator();
         const gainNode = ctx.createGain();
@@ -420,27 +402,24 @@ export function CheckInFullScreen({
       };
       
       const now = ctx.currentTime;
-      playTone(880, now, 0.15); // A5
-      playTone(1318.5, now + 0.1, 0.2); // E6
+      playTone(880, now, 0.15);
+      playTone(1318.5, now + 0.1, 0.2);
     } catch (err) {
       // Audio not supported, ignore
     }
   }, []);
 
-  // Trigger haptic feedback
   const triggerHaptic = useCallback(() => {
     if (navigator.vibrate) {
-      navigator.vibrate([50, 30, 100]); // Short-pause-long pattern
+      navigator.vibrate([50, 30, 100]);
     }
   }, []);
 
-  // Show success overlay with animation
   const showSuccessConfirmation = useCallback((name: string, isWalkIn: boolean, isOffline: boolean = false) => {
     setSuccessOverlay({ name, isWalkIn, isOffline });
     playSuccessSound();
     triggerHaptic();
     
-    // Hide after 1.5 seconds
     setTimeout(() => {
       setSuccessOverlay(null);
     }, 1500);
@@ -449,7 +428,7 @@ export function CheckInFullScreen({
   const addRecentCheckIn = (name: string, isWalkIn: boolean, isOffline: boolean = false) => {
     setRecentCheckIns(prev => [
       { name, time: format(new Date(), 'h:mm a'), isWalkIn },
-      ...prev.slice(0, 4), // Keep last 5
+      ...prev.slice(0, 4),
     ]);
     showSuccessConfirmation(name, isWalkIn, isOffline);
   };
@@ -472,7 +451,6 @@ export function CheckInFullScreen({
 
   if (!open) return null;
 
-  // Use portal to render outside of React tree for better DOM control
   return createPortal(
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
       {/* Success Overlay */}
@@ -515,7 +493,6 @@ export function CheckInFullScreen({
       </div>
 
       {showAttendeeList ? (
-        /* Attendee List View */
         <div className="flex-1 flex flex-col p-4 overflow-hidden">
           <div className="flex items-center gap-2 mb-4">
             <Button variant="ghost" size="sm" onClick={() => setShowAttendeeList(false)}>
@@ -569,9 +546,7 @@ export function CheckInFullScreen({
           </div>
         </div>
       ) : (
-        /* Scanner View */
         <>
-          {/* Scanner Area */}
           <div className="flex-1 flex flex-col items-center justify-center p-4">
             <div 
               ref={containerRef}
@@ -603,7 +578,6 @@ export function CheckInFullScreen({
               Point camera at member's QR code
             </p>
 
-            {/* Stats */}
             <div className="w-full max-w-sm mt-6 p-4 rounded-lg bg-muted/50 border border-border">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-2xl font-bold">
@@ -615,7 +589,6 @@ export function CheckInFullScreen({
             </div>
           </div>
 
-          {/* Recent Check-ins */}
           {recentCheckIns.length > 0 && (
             <div className="p-4 border-t border-border">
               <p className="text-sm font-medium mb-2">Recent Check-ins</p>
@@ -638,7 +611,6 @@ export function CheckInFullScreen({
             </div>
           )}
 
-          {/* Actions */}
           <div className="p-4 border-t border-border">
             <Button 
               variant="outline" 

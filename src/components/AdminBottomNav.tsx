@@ -34,7 +34,7 @@ export function AdminBottomNav({ activeSection, onSectionChange }: AdminBottomNa
 
   const handleTap = (item: NavItem) => {
     if (item.href) {
-      navigate(item.href);
+      router.push(item.href);
     } else if (item.section) {
       if (pathname !== '/admin') {
         // Navigate with ?section= so AdminDashboard initializes to the right tab

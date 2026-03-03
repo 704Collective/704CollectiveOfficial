@@ -83,7 +83,7 @@ function parseCSV(text: string): { headers: string[]; rows: CSVRow[] } {
 
 export default function ImportMembers() {
   const router = useRouter();
-  const { user, isAdmin, isLoading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   usePageTitle("Import Members");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -106,7 +106,7 @@ export default function ImportMembers() {
     if (!authLoading && (!user || !isAdmin)) {
       router.push("/admin/login");
     }
-  }, [user, isAdmin, authLoading, navigate]);
+  }, [user, isAdmin, authLoading, router]);
 
   const handleFileSelect = useCallback((file: File) => {
     if (!file.name.endsWith(".csv")) {

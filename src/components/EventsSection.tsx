@@ -24,7 +24,7 @@ interface EventsSectionProps {
   events: Event[];
   loading: boolean;
   title: string;
-  isMember: boolean;
+  isActiveMember: boolean;
   isLoggedIn: boolean;
   userTicketEventIds: Set<string>;
   rsvpLoadingId?: string | null;
@@ -62,7 +62,7 @@ export function EventsSection({
   events, 
   loading, 
   title, 
-  isMember, 
+  isActiveMember, 
   isLoggedIn, 
   userTicketEventIds,
   rsvpLoadingId,
@@ -101,14 +101,14 @@ export function EventsSection({
                 locationName={event.location_name || undefined}
                 imageUrl={event.image_url || undefined}
                 ticketPrice={event.ticket_price}
-                isMembersOnly={event.is_members_only}
+                isActiveMembersOnly={event.is_members_only}
                 userHasTicket={userTicketEventIds.has(event.id)}
-                isUserMember={isMember}
+                isUserMember={isActiveMember}
                 isLoggedIn={isLoggedIn}
                 capacity={event.capacity}
                 ticketCount={0}
                 tags={event.tags}
-                isLoading={rsvpLoadingId === event.id}
+                loading={rsvpLoadingId === event.id}
                 onGetTicket={() => onGetTicket(event)}
                 onGuestPurchase={() => onGuestPurchase(event.id)}
                 onClick={() => window.location.href = `/events/${event.id}`}

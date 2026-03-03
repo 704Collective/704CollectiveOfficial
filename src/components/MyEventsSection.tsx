@@ -57,9 +57,9 @@ export function MyEventsSection({ userId, excludeEventId }: MyEventsSectionProps
 
     if (!error && data) {
       const now = new Date();
-      const upcoming = data.filter(t => t.events && new Date(t.events.start_time) > now) as EventTicket[];
+      const upcoming = data.filter(t => t.events && new Date((t.events as any).start_time) > now) as unknown as EventTicket[];
       upcoming.sort((a, b) => new Date(a.events.start_time).getTime() - new Date(b.events.start_time).getTime());
-      const past = data.filter(t => t.events && new Date(t.events.start_time) <= now) as EventTicket[];
+      const past = data.filter(t => t.events && new Date((t.events as any).start_time) <= now) as unknown as EventTicket[];
       const attended = past.filter(t => t.checked_in_at).length;
 
       setUpcomingTickets(upcoming);
@@ -68,7 +68,6 @@ export function MyEventsSection({ userId, excludeEventId }: MyEventsSectionProps
     setLoading(false);
   };
 
-  // Filter out hero event
   const displayTickets = excludeEventId
     ? upcomingTickets.filter(t => t.event_id !== excludeEventId)
     : upcomingTickets;
@@ -119,19 +118,16 @@ export function MyEventsSection({ userId, excludeEventId }: MyEventsSectionProps
                 href={`/events/${ticket.event_id}`}
                 className="flex items-center gap-3 py-3 hover:bg-muted/50 -mx-2 px-2 rounded-lg transition-colors"
               >
-                {/* Date badge */}
                 <div className="w-12 h-12 rounded-lg bg-muted flex flex-col items-center justify-center shrink-0">
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
                     {format(date, 'MMM')}
                   </span>
                   <span className="text-lg font-bold leading-none">{format(date, 'd')}</span>
                 </div>
-                {/* Event info */}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{ticket.events.title}</p>
                   <p className="text-xs text-muted-foreground">{format(date, 'h:mm a')}</p>
                 </div>
-                {/* Status */}
                 <Badge variant="outline" className="border-green-500/50 text-green-500 text-xs shrink-0">
                   <Check className="w-3 h-3 mr-0.5" />
                   Going

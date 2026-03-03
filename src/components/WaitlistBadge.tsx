@@ -9,11 +9,11 @@ interface WaitlistBadgeProps {
   position: number;
   onLeaveWaitlist?: () => void;
   onLeave?: () => void;
-  isLoading?: boolean;
+  loading?: boolean;
   className?: string;
 }
 
-export function WaitlistBadge({ position, onLeaveWaitlist, onLeave, isLoading, className }: WaitlistBadgeProps) {
+export function WaitlistBadge({ position, onLeaveWaitlist, onLeave, loading, className }: WaitlistBadgeProps) {
   const handleLeave = onLeave || onLeaveWaitlist;
   return (
     <div className={cn("space-y-3", className)}>
@@ -34,7 +34,7 @@ export function WaitlistBadge({ position, onLeaveWaitlist, onLeave, isLoading, c
           variant="ghost"
           size="sm"
           onClick={handleLeave}
-          disabled={isLoading}
+          disabled={loading}
           className="text-muted-foreground hover:text-destructive"
         >
           Leave waitlist

@@ -20,10 +20,7 @@ export default function Contact() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header
-        user={user ? { email: user.email, name: profile?.full_name || undefined, avatarUrl: profile?.avatar_url || undefined } : null}
-        isAdmin={isAdmin}
-      />
+<Header />
       <main className="container max-w-lg py-24 px-4">
         <Card>
           <CardContent className="pt-8 pb-8 text-center">

@@ -725,7 +725,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
         onConfirm={() => deleteId && deleteMutation.mutate(deleteId)}
         title="Delete Event"
         description="Are you sure you want to delete this event? This action cannot be undone."
-        isLoading={deleteMutation.isPending}
+        loading={deleteMutation.isPending}
       />
     </div>
   );

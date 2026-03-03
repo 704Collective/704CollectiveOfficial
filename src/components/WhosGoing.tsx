@@ -25,7 +25,6 @@ export function WhosGoing({ eventId }: WhosGoingProps) {
   }, [eventId]);
 
   const fetchAttendees = async () => {
-    // Get count first
     const { count } = await supabase
       .from('tickets')
       .select('*', { count: 'exact', head: true })
@@ -35,7 +34,6 @@ export function WhosGoing({ eventId }: WhosGoingProps) {
 
     setTotalCount(count || 0);
 
-    // Get first 8 attendees with profile info
     const { data, error } = await supabase
       .from('tickets')
       .select(`
@@ -54,11 +52,11 @@ export function WhosGoing({ eventId }: WhosGoingProps) {
     if (!error && data) {
       const attendeeList = data
         .filter(t => {
-          const p = t.profiles as { id: string; full_name: string | null; avatar_url: string | null; deleted_at?: string | null } | null;
+          const p = t.profiles as unknown as { id: string; full_name: string | null; avatar_url: string | null; deleted_at?: string | null } | null;
           return p && !p.deleted_at;
         })
         .map(t => {
-          const p = t.profiles as { id: string; full_name: string | null; avatar_url: string | null };
+          const p = t.profiles as unknown as { id: string; full_name: string | null; avatar_url: string | null };
           return {
             id: p.id,
             full_name: p.full_name,

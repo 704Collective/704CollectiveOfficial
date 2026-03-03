@@ -34,7 +34,6 @@ export function NextEventHero({ userId, onEventLoaded }: NextEventHeroProps) {
   const fetchNextEvent = async () => {
     const now = new Date().toISOString();
 
-    // First try to get next RSVP'd event
     const { data: ticket } = await supabase
       .from('tickets')
       .select('event_id, events (id, title, start_time, location_name, image_url)')
@@ -45,21 +44,22 @@ export function NextEventHero({ userId, onEventLoaded }: NextEventHeroProps) {
       .limit(1)
       .maybeSingle();
 
-    if (ticket?.events && !Array.isArray(ticket.events)) {
+    const ev = ticket?.events as unknown as { id: string; title: string; start_time: string; location_name: string | null; image_url: string | null } | null;
+
+    if (ev && !Array.isArray(ticket?.events)) {
       setEvent({
-        id: ticket.events.id,
-        title: ticket.events.title,
-        start_time: ticket.events.start_time,
-        location_name: ticket.events.location_name,
-        image_url: ticket.events.image_url,
+        id: ev.id,
+        title: ev.title,
+        start_time: ev.start_time,
+        location_name: ev.location_name,
+        image_url: ev.image_url,
         isRsvpd: true,
       });
-      onEventLoaded?.(ticket.events.id);
+      onEventLoaded?.(ev.id);
       setLoading(false);
       return;
     }
 
-    // Fallback: next upcoming event
     const { data: nextEvent } = await supabase
       .from('events')
       .select('id, title, start_time, location_name, image_url')
@@ -102,7 +102,6 @@ export function NextEventHero({ userId, onEventLoaded }: NextEventHeroProps) {
   return (
     <Link href={`/events/${event.id}`} className="block group">
       <div className="relative overflow-hidden rounded-2xl h-48 sm:h-56 border border-white/[0.10] shadow-none transition-all duration-300 ease-out group-hover:scale-[1.01] transform-gpu">
-        {/* Background */}
         {event.image_url ? (
           <img
             src={event.image_url}
@@ -112,10 +111,8 @@ export function NextEventHero({ userId, onEventLoaded }: NextEventHeroProps) {
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/5" />
         )}
-        {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
 
-        {/* Content */}
         <div className="relative h-full flex flex-col justify-end p-5 sm:p-6">
           <p className="text-xs uppercase tracking-wider text-white/60 font-medium mb-1">Next Up</p>
           <h2 className="text-xl sm:text-2xl font-semibold text-white mb-2 line-clamp-1">{event.title}</h2>
@@ -138,7 +135,7 @@ export function NextEventHero({ userId, onEventLoaded }: NextEventHeroProps) {
                 You're Going
               </Badge>
             ) : (
-              <Button size="sm" variant="hero" className="pointer-events-none">
+              <Button size="sm" variant="default" className="pointer-events-none">
                 RSVP Now
               </Button>
             )}

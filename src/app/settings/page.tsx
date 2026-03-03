@@ -19,7 +19,7 @@ import { format } from 'date-fns';
 
 export default function Settings() {
   const router = useRouter();
-  const { user, profile, isMember, isAdmin, signOut, isLoading, hasStripeSubscription, refreshProfile } = useAuth();
+  const { user, profile, isActiveMember, isAdmin, signOut, loading } = useAuth();
   usePageTitle('Account Settings');
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -27,18 +27,21 @@ export default function Settings() {
   const [billingLoading, setBillingLoading] = useState(false);
   const [subscribeLoading, setSubscribeLoading] = useState(false);
 
+  const p = profile as any;
+  const hasStripeSubscription = !!p?.stripe_customer_id && isActiveMember && !p?.membership_override;
+
   useEffect(() => {
-    if (profile) {
-      setFullName(profile.full_name || '');
-      setAvatarUrl(profile.avatar_url || '');
+    if (p) {
+      setFullName(p.full_name || '');
+      setAvatarUrl(p.avatar_url || '');
     }
   }, [profile]);
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (!loading && !user) {
       router.push('/login');
     }
-  }, [user, isLoading, navigate]);
+  }, [user, loading, router]);
 
   const handleSave = async () => {
     if (!user) return;
@@ -58,7 +61,6 @@ export default function Settings() {
       toast.error('Failed to update profile');
     } else {
       toast.success('Profile updated');
-      await refreshProfile();
     }
     setSaving(false);
   };
@@ -102,7 +104,7 @@ export default function Settings() {
     }
   };
 
-  if (isLoading || !user || !profile) {
+  if (loading || !user || !profile) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse space-y-4 text-center">
@@ -115,21 +117,14 @@ export default function Settings() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header 
-        user={{ 
-          email: user.email, 
-          name: profile.full_name || undefined,
-          avatarUrl: profile.avatar_url || undefined
-        }}
-        isAdmin={isAdmin}
-      />
+      <Header />
 
       <main className="container py-8 max-w-2xl">
         <h1 className="text-3xl font-semibold mb-8">Account Settings</h1>
 
         <div className="space-y-6">
           {/* Become a Member CTA for non-members */}
-          {!isMember && (
+          {!isActiveMember && (
             <div className="card-elevated p-6 border-primary/30 bg-primary/5">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -166,7 +161,6 @@ export default function Settings() {
             </div>
 
             <div className="space-y-6">
-              {/* Avatar Upload */}
               <AvatarUpload
                 userId={user.id}
                 currentAvatarUrl={avatarUrl}
@@ -215,7 +209,6 @@ export default function Settings() {
                 <p className="text-sm text-muted-foreground">Update your password</p>
               </div>
             </div>
-
             <PasswordChangeForm />
           </div>
 
@@ -230,13 +223,12 @@ export default function Settings() {
                 <p className="text-sm text-muted-foreground">Manage your notification preferences</p>
               </div>
             </div>
-
             <NotificationSettings 
               userId={user.id}
               initialSettings={{
-                notify_event_reminders: profile.notify_event_reminders ?? true,
-                notify_new_events: profile.notify_new_events ?? true,
-                notify_announcements: profile.notify_announcements ?? true,
+                notify_event_reminders: p.notify_event_reminders ?? true,
+                notify_new_events: p.notify_new_events ?? true,
+                notify_announcements: p.notify_announcements ?? true,
               }}
             />
           </div>
@@ -257,26 +249,26 @@ export default function Settings() {
               <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
                 <div>
                   <p className="font-medium">
-                    {isMember ? 'Social - $30/month' : 'No active membership'}
+                    {isActiveMember ? 'Social - $30/month' : 'No active membership'}
                   </p>
-                  {profile.member_since && (
+                  {p.member_since && (
                     <p className="text-sm text-muted-foreground">
-                      Member since {format(new Date(profile.member_since), 'MMMM yyyy')}
+                      Member since {format(new Date(p.member_since), 'MMMM yyyy')}
                     </p>
                   )}
-                  {isMember && profile.subscription_ends_at && (
+                  {isActiveMember && p.subscription_ends_at && (
                     <p className="text-sm text-muted-foreground">
-                      Next billing: {format(new Date(profile.subscription_ends_at), 'MMMM d, yyyy')}
+                      Next billing: {format(new Date(p.subscription_ends_at), 'MMMM d, yyyy')}
                     </p>
                   )}
                 </div>
                 <span className={`px-3 py-1 rounded-full text-sm ${
-                  isMember ? 'bg-green-500/10 text-green-500' : 'bg-muted text-muted-foreground'
+                  isActiveMember ? 'bg-green-500/10 text-green-500' : 'bg-muted text-muted-foreground'
                 }`}>
-                  {profile.subscription_status === 'active' ? 'Active' : 
-                   profile.subscription_status === 'paused' ? 'Paused' :
-                   profile.subscription_status === 'past_due' ? 'Past Due' :
-                   profile.subscription_status === 'canceled' ? 'Cancelled' : 'Inactive'}
+                  {p.subscription_status === 'active' ? 'Active' : 
+                   p.subscription_status === 'paused' ? 'Paused' :
+                   p.subscription_status === 'past_due' ? 'Past Due' :
+                   p.subscription_status === 'canceled' ? 'Cancelled' : 'Inactive'}
                 </span>
               </div>
 
@@ -304,7 +296,7 @@ export default function Settings() {
                     View invoices, update payment method, and download receipts
                   </p>
                 </>
-              ) : isMember ? (
+              ) : isActiveMember ? (
                 <p className="text-sm text-muted-foreground text-center py-2">
                   Your membership is managed by an administrator.
                 </p>
@@ -313,9 +305,9 @@ export default function Settings() {
           </div>
 
           {/* Danger Zone */}
-          {isMember && hasStripeSubscription && (
+          {isActiveMember && hasStripeSubscription && (
             <div className="card-elevated p-6 border-destructive/20">
-              <MembershipDangerZone userId={user.id} isMember={isMember} hasStripeSubscription={hasStripeSubscription} />
+              <MembershipDangerZone userId={user.id} isActiveMember={isActiveMember} hasStripeSubscription={hasStripeSubscription} />
             </div>
           )}
 
@@ -330,10 +322,9 @@ export default function Settings() {
                 <p className="text-sm text-muted-foreground">Your private calendar subscription</p>
               </div>
             </div>
-
             <div className="p-3 rounded-lg bg-muted/50 border border-border">
               <code className="text-xs text-muted-foreground break-all">
-                Token: {profile.calendar_token}
+                Token: {p.calendar_token}
               </code>
             </div>
             <p className="text-xs text-muted-foreground mt-2">

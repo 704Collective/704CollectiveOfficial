@@ -36,7 +36,7 @@ interface Event {
 }
 
 export default function Index() {
-  const { user, isMember, isLoading } = useAuth();
+  const { user, isActiveMember, loading: authLoading } = useAuth();
   const router = useRouter();
   usePageTitle("704 Collective | Charlotte's Young Professionals Community");
 
@@ -54,10 +54,10 @@ export default function Index() {
 
   // Redirect logged-in users to dashboard
   useEffect(() => {
-    if (!isLoading && user) {
-      router.push('/dashboard', { replace: true });
+    if (!authLoading && user) {
+      router.replace('/dashboard');
     }
-  }, [user, isLoading, navigate]);
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     fetchEvents();
@@ -100,7 +100,7 @@ export default function Index() {
       return;
     }
 
-    if (isMember) {
+    if (isActiveMember) {
       await registerMemberTicket(event);
     } else {
       router.push(`/events/${event.id}`);
@@ -108,13 +108,13 @@ export default function Index() {
   };
 
   // Prevent flash of sales page
-  if (isLoading || user) {
+  if (authLoading || user) {
     return null;
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <Header user={null} isAdmin={false} />
+      <Header />
       <SEOJsonLd type="organization" />
 
       <main>
@@ -131,7 +131,7 @@ export default function Index() {
             events={events}
             loading={loading}
             title={monthsTitle}
-            isMember={false}
+            isActiveMember={false}
             isLoggedIn={false}
             userTicketEventIds={userTicketIds}
             rsvpLoadingId={rsvpLoadingId}

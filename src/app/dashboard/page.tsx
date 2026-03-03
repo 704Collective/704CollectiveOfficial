@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 
 export default function Dashboard() {
   const router = useRouter();
-  const { user, profile, isMember, isAdmin, isLoading, subscriptionEnd } = useAuth();
+  const { user, profile, isActiveMember, isAdmin, loading } = useAuth();
   usePageTitle('Member Portal');
   const [isPortalLoading, setIsPortalLoading] = useState(false);
   const [heroEventId, setHeroEventId] = useState<string | null>(null);
@@ -33,22 +33,22 @@ export default function Dashboard() {
     if (params.has('welcome')) {
       toast.success('Welcome to 704 Collective!', { description: 'Your membership is now active.' });
       params.delete('welcome');
-      window.history.replaceState({}, '', `${window.pathname}${params.toString() ? '?' + params.toString() : ''}`);
+      window.history.replaceState({}, '', `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`);
     } else if (params.has('ticket_purchased')) {
       toast.success('Ticket purchased!', { description: 'You\'re all set for the event.' });
       params.delete('ticket_purchased');
-      window.history.replaceState({}, '', `${window.pathname}${params.toString() ? '?' + params.toString() : ''}`);
+      window.history.replaceState({}, '', `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`);
     }
   }, []);
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      const path = window.pathname;
+    if (!loading && !user) {
+      const path = window.location.pathname;
       if (path !== '/setup-password' && path !== '/update-password') {
         router.push('/login');
       }
     }
-  }, [user, isLoading, navigate]);
+  }, [user, loading, router]);
 
   const handleManageSubscription = async () => {
     setIsPortalLoading(true);
@@ -79,10 +79,10 @@ export default function Dashboard() {
     }
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Header user={null} isAdmin={false} />
+        <Header />
         <main className="container px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8 max-w-6xl mx-auto">
           <div className="flex items-center justify-between">
             <Skeleton className="h-8 w-56" />
@@ -103,22 +103,16 @@ export default function Dashboard() {
     return null;
   }
 
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const firstName = profile.full_name?.split(' ')[0] || 'Member';
-  const subscriptionStatus = profile.subscription_status;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const p = profile as any;
+  const firstName = p.full_name?.split(' ')[0] || 'Member';
+  const subscriptionStatus = p.subscription_status;
   const isCanceledOrInactive = subscriptionStatus === 'canceled' || subscriptionStatus === 'inactive' || !subscriptionStatus;
   const isPastDue = subscriptionStatus === 'past_due';
 
   return (
     <div className="min-h-screen bg-background">
-      <Header
-        user={{
-          email: user.email,
-          name: profile.full_name || undefined,
-          avatarUrl: profile.avatar_url || undefined,
-        }}
-        isAdmin={isAdmin}
-      />
+      <Header />
 
       <main className="container px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8 max-w-6xl mx-auto">
         {/* Past Due Warning Banner */}
@@ -151,7 +145,7 @@ export default function Dashboard() {
         )}
 
         {/* Canceled / Inactive Reactivation Banner */}
-        {isCanceledOrInactive && !isMember && (
+        {isCanceledOrInactive && !isActiveMember && (
           <div className="rounded-xl border border-primary/30 bg-primary/5 p-6 sm:p-8 text-center space-y-4">
             <Crown className="w-10 h-10 text-primary mx-auto" />
             <div>
@@ -170,7 +164,7 @@ export default function Dashboard() {
         )}
 
         {/* Onboarding */}
-        {isMember && (
+        {isActiveMember && (
           <SectionErrorBoundary>
             <OnboardingCard userId={user.id} />
           </SectionErrorBoundary>
@@ -184,16 +178,16 @@ export default function Dashboard() {
         </div>
 
         {/* Calendar Sync CTA */}
-        {isMember && (
+        {isActiveMember && (
           <CalendarSyncButton
-            calendarToken={profile.calendar_token}
-            baseUrl={supabaseUrl}
+            calendarToken={p.calendar_token}
+            baseUrl={supabaseUrl || ''}
             variant="cta"
           />
         )}
 
         {/* Next Event Hero */}
-        {(isMember || isPastDue) && (
+        {(isActiveMember || isPastDue) && (
           <div>
             <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-2">Your Next Event</p>
             <SectionErrorBoundary>
@@ -203,11 +197,11 @@ export default function Dashboard() {
         )}
 
         {/* Two-column grid */}
-        {(isMember || isPastDue) && (
+        {(isActiveMember || isPastDue) && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left: Guest Pass + Updates */}
             <div className="space-y-6 order-1">
-              {isMember && (
+              {isActiveMember && (
                 <div>
                   <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-2">Grow The Community</p>
                   <SectionErrorBoundary>
@@ -237,10 +231,10 @@ export default function Dashboard() {
           <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-2">Your Membership</p>
           <SectionErrorBoundary>
             <MembershipStatusBar
-              isMember={isMember}
-              memberSince={profile.member_since}
-              subscriptionEnd={subscriptionEnd}
-              membershipOverride={profile.membership_override}
+              isActiveMember={isActiveMember}
+              memberSince={p.member_since}
+              subscriptionEnd={p.subscription_end}
+              membershipOverride={p.membership_override ?? false}
               onManageBilling={handleManageSubscription}
               isPortalLoading={isPortalLoading}
             />

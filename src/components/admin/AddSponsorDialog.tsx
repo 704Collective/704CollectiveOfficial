@@ -17,7 +17,7 @@ interface AddSponsorDialogProps {
 }
 
 export function AddSponsorDialog({ open, onOpenChange, onSuccess }: AddSponsorDialogProps) {
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setloading] = useState(false);
   const [formData, setFormData] = useState({
     company_name: "",
     contact_name: "",
@@ -42,7 +42,7 @@ export function AddSponsorDialog({ open, onOpenChange, onSuccess }: AddSponsorDi
       return;
     }
 
-    setIsLoading(true);
+    setloading(true);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -77,7 +77,7 @@ export function AddSponsorDialog({ open, onOpenChange, onSuccess }: AddSponsorDi
       console.error("Error adding sponsor/vendor:", error);
       toast.error(error.message || "Failed to add sponsor/vendor");
     } finally {
-      setIsLoading(false);
+      setloading(false);
     }
   };
 
@@ -95,7 +95,7 @@ export function AddSponsorDialog({ open, onOpenChange, onSuccess }: AddSponsorDi
               value={formData.company_name}
               onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
               placeholder="Enter company name"
-              disabled={isLoading}
+              disabled={loading}
               maxLength={200}
             />
           </div>
@@ -107,7 +107,7 @@ export function AddSponsorDialog({ open, onOpenChange, onSuccess }: AddSponsorDi
               value={formData.contact_name}
               onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
               placeholder="Enter contact person's name"
-              disabled={isLoading}
+              disabled={loading}
               maxLength={100}
             />
           </div>
@@ -120,7 +120,7 @@ export function AddSponsorDialog({ open, onOpenChange, onSuccess }: AddSponsorDi
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="Enter email address"
-              disabled={isLoading}
+              disabled={loading}
               maxLength={255}
             />
           </div>
@@ -132,7 +132,7 @@ export function AddSponsorDialog({ open, onOpenChange, onSuccess }: AddSponsorDi
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               placeholder="Add any notes about this partnership"
-              disabled={isLoading}
+              disabled={loading}
               rows={3}
               maxLength={2000}
             />
@@ -143,12 +143,12 @@ export function AddSponsorDialog({ open, onOpenChange, onSuccess }: AddSponsorDi
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isLoading}
+              disabled={loading}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? (
+            <Button type="submit" disabled={loading}>
+              {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Adding...

@@ -31,7 +31,7 @@ interface EditSponsorDialogProps {
 }
 
 export function EditSponsorDialog({ open, onOpenChange, sponsor, onSuccess }: EditSponsorDialogProps) {
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setloading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [formData, setFormData] = useState({
@@ -60,7 +60,7 @@ export function EditSponsorDialog({ open, onOpenChange, sponsor, onSuccess }: Ed
     e.preventDefault();
     if (!sponsor) return;
 
-    setIsLoading(true);
+    setloading(true);
     try {
       const { error } = await supabase
         .from('sponsors_vendors')
@@ -82,7 +82,7 @@ export function EditSponsorDialog({ open, onOpenChange, sponsor, onSuccess }: Ed
     } catch (error: any) {
       toast.error(error.message || 'Failed to update sponsor/vendor');
     } finally {
-      setIsLoading(false);
+      setloading(false);
     }
   };
 
@@ -208,12 +208,12 @@ export function EditSponsorDialog({ open, onOpenChange, sponsor, onSuccess }: Ed
                   type="button"
                   variant="outline"
                   onClick={() => onOpenChange(false)}
-                  disabled={isLoading}
+                  disabled={loading}
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? (
+                <Button type="submit" disabled={loading}>
+                  {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Saving...
@@ -234,7 +234,7 @@ export function EditSponsorDialog({ open, onOpenChange, sponsor, onSuccess }: Ed
         onConfirm={handleDelete}
         title="Delete Sponsor/Vendor"
         description={`Are you sure you want to delete "${sponsor.company_name}"? This action cannot be undone.`}
-        isLoading={isDeleting}
+        loading={isDeleting}
       />
     </>
   );

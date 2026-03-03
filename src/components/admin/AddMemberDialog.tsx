@@ -18,7 +18,7 @@ interface AddMemberDialogProps {
 }
 
 export function AddMemberDialog({ open, onOpenChange, onSuccess }: AddMemberDialogProps) {
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setloading] = useState(false);
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
@@ -45,7 +45,7 @@ export function AddMemberDialog({ open, onOpenChange, onSuccess }: AddMemberDial
       return;
     }
 
-    setIsLoading(true);
+    setloading(true);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -81,7 +81,7 @@ export function AddMemberDialog({ open, onOpenChange, onSuccess }: AddMemberDial
       console.error("Error creating member:", error);
       toast.error(error.message || "Failed to create member");
     } finally {
-      setIsLoading(false);
+      setloading(false);
     }
   };
 
@@ -99,7 +99,7 @@ export function AddMemberDialog({ open, onOpenChange, onSuccess }: AddMemberDial
               value={formData.full_name}
               onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
               placeholder="Enter member's name"
-              disabled={isLoading}
+              disabled={loading}
               maxLength={100}
             />
           </div>
@@ -112,7 +112,7 @@ export function AddMemberDialog({ open, onOpenChange, onSuccess }: AddMemberDial
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="Enter member's email"
-              disabled={isLoading}
+              disabled={loading}
               maxLength={255}
             />
           </div>
@@ -122,7 +122,7 @@ export function AddMemberDialog({ open, onOpenChange, onSuccess }: AddMemberDial
             <Select
               value={formData.member_type}
               onValueChange={(value) => setFormData({ ...formData, member_type: value })}
-              disabled={isLoading}
+              disabled={loading}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select member type" />
@@ -138,7 +138,7 @@ export function AddMemberDialog({ open, onOpenChange, onSuccess }: AddMemberDial
             <Select
               value={formData.membership_duration}
               onValueChange={(value) => setFormData({ ...formData, membership_duration: value })}
-              disabled={isLoading}
+              disabled={loading}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select duration" />
@@ -158,7 +158,7 @@ export function AddMemberDialog({ open, onOpenChange, onSuccess }: AddMemberDial
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               placeholder="Add any notes about this member"
-              disabled={isLoading}
+              disabled={loading}
               rows={3}
               maxLength={2000}
             />
@@ -169,12 +169,12 @@ export function AddMemberDialog({ open, onOpenChange, onSuccess }: AddMemberDial
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isLoading}
+              disabled={loading}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? (
+            <Button type="submit" disabled={loading}>
+              {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Creating...
