@@ -1,50 +1,113 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Instagram } from 'lucide-react';
-
-function TikTokIcon({ className }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5" />
-    </svg>
-  );
-}
-
-// Marketing pages that have their own footer — this Footer won't render on these
-const MARKETING_ROUTES = ['/'];
 
 export function Footer() {
-  const pathname = usePathname();
-
-  // Don't render on marketing pages (they have their own footer)
-  if (MARKETING_ROUTES.includes(pathname)) {
-    return null;
-  }
-
   return (
-    <footer className="py-8 border-t border-border" role="contentinfo">
-      <div className="container">
-        <div className="flex flex-col items-center gap-4">
-          <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2" aria-label="Footer navigation">
-            <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Home</Link>
-            <Link href="/social" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Social</Link>
-            <Link href="/events" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Events</Link>
-            <Link href="/about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">About</Link>
-            <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contact</Link>
-            <Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Terms</Link>
-            <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Privacy</Link>
-          </nav>
-          <div className="flex items-center gap-4">
-            <p className="text-xs text-muted-foreground whitespace-nowrap">© {new Date().getFullYear()} 704 Collective. All rights reserved.</p>
-            <a href="https://www.instagram.com/704_collective/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="704 Collective on Instagram">
-              <Instagram className="w-4 h-4" />
-            </a>
-            <a href="https://www.tiktok.com/@704_collective" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="704 Collective on TikTok">
-              <TikTokIcon className="w-4 h-4" />
-            </a>
-          </div>
+    <footer
+      role="contentinfo"
+      style={{
+        backgroundColor: '#1A1A1A',
+        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+        padding: '40px 24px',
+      }}
+    >
+      <div
+        style={{
+          maxWidth: '1280px',
+          margin: '0 auto',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '20px',
+        }}
+      >
+        {/* Nav Links */}
+        <nav
+          aria-label="Footer navigation"
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '24px',
+          }}
+        >
+          {[
+            { href: '/', label: 'Home' },
+            { href: '/social', label: 'Social' },
+            { href: '/events', label: 'Events' },
+            { href: '/about', label: 'About' },
+            { href: '/contact', label: 'Contact' },
+            { href: '/terms', label: 'Terms' },
+            { href: '/privacy', label: 'Privacy' },
+          ].map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              style={{
+                fontSize: '0.8125rem',
+                color: 'rgba(255, 255, 255, 0.45)',
+                textDecoration: 'none',
+                transition: 'color 200ms ease',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = '#FFFFFF'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255, 255, 255, 0.45)'; }}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+
+        {/* Copyright + Socials */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+          }}
+        >
+          <p
+            style={{
+              fontSize: '0.75rem',
+              color: 'rgba(255, 255, 255, 0.3)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            © {new Date().getFullYear()} 704 Collective. All rights reserved.
+          </p>
+
+          {/* Instagram */}
+          <a
+            href="https://www.instagram.com/704_collective/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="704 Collective on Instagram"
+            style={{ color: 'rgba(255, 255, 255, 0.35)', transition: 'color 200ms ease', display: 'flex' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#FFFFFF'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255, 255, 255, 0.35)'; }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+              <circle cx="12" cy="12" r="5" />
+              <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+            </svg>
+          </a>
+
+          {/* TikTok */}
+          <a
+            href="https://www.tiktok.com/@704_collective"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="704 Collective on TikTok"
+            style={{ color: 'rgba(255, 255, 255, 0.35)', transition: 'color 200ms ease', display: 'flex' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#FFFFFF'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255, 255, 255, 0.35)'; }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.71a8.21 8.21 0 0 0 4.76 1.52V6.78a4.86 4.86 0 0 1-1-.09z" />
+            </svg>
+          </a>
         </div>
       </div>
     </footer>

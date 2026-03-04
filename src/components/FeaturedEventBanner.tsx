@@ -1,11 +1,9 @@
 'use client';
 
+import Image from 'next/image';
 import { format } from 'date-fns';
 import { MapPin, Calendar, Clock, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { CategoryBadge, EventCategory } from '@/components/CategoryBadge';
-import { EventPlaceholder } from '@/components/EventPlaceholder';
 
 interface Event {
   id: string;
@@ -31,123 +29,67 @@ interface FeaturedEventBannerProps {
 }
 
 export function FeaturedEventBanner({
-  event,
-  userHasTicket,
-  isUserMember,
-  isLoggedIn,
-  capacity,
-  ticketCount = 0,
-  onClick,
+  event, userHasTicket, isUserMember, capacity, ticketCount = 0, onClick,
 }: FeaturedEventBannerProps) {
   const startDate = new Date(event.start_time);
-
   const spotsLeft = capacity != null ? capacity - ticketCount : null;
   const isSoldOut = spotsLeft != null && spotsLeft <= 0;
-  const fillPercent = capacity != null && capacity > 0 ? (ticketCount / capacity) * 100 : 0;
-
-  const renderCapacityBadge = () => {
-    if (capacity == null) return null;
-    if (isSoldOut) {
-      return <Badge className="bg-destructive/10 text-destructive border-destructive/20">Sold Out</Badge>;
-    }
-    const isAlmostFull = fillPercent >= 80;
-    return (
-      <Badge className={isAlmostFull ? 'bg-orange-500/10 text-orange-600 border-orange-500/20' : 'bg-green-500/10 text-green-600 border-green-500/20'}>
-        {spotsLeft} {spotsLeft === 1 ? 'spot' : 'spots'} left
-      </Badge>
-    );
-  };
+  const pct = capacity != null && capacity > 0 ? (ticketCount / capacity) * 100 : 0;
 
   return (
     <div
       onClick={onClick}
-      className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[hsl(0_0%_21%)] to-card border border-white/[0.10] hover:border-white/[0.15] transition-all duration-300 ease-out cursor-pointer group shadow-none hover:scale-[1.01] transform-gpu"
+      style={{ position: 'relative', overflow: 'hidden', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', transition: 'all 300ms ease', display: 'flex', flexDirection: 'row', minHeight: '240px' }}
+      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.4)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
     >
-      <div className="flex flex-col md:flex-row">
-        {/* Image */}
-        <div className="relative md:w-2/5 aspect-video max-h-[200px] sm:max-h-none md:aspect-auto overflow-hidden bg-muted">
-          {event.image_url ? (
-            <img
-              src={event.image_url}
-              alt={event.title}
-              loading="lazy"
-              className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
-            />
-          ) : (
-            <EventPlaceholder size="lg" className="h-full min-h-[200px]" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent to-card/80 hidden md:block" />
-          <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent md:hidden" />
-          
-          {/* Featured label */}
-          <div className="absolute top-4 left-4">
-            <Badge className="bg-primary text-primary-foreground font-semibold px-3 py-1">
-              Up Next
-            </Badge>
+      {/* Image Side */}
+      <div style={{ position: 'relative', width: '42%', overflow: 'hidden', flexShrink: 0 }}>
+        {event.image_url ? (
+          <Image src={event.image_url} alt={event.title} fill style={{ objectFit: 'cover' }} unoptimized={!event.image_url?.includes('supabase')} />
+        ) : (
+          <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #2E2E2E 0%, #1A1A1A 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontSize: '3.5rem', fontWeight: 700, color: 'rgba(255,255,255,0.03)', letterSpacing: '-0.05em' }}>704</span>
           </div>
+        )}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, transparent 30%, #1A1A1A 100%)' }} />
+        <div style={{ position: 'absolute', top: '16px', left: '16px', backgroundColor: '#FFFFFF', color: '#000000', fontSize: '0.625rem', fontWeight: 700, padding: '4px 12px', borderRadius: '100px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+          Up Next
+        </div>
+      </div>
+
+      {/* Content Side */}
+      <div style={{ flex: 1, padding: '28px 32px', backgroundColor: '#1A1A1A', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '14px' }}>
+        {event.category && event.category !== 'other' && <div><CategoryBadge category={event.category as EventCategory} size="sm" /></div>}
+
+        <h2 style={{ fontSize: 'clamp(1.25rem, 2.5vw, 1.625rem)', fontWeight: 700, color: '#FFFFFF', lineHeight: 1.2, letterSpacing: '-0.01em' }}>{event.title}</h2>
+
+        {event.description && <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, maxWidth: '440px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{event.description}</p>}
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><Calendar style={{ width: '13px', height: '13px' }} />{format(startDate, 'EEEE, MMMM d')}</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><Clock style={{ width: '13px', height: '13px' }} />{format(startDate, 'h:mm a')}</span>
+          {event.location_name && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><MapPin style={{ width: '13px', height: '13px' }} />{event.location_name}</span>}
         </div>
 
-        {/* Content */}
-        <div className="relative flex-1 p-6 md:p-8 flex flex-col justify-center">
-          <div className="space-y-4">
-            {event.category && event.category !== 'other' && (
-              <CategoryBadge category={event.category as EventCategory} size="sm" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '4px' }}>
+          {userHasTicket ? (
+            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#4CAF50', backgroundColor: 'rgba(76,175,80,0.08)', padding: '8px 18px', borderRadius: '8px' }}>RSVP{"'"}d ✓</span>
+          ) : isSoldOut ? (
+            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#E57373', backgroundColor: 'rgba(229,115,115,0.06)', padding: '8px 18px', borderRadius: '8px' }}>Sold Out</span>
+          ) : (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 22px', borderRadius: '8px', fontSize: '0.8125rem', fontWeight: 600, color: '#000', backgroundColor: '#FFF', border: 'none' }}>
+              View Details <ArrowRight style={{ width: '14px', height: '14px' }} />
+            </span>
+          )}
+          <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
+            {isUserMember || (event.ticket_price ?? 0) <= 0 ? (
+              <span style={{ color: '#4CAF50' }}>Free Event</span>
+            ) : (
+              <span style={{ color: 'rgba(255,255,255,0.5)' }}>${((event.ticket_price ?? 0) / 100).toFixed(0)}</span>
             )}
-            
-            <h2 className="text-2xl md:text-3xl font-semibold text-foreground group-hover:text-primary transition-colors">
-              {event.title}
-            </h2>
-            
-            {event.description && (
-              <p className="text-muted-foreground line-clamp-2 max-w-xl">
-                {event.description}
-              </p>
-            )}
-
-            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                <span>{format(startDate, 'EEEE, MMMM d')}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                <span>{format(startDate, 'h:mm a')}</span>
-              </div>
-              {event.location_name && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  <span>{event.location_name}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center gap-4 pt-2">
-              {userHasTicket ? (
-                <Badge className="bg-primary/20 text-primary border-primary/30">
-                  RSVP'd ✓
-                </Badge>
-              ) : isSoldOut ? (
-                <Badge variant="destructive">Sold Out</Badge>
-              ) : (
-                <Button className="gap-2">
-                  View Details
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-              )}
-              
-              <div className="text-sm">
-                {isUserMember || (event.ticket_price ?? 0) <= 0 ? (
-                  <span className="text-primary font-semibold">Free Event</span>
-                ) : (
-                  <span className="font-semibold text-foreground">
-                    ${((event.ticket_price ?? 0) / 100).toFixed(0)}
-                  </span>
-                )}
-              </div>
-
-              {renderCapacityBadge()}
-            </div>
-          </div>
+          </span>
+          {spotsLeft != null && !isSoldOut && pct >= 70 && <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'rgba(255,255,255,0.45)' }}>{spotsLeft} spots left</span>}
         </div>
       </div>
     </div>

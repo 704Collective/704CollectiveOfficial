@@ -6,8 +6,6 @@ import ScrollToTop from "@/components/ScrollToTop";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import JsonLd from "@/components/JsonLd";
 import { Providers } from "@/components/Providers";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -83,11 +81,7 @@ export default function RootLayout({
           <Providers>
             <SmoothScroll />
             <ScrollProgress />
-            <Header />
-            <main className="min-h-screen">
-              {children}
-            </main>
-            <Footer />
+            {children}
             <ScrollToTop />
           </Providers>
         </ErrorBoundary>

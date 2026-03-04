@@ -3,20 +3,16 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useMemo } from 'react';
+import Nav from '@/components/Nav';
+import { Footer } from '@/components/Footer';
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import { Search, X, Calendar, Crown } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Search, X, Calendar, Crown, LayoutGrid, List } from 'lucide-react';
 import { format, addDays, startOfMonth } from 'date-fns';
-import { Header } from '@/components/Header';
 import { EventListItem } from '@/components/EventListItem';
 import { EventGridCard } from '@/components/EventGridCard';
 import { FeaturedEventBanner } from '@/components/FeaturedEventBanner';
-import { ViewToggle } from '@/components/ViewToggle';
 import { ThankYouModal } from '@/components/ThankYouModal';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useTicketActions } from '@/hooks/useTicketActions';
 import { toast } from 'sonner';
@@ -40,8 +36,8 @@ interface Event {
 
 export default function Events() {
   const router = useRouter();
-  const { user, profile, isActiveMember, isAdmin } = useAuth();
-  usePageTitle('Upcoming Events');
+  const { user, isActiveMember } = useAuth();
+  usePageTitle('Upcoming Events | 704 Collective');
 
   const {
     userTicketIds,
@@ -53,10 +49,10 @@ export default function Events() {
   } = useTicketActions();
 
   const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setloading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [view, setView] = useState<'grid' | 'list'>('grid');
+  const [view, setView] = useState<'grid' | 'list'>('list');
   const [showMembersOnly, setShowMembersOnly] = useState(false);
   const [ticketCounts, setTicketCounts] = useState<Record<string, number>>({});
 
@@ -80,7 +76,7 @@ export default function Events() {
       console.error('Error fetching events:', error);
       toast.error('Failed to load events');
     } finally {
-      setloading(false);
+      setLoading(false);
     }
   };
 
@@ -118,14 +114,12 @@ export default function Events() {
 
   const filteredEvents = useMemo(() => {
     return events.filter(event => {
-      const matchesSearch = !searchQuery || 
+      const matchesSearch = !searchQuery ||
         event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.location_name?.toLowerCase().includes(searchQuery.toLowerCase());
-
       const matchesCategory = !selectedCategory || event.category === selectedCategory;
       const matchesMembersOnly = !showMembersOnly || event.is_members_only;
-
       return matchesSearch && matchesCategory && matchesMembersOnly;
     });
   }, [events, searchQuery, selectedCategory, showMembersOnly]);
@@ -149,14 +143,13 @@ export default function Events() {
       router.push('/login');
       return;
     }
-
     if (isUserMember) {
       const success = await registerMemberTicket(event);
       if (success) {
         fetchTicketCounts(events.map(e => e.id));
       }
     } else {
-      toast.info('Join as a member for free tickets!');
+      router.push(`/events/${event.id}`);
     }
   };
 
@@ -183,39 +176,126 @@ export default function Events() {
   const hasActiveFilters = searchQuery || selectedCategory || showMembersOnly;
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <main className="container mx-auto px-4 py-10 md:py-14 max-w-6xl">
-        {/* Header */}
-        <div className="mb-10">
-          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-2">All Events</p>
-          <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">Upcoming Events</h1>
-          <p className="text-muted-foreground">Discover and RSVP to upcoming 704 Collective events</p>
-        </div>
-
-        {/* Filters */}
-        <div className="sticky top-16 z-10 bg-background/95 backdrop-blur-sm py-4 mb-8 -mx-4 px-4 border-b border-border/50 space-y-3">
-          {/* Row 1: Search + View Toggle */}
-          <div className="flex gap-3 items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search events..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-muted/50"
-              />
-            </div>
-            <ViewToggle view={view} onViewChange={setView} />
+    <>
+      <Nav />
+      <div style={{ paddingTop: '64px', minHeight: '100vh', backgroundColor: '#000000' }}>
+        <main style={{ maxWidth: '1100px', margin: '0 auto', padding: '48px 24px 80px' }}>
+          {/* Page Header */}
+          <div style={{ marginBottom: '40px', textAlign: 'center' }}>
+            <p
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+                color: '#C6A664',
+                marginBottom: '12px',
+              }}
+            >
+              All Events
+            </p>
+            <h1
+              style={{
+                fontSize: 'clamp(2rem, 5vw, 3rem)',
+                fontWeight: 700,
+                letterSpacing: '-0.02em',
+                color: '#FFFFFF',
+                marginBottom: '12px',
+              }}
+            >
+              Upcoming Events
+            </h1>
+            <p style={{ fontSize: '1.0625rem', color: 'rgba(255, 255, 255, 0.5)', lineHeight: 1.6, maxWidth: '500px', margin: '0 auto' }}>
+              Discover and RSVP to upcoming 704 Collective events. Members get in free — non-members can purchase tickets.
+            </p>
           </div>
 
-          {/* Row 2: Horizontal scrollable category chips */}
-          {activeCategories.length > 0 && (
-            <div className="relative">
-              <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
-              <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
-              <div className="flex gap-2 overflow-x-auto hide-scrollbar px-1 py-1">
+          {/* Filters Bar */}
+          <div
+            style={{
+              position: 'sticky',
+              top: '64px',
+              zIndex: 10,
+              backgroundColor: 'rgba(0, 0, 0, 0.92)',
+              backdropFilter: 'blur(12px)',
+              padding: '16px 0',
+              marginBottom: '40px',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+            }}
+          >
+            {/* Search + View Toggle */}
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <Search
+                  style={{
+                    position: 'absolute',
+                    left: '14px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: '16px',
+                    height: '16px',
+                    color: 'rgba(255, 255, 255, 0.3)',
+                  }}
+                />
+                <input
+                  placeholder="Search events..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '11px 16px 11px 42px',
+                    backgroundColor: '#1A1A1A',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '8px',
+                    color: '#FFFFFF',
+                    fontSize: '0.875rem',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    transition: 'border-color 200ms ease',
+                  }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = '#C6A664'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'; }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button
+                  onClick={() => setView('grid')}
+                  style={{
+                    padding: '10px',
+                    backgroundColor: view === 'grid' ? '#2E2E2E' : 'transparent',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '8px',
+                    color: view === 'grid' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.4)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                  aria-label="Grid view"
+                >
+                  <LayoutGrid size={16} />
+                </button>
+                <button
+                  onClick={() => setView('list')}
+                  style={{
+                    padding: '10px',
+                    backgroundColor: view === 'list' ? '#2E2E2E' : 'transparent',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '8px',
+                    color: view === 'list' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.4)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                  aria-label="List view"
+                >
+                  <List size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Category Chips */}
+            {activeCategories.length > 0 && (
+              <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '4px 0', marginBottom: '12px' }}>
                 {activeCategories.map(cat => {
                   const config = CATEGORY_CONFIG[cat as EventCategory];
                   const Icon = config.icon;
@@ -224,155 +304,230 @@ export default function Events() {
                     <button
                       key={cat}
                       onClick={() => setSelectedCategory(isSelected ? null : cat)}
-                      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full text-xs px-3 py-1.5 transition-colors shrink-0 ${
-                        isSelected
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground border border-border/50 hover:bg-accent'
-                      }`}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        whiteSpace: 'nowrap',
+                        borderRadius: '100px',
+                        fontSize: '0.75rem',
+                        padding: '7px 16px',
+                        border: isSelected ? '1px solid #C6A664' : '1px solid rgba(255, 255, 255, 0.1)',
+                        backgroundColor: isSelected ? 'rgba(198, 166, 100, 0.15)' : 'transparent',
+                        color: isSelected ? '#C6A664' : 'rgba(255, 255, 255, 0.5)',
+                        cursor: 'pointer',
+                        transition: 'all 200ms ease',
+                        flexShrink: 0,
+                      }}
                     >
-                      <Icon className="w-3 h-3" />
+                      <Icon style={{ width: '12px', height: '12px' }} />
                       <span>{config.label}</span>
-                      {isSelected && <X className="w-3 h-3 ml-0.5" />}
+                      {isSelected && <X style={{ width: '12px', height: '12px', marginLeft: '2px' }} />}
                     </button>
                   );
                 })}
               </div>
+            )}
+
+            {/* Members-only Toggle */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button
+                onClick={() => setShowMembersOnly(!showMembersOnly)}
+                style={{
+                  width: '36px',
+                  height: '20px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  backgroundColor: showMembersOnly ? '#C6A664' : '#2E2E2E',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  transition: 'background-color 200ms ease',
+                  flexShrink: 0,
+                }}
+                role="switch"
+                aria-checked={showMembersOnly}
+                aria-label="Show members-only events"
+              >
+                <div
+                  style={{
+                    width: '16px',
+                    height: '16px',
+                    borderRadius: '50%',
+                    backgroundColor: '#FFFFFF',
+                    position: 'absolute',
+                    top: '2px',
+                    left: showMembersOnly ? '18px' : '2px',
+                    transition: 'left 200ms ease',
+                  }}
+                />
+              </button>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem', color: 'rgba(255, 255, 255, 0.5)' }}>
+                <Crown style={{ width: '14px', height: '14px' }} />
+                Members-only events
+              </span>
             </div>
-          )}
-
-          {/* Row 3: Members-only toggle */}
-          <div className="flex items-center gap-2">
-            <Switch
-              id="members-only"
-              checked={showMembersOnly}
-              onCheckedChange={setShowMembersOnly}
-            />
-            <label htmlFor="members-only" className="flex items-center gap-1.5 text-sm text-muted-foreground cursor-pointer">
-              <Crown className="w-3.5 h-3.5" />
-              Members-only events only
-            </label>
           </div>
-        </div>
 
-        {/* Content */}
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map(i => (
-              <div key={i} className="rounded-xl border border-border overflow-hidden">
-                <Skeleton className="h-40 w-full" />
-                <div className="p-4 space-y-3">
-                  <Skeleton className="h-5 w-3/4" />
-                  <Skeleton className="h-4 w-1/2" />
-                  <Skeleton className="h-4 w-2/3" />
-                  <Skeleton className="h-8 w-24" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : filteredEvents.length === 0 ? (
-          <div className="text-center py-16">
-            <Calendar className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">
-              {hasActiveFilters ? 'No results found' : 'No upcoming events'}
-            </h3>
-            <p className="text-muted-foreground mb-4">
-              {hasActiveFilters ? 'Try a different search term.' : 'Check back soon — we\'re planning something great.'}
-            </p>
-            {hasActiveFilters && (
-              <Button variant="outline" onClick={clearFilters}>Clear Filters</Button>
-            )}
-          </div>
-        ) : (
-          <SectionErrorBoundary>
-          <div className="space-y-10">
-            {featuredEvent && !hasActiveFilters && (
-              <FeaturedEventBanner
-                event={featuredEvent}
-                userHasTicket={userTicketIds.has(featuredEvent.id)}
-                isUserMember={isUserMember}
-                isLoggedIn={!!user}
-                capacity={featuredEvent.capacity}
-                ticketCount={ticketCounts[featuredEvent.id] || 0}
-                onClick={() => router.push(`/events/${featuredEvent.id}`)}
-              />
-            )}
-
-            {/* Events Grid/List */}
-            {view === 'grid' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {(hasActiveFilters ? filteredEvents : remainingEvents).map(event => (
-                  <EventGridCard
-                    key={event.id}
-                    id={event.id}
-                    title={event.title}
-                    description={event.description || undefined}
-                    startTime={event.start_time}
-                    endTime={event.end_time}
-                    locationName={event.location_name || undefined}
-                    imageUrl={event.image_url || undefined}
-                    ticketPrice={event.ticket_price || 0}
-                    isActiveMembersOnly={event.is_members_only || false}
-                    userHasTicket={userTicketIds.has(event.id)}
-                    isUserMember={isUserMember}
-                    isLoggedIn={!!user}
-                    category={event.category}
-                    capacity={event.capacity}
-                    ticketCount={ticketCounts[event.id] || 0}
-                    tags={event.tags}
-                    loading={rsvpLoadingId === event.id}
-                    onGetTicket={() => handleGetTicket(event)}
-                    onGuestPurchase={() => handleGuestPurchase(event)}
-                    onClick={() => router.push(`/events/${event.id}`)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {Object.entries(groupedEvents).map(([month, monthEvents]) => (
-                  <div key={month}>
-                    <h2 className="text-lg font-semibold text-foreground mb-4 sticky top-[120px] bg-background/95 backdrop-blur-sm py-2 z-[5] border-b border-border">
-                      {month}
-                    </h2>
-                    <div className="space-y-2">
-                      {monthEvents.map(event => (
-                        <EventListItem
-                          key={event.id}
-                          id={event.id}
-                          title={event.title}
-                          startTime={event.start_time}
-                          endTime={event.end_time}
-                          locationName={event.location_name || undefined}
-                          imageUrl={event.image_url || undefined}
-                          ticketPrice={event.ticket_price || 0}
-                          isActiveMembersOnly={event.is_members_only || false}
-                          userHasTicket={userTicketIds.has(event.id)}
-                          isUserMember={isUserMember}
-                          isLoggedIn={!!user}
-                          category={event.category}
-                          capacity={event.capacity}
-                          ticketCount={ticketCounts[event.id] || 0}
-                          tags={event.tags}
-                          loading={rsvpLoadingId === event.id}
-                          onGetTicket={() => handleGetTicket(event)}
-                          onGuestPurchase={() => handleGuestPurchase(event)}
-                          onClick={() => router.push(`/events/${event.id}`)}
-                        />
-                      ))}
-                    </div>
+          {/* Content */}
+          {loading ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <div
+                  key={i}
+                  style={{
+                    borderRadius: '12px',
+                    border: '1px solid rgba(255, 255, 255, 0.06)',
+                    overflow: 'hidden',
+                    backgroundColor: '#1A1A1A',
+                  }}
+                >
+                  <div style={{ height: '160px', backgroundColor: '#2E2E2E', animation: 'pulse 2s infinite' }} />
+                  <div style={{ padding: '20px' }}>
+                    <div style={{ height: '20px', width: '75%', backgroundColor: '#2E2E2E', borderRadius: '4px', marginBottom: '12px' }} />
+                    <div style={{ height: '16px', width: '50%', backgroundColor: '#2E2E2E', borderRadius: '4px', marginBottom: '12px' }} />
+                    <div style={{ height: '16px', width: '60%', backgroundColor: '#2E2E2E', borderRadius: '4px' }} />
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-          </SectionErrorBoundary>
-        )}
-      </main>
+                </div>
+              ))}
+            </div>
+          ) : filteredEvents.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '80px 0' }}>
+              <Calendar style={{ width: '48px', height: '48px', color: 'rgba(255, 255, 255, 0.15)', margin: '0 auto 16px' }} />
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '8px' }}>
+                {hasActiveFilters ? 'No results found' : 'No upcoming events'}
+              </h3>
+              <p style={{ fontSize: '0.9375rem', color: 'rgba(255, 255, 255, 0.45)', marginBottom: '20px' }}>
+                {hasActiveFilters ? 'Try a different search term or category.' : "Check back soon — we're planning something great."}
+              </p>
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  style={{
+                    padding: '10px 24px',
+                    backgroundColor: 'transparent',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    borderRadius: '8px',
+                    color: '#FFFFFF',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          ) : (
+            <SectionErrorBoundary>
+              <div>
+                {/* Featured Event */}
+                {featuredEvent && !hasActiveFilters && (
+                  <div style={{ marginBottom: '48px' }}>
+                    <FeaturedEventBanner
+                      event={featuredEvent}
+                      userHasTicket={userTicketIds.has(featuredEvent.id)}
+                      isUserMember={isUserMember}
+                      isLoggedIn={!!user}
+                      capacity={featuredEvent.capacity}
+                      ticketCount={ticketCounts[featuredEvent.id] || 0}
+                      onClick={() => router.push(`/events/${featuredEvent.id}`)}
+                    />
+                  </div>
+                )}
 
-      <ThankYouModal 
-        open={showThankYou} 
-        onOpenChange={setShowThankYou} 
-        type={thankYouType} 
-      />
-    </div>
+                {/* Events Grid/List */}
+                {view === 'grid' ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
+                    {(hasActiveFilters ? filteredEvents : remainingEvents).map(event => (
+                      <EventGridCard
+                        key={event.id}
+                        id={event.id}
+                        title={event.title}
+                        description={event.description || undefined}
+                        startTime={event.start_time}
+                        endTime={event.end_time}
+                        locationName={event.location_name || undefined}
+                        imageUrl={event.image_url || undefined}
+                        ticketPrice={event.ticket_price || 0}
+                        isActiveMembersOnly={event.is_members_only || false}
+                        userHasTicket={userTicketIds.has(event.id)}
+                        isUserMember={isUserMember}
+                        isLoggedIn={!!user}
+                        category={event.category}
+                        capacity={event.capacity}
+                        ticketCount={ticketCounts[event.id] || 0}
+                        tags={event.tags}
+                        loading={rsvpLoadingId === event.id}
+                        onGetTicket={() => handleGetTicket(event)}
+                        onGuestPurchase={() => handleGuestPurchase(event)}
+                        onClick={() => router.push(`/events/${event.id}`)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div>
+                    {Object.entries(groupedEvents).map(([month, monthEvents]) => (
+                      <div key={month} style={{ marginBottom: '40px' }}>
+                        <h2
+                          style={{
+                            fontSize: '1.125rem',
+                            fontWeight: 600,
+                            color: '#FFFFFF',
+                            marginBottom: '16px',
+                            paddingBottom: '12px',
+                            borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                          }}
+                        >
+                          {month}
+                        </h2>
+                        <div>
+                          {monthEvents.map(event => (
+                            <EventListItem
+                              key={event.id}
+                              id={event.id}
+                              title={event.title}
+                              startTime={event.start_time}
+                              endTime={event.end_time}
+                              locationName={event.location_name || undefined}
+                              imageUrl={event.image_url || undefined}
+                              ticketPrice={event.ticket_price || 0}
+                              isActiveMembersOnly={event.is_members_only || false}
+                              userHasTicket={userTicketIds.has(event.id)}
+                              isUserMember={isUserMember}
+                              isLoggedIn={!!user}
+                              category={event.category}
+                              capacity={event.capacity}
+                              ticketCount={ticketCounts[event.id] || 0}
+                              tags={event.tags}
+                              loading={rsvpLoadingId === event.id}
+                              onGetTicket={() => handleGetTicket(event)}
+                              onGuestPurchase={() => handleGuestPurchase(event)}
+                              onClick={() => router.push(`/events/${event.id}`)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </SectionErrorBoundary>
+          )}
+        </main>
+
+        <ThankYouModal
+          open={showThankYou}
+          onOpenChange={setShowThankYou}
+          type={thankYouType}
+        />
+      </div>
+      <Footer />
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
+    </>
   );
 }

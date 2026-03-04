@@ -165,14 +165,9 @@ export default function Home() {
                   justifyContent: "center",
                 }}
               >
-                <a
-                  href="https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-primary"
-                >
+                <Link href="/social" className="btn-primary">
                   Join 704 Social
-                </a>
+                </Link>
                 <Link href="/business" className="btn-ghost">
                   Explore 704 Business
                 </Link>
@@ -411,10 +406,8 @@ export default function Home() {
                     ))}
                   </StaggerContainer>
 
-                  <a
-                    href="https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <Link
+                    href="/social"
                     className="btn-primary"
                     style={{
                       display: "inline-block",
@@ -424,7 +417,7 @@ export default function Home() {
                     }}
                   >
                     Join 704 Social
-                  </a>
+                  </Link>
                 </div>
               </SlideIn>
 
@@ -693,10 +686,8 @@ export default function Home() {
                     </ul>
                   </div>
 
-                  <a
-                    href="https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <Link
+                    href="/social"
                     className="btn-primary"
                     style={{
                       display: "block",
@@ -707,7 +698,7 @@ export default function Home() {
                     }}
                   >
                     Join 704 Social
-                  </a>
+                  </Link>
                 </TiltCard>
               </ScaleUp>
 
@@ -1440,15 +1431,13 @@ export default function Home() {
                   marginTop: "40px",
                 }}
               >
-                <a
-                  href="https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link
+                  href="/social"
                   className="btn-primary"
                   style={{ padding: "16px 36px", fontSize: "0.9375rem" }}
                 >
                   Join 704 Social — $30/mo
-                </a>
+                </Link>
                 <Link
                   href="/business#apply"
                   className="btn-ghost"

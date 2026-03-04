@@ -2,10 +2,7 @@
 
 import { format } from 'date-fns';
 import { MapPin, Users, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { CategoryBadge, EventCategory } from '@/components/CategoryBadge';
-import { EventPlaceholder } from '@/components/EventPlaceholder';
 
 interface EventListItemProps {
   id: string;
@@ -30,148 +27,77 @@ interface EventListItemProps {
 }
 
 export function EventListItem({
-  title,
-  startTime,
-  endTime,
-  locationName,
-  imageUrl,
-  ticketPrice,
-  isActiveMembersOnly,
-  userHasTicket,
-  isUserMember,
-  isLoggedIn,
-  category,
-  capacity,
-  ticketCount = 0,
-  tags,
-  loading,
-  onGetTicket,
-  onGuestPurchase,
-  onClick,
+  title, startTime, endTime, locationName, ticketPrice,
+  isActiveMembersOnly, userHasTicket, isUserMember, isLoggedIn,
+  category, capacity, ticketCount = 0, loading,
+  onGetTicket, onGuestPurchase, onClick,
 }: EventListItemProps) {
   const startDate = new Date(startTime);
-  const endDate = new Date(endTime);
-
+  const dayNum = format(startDate, 'd');
+  const dayAbbr = format(startDate, 'EEE').toUpperCase();
   const spotsLeft = capacity != null ? capacity - ticketCount : null;
   const isSoldOut = spotsLeft != null && spotsLeft <= 0;
-  const fillPercent = capacity != null && capacity > 0 ? (ticketCount / capacity) * 100 : 0;
 
-  const renderCapacityBadge = () => {
+  const renderCapacity = () => {
     if (capacity == null) return null;
-    if (isSoldOut) {
-      return <Badge className="bg-destructive/10 text-destructive border-destructive/20 text-xs">Sold Out</Badge>;
-    }
-    const isAlmostFull = fillPercent >= 80;
-    return (
-      <Badge className={`text-xs ${isAlmostFull ? 'bg-orange-500/10 text-orange-600 border-orange-500/20' : 'bg-green-500/10 text-green-600 border-green-500/20'}`}>
-        {spotsLeft} {spotsLeft === 1 ? 'spot' : 'spots'} left
-      </Badge>
-    );
+    if (isSoldOut) return <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#E57373', backgroundColor: 'rgba(229,115,115,0.08)', padding: '3px 10px', borderRadius: '100px' }}>Sold Out</span>;
+    const pct = (ticketCount / capacity) * 100;
+    if (pct >= 70) return <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'rgba(255,255,255,0.45)', backgroundColor: 'rgba(255,255,255,0.05)', padding: '3px 10px', borderRadius: '100px' }}>{spotsLeft} spots left</span>;
+    return null;
   };
 
-  const renderActionButton = () => {
-    if (userHasTicket) {
-      return (
-        <Badge variant="secondary" className="bg-primary/10 text-primary whitespace-nowrap">
-          RSVP'd ✓
-        </Badge>
-      );
-    }
-
-    if (isSoldOut) {
-      return (
-        <Badge variant="destructive" className="whitespace-nowrap text-xs">
-          Sold Out
-        </Badge>
-      );
-    }
-
-    if (isActiveMembersOnly && !isUserMember) {
-      return (
-        <Badge variant="outline" className="whitespace-nowrap">
-          <Users className="w-3 h-3 mr-1" />
-          Members Only
-        </Badge>
-      );
-    }
-
+  const renderButton = () => {
+    if (userHasTicket) return <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '8px 18px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600, color: '#4CAF50', backgroundColor: 'rgba(76,175,80,0.08)', border: '1px solid rgba(76,175,80,0.12)' }}>RSVP{"'"}d ✓</span>;
+    if (isSoldOut) return <span style={{ padding: '8px 18px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600, color: '#E57373', backgroundColor: 'rgba(229,115,115,0.06)' }}>Sold Out</span>;
+    if (isActiveMembersOnly && !isUserMember) return <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '8px 18px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600, color: 'rgba(255,255,255,0.35)', backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}><Users style={{ width: '12px', height: '12px' }} />Members Only</span>;
     return (
-      <Button size="sm" variant="outline" className="min-h-[44px] min-w-[44px]" disabled={loading}>
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'RSVP'}
-      </Button>
+      <button
+        disabled={loading}
+        onClick={(e) => { e.stopPropagation(); isLoggedIn ? onGetTicket() : onGuestPurchase(); }}
+        style={{ padding: '8px 22px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600, color: '#000', backgroundColor: '#FFF', border: 'none', cursor: loading ? 'wait' : 'pointer', transition: 'all 200ms ease', display: 'inline-flex', alignItems: 'center', gap: '6px', opacity: loading ? 0.6 : 1 }}
+        onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(255,255,255,0.08)'; } }}
+        onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+      >
+        {loading ? <Loader2 style={{ width: '14px', height: '14px', animation: 'spin 1s linear infinite' }} /> : 'RSVP'}
+      </button>
     );
   };
 
   return (
     <div
       onClick={onClick}
-      className="flex items-center gap-4 p-4 bg-card rounded-lg border border-border hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer group"
+      style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '20px 24px', backgroundColor: '#1A1A1A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', marginBottom: '8px', cursor: 'pointer', transition: 'all 200ms ease' }}
+      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.3)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
     >
-      {/* Date Badge */}
-      <div className="flex-shrink-0 w-14 text-center">
-        <div className="text-2xl font-bold text-foreground">{format(startDate, 'd')}</div>
-        <div className="text-xs text-muted-foreground uppercase">{format(startDate, 'EEE')}</div>
+      <div style={{ textAlign: 'center', minWidth: '48px', flexShrink: 0 }}>
+        <div style={{ fontSize: '1.625rem', fontWeight: 700, color: '#FFFFFF', lineHeight: 1, letterSpacing: '-0.02em' }}>{dayNum}</div>
+        <div style={{ fontSize: '0.625rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '2px' }}>{dayAbbr}</div>
       </div>
-
-      {/* Thumbnail */}
-      {imageUrl ? (
-        <div className="flex-shrink-0 w-12 h-12 rounded-md overflow-hidden bg-muted">
-          <img src={imageUrl} alt={title} loading="lazy" className="w-full h-full object-cover object-center" />
+      <div style={{ width: '1px', height: '40px', backgroundColor: 'rgba(255,255,255,0.06)', flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+          <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#FFFFFF', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{title}</h3>
+          {category && category !== 'other' && <CategoryBadge category={category as EventCategory} size="sm" />}
         </div>
-      ) : (
-        <EventPlaceholder size="sm" />
-      )}
-
-      {/* Event Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-            {title}
-          </h3>
-          {category && category !== 'other' && (
-            <CategoryBadge category={category as EventCategory} size="sm" />
-          )}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', marginTop: '4px' }}>
+          <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>{format(startDate, 'EEE, MMM d')} • {format(startDate, 'h:mm a')}</span>
+          {locationName && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)' }}><MapPin style={{ width: '11px', height: '11px' }} />{locationName}</span>}
         </div>
-        <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
-          <span>
-            {format(startDate, 'h:mm a')} - {format(endDate, 'h:mm a')}
-          </span>
-          {locationName && (
-            <>
-              <span className="text-border">•</span>
-              <span className="flex items-center gap-1 truncate">
-                <MapPin className="w-3 h-3 flex-shrink-0" />
-                {locationName}
-              </span>
-            </>
-          )}
-        </div>
-        <div className="flex items-center gap-2 mt-0.5">
+        <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '12px' }}>
           {ticketPrice <= 0 ? (
-            <span className="text-sm font-semibold text-green-500">Free</span>
+            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#4CAF50' }}>Free</span>
           ) : (
             <>
-              <span className="text-sm font-bold text-foreground">Non-Member: ${(ticketPrice / 100).toFixed(0)}</span>
-              <span className="text-xs font-semibold text-green-500">Free for Members</span>
+              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255,255,255,0.55)' }}>Non-Member: ${(ticketPrice / 100).toFixed(0)}</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#4CAF50' }}>Free for Members</span>
             </>
           )}
         </div>
-        {tags && tags.length > 0 && (
-          <div className="flex items-center gap-1.5 flex-wrap mt-1">
-            {tags.slice(0, 3).map(tag => (
-              <span key={tag} className="px-2 py-0.5 rounded text-xs bg-muted text-muted-foreground">{tag}</span>
-            ))}
-            {tags.length > 3 && (
-              <span className="text-xs text-muted-foreground">+{tags.length - 3} more</span>
-            )}
-          </div>
-        )}
       </div>
-
-      {/* Action */}
-      <div className="flex-shrink-0 flex items-center gap-2">
-        {renderCapacityBadge()}
-        {renderActionButton()}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+        {renderCapacity()}
+        {renderButton()}
       </div>
     </div>
   );
