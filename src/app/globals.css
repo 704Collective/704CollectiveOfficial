@@ -61,8 +61,8 @@ html {
 
 body {
   font-family: var(--font-body), "Plus Jakarta Sans", sans-serif;
-  background-color: var(--color-black);
-  color: var(--color-white);
+  background-color: var(--background);
+  color: var(--foreground);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -76,7 +76,13 @@ a {
   text-decoration: none;
 }
 
-/* ─── BUTTONS ─── */
+/* ═══════════════════════════════════════════
+   MARKETING PAGE STYLES
+   Only used on public-facing pages with inline styles.
+   These do NOT affect dashboard/admin/portal pages.
+═══════════════════════════════════════════ */
+
+/* ——— BUTTONS ——— */
 
 .btn-primary {
   display: inline-block;
@@ -179,25 +185,27 @@ a {
   color: #C6A664;
 }
 
-/* ─── CARDS ─── */
+/* ——— CARDS ——— */
 
 .card-hover {
   transition: all 200ms ease;
 }
 
-.card-hover:hover {
-  border-color: rgba(198, 166, 100, 0.2) !important;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+@media (hover: hover) {
+  .card-hover:hover {
+    border-color: rgba(198, 166, 100, 0.2) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  }
 }
 
 .card-elevated {
-  background-color: #1A1A1A;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: var(--card);
+  border: 1px solid var(--border);
   border-radius: 16px;
 }
 
-/* ─── NAV ─── */
+/* ——— NAV (marketing pages) ——— */
 
 .nav-link {
   font-size: 0.875rem;
@@ -227,7 +235,7 @@ a {
   width: 100%;
 }
 
-/* ─── FAQ ─── */
+/* ——— FAQ ——— */
 
 .faq-item summary {
   transition: color 200ms ease;
@@ -245,14 +253,14 @@ a {
   display: none;
 }
 
-/* ─── SELECTION ─── */
+/* ——— SELECTION ——— */
 
 ::selection {
   background-color: rgba(198, 166, 100, 0.3);
   color: #FFFFFF;
 }
 
-/* ─── FOCUS-VISIBLE (Accessibility) ─── */
+/* ——— FOCUS-VISIBLE (Accessibility) ——— */
 
 .btn-primary:focus-visible,
 .btn-secondary:focus-visible,
@@ -294,7 +302,11 @@ summary:focus-visible {
   border-radius: 4px;
 }
 
-/* ─── RESPONSIVE: GRIDS ─── */
+/* ═══════════════════════════════════════════
+   RESPONSIVE: MARKETING GRIDS
+   Scoped to marketing class names only —
+   will not affect dashboard/admin layouts.
+═══════════════════════════════════════════ */
 
 @media (max-width: 768px) {
   .how-it-works-grid,
@@ -339,12 +351,16 @@ summary:focus-visible {
   }
 }
 
-/* ─── RESPONSIVE: MOBILE GLOBAL ─── */
+/* ═══════════════════════════════════════════
+   RESPONSIVE: MOBILE — MARKETING PAGES ONLY
+   Uses [data-page="marketing"] wrapper so
+   these rules NEVER touch portal/admin pages.
+═══════════════════════════════════════════ */
 
 @media (max-width: 768px) {
-  /* Reduce section padding */
-  section,
-  .gradient-section {
+  /* Marketing section padding — only on pages with inline styles */
+  [data-page="marketing"] section,
+  [data-page="marketing"] .gradient-section {
     padding-top: 64px !important;
     padding-bottom: 64px !important;
     padding-left: 20px !important;
@@ -357,11 +373,11 @@ summary:focus-visible {
     min-height: calc(100dvh - 64px) !important;
   }
 
-  /* Buttons go full width on mobile */
-  .btn-primary,
-  .btn-ghost,
-  .btn-gold,
-  .btn-ghost-gold {
+  /* Marketing buttons go full width on mobile */
+  [data-page="marketing"] .btn-primary,
+  [data-page="marketing"] .btn-ghost,
+  [data-page="marketing"] .btn-gold,
+  [data-page="marketing"] .btn-ghost-gold {
     width: 100%;
     text-align: center;
     padding: 14px 24px !important;
@@ -385,24 +401,24 @@ summary:focus-visible {
   }
 }
 
-/* ─── RESPONSIVE: SMALL PHONES ─── */
+/* ——— RESPONSIVE: SMALL PHONES ——— */
 
 @media (max-width: 380px) {
-  section {
+  [data-page="marketing"] section {
     padding-left: 16px !important;
     padding-right: 16px !important;
   }
 
-  .btn-primary,
-  .btn-ghost,
-  .btn-gold,
-  .btn-ghost-gold {
+  [data-page="marketing"] .btn-primary,
+  [data-page="marketing"] .btn-ghost,
+  [data-page="marketing"] .btn-gold,
+  [data-page="marketing"] .btn-ghost-gold {
     font-size: 0.8125rem !important;
     padding: 12px 20px !important;
   }
 }
 
-/* ─── RESPONSIVE: NAV ─── */
+/* ——— RESPONSIVE: NAV ——— */
 
 .desktop-nav {
   display: flex !important;
@@ -429,7 +445,7 @@ summary:focus-visible {
   }
 }
 
-/* ─── REDUCED MOTION ─── */
+/* ——— REDUCED MOTION ——— */
 
 @media (prefers-reduced-motion: reduce) {
   *,
