@@ -20,9 +20,21 @@ import { TaskBoard } from "@/components/admin/TaskBoard";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
+const VALID_SECTIONS: AdminSection[] = ['dashboard', 'events', 'members', 'checkin', 'tasks', 'prospects', 'sponsors'];
+
 export default function AdminPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Skeleton className="h-8 w-48" /></div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="space-y-3 w-48">
+            <Skeleton className="h-2 w-full" />
+            <Skeleton className="h-2 w-4/5" />
+            <Skeleton className="h-2 w-3/5" />
+          </div>
+        </div>
+      }
+    >
       <AdminDashboard />
     </Suspense>
   );
@@ -33,20 +45,22 @@ function AdminDashboard() {
   usePageTitle('Admin Dashboard');
   const router = useRouter();
   const searchParams = useSearchParams();
+
   const sectionFromUrl = searchParams.get('section') as AdminSection | null;
+
   const [activeSection, setActiveSection] = useState<AdminSection>(
-    sectionFromUrl && ['dashboard','events','members','checkin','tasks','prospects','sponsors'].includes(sectionFromUrl)
-      ? sectionFromUrl
-      : 'dashboard'
+    sectionFromUrl && VALID_SECTIONS.includes(sectionFromUrl) ? sectionFromUrl : 'dashboard'
   );
 
+  // Sync section from URL params
   useEffect(() => {
     const s = searchParams.get('section') as AdminSection | null;
-    if (s && ['dashboard','events','members','checkin','tasks','prospects','sponsors'].includes(s)) {
+    if (s && VALID_SECTIONS.includes(s)) {
       setActiveSection(s);
     }
   }, [searchParams]);
 
+  // Auth guard
   useEffect(() => {
     if (!authLoading && (!user || !isAdmin)) {
       router.push("/admin/login");
@@ -62,12 +76,21 @@ function AdminDashboard() {
     router.replace(`?${params.toString()}`);
   };
 
+  // Loading skeleton
   if (authLoading) {
     return (
       <AdminLayout title="704 Collective" activeSection={activeSection} onSectionChange={setActiveSection}>
         <div className="space-y-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Skeleton className="h-20" /><Skeleton className="h-20" /><Skeleton className="h-20" /><Skeleton className="h-20" />
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-7 w-40" />
+            <Skeleton className="h-9 w-28" />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Skeleton className="h-52 rounded-xl" />
+            <Skeleton className="h-52 rounded-xl" />
           </div>
         </div>
       </AdminLayout>
@@ -77,6 +100,7 @@ function AdminDashboard() {
   return (
     <AdminLayout title="704 Collective" activeSection={activeSection} onSectionChange={setActiveSection}>
       <div className="space-y-8">
+
         {activeSection === 'dashboard' && (
           <SectionErrorBoundary>
             <AdminOverviewTab onSectionChange={setActiveSection} onFilterChange={handleFilterChange} />
@@ -99,8 +123,10 @@ function AdminDashboard() {
           <SectionErrorBoundary>
             <div className="animate-in fade-in-0 duration-200">
               <div className="flex items-center gap-3 mb-6">
-                <Button variant="ghost" size="icon" onClick={goToDashboard}><ArrowLeft className="w-4 h-4" /></Button>
-                <h2 className="text-xl font-semibold">Event Check-in</h2>
+                <Button type="button" variant="ghost" size="icon" onClick={goToDashboard}>
+                  <ArrowLeft className="w-4 h-4" />
+                </Button>
+                <h2 className="text-lg font-semibold text-foreground">Event Check-in</h2>
               </div>
               <AdminCheckIn adminId={user?.id || ""} />
             </div>
@@ -111,8 +137,10 @@ function AdminDashboard() {
           <SectionErrorBoundary>
             <div className="animate-in fade-in-0 duration-200">
               <div className="flex items-center gap-3 mb-6">
-                <Button variant="ghost" size="icon" onClick={goToDashboard}><ArrowLeft className="w-4 h-4" /></Button>
-                <h2 className="text-xl font-semibold">Tasks</h2>
+                <Button type="button" variant="ghost" size="icon" onClick={goToDashboard}>
+                  <ArrowLeft className="w-4 h-4" />
+                </Button>
+                <h2 className="text-lg font-semibold text-foreground">Task Board</h2>
               </div>
               <TaskBoard />
             </div>
@@ -130,6 +158,7 @@ function AdminDashboard() {
             <AdminSponsorsTab onNavigateToDashboard={goToDashboard} />
           </SectionErrorBoundary>
         )}
+
       </div>
     </AdminLayout>
   );

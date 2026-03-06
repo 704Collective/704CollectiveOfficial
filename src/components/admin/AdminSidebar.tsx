@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Calendar, Users, QrCode, ClipboardList, Settings,
@@ -16,7 +17,6 @@ interface AdminSidebarProps {
   onMobileClose?: () => void;
 }
 
-
 export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -24,7 +24,6 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
 
   const handleSectionClick = (section: AdminSection) => {
     if (pathname !== '/admin') {
-      // Navigate to /admin with ?section= so AdminDashboard picks up the right tab
       router.push(`/admin?section=${section}`);
     } else {
       onSectionChange?.(section);
@@ -37,6 +36,7 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
       {/* Logo */}
       <div className="p-5 pb-3">
         <button
+          type="button"
           onClick={() => {
             if (pathname !== '/admin') {
               router.push('/admin');
@@ -44,11 +44,16 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
             onSectionChange?.('dashboard');
             onMobileClose?.();
           }}
-          className="flex items-center gap-2.5 cursor-pointer"
+          className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
         >
-          <img src={logo.src}
- alt="704 Collective" className="h-8 w-8 rounded-lg" />
-          <span className="text-lg font-semibold">704 Collective</span>
+          <Image
+            src={logo}
+            alt="704 Collective"
+            width={32}
+            height={32}
+            className="rounded-lg"
+          />
+          <span className="text-base font-semibold text-foreground">704 Collective</span>
         </button>
       </div>
 
@@ -61,8 +66,9 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
 
       {/* Main nav */}
       <nav className="flex-1 px-3 py-3 overflow-y-auto">
+
         {/* CORE */}
-        <p className="text-xs uppercase tracking-wider text-muted-foreground/60 px-4 mt-3 mb-1">Core</p>
+        <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground px-3 mt-3 mb-1.5">Core</p>
         <div className="space-y-0.5">
           {[
             { icon: LayoutDashboard, label: 'Overview', section: 'dashboard' as AdminSection },
@@ -73,15 +79,16 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
             return (
               <button
                 key={item.section}
+                type="button"
                 onClick={() => handleSectionClick(item.section)}
                 className={cn(
                   'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors text-left',
                   isActive
                     ? 'bg-accent text-foreground border-l-2 border-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
                 )}
               >
-                <item.icon className="w-4 h-4 shrink-0" />
+                <item.icon className={cn('w-4 h-4 shrink-0', isActive && 'text-primary')} />
                 {item.label}
               </button>
             );
@@ -90,7 +97,7 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
 
         {/* OPERATIONS */}
         <div className="mt-5 border-t border-border pt-3">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground/60 px-4 mb-1">Operations</p>
+          <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground px-3 mb-1.5">Operations</p>
           <div className="space-y-0.5">
             {[
               { icon: QrCode, label: 'Check-in', section: 'checkin' as AdminSection },
@@ -100,15 +107,16 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
               return (
                 <button
                   key={item.section}
+                  type="button"
                   onClick={() => handleSectionClick(item.section)}
                   className={cn(
                     'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors text-left',
                     isActive
                       ? 'bg-accent text-foreground border-l-2 border-primary'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
                   )}
                 >
-                  <item.icon className="w-4 h-4 shrink-0" />
+                  <item.icon className={cn('w-4 h-4 shrink-0', isActive && 'text-primary')} />
                   {item.label}
                 </button>
               );
@@ -118,7 +126,7 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
 
         {/* SETTINGS */}
         <div className="mt-5 border-t border-border pt-3">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground/60 px-4 mb-1">Settings</p>
+          <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground px-3 mb-1.5">Settings</p>
           <div className="space-y-0.5">
             {[
               { icon: Settings, label: 'Settings', href: '/admin/settings' },
@@ -133,10 +141,10 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
                     'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                     isActive
                       ? 'bg-accent text-foreground border-l-2 border-primary'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
                   )}
                 >
-                  <item.icon className="w-4 h-4 shrink-0" />
+                  <item.icon className={cn('w-4 h-4 shrink-0', isActive && 'text-primary')} />
                   {item.label}
                 </Link>
               );
@@ -144,7 +152,6 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
           </div>
         </div>
       </nav>
-
     </div>
   );
 }

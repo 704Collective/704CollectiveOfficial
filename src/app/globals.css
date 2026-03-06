@@ -15,38 +15,60 @@
   --color-white: #FFFFFF;
   --radius: 0.625rem;
 
-  /* Dark theme as default — matches 704 design system */
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  /* ─── DARK THEME (default) — 704 Collective design system ─── */
+
+  /* Page canvas */
+  --background: oklch(0.145 0 0);         /* #1A1A1A charcoal */
+  --foreground: oklch(0.97 0.008 72);     /* #FAF6F0 ivory — warm white */
+
+  /* Cards & surfaces — slightly lifted off the page */
+  --card: oklch(0.20 0 0);                /* #2A2A2A — more distinct from background */
+  --card-foreground: oklch(0.97 0.008 72);
+
+  /* Popovers & dropdowns — same as card */
+  --popover: oklch(0.20 0 0);
+  --popover-foreground: oklch(0.97 0.008 72);
+
+  /* ─── PRIMARY = Brand Gold #C6A664 ─── */
+  --primary: oklch(0.718 0.089 72);       /* #C6A664 gold */
+  --primary-foreground: oklch(0.14 0 0);  /* near-black text on gold */
+
+  /* Secondary — graphite surface */
+  --secondary: oklch(0.24 0 0);           /* #2E2E2E graphite */
+  --secondary-foreground: oklch(0.97 0.008 72);
+
+  /* Muted — subtle backgrounds, placeholder text */
+  --muted: oklch(0.24 0 0);
+  --muted-foreground: oklch(0.63 0 0);    /* #A0A0A0 */
+
+  /* Accent — slightly lighter graphite for hover states */
+  --accent: oklch(0.26 0 0);
+  --accent-foreground: oklch(0.97 0.008 72);
+
+  /* Destructive */
+  --destructive: oklch(0.65 0.19 22);
+
+  /* Borders & inputs — increased opacity for visibility */
+  --border: oklch(1 0 0 / 14%);
+  --input: oklch(1 0 0 / 18%);
+  --ring: oklch(0.718 0.089 72);          /* gold focus ring */
+
+  /* Chart colors */
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+
+  /* Sidebar — slightly distinct from main canvas */
+  --sidebar: oklch(0.185 0 0);
+  --sidebar-foreground: oklch(0.97 0.008 72);
+  --sidebar-primary: oklch(0.718 0.089 72);        /* gold */
+  --sidebar-primary-foreground: oklch(0.14 0 0);
+  --sidebar-accent: oklch(0.26 0 0);
+  --sidebar-accent-foreground: oklch(0.97 0.008 72);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.718 0.089 72);
 }
 
 * {

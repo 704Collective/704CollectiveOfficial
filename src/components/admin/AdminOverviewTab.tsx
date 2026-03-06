@@ -10,7 +10,7 @@ import { AdminBroadcast } from '@/components/AdminBroadcast';
 import { AddMemberDialog } from '@/components/admin/AddMemberDialog';
 import { AddProspectDialog } from '@/components/admin/AddProspectDialog';
 import { AddSponsorDialog } from '@/components/admin/AddSponsorDialog';
-import { Calendar, Users, Plus, UserPlus, Target, Building2 } from 'lucide-react';
+import { Calendar, Users, Plus, UserPlus, Target, Building2, TrendingUp } from 'lucide-react';
 import { format } from 'date-fns';
 import type { AdminSection } from '@/components/AdminLayout';
 
@@ -80,12 +80,19 @@ export function AdminOverviewTab({ onSectionChange, onFilterChange }: AdminOverv
     staleTime: STALE_TIME,
   });
 
-  const { eventCount = 0, totalMembers = 0, activeMembers = 0, newThisWeek = 0, recentSignups = [], upcomingEvents = [] } = data ?? {};
+  const {
+    eventCount = 0,
+    totalMembers = 0,
+    activeMembers = 0,
+    newThisWeek = 0,
+    recentSignups = [],
+    upcomingEvents = [],
+  } = data ?? {};
 
   if (isError) {
     return (
       <div className="text-center py-12">
-        <p className="text-sm text-destructive mb-2">Failed to load dashboard data.</p>
+        <p className="text-sm text-destructive mb-3">Failed to load dashboard data.</p>
         <Button variant="outline" size="sm" onClick={() => invalidateOverview()}>Retry</Button>
       </div>
     );
@@ -93,128 +100,168 @@ export function AdminOverviewTab({ onSectionChange, onFilterChange }: AdminOverv
 
   if (isLoading) {
     return (
-      <div className="space-y-5">
-        <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <Skeleton key={i} className="h-24 w-full" />)}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-7 w-40" />
+          <Skeleton className="h-9 w-28" />
         </div>
-        <Skeleton className="h-40 w-full" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
+        </div>
+        <Skeleton className="h-10 w-64" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Skeleton className="h-52 rounded-xl" />
+          <Skeleton className="h-52 rounded-xl" />
+        </div>
       </div>
     );
   }
 
+  const statCards = [
+    {
+      label: 'Total Events',
+      value: eventCount,
+      icon: Calendar,
+      iconClass: 'text-primary',
+      onClick: () => onSectionChange('events'),
+    },
+    {
+      label: 'Total Members',
+      value: totalMembers,
+      icon: Users,
+      iconClass: 'text-primary',
+      onClick: () => onSectionChange('members'),
+    },
+    {
+      label: 'Active Members',
+      value: activeMembers,
+      icon: TrendingUp,
+      iconClass: 'text-emerald-500',
+      valueClass: 'text-emerald-500',
+      onClick: () => { onFilterChange('active'); onSectionChange('members'); },
+    },
+    {
+      label: 'New This Week',
+      value: newThisWeek,
+      icon: Plus,
+      iconClass: 'text-primary',
+      onClick: () => { onFilterChange('recent'); onSectionChange('members'); },
+    },
+  ];
+
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-2">Overview</p>
-          <h2 className="text-xl font-semibold tracking-tight">Dashboard</h2>
-          <p className="text-sm text-muted-foreground">Welcome back. Here's an overview of your community.</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Overview</p>
+          <h2 className="text-xl font-semibold text-foreground">Dashboard</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Welcome back. Here's your community snapshot.</p>
         </div>
         <AdminBroadcast />
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => onSectionChange('events')}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Total Events</p>
-                <p className="text-2xl font-semibold mt-1">{eventCount}</p>
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {statCards.map((stat) => (
+          <Card
+            key={stat.label}
+            className="cursor-pointer transition-all duration-150 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-md"
+            onClick={stat.onClick}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-muted-foreground leading-none mb-2 truncate">{stat.label}</p>
+                  <p className={`text-2xl font-bold tabular-nums ${stat.valueClass ?? 'text-foreground'}`}>
+                    {stat.value}
+                  </p>
+                </div>
+                <stat.icon className={`w-4 h-4 shrink-0 mt-0.5 ${stat.iconClass}`} aria-hidden="true" />
               </div>
-              <Calendar className="w-4 h-4 text-primary" aria-hidden="true" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => onSectionChange('members')}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Total Members</p>
-                <p className="text-2xl font-semibold mt-1">{totalMembers}</p>
-              </div>
-              <Users className="w-4 h-4 text-primary" aria-hidden="true" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => { onFilterChange('active'); onSectionChange('members'); }}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Active Members</p>
-                <p className="text-2xl font-semibold mt-1 text-green-500">{activeMembers}</p>
-              </div>
-              <Users className="w-4 h-4 text-green-500" aria-hidden="true" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => { onFilterChange('recent'); onSectionChange('members'); }}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">New This Week</p>
-                <p className="text-2xl font-semibold mt-1">{newThisWeek}</p>
-              </div>
-              <Plus className="w-4 h-4 text-primary" aria-hidden="true" />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Quick Actions */}
       <div>
-        <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Quick Actions</p>
-        <div className="flex flex-wrap gap-3">
-          <Button variant="outline" className="flex items-center gap-2" onClick={() => setAddMemberDialogOpen(true)}>
-            <UserPlus className="w-4 h-4" aria-hidden="true" /> Add Member
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2.5">Quick Actions</p>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-sm"
+            onClick={() => setAddMemberDialogOpen(true)}
+          >
+            <UserPlus className="w-3.5 h-3.5" aria-hidden="true" />
+            Add Member
           </Button>
-          <Button variant="outline" className="flex items-center gap-2" onClick={() => setAddProspectDialogOpen(true)}>
-            <Target className="w-4 h-4" aria-hidden="true" /> Add Prospect
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-sm"
+            onClick={() => setAddProspectDialogOpen(true)}
+          >
+            <Target className="w-3.5 h-3.5" aria-hidden="true" />
+            Add Prospect
           </Button>
-          <Button variant="outline" className="flex items-center gap-2" onClick={() => setAddSponsorDialogOpen(true)}>
-            <Building2 className="w-4 h-4" aria-hidden="true" /> Add Sponsor/Vendor
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-sm"
+            onClick={() => setAddSponsorDialogOpen(true)}
+          >
+            <Building2 className="w-3.5 h-3.5" aria-hidden="true" />
+            Add Sponsor / Vendor
           </Button>
         </div>
       </div>
 
       {/* Recent Signups & Upcoming Events */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        {/* Recent Signups */}
         <Card>
-          <CardContent className="p-4">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3">Recent Signups</p>
+          <CardContent className="p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Recent Signups</p>
             {recentSignups.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No recent signups</p>
+              <p className="text-sm text-muted-foreground py-4 text-center">No recent signups</p>
             ) : (
               <div className="divide-y divide-border">
                 {recentSignups.map((s, i) => (
-                  <div key={i} className="py-2 first:pt-0 last:pb-0 flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{s.full_name || 'No name'}</p>
+                  <div key={i} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground truncate">{s.full_name || 'No name'}</p>
                       <p className="text-xs text-muted-foreground truncate">{s.email}</p>
                     </div>
-                    <p className="text-xs text-muted-foreground whitespace-nowrap">{format(new Date(s.created_at), 'MMM d')}</p>
+                    <p className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+                      {format(new Date(s.created_at), 'MMM d')}
+                    </p>
                   </div>
                 ))}
               </div>
             )}
           </CardContent>
         </Card>
+
+        {/* Upcoming Events */}
         <Card>
-          <CardContent className="p-4">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3">Upcoming Events</p>
+          <CardContent className="p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Upcoming Events</p>
             {upcomingEvents.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No upcoming events</p>
+              <p className="text-sm text-muted-foreground py-4 text-center">No upcoming events scheduled</p>
             ) : (
               <div className="divide-y divide-border">
                 {upcomingEvents.map((e) => (
-                  <div key={e.id} className="py-2 first:pt-0 last:pb-0">
-                    <p className="text-sm font-medium">{e.title}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
+                  <div key={e.id} className="py-2.5 first:pt-0 last:pb-0">
+                    <p className="text-sm font-medium text-foreground">{e.title}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
                       <p className="text-xs text-muted-foreground">{format(new Date(e.start_time), 'MMM d, h:mm a')}</p>
                       {e.location_name && (
                         <>
-                          <span className="text-muted-foreground">·</span>
+                          <span className="text-muted-foreground text-xs">·</span>
                           <p className="text-xs text-muted-foreground truncate">{e.location_name}</p>
                         </>
                       )}
@@ -225,6 +272,7 @@ export function AdminOverviewTab({ onSectionChange, onFilterChange }: AdminOverv
             )}
           </CardContent>
         </Card>
+
       </div>
 
       {/* Dialogs */}
