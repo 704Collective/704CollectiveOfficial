@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { LogOut, User, Settings, LayoutDashboard, Menu, X, Users } from 'lucide-react';
+import { LogOut, User, Settings, LayoutDashboard, Menu, X, Users, Bell, Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -24,7 +25,6 @@ import {
 import logo from '@/assets/704-logo.png';
 import { cn } from '@/lib/utils';
 
-// Marketing pages that have their own nav — Header won't render on these
 const MARKETING_ROUTES = ['/'];
 
 export function Header() {
@@ -37,7 +37,6 @@ export function Header() {
     avatar_url?: string | null;
   } | null>(null);
 
-  // Fetch profile + admin status when user is available
   useEffect(() => {
     if (!user) {
       setIsAdmin(false);
@@ -46,7 +45,6 @@ export function Header() {
     }
 
     const fetchUserData = async () => {
-      // Fetch profile
       const { data: profileData } = await supabase
         .from('profiles')
         .select('full_name, avatar_url')
@@ -57,7 +55,6 @@ export function Header() {
         setProfile(profileData);
       }
 
-      // Check admin status
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
@@ -71,7 +68,6 @@ export function Header() {
     fetchUserData();
   }, [user]);
 
-  // Don't render on marketing pages (they have their own nav)
   if (MARKETING_ROUTES.includes(pathname)) {
     return null;
   }
@@ -113,8 +109,7 @@ export function Header() {
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <img src={logo.src}
- alt="704 Collective" className="h-9 w-auto" />
+          <Image src={logo} alt="704 Collective" className="h-9 w-auto" height={36} width={36} />
         </Link>
 
         {/* Desktop Navigation */}
@@ -142,8 +137,7 @@ export function Header() {
               <div className="flex flex-col">
                 {/* Mobile menu header */}
                 <div className="flex items-center justify-between p-4 border-b border-border">
-                  <img src={logo.src}
- alt="704 Collective" className="h-7 w-auto" />
+                  <Image src={logo} alt="704 Collective" className="h-7 w-auto" height={28} width={28} />
                   <SheetClose asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8">
                       <X className="h-4 w-4" />
@@ -157,7 +151,7 @@ export function Header() {
                   <div className="px-4 py-3 border-b border-border">
                     <div className="flex items-center gap-3">
                       {avatarUrl ? (
-                        <img src={avatarUrl} alt={displayName} className="w-10 h-10 rounded-full object-cover" />
+                        <Image src={avatarUrl} alt={displayName} width={40} height={40} className="rounded-full object-cover" unoptimized />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
                           <span className="text-sm font-bold text-primary-foreground">
@@ -181,7 +175,9 @@ export function Header() {
                     </Link>
                   </SheetClose>
                   <SheetClose asChild>
-                    <Link href="/events" className={mobileLinkClass('/events')}>Events</Link>
+                    <Link href="/events" className={mobileLinkClass('/events')}>
+                      <Calendar className="inline-block w-4 h-4 mr-2 -mt-0.5" />Events
+                    </Link>
                   </SheetClose>
                   {user ? (
                     <>
@@ -191,7 +187,17 @@ export function Header() {
                         </Link>
                       </SheetClose>
                       <SheetClose asChild>
-                        <Link href="/settings" className={mobileLinkClass('/settings')}>
+                        <Link href="/dashboard/profile" className={mobileLinkClass('/dashboard/profile')}>
+                          <User className="inline-block w-4 h-4 mr-2 -mt-0.5" />Profile
+                        </Link>
+                      </SheetClose>
+                      <SheetClose asChild>
+                        <Link href="/dashboard/notifications" className={mobileLinkClass('/dashboard/notifications')}>
+                          <Bell className="inline-block w-4 h-4 mr-2 -mt-0.5" />Notifications
+                        </Link>
+                      </SheetClose>
+                      <SheetClose asChild>
+                        <Link href="/dashboard/settings" className={mobileLinkClass('/dashboard/settings')}>
                           <Settings className="inline-block w-4 h-4 mr-2 -mt-0.5" />Settings
                         </Link>
                       </SheetClose>
@@ -232,7 +238,7 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative hidden md:flex">
                   {avatarUrl ? (
-                    <img src={avatarUrl} alt={displayName} className="w-8 h-8 rounded-full object-cover" />
+                    <Image src={avatarUrl} alt={displayName} width={32} height={32} className="rounded-full object-cover" unoptimized />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
                       <span className="text-sm font-bold text-primary-foreground">
@@ -252,7 +258,11 @@ export function Header() {
                   <LayoutDashboard className="w-4 h-4 mr-2" />
                   Dashboard
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/settings')}>
+                <DropdownMenuItem onClick={() => router.push('/dashboard/profile')}>
+                  <User className="w-4 h-4 mr-2" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push('/dashboard/settings')}>
                   <Settings className="w-4 h-4 mr-2" />
                   Settings
                 </DropdownMenuItem>

@@ -38,24 +38,38 @@ export function useAuth() {
 
   const fetchProfile = useCallback(
     async (userId: string) => {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .is('deleted_at', null)
-        .single();
+      try {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .is('deleted_at', null)
+          .single();
 
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId);
+        if (profileError) {
+          console.error('[useAuth] Profile fetch error:', profileError.message, profileError);
+          return { profile: null, isAdmin: false, isActiveMember: false };
+        }
 
-      const isAdmin = roles?.some((r) => r.role === 'admin') ?? false;
-      const isActiveMember =
-        profile?.subscription_status === 'active' ||
-        profile?.membership_override === true;
+        const { data: roles, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId);
 
-      return { profile, isAdmin, isActiveMember };
+        if (rolesError) {
+          console.error('[useAuth] Roles fetch error:', rolesError.message, rolesError);
+        }
+
+        const isAdmin = roles?.some((r) => r.role === 'admin') ?? false;
+        const isActiveMember =
+          profile?.subscription_status === 'active' ||
+          profile?.membership_override === true;
+
+        return { profile, isAdmin, isActiveMember };
+      } catch (err) {
+        console.error('[useAuth] Unexpected error:', err);
+        return { profile: null, isAdmin: false, isActiveMember: false };
+      }
     },
     [supabase]
   );

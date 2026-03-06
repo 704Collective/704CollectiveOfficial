@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { Header } from '@/components/Header';
+import { DashboardNav } from '@/components/DashboardNav';
 import { MyEventsSection } from '@/components/MyEventsSection';
 import { GuestPassSection } from '@/components/GuestPassSection';
 import { NotificationsFeed } from '@/components/NotificationsFeed';
@@ -27,7 +28,6 @@ export default function Dashboard() {
   const [isPortalLoading, setIsPortalLoading] = useState(false);
   const [heroEventId, setHeroEventId] = useState<string | null>(null);
 
-  // Welcome toast after successful Stripe checkout
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.has('welcome')) {
@@ -115,6 +115,8 @@ export default function Dashboard() {
       <Header />
 
       <main className="container px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8 max-w-6xl mx-auto">
+        <DashboardNav />
+
         {/* Past Due Warning Banner */}
         {isPastDue && (
           <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:justify-between">
