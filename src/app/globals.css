@@ -21,12 +21,12 @@
   --background: oklch(0.145 0 0);         /* #1A1A1A charcoal */
   --foreground: oklch(0.97 0.008 72);     /* #FAF6F0 ivory — warm white */
 
-  /* Cards & surfaces — slightly lifted off the page */
-  --card: oklch(0.20 0 0);                /* #2A2A2A — more distinct from background */
+  /* Cards & surfaces — clearly lifted off the page */
+  --card: oklch(0.225 0 0);               /* more distinct from background */
   --card-foreground: oklch(0.97 0.008 72);
 
   /* Popovers & dropdowns — same as card */
-  --popover: oklch(0.20 0 0);
+  --popover: oklch(0.225 0 0);
   --popover-foreground: oklch(0.97 0.008 72);
 
   /* ─── PRIMARY = Brand Gold #C6A664 ─── */
@@ -60,10 +60,10 @@
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
 
-  /* Sidebar — slightly distinct from main canvas */
-  --sidebar: oklch(0.185 0 0);
+  /* Sidebar — darker than page background (correct hierarchy) */
+  --sidebar: oklch(0.115 0 0);
   --sidebar-foreground: oklch(0.97 0.008 72);
-  --sidebar-primary: oklch(0.718 0.089 72);        /* gold */
+  --sidebar-primary: oklch(0.718 0.089 72);
   --sidebar-primary-foreground: oklch(0.14 0 0);
   --sidebar-accent: oklch(0.26 0 0);
   --sidebar-accent-foreground: oklch(0.97 0.008 72);
@@ -71,31 +71,43 @@
   --sidebar-ring: oklch(0.718 0.089 72);
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/*
+ * ─── CRITICAL FIX ────────────────────────────────────────────────────────────
+ * Bare CSS rules outside @layer have higher cascade priority than Tailwind
+ * utilities in Tailwind v4. The old bare `* { margin: 0 }` was overriding
+ * every `mx-auto` on every page, causing all content to left-align.
+ *
+ * Wrapping these inside @layer base lets Tailwind utilities (mx-auto, px-*, etc.)
+ * properly override them — fixing centering on ALL dashboard and admin pages.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 
-html {
-  scroll-behavior: smooth;
-}
+  html {
+    scroll-behavior: smooth;
+  }
 
-body {
-  font-family: var(--font-body), "Plus Jakarta Sans", sans-serif;
-  background-color: var(--background);
-  color: var(--foreground);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+  body {
+    font-family: var(--font-body), "Plus Jakarta Sans", sans-serif;
+    background-color: var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-heading), "Plus Jakarta Sans", sans-serif;
-}
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading), "Plus Jakarta Sans", sans-serif;
+  }
 
-a {
-  color: inherit;
-  text-decoration: none;
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
 /* ═══════════════════════════════════════════
@@ -225,6 +237,16 @@ a {
   background-color: var(--card);
   border: 1px solid var(--border);
   border-radius: 16px;
+}
+
+/* ——— SCROLLBAR HIDE ——— */
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
 
 /* ——— NAV (marketing pages) ——— */
@@ -380,7 +402,6 @@ summary:focus-visible {
 ═══════════════════════════════════════════ */
 
 @media (max-width: 768px) {
-  /* Marketing section padding — only on pages with inline styles */
   [data-page="marketing"] section,
   [data-page="marketing"] .gradient-section {
     padding-top: 64px !important;
@@ -389,13 +410,11 @@ summary:focus-visible {
     padding-right: 20px !important;
   }
 
-  /* Hero adjustments */
   #hero {
     min-height: calc(100vh - 64px) !important;
     min-height: calc(100dvh - 64px) !important;
   }
 
-  /* Marketing buttons go full width on mobile */
   [data-page="marketing"] .btn-primary,
   [data-page="marketing"] .btn-ghost,
   [data-page="marketing"] .btn-gold,
@@ -405,17 +424,14 @@ summary:focus-visible {
     padding: 14px 24px !important;
   }
 
-  /* Pricing card inner padding */
   .pricing-inner {
     padding: 32px 20px !important;
   }
 
-  /* Pricing features single column */
   .pricing-features {
     grid-template-columns: 1fr !important;
   }
 
-  /* Application steps stack vertically */
   .apply-steps {
     flex-direction: column !important;
     align-items: flex-start !important;

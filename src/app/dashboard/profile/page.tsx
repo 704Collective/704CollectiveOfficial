@@ -28,7 +28,6 @@ export default function ProfilePage() {
   const [phone, setPhone] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [saving, setSaving] = useState(false);
-  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -43,7 +42,6 @@ export default function ProfilePage() {
       setBio(p.bio || '');
       setPhone(p.phone || '');
       setAvatarUrl(p.avatar_url || '');
-      setLoaded(true);
     }
   }, [profile]);
 
@@ -72,7 +70,7 @@ export default function ProfilePage() {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="container px-4 sm:px-6 lg:px-8 py-8 max-w-4xl mx-auto space-y-6">
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-64 rounded-xl" />
         </main>
@@ -89,7 +87,7 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container px-4 sm:px-6 lg:px-8 py-8 max-w-4xl mx-auto space-y-8">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         <DashboardNav />
 
         <div>
@@ -101,7 +99,7 @@ export default function ProfilePage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
           {/* Left: Edit Form */}
-          <div className="lg:col-span-3 space-y-6">
+          <div className="lg:col-span-3 space-y-5">
             {/* Avatar */}
             <div className="card-elevated p-5">
               <h3 className="text-sm font-medium mb-4">Profile Photo</h3>

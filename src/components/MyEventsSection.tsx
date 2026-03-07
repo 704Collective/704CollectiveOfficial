@@ -104,7 +104,7 @@ export function MyEventsSection({ userId, excludeEventId }: MyEventsSectionProps
         <div className="text-center py-6">
           <Calendar className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground mb-3">No upcoming RSVPs</p>
-          <Link href="/events" className="text-sm text-primary hover:underline">
+          <Link href="/dashboard/events" className="text-sm text-primary hover:underline">
             Browse Events →
           </Link>
         </div>
@@ -138,7 +138,7 @@ export function MyEventsSection({ userId, excludeEventId }: MyEventsSectionProps
         </div>
       )}
 
-      <Link href="/events"
+      <Link href="/dashboard/events"
         className="flex items-center justify-center gap-1 text-sm text-primary hover:underline pt-3 mt-1 border-t border-border"
       >
         View All Events

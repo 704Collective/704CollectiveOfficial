@@ -943,7 +943,7 @@ export default function SocialPage() {
             <FadeUp delay={0.3}>
               <div style={{ textAlign: 'center', marginTop: '32px' }}>
                 <Link
-                  href="/events"
+                  href="/dashboard/events"
                   className="btn-ghost"
                   style={{ display: 'inline-block', padding: '12px 28px', fontSize: '0.8125rem' }}
                 >

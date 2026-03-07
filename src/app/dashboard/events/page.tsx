@@ -93,7 +93,7 @@ export default function DashboardEventsPage() {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="container px-4 sm:px-6 lg:px-8 py-8 max-w-4xl mx-auto space-y-6">
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-64 rounded-xl" />
         </main>
@@ -110,7 +110,7 @@ export default function DashboardEventsPage() {
       <Link
         key={ticket.id}
         href={`/events/${ticket.event_id}`}
-        className="flex items-center gap-4 p-4 rounded-xl border border-border hover:border-border/80 hover:bg-muted/30 transition-colors"
+        className="flex items-center gap-4 p-4 rounded-xl border border-border hover:border-primary/30 hover:bg-muted/30 transition-colors"
       >
         {/* Date block */}
         <div className="w-14 h-14 rounded-lg bg-muted flex flex-col items-center justify-center shrink-0">
@@ -178,7 +178,7 @@ export default function DashboardEventsPage() {
       </p>
       {!isPast && (
         <Button variant="outline" asChild>
-          <Link href="/events">
+          <Link href="/dashboard/events">
             Browse Events
             <ArrowRight className="w-4 h-4 ml-1" />
           </Link>
@@ -191,7 +191,7 @@ export default function DashboardEventsPage() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container px-4 sm:px-6 lg:px-8 py-8 max-w-4xl mx-auto space-y-8">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         <DashboardNav />
 
         <div className="flex items-center justify-between">
@@ -202,7 +202,7 @@ export default function DashboardEventsPage() {
             </p>
           </div>
           <Button variant="outline" asChild>
-            <Link href="/events">
+            <Link href="/dashboard/events">
               Browse Events
               <ArrowRight className="w-4 h-4 ml-1" />
             </Link>

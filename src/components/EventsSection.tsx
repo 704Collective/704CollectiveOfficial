@@ -79,7 +79,7 @@ export function EventsSection({
             <p className="text-muted-foreground mt-1">See what's happening</p>
           </div>
           <Button variant="outline" asChild>
-            <Link href="/events" aria-label="View all upcoming events">
+            <Link href="/dashboard/events" aria-label="View all upcoming events">
               View All
               <ArrowRight className="w-4 h-4" aria-hidden="true" />
             </Link>

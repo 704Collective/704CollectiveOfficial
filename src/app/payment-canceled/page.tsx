@@ -55,7 +55,7 @@ export default function PaymentCanceled() {
               </Link>
             </Button>
             <Button variant="outline" className="w-full" asChild>
-              <Link href="/events">Browse Events</Link>
+              <Link href="/dashboard/events">Browse Events</Link>
             </Button>
           </div>
         </div>

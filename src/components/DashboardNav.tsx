@@ -20,7 +20,7 @@ export function DashboardNav() {
     exact ? pathname === href : pathname.startsWith(href);
 
   return (
-    <nav className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-hide">
+    <nav className="flex items-center border-b border-border overflow-x-auto scrollbar-hide -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
       {navItems.map((item) => {
         const active = isActive(item.href, item.exact);
         const Icon = item.icon;
@@ -29,14 +29,15 @@ export function DashboardNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
+              'flex items-center gap-2 px-1 py-3 mr-6 text-sm font-medium whitespace-nowrap transition-colors relative shrink-0',
+              'last:mr-0',
               active
-                ? 'bg-primary/10 text-primary'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                ? 'text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full'
+                : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            <Icon className="w-4 h-4" />
-            <span className="hidden sm:inline">{item.label}</span>
+            <Icon className="w-4 h-4 shrink-0" />
+            <span>{item.label}</span>
           </Link>
         );
       })}

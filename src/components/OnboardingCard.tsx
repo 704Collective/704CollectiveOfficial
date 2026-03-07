@@ -61,7 +61,7 @@ export function OnboardingCard({ userId }: OnboardingCardProps) {
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Button variant="outline" className="justify-start gap-2 h-auto py-3 px-4" asChild>
-          <Link href="/events">
+          <Link href="/dashboard/events">
             <Calendar className="w-4 h-4 text-primary shrink-0" />
             <span className="text-left text-sm">RSVP to an upcoming event</span>
           </Link>

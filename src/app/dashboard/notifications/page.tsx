@@ -21,7 +21,7 @@ export default function NotificationsPage() {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="container px-4 sm:px-6 lg:px-8 py-8 max-w-3xl mx-auto space-y-6">
+        <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-64 rounded-xl" />
         </main>
@@ -33,7 +33,7 @@ export default function NotificationsPage() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container px-4 sm:px-6 lg:px-8 py-8 max-w-3xl mx-auto space-y-8">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         <DashboardNav />
 
         <div>

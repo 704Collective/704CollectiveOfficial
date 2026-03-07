@@ -91,7 +91,7 @@ export function NextEventHero({ userId, onEventLoaded }: NextEventHeroProps) {
         <h3 className="font-semibold mb-1">No upcoming events</h3>
         <p className="text-sm text-muted-foreground mb-4">Check back soon for new events.</p>
         <Button variant="outline" asChild>
-          <Link href="/events">Browse Events</Link>
+          <Link href="/dashboard/events">Browse Events</Link>
         </Button>
       </div>
     );

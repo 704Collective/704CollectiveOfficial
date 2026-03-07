@@ -208,7 +208,7 @@ export default function Nav() {
             )}
           </div>
 
-          <Link href="/events" className="nav-link">
+          <Link href="/dashboard/events" className="nav-link">
             Events
           </Link>
           <Link href="/blog" className="nav-link">
@@ -455,7 +455,7 @@ export default function Nav() {
             </div>
 
             <Link
-              href="/events"
+              href="/dashboard/events"
               role="menuitem"
               onClick={() => setMobileOpen(false)}
               style={{

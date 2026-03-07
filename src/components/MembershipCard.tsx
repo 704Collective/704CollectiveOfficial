@@ -11,58 +11,79 @@ interface MembershipCardProps {
 
 export function MembershipCard({ name, memberId, avatarUrl, memberSince }: MembershipCardProps) {
   return (
-    <div className="membership-card w-full max-w-md aspect-[1.6/1] flex flex-col justify-between">
+    <div
+      className="membership-card relative w-full max-w-sm overflow-hidden rounded-2xl"
+      style={{
+        background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%)',
+        border: '1px solid rgba(198, 166, 100, 0.25)',
+        aspectRatio: '1.586 / 1',
+        padding: '24px',
+      }}
+    >
       {/* Shine effect overlay */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -inset-[100%] animate-shine bg-gradient-to-r from-transparent via-white/10 to-transparent rotate-12" />
+      <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-2xl">
+        <div className="absolute -inset-[100%] animate-shine bg-gradient-to-r from-transparent via-white/5 to-transparent rotate-12" />
       </div>
 
-      {/* Top section */}
-      <div className="flex items-start justify-between relative z-10">
-        <div>
-          <h2 className="text-xl font-bold tracking-wider text-white">704</h2>
-          <p className="text-xs tracking-[0.3em] text-white/60 uppercase">Social</p>
-        </div>
-        <div className="px-3 py-1 rounded-full border border-white/20 bg-white/5">
-          <span className="text-xs font-medium tracking-wide text-white/90">SOCIAL MEMBER</span>
-        </div>
-      </div>
+      {/* Gold top accent line */}
+      <div
+        className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl"
+        style={{ background: 'linear-gradient(90deg, transparent, #C6A664, transparent)' }}
+      />
 
-      {/* Middle section */}
-      <div className="flex items-center gap-4 relative z-10">
-        {avatarUrl ? (
-          <img 
-            src={avatarUrl} 
-            alt={name} 
-            className="w-12 h-12 rounded-full object-cover border-2 border-white/20"
-          />
-        ) : (
-          <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center border-2 border-white/20">
-            <span className="text-lg font-bold text-white">{name.charAt(0).toUpperCase()}</span>
+      {/* Layout — flex column, space-between */}
+      <div className="relative z-10 flex flex-col justify-between h-full">
+
+        {/* Top row: 704 + badge */}
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-2xl font-bold tracking-wider text-white leading-none">704</h2>
+            <p className="text-[10px] tracking-[0.3em] text-white/50 uppercase mt-0.5">Social</p>
           </div>
-        )}
-        <div>
-          <p className="text-lg font-semibold text-white">{name}</p>
-          {memberSince && (
-            <p className="text-xs text-white/50">Member since {memberSince}</p>
-          )}
+          <div className="px-2.5 py-1 rounded-full border border-white/15 bg-white/5">
+            <span className="text-[10px] font-semibold tracking-widest text-white/80 uppercase">
+              Social Member
+            </span>
+          </div>
         </div>
-      </div>
 
-      {/* Bottom section with QR code */}
-      <div className="flex items-end justify-between relative z-10">
-        <div className="text-xs text-white/40">
-          <p>Charlotte, NC</p>
+        {/* Middle row: avatar + name */}
+        <div className="flex items-center gap-3">
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt={name}
+              className="w-11 h-11 rounded-full object-cover border-2 border-white/20 shrink-0"
+            />
+          ) : (
+            <div className="w-11 h-11 rounded-full bg-white/10 flex items-center justify-center border-2 border-white/20 shrink-0">
+              <span className="text-base font-bold text-white">
+                {name.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="text-base font-semibold text-white truncate">{name}</p>
+            {memberSince && (
+              <p className="text-[11px] text-white/45 mt-0.5">Member since {memberSince}</p>
+            )}
+          </div>
         </div>
-        <div className="bg-white p-2 rounded-lg">
-          <QRCodeSVG 
-            value={memberId} 
-            size={48}
-            level="M"
-            bgColor="#FFFFFF"
-            fgColor="#000000"
-          />
+
+        {/* Bottom row: location + QR */}
+        <div className="flex items-end justify-between">
+          <p className="text-[11px] text-white/35">Charlotte, NC</p>
+          <div className="bg-white rounded-lg p-1.5">
+            <QRCodeSVG
+              value={memberId}
+              size={44}
+              level="M"
+              bgColor="#FFFFFF"
+              fgColor="#000000"
+            />
+          </div>
         </div>
+
       </div>
     </div>
   );
