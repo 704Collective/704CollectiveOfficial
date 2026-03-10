@@ -132,27 +132,39 @@ export function AdminMemberProfileSheet({
   useEffect(() => {
     if (!member || activeTab !== 'activity') return;
     if (tickets.length) return;
-    setTicketsLoading(true);
-    supabase.from('tickets')
-      .select('id, status, checked_in_at, created_at, events(id, title, start_time)')
-      .eq('user_id', member.id)
-      .order('created_at', { ascending: false })
-      .limit(20)
-      .then(({ data }) => { if (data) setTickets(data as unknown as Ticket[]); })
-      .finally(() => setTicketsLoading(false));
+    const load = async () => {
+      setTicketsLoading(true);
+      try {
+        const { data } = await supabase.from('tickets')
+          .select('id, status, checked_in_at, created_at, events(id, title, start_time)')
+          .eq('user_id', member.id)
+          .order('created_at', { ascending: false })
+          .limit(20);
+        if (data) setTickets(data as unknown as Ticket[]);
+      } finally {
+        setTicketsLoading(false);
+      }
+    };
+    load();
   }, [activeTab, member?.id]);
 
   // Load payments tab
   useEffect(() => {
     if (!member || activeTab !== 'payments') return;
     if (payments.length) return;
-    setPaymentsLoading(true);
-    supabase.from('payments')
-      .select('id, amount, status, description, created_at')
-      .eq('user_id', member.id)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => { if (data) setPayments(data as Payment[]); })
-      .finally(() => setPaymentsLoading(false));
+    const load = async () => {
+      setPaymentsLoading(true);
+      try {
+        const { data } = await supabase.from('payments')
+          .select('id, amount, status, description, created_at')
+          .eq('user_id', member.id)
+          .order('created_at', { ascending: false });
+        if (data) setPayments(data as Payment[]);
+      } finally {
+        setPaymentsLoading(false);
+      }
+    };
+    load();
   }, [activeTab, member?.id]);
 
   const makeAdminMutation = useMutation({
