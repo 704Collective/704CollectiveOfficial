@@ -13,7 +13,6 @@ import {
   WordReveal,
 } from "@/components/Animations";
 import TiltCard from "@/components/TiltCard";
-import HeroDots from "@/components/HeroDots";
 import GradientShift from "@/components/GradientShift";
 
 export const metadata: Metadata = {
@@ -214,19 +213,44 @@ export default function BusinessPage() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: "#111111",
             overflow: "hidden",
           }}
         >
+          {/* Background photo */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              backgroundImage: "url('/hero-business.jpg')",
+              backgroundSize: "cover",
+              backgroundPosition: "center 40%",
+              transform: "scale(1.04)",
+              transition: "transform 8s ease-out",
+            }}
+          />
+
+          {/* Dark overlay — heavier than homepage, befitting the business tone */}
           <div
             style={{
               position: "absolute",
               inset: 0,
               background:
-                "radial-gradient(ellipse at center top, rgba(198,166,100,0.06) 0%, transparent 50%)",
+                "linear-gradient(to bottom, rgba(0,0,0,0.60) 0%, rgba(0,0,0,0.75) 60%, rgba(0,0,0,0.90) 100%)",
             }}
           />
-          <HeroDots />
+
+          {/* Gold top glow */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "radial-gradient(ellipse at center top, rgba(198,166,100,0.08) 0%, transparent 50%)",
+              pointerEvents: "none",
+            }}
+          />
+
+          {/* Gold bottom rule */}
           <div
             style={{
               position: "absolute",
