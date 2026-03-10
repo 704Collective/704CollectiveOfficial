@@ -11,15 +11,23 @@ export default function SmoothScroll() {
       smoothWheel: true,
     });
 
+    let rafId: number;
+
     function raf(time: number) {
       lenis.raf(time);
-      requestAnimationFrame(raf);
+      rafId = requestAnimationFrame(raf);
     }
 
-    requestAnimationFrame(raf);
+    rafId = requestAnimationFrame(raf);
 
     return () => {
-      lenis.destroy();
+      cancelAnimationFrame(rafId);
+      try {
+        lenis.destroy();
+      } catch {
+        // Lenis cleanup can fail during Next.js route transitions
+        // when DOM nodes are already removed — safe to ignore
+      }
     };
   }, []);
 
