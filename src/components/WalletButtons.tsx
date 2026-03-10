@@ -3,10 +3,9 @@
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, Smartphone } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 
-// Simple SVG icons for wallet brands
 function AppleIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -35,18 +34,26 @@ function useDevicePlatform() {
 
 export function WalletButtons() {
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [appleLoading, setAppleLoading] = useState(false);
   const platform = useDevicePlatform();
 
   const handleGoogleWallet = async () => {
     setGoogleLoading(true);
     try {
+      // Create a fresh client so it has the active session cookie
+      const supabase = createClient();
+
       const { data, error } = await supabase.functions.invoke('generate-wallet-pass', {
         body: { platform: 'google' },
       });
 
       if (error) {
-        toast.error('Failed to generate wallet pass');
+        console.error('[WalletButtons] Edge function error:', error);
+        toast.error('Could not connect to wallet service. Please try again.');
+        return;
+      }
+
+      if (data?.error === 'Google Wallet not configured') {
+        toast.error('Google Wallet is not configured yet. Check back soon!');
         return;
       }
 
@@ -58,83 +65,47 @@ export function WalletButtons() {
       if (data?.walletUrl) {
         window.open(data.walletUrl, '_blank');
       }
-    } catch {
+    } catch (err) {
+      console.error('[WalletButtons] Unexpected error:', err);
       toast.error('Something went wrong. Please try again.');
     } finally {
       setGoogleLoading(false);
     }
   };
 
-  const handleAppleWallet = async () => {
-    setAppleLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-wallet-pass', {
-        body: { platform: 'apple' },
-      });
-
-      if (error) {
-        toast.error('Failed to generate wallet pass');
-        return;
-      }
-
-      if (data?.available === false) {
-        toast("We're polishing the Apple experience—hang tight, 704 fam! Use the Google link or show your profile for now.", {
-          duration: 5000,
-          icon: <Smartphone className="w-4 h-4" />,
-        });
-      }
-    } catch {
-      toast.error('Something went wrong. Please try again.');
-    } finally {
-      setAppleLoading(false);
-    }
+  // Apple Wallet not ready yet — show holding message immediately, no API call needed
+  const handleAppleWallet = () => {
+    toast("We're polishing the Apple experience—hang tight, 704 fam! Use the Google link or show your profile for now.", {
+      duration: 5000,
+      icon: <Smartphone className="w-4 h-4 shrink-0" />,
+      position: 'bottom-right',
+    });
   };
 
-  // Order: primary platform first
   const isApplePrimary = platform === 'apple';
 
   return (
     <div className="flex flex-col gap-2 mt-4">
       {isApplePrimary ? (
         <>
-          <Button
-            variant="outline"
-            className="w-full text-sm"
-            onClick={handleAppleWallet}
-            disabled={appleLoading}
-          >
-            {appleLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <AppleIcon className="w-4 h-4" />}
-            Add to Apple Wallet
+          <Button variant="outline" className="w-full text-sm" onClick={handleAppleWallet}>
+            <AppleIcon className="w-4 h-4" />
+            Apple Wallet
           </Button>
-          <Button
-            variant="outline"
-            className="w-full text-sm"
-            onClick={handleGoogleWallet}
-            disabled={googleLoading}
-          >
+          <Button variant="outline" className="w-full text-sm" onClick={handleGoogleWallet} disabled={googleLoading}>
             {googleLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <GoogleWalletIcon className="w-4 h-4" />}
-            Add to Google Wallet
+            Google Wallet
           </Button>
         </>
       ) : (
         <>
-          <Button
-            variant="outline"
-            className="w-full text-sm"
-            onClick={handleGoogleWallet}
-            disabled={googleLoading}
-          >
+          <Button variant="outline" className="w-full text-sm" onClick={handleGoogleWallet} disabled={googleLoading}>
             {googleLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <GoogleWalletIcon className="w-4 h-4" />}
-            Add to Google Wallet
+            Google Wallet
           </Button>
-          <Button
-            variant="outline"
-            className="w-full text-sm"
-            onClick={handleAppleWallet}
-            disabled={appleLoading}
-          >
-            {appleLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <AppleIcon className="w-4 h-4" />}
-            Add to Apple Wallet
+          <Button variant="outline" className="w-full text-sm" onClick={handleAppleWallet}>
+            <AppleIcon className="w-4 h-4" />
+            Apple Wallet
           </Button>
         </>
       )}

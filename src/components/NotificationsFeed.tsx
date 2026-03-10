@@ -1,73 +1,30 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Bell, Calendar, Megaphone, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/integrations/supabase/client';
-
-interface Notification {
-  id: string;
-  type: string;
-  title: string;
-  message: string;
-  event_id: string | null;
-  is_read: boolean;
-  created_at: string;
-}
+import { useNotifications } from '@/hooks/queries';
 
 interface NotificationsFeedProps {
   userId: string;
 }
 
 export function NotificationsFeed({ userId }: NotificationsFeedProps) {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    fetchNotifications();
-  }, [userId]);
-
-  const fetchNotifications = async () => {
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    if (!error && data) {
-      setNotifications(data);
-      setUnreadCount(data.filter(n => !n.is_read).length);
-      
-      const unreadIds = data.filter(n => !n.is_read).map(n => n.id);
-      if (unreadIds.length > 0) {
-        await supabase
-          .from('notifications')
-          .update({ is_read: true })
-          .in('id', unreadIds);
-      }
-    }
-    setLoading(false);
-  };
+  const { data: notifications = [], isLoading } = useNotifications(userId);
+  const unreadCount = notifications.filter((n: any) => !n.is_read).length;
 
   const getIcon = (type: string) => {
     switch (type) {
-      case 'event_reminder':
-        return <Clock className="w-4 h-4 text-amber-500" />;
-      case 'new_event':
-        return <Calendar className="w-4 h-4 text-primary" />;
-      case 'broadcast':
-        return <Megaphone className="w-4 h-4 text-blue-500" />;
-      default:
-        return <Bell className="w-4 h-4 text-muted-foreground" />;
+      case 'event_reminder': return <Clock className="w-4 h-4 text-amber-500" />;
+      case 'new_event':      return <Calendar className="w-4 h-4 text-primary" />;
+      case 'broadcast':      return <Megaphone className="w-4 h-4 text-blue-500" />;
+      default:               return <Bell className="w-4 h-4 text-muted-foreground" />;
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-6 w-24" />
@@ -94,9 +51,7 @@ export function NotificationsFeed({ userId }: NotificationsFeedProps) {
           Updates
         </h2>
         {unreadCount > 0 && (
-          <Badge className="bg-primary text-primary-foreground">
-            {unreadCount} new
-          </Badge>
+          <Badge className="bg-primary text-primary-foreground">{unreadCount} new</Badge>
         )}
       </div>
 
@@ -108,13 +63,11 @@ export function NotificationsFeed({ userId }: NotificationsFeedProps) {
         </div>
       ) : (
         <div className="space-y-2">
-          {notifications.map((notification) => (
+          {(notifications as any[]).map((notification) => (
             <div
               key={notification.id}
               className={`p-4 rounded-lg border transition-colors ${
-                notification.is_read 
-                  ? 'border-border bg-background' 
-                  : 'border-primary/20 bg-primary/5'
+                notification.is_read ? 'border-border bg-background' : 'border-primary/20 bg-primary/5'
               }`}
             >
               <div className="flex gap-3">
@@ -128,13 +81,9 @@ export function NotificationsFeed({ userId }: NotificationsFeedProps) {
                       {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                    {notification.message}
-                  </p>
+                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{notification.message}</p>
                   {notification.event_id && (
-                    <Link href={`/events/${notification.event_id}`}
-                      className="text-sm text-primary hover:underline mt-2 inline-block"
-                    >
+                    <Link href={`/events/${notification.event_id}`} className="text-sm text-primary hover:underline mt-2 inline-block">
                       View event →
                     </Link>
                   )}

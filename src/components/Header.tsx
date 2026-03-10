@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { LogOut, User, Settings, LayoutDashboard, Menu, X, Users, Bell, Calendar } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import {
@@ -30,43 +30,7 @@ const MARKETING_ROUTES = ['/'];
 export function Header() {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, loading } = useAuth();
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [profile, setProfile] = useState<{
-    full_name?: string | null;
-    avatar_url?: string | null;
-  } | null>(null);
-
-  useEffect(() => {
-    if (!user) {
-      setIsAdmin(false);
-      setProfile(null);
-      return;
-    }
-
-    const fetchUserData = async () => {
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('full_name, avatar_url')
-        .eq('id', user.id)
-        .single();
-
-      if (profileData) {
-        setProfile(profileData);
-      }
-
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'admin')
-        .maybeSingle();
-
-      setIsAdmin(!!roleData);
-    };
-
-    fetchUserData();
-  }, [user]);
+  const { user, profile, isAdmin } = useAuth();
 
   if (MARKETING_ROUTES.includes(pathname)) {
     return null;
@@ -90,11 +54,12 @@ export function Header() {
         : "text-foreground hover:text-primary hover:bg-muted/50"
     );
 
-  const displayName = profile?.full_name || user?.user_metadata?.full_name || 'Member';
+  const displayName = (profile as any)?.full_name || user?.user_metadata?.full_name || 'Member';
   const displayEmail = user?.email || '';
-  const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url || null;
+  const avatarUrl = (profile as any)?.avatar_url || user?.user_metadata?.avatar_url || null;
 
   const handleSignOut = async () => {
+    const supabase = createClient();
     const { error } = await supabase.auth.signOut();
     if (error) {
       toast.error('Failed to sign out');
@@ -106,16 +71,26 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-lg">
-      <div className="container flex h-16 items-center justify-between">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <Image src={logo} alt="704 Collective" className="h-9 w-auto" height={36} width={36} />
-        </Link>
+      <div className="max-w-5xl mx-auto w-full flex h-16 items-center px-4 sm:px-6 lg:px-8">
 
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center justify-center gap-6 flex-1">
-          <Link href="/social" className={navLinkClass('/social')}>Social</Link>
-          <Link href="/events" className={navLinkClass('/events')}>Events</Link>
+        {/* Left — logo */}
+        <div className="flex items-center">
+          <Link href="/" className="flex items-center gap-2">
+            <Image src={logo} alt="704 Collective" className="h-9 w-auto" height={36} width={36} />
+          </Link>
+        </div>
+
+        {/* Center — nav */}
+        <nav className="hidden md:flex flex-1 items-center justify-center gap-6">
+          {!user && (
+            <Link href="/social" className={navLinkClass('/social')}>Social</Link>
+          )}
+          <Link
+            href={user ? '/dashboard/browse-events' : '/events'}
+            className={navLinkClass(user ? '/dashboard/browse-events' : '/events')}
+          >
+            Events
+          </Link>
           {user ? (
             <Link href="/dashboard" className={navLinkClass('/dashboard')}>Dashboard</Link>
           ) : (
@@ -123,9 +98,9 @@ export function Header() {
           )}
         </nav>
 
-        {/* Auth Section */}
-        <div className="flex items-center gap-2 md:gap-4">
-          {/* Mobile hamburger menu */}
+        {/* Right — avatar */}
+        <div className="flex items-center gap-2 justify-end">
+          {/* Mobile hamburger */}
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden">
@@ -135,7 +110,6 @@ export function Header() {
             </SheetTrigger>
             <SheetContent side="right" className="w-[280px] sm:w-[320px] bg-card border-border p-0 [&>button:last-of-type]:hidden">
               <div className="flex flex-col">
-                {/* Mobile menu header */}
                 <div className="flex items-center justify-between p-4 border-b border-border">
                   <Image src={logo} alt="704 Collective" className="h-7 w-auto" height={28} width={28} />
                   <SheetClose asChild>
@@ -146,15 +120,14 @@ export function Header() {
                   </SheetClose>
                 </div>
 
-                {/* User info (logged in) */}
                 {user && (
                   <div className="px-4 py-3 border-b border-border">
                     <div className="flex items-center gap-3">
                       {avatarUrl ? (
                         <Image src={avatarUrl} alt={displayName} width={40} height={40} className="rounded-full object-cover" unoptimized />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-                          <span className="text-sm font-bold text-primary-foreground">
+                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+                          <span className="text-sm font-bold text-white">
                             {(displayName || displayEmail || 'U').charAt(0).toUpperCase()}
                           </span>
                         </div>
@@ -167,15 +140,16 @@ export function Header() {
                   </div>
                 )}
 
-                {/* Navigation links */}
                 <nav className="flex flex-col gap-1 p-3">
+                  {!user && (
+                    <SheetClose asChild>
+                      <Link href="/social" className={mobileLinkClass('/social')}>
+                        <Users className="inline-block w-4 h-4 mr-2 -mt-0.5" />Social
+                      </Link>
+                    </SheetClose>
+                  )}
                   <SheetClose asChild>
-                    <Link href="/social" className={mobileLinkClass('/social')}>
-                      <Users className="inline-block w-4 h-4 mr-2 -mt-0.5" />Social
-                    </Link>
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <Link href="/events" className={mobileLinkClass('/events')}>
+                    <Link href={user ? '/dashboard/browse-events' : '/events'} className={mobileLinkClass(user ? '/dashboard/browse-events' : '/events')}>
                       <Calendar className="inline-block w-4 h-4 mr-2 -mt-0.5" />Events
                     </Link>
                   </SheetClose>
@@ -216,7 +190,6 @@ export function Header() {
                   )}
                 </nav>
 
-                {/* CTA / Sign out */}
                 <div className="px-3 pb-4">
                   {user ? (
                     <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={handleSignOut}>
@@ -240,8 +213,8 @@ export function Header() {
                   {avatarUrl ? (
                     <Image src={avatarUrl} alt={displayName} width={32} height={32} className="rounded-full object-cover" unoptimized />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                      <span className="text-sm font-bold text-primary-foreground">
+                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                      <span className="text-sm font-bold text-white">
                         {(displayName || displayEmail || 'U').charAt(0).toUpperCase()}
                       </span>
                     </div>
@@ -255,30 +228,28 @@ export function Header() {
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => router.push('/dashboard')}>
-                  <LayoutDashboard className="w-4 h-4 mr-2" />
-                  Dashboard
+                  <LayoutDashboard className="w-4 h-4 mr-2" />Dashboard
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push('/dashboard/browse-events')}>
+                  <Calendar className="w-4 h-4 mr-2" />Browse Events
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push('/dashboard/profile')}>
-                  <User className="w-4 h-4 mr-2" />
-                  Profile
+                  <User className="w-4 h-4 mr-2" />Profile
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => router.push('/dashboard/settings')}>
-                  <Settings className="w-4 h-4 mr-2" />
-                  Settings
+                  <Settings className="w-4 h-4 mr-2" />Settings
                 </DropdownMenuItem>
                 {isAdmin && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => router.push('/admin')}>
-                      <User className="w-4 h-4 mr-2" />
-                      Admin Panel
+                      <User className="w-4 h-4 mr-2" />Admin Panel
                     </DropdownMenuItem>
                   </>
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut}>
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Sign Out
+                  <LogOut className="w-4 h-4 mr-2" />Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

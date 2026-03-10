@@ -18,11 +18,11 @@
   /* ─── DARK THEME (default) — 704 Collective design system ─── */
 
   /* Page canvas */
-  --background: oklch(0.145 0 0);         /* #1A1A1A charcoal */
+  --background: oklch(0.20 0 0);          /* ~#2a2a2a — matches Josh's portal bg */
   --foreground: oklch(0.97 0.008 72);     /* #FAF6F0 ivory — warm white */
 
   /* Cards & surfaces — clearly lifted off the page */
-  --card: oklch(0.225 0 0);               /* more distinct from background */
+  --card: oklch(0.255 0 0);               /* clearly lifted off background */
   --card-foreground: oklch(0.97 0.008 72);
 
   /* Popovers & dropdowns — same as card */
@@ -30,8 +30,8 @@
   --popover-foreground: oklch(0.97 0.008 72);
 
   /* ─── PRIMARY = Brand Gold #C6A664 ─── */
-  --primary: oklch(0.718 0.089 72);       /* #C6A664 gold */
-  --primary-foreground: oklch(0.14 0 0);  /* near-black text on gold */
+  --primary: oklch(1 0 0);                /* #FFFFFF white */
+  --primary-foreground: oklch(0.14 0 0);  /* near-black text on white */
 
   /* Secondary — graphite surface */
   --secondary: oklch(0.24 0 0);           /* #2E2E2E graphite */
@@ -63,7 +63,7 @@
   /* Sidebar — darker than page background (correct hierarchy) */
   --sidebar: oklch(0.115 0 0);
   --sidebar-foreground: oklch(0.97 0.008 72);
-  --sidebar-primary: oklch(0.718 0.089 72);
+  --sidebar-primary: oklch(1 0 0);
   --sidebar-primary-foreground: oklch(0.14 0 0);
   --sidebar-accent: oklch(0.26 0 0);
   --sidebar-accent-foreground: oklch(0.97 0.008 72);
@@ -90,6 +90,7 @@
 
   html {
     scroll-behavior: smooth;
+    background: var(--background);
   }
 
   body {
@@ -237,6 +238,17 @@
   background-color: var(--card);
   border: 1px solid var(--border);
   border-radius: 16px;
+}
+
+/* ——— ANIMATIONS ——— */
+
+@keyframes shine {
+  from { transform: translateX(-100%) rotate(12deg); }
+  to   { transform: translateX(200%) rotate(12deg); }
+}
+
+.animate-shine {
+  animation: shine 3s ease-in-out infinite;
 }
 
 /* ——— SCROLLBAR HIDE ——— */

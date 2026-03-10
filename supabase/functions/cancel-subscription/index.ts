@@ -116,16 +116,23 @@ serve(async (req) => {
       { cancel_at_period_end: true }
     );
 
-    const cancelAt = new Date(
-      updatedSubscription.current_period_end * 1000
-    ).toISOString();
+    // In Basil API, current_period_end moved to item level
+    const itemPeriodEnd = updatedSubscription.items?.data?.[0]?.current_period_end;
+    const cancelAt = itemPeriodEnd
+      ? new Date(itemPeriodEnd * 1000).toISOString()
+      : updatedSubscription.cancel_at
+        ? new Date(updatedSubscription.cancel_at * 1000).toISOString()
+        : null;
 
     logStep("Subscription set to cancel at period end", { subscriptionId: subscription.id, cancelAt });
 
+    // Keep status as "active" — member still has access until period end.
+    // Set cancel_at_period_end flag so UI can show the pending cancellation state.
+    // Status will flip to "canceled" when Stripe fires customer.subscription.deleted.
     const { error: updateError } = await supabaseAdmin
       .from("profiles")
       .update({
-        subscription_status: "canceled",
+        cancel_at_period_end: true,
         subscription_ends_at: cancelAt,
       })
       .eq("id", userId);

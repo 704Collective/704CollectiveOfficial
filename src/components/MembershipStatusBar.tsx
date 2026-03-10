@@ -79,7 +79,7 @@ export function MembershipStatusBar({
             </Button>
           )}
           <Button variant="outline" size="sm" asChild>
-            <Link href="/settings">
+            <Link href="/dashboard/settings">
               <Settings className="w-3.5 h-3.5" />
               Settings
             </Link>

@@ -140,6 +140,9 @@ serve(async (req) => {
           if (member.stripe_customer_id) {
             profileData.stripe_customer_id = member.stripe_customer_id;
           }
+          if (member.phone) {
+            profileData.phone = member.phone.trim();
+          }
 
           const { error: profileErr } = await adminClient.from("profiles").upsert(profileData, { onConflict: "id" });
 

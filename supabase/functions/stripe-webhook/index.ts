@@ -22,7 +22,7 @@ function getSupabaseAdmin() {
   return createClient(url, key);
 }
 
-/** Find profile(s) by stripe_customer_id. Returns first match or null. */
+/** Find profile(s) by stripe_customer_id. Returns first non-deleted match or null. */
 async function findProfileByCustomerId(
   supabase: ReturnType<typeof createClient>,
   stripeCustomerId: string
@@ -30,13 +30,31 @@ async function findProfileByCustomerId(
   const { data, error } = await supabase
     .from("profiles")
     .select("*")
-    .eq("stripe_customer_id", stripeCustomerId);
+    .eq("stripe_customer_id", stripeCustomerId)
+    .is("deleted_at", null);
 
   if (error) {
     log("Profile lookup error", { error: error.message });
     return null;
   }
-  if (!data || data.length === 0) return null;
+  if (!data || data.length === 0) {
+    // Check if there's a deleted profile for logging purposes
+    const { data: deletedData } = await supabase
+      .from("profiles")
+      .select("id, deleted_at")
+      .eq("stripe_customer_id", stripeCustomerId)
+      .not("deleted_at", "is", null)
+      .limit(1);
+
+    if (deletedData && deletedData.length > 0) {
+      log("Skipping webhook — profile is soft-deleted", {
+        stripeCustomerId,
+        profileId: deletedData[0].id,
+        deletedAt: deletedData[0].deleted_at,
+      });
+    }
+    return null;
+  }
   if (data.length > 1) {
     log("WARNING: multiple profiles share stripe_customer_id", {
       stripeCustomerId,
@@ -91,6 +109,7 @@ async function handleCheckoutCompleted(
       : (session.subscription as Stripe.Subscription)?.id || null;
 
   const customerName = session.customer_details?.name || "";
+  const customerPhone = session.customer_details?.phone || null;
 
   // ── Phase A: Product Identification ──────────────────────────────────
 
@@ -155,6 +174,8 @@ async function handleCheckoutCompleted(
           subscription_status: "active",
           stripe_customer_id: stripeCustomerId,
           subscription_id: subscriptionId,
+          cancel_at_period_end: false,
+          ...(customerPhone ? { phone: customerPhone } : {}),
         })
         .eq("id", userId);
     } else if (softDeletedProfile) {
@@ -171,6 +192,8 @@ async function handleCheckoutCompleted(
           stripe_customer_id: stripeCustomerId,
           subscription_id: subscriptionId,
           member_since: new Date().toISOString(),
+          cancel_at_period_end: false,
+          ...(customerPhone ? { phone: customerPhone } : {}),
         })
         .eq("id", userId);
 
@@ -229,6 +252,8 @@ async function handleCheckoutCompleted(
           subscription_id: subscriptionId,
           stripe_customer_id: stripeCustomerId,
           member_since: new Date().toISOString(),
+          ...(customerPhone ? { phone: customerPhone } : {}),
+          member_since: new Date().toISOString(),
         },
         { onConflict: "id" }
       );
@@ -261,10 +286,7 @@ async function handleCheckoutCompleted(
 
     // ── Welcome email (only for new or reactivated) ──
     if (memberAction === "new" || memberAction === "reactivated") {
-      const suppressEmails = Deno.env.get("SUPPRESS_WELCOME_EMAILS") === "true";
-      if (suppressEmails) {
-        log("Email suppressed (SUPPRESS_WELCOME_EMAILS=true)", { email: customerEmail, memberAction });
-      } else {
+      {
         try {
           const { data: profileForEmail } = await supabase
             .from("profiles")
@@ -276,23 +298,43 @@ async function handleCheckoutCompleted(
           const calendarToken = profileForEmail?.calendar_token ?? "";
           const calendarUrl = `webcal://${supabaseUrl.replace("https://", "")}/functions/v1/calendar-feed?token=${calendarToken}`;
 
-          const sessionOrigin = session.metadata?.origin || "";
-          if (!sessionOrigin) {
-            log("WARNING: No origin in session metadata, welcome email links may be broken");
+          const PRODUCTION_URL = "https://704collective.com";
+          const sessionOrigin = session.metadata?.origin || PRODUCTION_URL;
+          if (!session.metadata?.origin) {
+            log("No origin in session metadata, using production URL fallback", { origin: sessionOrigin });
           }
 
-          await fetch(`${supabaseUrl}/functions/v1/send-email`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-            },
-            body: JSON.stringify({
-              to: customerEmail,
-              template: "welcome",
-              data: { name: customerName || "there", calendarUrl, origin: sessionOrigin },
-            }),
-          });
+          if (memberAction === "new") {
+            // New members need password setup — generate recovery link and send combined email
+            const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+              type: "recovery",
+              email: customerEmail,
+              options: { redirectTo: `${sessionOrigin}/setup-password` },
+            });
+
+            if (linkErr || !linkData?.properties?.action_link) {
+              log("Failed to generate setup link for welcome-setup, falling back to welcome", { error: linkErr?.message });
+              // Fallback to regular welcome
+              await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+                body: JSON.stringify({ to: customerEmail, template: "welcome", data: { name: customerName || "there", calendarUrl, origin: sessionOrigin } }),
+              });
+            } else {
+              await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+                body: JSON.stringify({ to: customerEmail, template: "welcome-setup", data: { name: customerName || "there", setupLink: linkData.properties.action_link, calendarUrl, origin: sessionOrigin } }),
+              });
+            }
+          } else {
+            // Reactivated members already have passwords — send regular welcome
+            await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+              body: JSON.stringify({ to: customerEmail, template: "welcome", data: { name: customerName || "there", calendarUrl, origin: sessionOrigin } }),
+            });
+          }
           log("Welcome email sent", { email: customerEmail, memberAction });
         } catch (emailErr) {
           const emailMsg = emailErr instanceof Error ? emailErr.message : String(emailErr);
@@ -350,27 +392,39 @@ async function handleInvoicePaymentSucceeded(
     return;
   }
 
+  // Skip the first invoice for a new subscription — checkout.session.completed already logged it
+  const billingReason = (invoice as any).billing_reason;
+  if (billingReason === "subscription_create") {
+    log("Skipping payment insert for subscription_create invoice (already logged by checkout)", { stripeCustomerId });
+  }
+
   const profile = await findProfileByCustomerId(supabase, stripeCustomerId);
 
   if (profile) {
     const periodEnd = invoice.lines?.data?.[0]?.period?.end;
-    const updates: Record<string, unknown> = { subscription_status: "active" };
+    const updates: Record<string, unknown> = {
+      subscription_status: "active",
+      cancel_at_period_end: false,
+    };
     if (periodEnd) {
       updates.subscription_ends_at = new Date(periodEnd * 1000).toISOString();
     }
     await supabase.from("profiles").update(updates).eq("id", profile.id);
     log("Profile updated to active", { userId: profile.id });
 
-    await insertPayment(supabase, {
-      user_id: profile.id,
-      stripe_customer_id: stripeCustomerId,
-      stripe_event_id: event.id,
-      amount: invoice.amount_paid || 0,
-      currency: invoice.currency || "usd",
-      status: "succeeded",
-      payment_type: "subscription",
-      description: "Recurring membership payment",
-    });
+    // Only log payment for renewals, not the initial subscription (checkout already logged it)
+    if (billingReason !== "subscription_create") {
+      await insertPayment(supabase, {
+        user_id: profile.id,
+        stripe_customer_id: stripeCustomerId,
+        stripe_event_id: event.id,
+        amount: invoice.amount_paid || 0,
+        currency: invoice.currency || "usd",
+        status: "succeeded",
+        payment_type: "subscription",
+        description: "Recurring membership payment",
+      });
+    }
   } else {
     log("WARNING: No profile found for invoice.payment_succeeded", { stripeCustomerId });
   }
@@ -435,7 +489,11 @@ async function handleSubscriptionDeleted(
   if (profile) {
     await supabase
       .from("profiles")
-      .update({ subscription_status: "canceled", subscription_id: null })
+      .update({
+        subscription_status: "canceled",
+        subscription_id: null,
+        cancel_at_period_end: false,
+      })
       .eq("id", profile.id);
     log("Subscription canceled", { userId: profile.id });
   } else {
@@ -478,11 +536,14 @@ async function handleSubscriptionUpdated(
     const updates: Record<string, unknown> = {
       subscription_status: mappedStatus,
       subscription_id: subscription.id,
+      cancel_at_period_end: subscription.cancel_at_period_end === true,
     };
-    if (subscription.current_period_end) {
-      updates.subscription_ends_at = new Date(
-        subscription.current_period_end * 1000
-      ).toISOString();
+    // In Basil API, current_period_end moved to item level
+    const itemPeriodEnd = subscription.items?.data?.[0]?.current_period_end;
+    if (typeof itemPeriodEnd === "number") {
+      updates.subscription_ends_at = new Date(itemPeriodEnd * 1000).toISOString();
+    } else if (typeof itemPeriodEnd === "string") {
+      updates.subscription_ends_at = new Date(itemPeriodEnd).toISOString();
     }
     await supabase.from("profiles").update(updates).eq("id", profile.id);
     log("Subscription status synced", { userId: profile.id, status: mappedStatus });

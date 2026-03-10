@@ -14,8 +14,9 @@ export function MembershipCard({ name, memberId, avatarUrl, memberSince }: Membe
     <div
       className="membership-card relative w-full max-w-sm overflow-hidden rounded-2xl"
       style={{
-        background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%)',
-        border: '1px solid rgba(198, 166, 100, 0.25)',
+        background: 'linear-gradient(145deg, #2a2a2a 0%, #333333 50%, #252525 100%)',
+        border: '1px solid rgba(198, 166, 100, 0.35)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.04) inset',
         aspectRatio: '1.586 / 1',
         padding: '24px',
       }}

@@ -12,6 +12,36 @@ const logStep = (step: string, details?: unknown) => {
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
 };
 
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+async function checkRateLimit(supabase: any, key: string, max: number): Promise<boolean> {
+  const { data } = await supabase
+    .from("rate_limits")
+    .select("attempts, window_start")
+    .eq("key", key)
+    .maybeSingle();
+
+  const now = new Date();
+  if (!data) {
+    await supabase.from("rate_limits").upsert({ key, attempts: 1, window_start: now.toISOString() }, { onConflict: "key" });
+    return false;
+  }
+
+  const windowStart = new Date(data.window_start);
+  if (now.getTime() - windowStart.getTime() > RATE_LIMIT_WINDOW_MS) {
+    await supabase.from("rate_limits").upsert({ key, attempts: 1, window_start: now.toISOString() }, { onConflict: "key" });
+    return false;
+  }
+
+  if (data.attempts >= max) {
+    return true;
+  }
+
+  await supabase.from("rate_limits").update({ attempts: data.attempts + 1 }).eq("key", key);
+  return false;
+}
+
 // Price ID for the 704 Collective Membership - $30/month
 const MEMBERSHIP_PRICE_ID = "price_1Sc9YiRzSIH3EgWL7h547P7G";
 
@@ -22,6 +52,23 @@ serve(async (req) => {
 
   try {
     logStep("Function started");
+
+    // ── Rate limiting (10 checkouts per IP per hour) ──
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const rateLimitSupabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
+    const rateLimitKey = `checkout:${clientIp}`;
+    const isRateLimited = await checkRateLimit(rateLimitSupabase, rateLimitKey, RATE_LIMIT_MAX);
+    if (isRateLimited) {
+      logStep("Rate limited", { ip: clientIp });
+      return new Response(
+        JSON.stringify({ error: "Too many requests. Please try again later." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");

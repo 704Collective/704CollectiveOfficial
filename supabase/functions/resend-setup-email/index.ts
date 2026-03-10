@@ -54,7 +54,7 @@ serve(async (req) => {
       });
     }
 
-    const { userId, template, origin: bodyOrigin } = await req.json();
+    const { userId, template, origin: bodyOrigin, calendarUrl } = await req.json();
 
     if (!userId) {
       return new Response(JSON.stringify({ error: "userId is required" }), {
@@ -93,7 +93,7 @@ serve(async (req) => {
     }
 
     const setupLink = linkData.properties.action_link;
-    const emailTemplate = template === "admin-invite" ? "admin-invite" : "password-setup";
+    const emailTemplate = template === "admin-invite" ? "admin-invite" : template === "welcome-setup" ? "welcome-setup" : "password-setup";
     const firstName = profile.full_name?.split(" ")[0] || profile.full_name || "";
 
     // Send the email
@@ -110,6 +110,7 @@ serve(async (req) => {
           name: firstName,
           setupLink,
           origin: bodyOrigin,
+          ...(calendarUrl ? { calendarUrl } : {}),
         },
       }),
     });

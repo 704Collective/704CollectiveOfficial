@@ -1,12 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Calendar, Check, ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/integrations/supabase/client';
+import { useTickets } from '@/hooks/queries';
 
 interface EventTicket {
   id: string;
@@ -28,53 +27,22 @@ interface MyEventsSectionProps {
 }
 
 export function MyEventsSection({ userId, excludeEventId }: MyEventsSectionProps) {
-  const [upcomingTickets, setUpcomingTickets] = useState<EventTicket[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [attendedCount, setAttendedCount] = useState(0);
+  const { data: rawData, isLoading } = useTickets(userId);
 
-  useEffect(() => {
-    fetchTickets();
-  }, [userId]);
-
-  const fetchTickets = async () => {
-    const { data, error } = await supabase
-      .from('tickets')
-      .select(`
-        id,
-        event_id,
-        status,
-        checked_in_at,
-        events (
-          id,
-          title,
-          start_time,
-          location_name,
-          image_url
-        )
-      `)
-      .eq('user_id', userId)
-      .eq('status', 'confirmed');
-
-    if (!error && data) {
-      const now = new Date();
-      const upcoming = data.filter(t => t.events && new Date((t.events as any).start_time) > now) as unknown as EventTicket[];
-      upcoming.sort((a, b) => new Date(a.events.start_time).getTime() - new Date(b.events.start_time).getTime());
-      const past = data.filter(t => t.events && new Date((t.events as any).start_time) <= now) as unknown as EventTicket[];
-      const attended = past.filter(t => t.checked_in_at).length;
-
-      setUpcomingTickets(upcoming);
-      setAttendedCount(attended);
-    }
-    setLoading(false);
-  };
+  const now = new Date();
+  const allTickets = (rawData ?? []) as unknown as EventTicket[];
+  const upcoming = allTickets
+    .filter(t => t.events && new Date((t.events as any).start_time) > now)
+    .sort((a, b) => new Date(a.events.start_time).getTime() - new Date(b.events.start_time).getTime());
+  const past = allTickets.filter(t => t.events && new Date((t.events as any).start_time) <= now);
+  const attendedCount = past.filter(t => t.checked_in_at).length;
 
   const displayTickets = excludeEventId
-    ? upcomingTickets.filter(t => t.event_id !== excludeEventId)
-    : upcomingTickets;
-
+    ? upcoming.filter(t => t.event_id !== excludeEventId)
+    : upcoming;
   const visibleTickets = displayTickets.slice(0, 4);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="card-elevated p-4 sm:p-5 space-y-3">
         <Skeleton className="h-5 w-40" />
@@ -104,7 +72,7 @@ export function MyEventsSection({ userId, excludeEventId }: MyEventsSectionProps
         <div className="text-center py-6">
           <Calendar className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground mb-3">No upcoming RSVPs</p>
-          <Link href="/dashboard/events" className="text-sm text-primary hover:underline">
+          <Link href="/dashboard/browse-events" className="text-sm text-primary hover:underline">
             Browse Events →
           </Link>
         </div>
@@ -138,7 +106,8 @@ export function MyEventsSection({ userId, excludeEventId }: MyEventsSectionProps
         </div>
       )}
 
-      <Link href="/dashboard/events"
+      <Link
+        href="/dashboard/browse-events"
         className="flex items-center justify-center gap-1 text-sm text-primary hover:underline pt-3 mt-1 border-t border-border"
       >
         View All Events

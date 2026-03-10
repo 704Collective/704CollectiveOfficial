@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
 
 Deno.serve(async (req) => {
@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { email, full_name, member_type, membership_duration, notes } = await req.json()
+    const { email, full_name, member_type, membership_duration, notes, phone } = await req.json()
 
     if (!email || !full_name) {
       return new Response(
@@ -95,6 +95,7 @@ Deno.serve(async (req) => {
         member_type: member_type || 'social',
         membership_duration: membership_duration || null,
         admin_notes: notes || null,
+        phone: phone || null,
         subscription_status: 'active',
         membership_override: true,
         member_since: new Date().toISOString(),

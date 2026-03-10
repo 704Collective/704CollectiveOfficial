@@ -1,22 +1,12 @@
 'use client';
-
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { format } from 'date-fns';
 import { MapPin, Clock, Check, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/integrations/supabase/client';
-
-interface HeroEvent {
-  id: string;
-  title: string;
-  start_time: string;
-  location_name: string | null;
-  image_url: string | null;
-  isRsvpd: boolean;
-}
+import { useNextEvent } from '@/hooks/queries';
 
 interface NextEventHeroProps {
   userId: string;
@@ -24,63 +14,15 @@ interface NextEventHeroProps {
 }
 
 export function NextEventHero({ userId, onEventLoaded }: NextEventHeroProps) {
-  const [event, setEvent] = useState<HeroEvent | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: event, isLoading } = useNextEvent(userId);
 
   useEffect(() => {
-    fetchNextEvent();
-  }, [userId]);
-
-  const fetchNextEvent = async () => {
-    const now = new Date().toISOString();
-
-    const { data: ticket } = await supabase
-      .from('tickets')
-      .select('event_id, events (id, title, start_time, location_name, image_url)')
-      .eq('user_id', userId)
-      .eq('status', 'confirmed')
-      .gt('events.start_time', now)
-      .order('start_time', { referencedTable: 'events', ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    const ev = ticket?.events as unknown as { id: string; title: string; start_time: string; location_name: string | null; image_url: string | null } | null;
-
-    if (ev && !Array.isArray(ticket?.events)) {
-      setEvent({
-        id: ev.id,
-        title: ev.title,
-        start_time: ev.start_time,
-        location_name: ev.location_name,
-        image_url: ev.image_url,
-        isRsvpd: true,
-      });
-      onEventLoaded?.(ev.id);
-      setLoading(false);
-      return;
+    if (!isLoading) {
+      onEventLoaded?.(event?.id ?? null);
     }
+  }, [isLoading, event?.id]);
 
-    const { data: nextEvent } = await supabase
-      .from('events')
-      .select('id, title, start_time, location_name, image_url')
-      .gt('start_time', now)
-      .order('start_time', { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    if (nextEvent) {
-      setEvent({
-        ...nextEvent,
-        isRsvpd: false,
-      });
-      onEventLoaded?.(nextEvent.id);
-    } else {
-      onEventLoaded?.(null);
-    }
-    setLoading(false);
-  };
-
-  if (loading) {
+  if (isLoading) {
     return <Skeleton className="h-48 sm:h-56 w-full rounded-xl" />;
   }
 
@@ -91,7 +33,7 @@ export function NextEventHero({ userId, onEventLoaded }: NextEventHeroProps) {
         <h3 className="font-semibold mb-1">No upcoming events</h3>
         <p className="text-sm text-muted-foreground mb-4">Check back soon for new events.</p>
         <Button variant="outline" asChild>
-          <Link href="/dashboard/events">Browse Events</Link>
+          <Link href="/dashboard/browse-events">Browse Events</Link>
         </Button>
       </div>
     );
@@ -112,7 +54,6 @@ export function NextEventHero({ userId, onEventLoaded }: NextEventHeroProps) {
           <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/5" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
-
         <div className="relative h-full flex flex-col justify-end p-5 sm:p-6">
           <p className="text-xs uppercase tracking-wider text-white/60 font-medium mb-1">Next Up</p>
           <h2 className="text-xl sm:text-2xl font-semibold text-white mb-2 line-clamp-1">{event.title}</h2>
@@ -135,9 +76,9 @@ export function NextEventHero({ userId, onEventLoaded }: NextEventHeroProps) {
                 You're Going
               </Badge>
             ) : (
-              <Button size="sm" variant="default" className="pointer-events-none">
-                RSVP Now
-              </Button>
+              <Badge className="bg-white/10 text-white border border-white/20">
+                RSVP on event page →
+              </Badge>
             )}
           </div>
         </div>

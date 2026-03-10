@@ -115,9 +115,25 @@ function rsvpConfirmationTemplate(data: {
   eventTime: string;
   eventLocation: string;
   eventUrl: string;
+  qrData?: string;
   origin?: string;
 }): { subject: string; html: string } {
   const name = data.name || "there";
+  const qrUrl = data.qrData
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.qrData)}`
+    : null;
+
+  const qrBlock = qrUrl
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;">
+<tr><td align="center" style="padding:24px 0;">
+<img src="${qrUrl}" alt="Check-in QR Code" width="200" height="200" style="display:block;border-radius:8px;" />
+</td></tr>
+<tr><td align="center">
+<p style="margin:0;font-size:13px;color:${BRAND.textMuted};">Show this QR code at check-in</p>
+</td></tr>
+</table>`
+    : "";
+
   return {
     subject: `You're in! ${data.eventName}`,
     html: baseLayout(`
@@ -132,6 +148,7 @@ function rsvpConfirmationTemplate(data: {
 </table>
 </td></tr>
 </table>
+${qrBlock}
 ${ctaButton("View Event Details", data.eventUrl)}
 <p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">Need to cancel? You can update your RSVP on the event page.</p>
 `, data.origin),
@@ -203,8 +220,57 @@ function guestFollowupTemplate(data: {
 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Thanks for coming to <strong>${data.eventName}</strong> with us! We hope you had a great time.</p>
 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">You were invited by <strong>${data.memberName}</strong> — shout out to them for bringing you along.</p>
 <p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Loved it? Join 704 Collective and get free access to all our events, plus a community of young professionals in Charlotte.</p>
-${ctaButton("Become a Member", `${base}/join`)}
+${ctaButton("Become a Member", "https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04")}
 <p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">Questions? Contact <a href="mailto:hello@704collective.com" style="color:${BRAND.accent};">hello@704collective.com</a></p>
+`, base),
+  };
+}
+
+function ticketFollowupTemplate(data: {
+  guestName: string;
+  eventName: string;
+  origin?: string;
+}): { subject: string; html: string } {
+  const guestName = data.guestName || "there";
+  const base = data.origin || "#";
+  return {
+    subject: `Thanks for joining us at ${data.eventName}!`,
+    html: baseLayout(`
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${guestName}!</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Thanks for coming to <strong>${data.eventName}</strong>! We hope you had an amazing time.</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Want to skip the ticket line next time? Members get <strong>free access to all events</strong>, plus you'll be part of Charlotte's best community for young professionals.</p>
+${ctaButton("Become a Member", "https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04")}
+<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">Questions? Contact <a href="mailto:hello@704collective.com" style="color:${BRAND.accent};">hello@704collective.com</a></p>
+`, base),
+  };
+}
+
+function welcomeSetupTemplate(data: { name: string; setupLink: string; calendarUrl?: string; origin?: string }): { subject: string; html: string } {
+  const name = data.name || "there";
+  const base = data.origin || "#";
+  return {
+    subject: "Welcome to 704 Collective! 🎉",
+    html: baseLayout(`
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name}!</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Welcome to 704 Collective — Charlotte's community for young professionals. Your membership is active!</p>
+<p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">First things first — set up your password so you can access your account:</p>
+${ctaButton("Set Your Password", data.setupLink)}
+<p style="margin:0 0 28px;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">This link expires in 1 hour. If it's expired, you can request a new one from the setup page.</p>
+<p style="margin:0 0 12px;font-size:15px;font-weight:600;color:${BRAND.text};">Once you're set up, here's how to get started:</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+<tr><td style="padding:8px 0;font-size:15px;color:${BRAND.textSecondary};">
+<span style="color:${BRAND.accent};font-weight:600;">1.</span>&nbsp;
+<a href="${base}/events" style="color:${BRAND.accent};text-decoration:underline;">RSVP to an upcoming event</a>
+</td></tr>
+${data.calendarUrl ? `<tr><td style="padding:8px 0;font-size:15px;color:${BRAND.textSecondary};">
+<span style="color:${BRAND.accent};font-weight:600;">2.</span>&nbsp;
+<a href="${data.calendarUrl}" style="color:${BRAND.accent};text-decoration:underline;">Subscribe to the event calendar</a>
+</td></tr>` : ""}
+<tr><td style="padding:8px 0;font-size:15px;color:${BRAND.textSecondary};">
+<span style="color:${BRAND.accent};font-weight:600;">${data.calendarUrl ? "3" : "2"}.</span>&nbsp;
+<a href="${base}/settings" style="color:${BRAND.accent};text-decoration:underline;">Set up your profile</a>
+</td></tr>
+</table>
 `, base),
   };
 }
@@ -239,6 +305,40 @@ ${ctaButton("Go to Admin Dashboard", dashboardUrl)}
   };
 }
 
+function eventChangeTemplate(data: {
+  name: string;
+  eventName: string;
+  oldDate: string;
+  oldTime: string;
+  newDate: string;
+  newTime: string;
+  newLocation?: string;
+  eventUrl: string;
+  origin?: string;
+}): { subject: string; html: string } {
+  const name = data.name || "there";
+  return {
+    subject: `📅 Schedule Change: ${data.eventName}`,
+    html: baseLayout(`
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name}!</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Heads up — <strong>${data.eventName}</strong> has been rescheduled.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:${BRAND.color};border-radius:8px;border:1px solid ${BRAND.border};">
+<tr><td style="padding:20px 24px;">
+<p style="margin:0 0 12px;font-size:13px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:${BRAND.textMuted};">Updated Schedule</p>
+<table role="presentation" cellpadding="0" cellspacing="0">
+<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textMuted};text-decoration:line-through;">📅&nbsp;&nbsp;${data.oldDate} at ${data.oldTime}</td></tr>
+<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.accent};font-weight:600;">📅&nbsp;&nbsp;${data.newDate} at ${data.newTime}</td></tr>
+${data.newLocation ? `<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">📍&nbsp;&nbsp;${data.newLocation}</td></tr>` : ""}
+</table>
+</td></tr>
+</table>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Your RSVP is still confirmed — no action needed unless the new time doesn't work for you.</p>
+${ctaButton("View Event Details", data.eventUrl)}
+<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">Can't make it anymore? You can cancel your RSVP on the event page.</p>
+`, data.origin),
+  };
+}
+
 // ── template router ──────────────────────────────────────────────────────
 
 function getTemplate(template: string, data: Record<string, unknown>): { subject: string; html: string } {
@@ -247,6 +347,8 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
       return welcomeTemplate(data as { name: string; calendarUrl: string; origin?: string });
     case "password-setup":
       return passwordSetupTemplate(data as { name: string; setupLink: string });
+    case "welcome-setup":
+      return welcomeSetupTemplate(data as { name: string; setupLink: string; calendarUrl?: string; origin?: string });
     case "rsvp-confirmation":
       return rsvpConfirmationTemplate(data as {
         name: string;
@@ -256,9 +358,19 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
         eventLocation: string;
         eventUrl: string;
       });
+    case "event-change":
+      return eventChangeTemplate(data as {
+        name: string; eventName: string;
+        oldDate: string; oldTime: string; newDate: string; newTime: string;
+        newLocation?: string; eventUrl: string; origin?: string;
+      });
     case "guest-followup":
       return guestFollowupTemplate(data as {
         guestName: string; memberName: string; eventName: string; origin?: string;
+      });
+    case "ticket-followup":
+      return ticketFollowupTemplate(data as {
+        guestName: string; eventName: string; origin?: string;
       });
     case "admin-invite":
       return adminInviteTemplate(data as { name: string; setupLink?: string | null; loginUrl?: string });
@@ -290,31 +402,55 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-    if (token !== serviceRoleKey) {
-      // Not the service role key — validate as user JWT
-      const supabase = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_ANON_KEY")!,
-        { global: { headers: { Authorization: authHeader } } }
-      );
-      const { error } = await supabase.auth.getClaims(token);
-      if (error) {
-        log("Auth failed", { error: error.message });
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-    }
+    const isServiceRole = token === serviceRoleKey;
 
-    // ── Parse body ──
-    const { to, template, data } = await req.json();
+    // Templates that require service role (internal/admin only)
+    const restrictedTemplates = ["admin-invite", "welcome-setup", "welcome", "password-setup", "event-change", "guest-followup", "ticket-followup", "guest-pass"];
+
+    // ── Parse body first so we can check template ──
+    const { to, template, data, skipCc } = await req.json();
 
     if (!to || !template) {
       return new Response(JSON.stringify({ error: "Missing 'to' or 'template'" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    if (!isServiceRole) {
+      // Validate as user JWT
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      const { data: claimsData, error } = await supabase.auth.getClaims(token);
+      if (error || !claimsData?.claims) {
+        log("Auth failed", { error: error?.message });
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Regular users can only send rsvp-confirmation to their own email
+      if (restrictedTemplates.includes(template)) {
+        log("Restricted template requested by regular user", { template, userId: claimsData.claims.sub });
+        return new Response(JSON.stringify({ error: "Forbidden: insufficient permissions for this template" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // For rsvp-confirmation, verify the "to" matches the caller's email
+      const userEmail = claimsData.claims.email;
+      if (template === "rsvp-confirmation" && to.toLowerCase() !== String(userEmail).toLowerCase()) {
+        log("User tried to send rsvp-confirmation to another email", { to, userEmail });
+        return new Response(JSON.stringify({ error: "Forbidden: can only send to your own email" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     log("Sending email", { to, template });
@@ -334,6 +470,9 @@ serve(async (req) => {
       body: JSON.stringify({
         from: "704 Collective <hello@704collective.com>",
         to: [to],
+        ...(!skipCc && (template === "welcome" || template === "password-setup" || template === "welcome-setup")
+          ? { cc: ["hello@704collective.com"] }
+          : {}),
         subject,
         html,
       }),

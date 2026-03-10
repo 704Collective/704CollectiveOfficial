@@ -52,6 +52,16 @@ serve(async (req) => {
       throw new Error(`Payment not completed. Status: ${session.payment_status}`);
     }
 
+    // Verify event_id matches what was passed to checkout
+    const sessionEventId = session.metadata?.event_id;
+    if (!sessionEventId || sessionEventId !== event_id) {
+      logStep("Event ID mismatch", { expected: event_id, actual: sessionEventId });
+      return new Response(
+        JSON.stringify({ error: "Session does not match this event" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
+      );
+    }
+
     // Check for duplicate ticket (idempotency via stripe_payment_id)
     const paymentId = session.payment_intent as string;
     const { data: existingTicket } = await supabaseClient
@@ -116,6 +126,62 @@ serve(async (req) => {
 
     logStep("Ticket created successfully", { ticketId: ticket.id });
 
+    // ── Send confirmation email with QR code ──
+    try {
+      const { data: eventData } = await supabaseClient
+        .from("events")
+        .select("title, start_time, end_time, location_name")
+        .eq("id", event_id)
+        .maybeSingle();
+
+      if (eventData) {
+        const recipientEmail = userId
+          ? (await supabaseClient.from("profiles").select("email, full_name").eq("id", userId).maybeSingle()).data?.email
+          : guestEmail;
+
+        const recipientName = userId
+          ? (await supabaseClient.from("profiles").select("full_name").eq("id", userId).maybeSingle()).data?.full_name || "there"
+          : guestName || "there";
+
+        if (recipientEmail) {
+          const eventDate = new Date(eventData.start_time);
+          const endDate = new Date(eventData.end_time);
+          const formatDate = (d: Date) => d.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/New_York" });
+          const formatTime = (d: Date) => d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
+
+          const origin = session.metadata?.origin || "https://704collective.com";
+          // For members, QR = user_id; for guests, QR = TKT-<ticket_id> (prefix so scanner knows it's a ticket)
+          const qrData = userId || `TKT-${ticket.id}`;
+
+          const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+          await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            },
+            body: JSON.stringify({
+              to: recipientEmail,
+              template: "rsvp-confirmation",
+              data: {
+                name: recipientName,
+                eventName: eventData.title,
+                eventDate: formatDate(eventDate),
+                eventTime: `${formatTime(eventDate)} – ${formatTime(endDate)}`,
+                eventLocation: eventData.location_name || "TBA",
+                eventUrl: `${origin}/events/${event_id}`,
+                qrData,
+              },
+            }),
+          });
+          logStep("Confirmation email sent", { email: recipientEmail });
+        }
+      }
+    } catch (emailErr) {
+      const msg = emailErr instanceof Error ? emailErr.message : String(emailErr);
+      logStep("Confirmation email failed (non-blocking)", { error: msg });
+    }
+
     // Log payment to payments table
     const { data: existingPayment } = await supabaseClient
       .from("payments")
@@ -125,7 +191,7 @@ serve(async (req) => {
 
     if (!existingPayment) {
       // Look up event title for description
-      const { data: eventData } = await supabaseClient
+      const { data: eventDataForPayment } = await supabaseClient
         .from("events")
         .select("title")
         .eq("id", event_id)
@@ -145,7 +211,7 @@ serve(async (req) => {
           currency: session.currency || "usd",
           status: "succeeded",
           payment_type: "ticket",
-          description: `Event ticket: ${eventData?.title || "Unknown event"}`,
+          description: `Event ticket: ${eventDataForPayment?.title || "Unknown event"}`,
           metadata: { session_id: session.id, event_id, ticket_id: ticket.id },
         });
 

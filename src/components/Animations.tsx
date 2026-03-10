@@ -131,15 +131,18 @@ export function StaggerItem({
   children,
   className = "",
   style = {},
+  onClick,
 }: {
   children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
+  onClick?: React.MouseEventHandler<HTMLDivElement>;
 }) {
   return (
     <motion.div
       className={className}
       style={style}
+      onClick={onClick}
       variants={{
         hidden: { opacity: 0, y: 25 },
         visible: {

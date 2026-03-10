@@ -45,7 +45,7 @@ export default function ScrollToTop() {
       onMouseEnter={(e) => {
         e.currentTarget.style.backgroundColor = "rgba(198, 166, 100, 0.12)";
         e.currentTarget.style.borderColor = "rgba(198, 166, 100, 0.3)";
-        e.currentTarget.style.color = "#C6A664";
+        e.currentTarget.style.color = "#FFFFFF";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.06)";

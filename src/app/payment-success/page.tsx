@@ -183,7 +183,7 @@ function PaymentSuccess() {
                   </Link>
                 </Button>
                 <Button variant="outline" className="w-full" asChild>
-                  <Link href="/dashboard/events">Browse More Events</Link>
+                  <Link href="/events">Browse More Events</Link>
                 </Button>
               </>
             ) : user ? (

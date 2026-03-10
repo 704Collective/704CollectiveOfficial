@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { DashboardNav } from '@/components/DashboardNav';
@@ -11,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,8 +17,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 
 export default function ProfilePage() {
-  const router = useRouter();
-  const { user, profile, isActiveMember, loading: authLoading } = useAuth();
+  const { user, profile, isActiveMember} = useAuth();
   usePageTitle('My Profile');
 
   const [fullName, setFullName] = useState('');
@@ -28,12 +25,6 @@ export default function ProfilePage() {
   const [phone, setPhone] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, authLoading, router]);
 
   useEffect(() => {
     if (profile) {
@@ -66,17 +57,7 @@ export default function ProfilePage() {
     setSaving(false);
   };
 
-  if (authLoading || !user) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-64 rounded-xl" />
-        </main>
-      </div>
-    );
-  }
+  if (!user || !profile) return null;
 
   const p = profile as any;
   const memberSince = p?.member_since
@@ -87,7 +68,7 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         <DashboardNav />
 
         <div>

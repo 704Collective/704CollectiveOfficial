@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 async function refreshAccessToken(
@@ -76,9 +76,8 @@ async function syncMembers(supabase: any, accessToken: string) {
         email: profile.email,
         firstname: firstName,
         lastname: lastName,
+        lead_type: "Social Member",
       };
-      if (profile.member_type) properties.member_type = profile.member_type;
-      if (profile.subscription_status) properties.subscription_status = profile.subscription_status;
 
       if (profile.hubspot_contact_id) {
         // Update existing contact
@@ -101,34 +100,38 @@ async function syncMembers(supabase: any, accessToken: string) {
             .from("profiles")
             .update({ hubspot_contact_id: result.id })
             .eq("id", profile.id);
-        } catch {
-          // Contact may already exist, search by email
-          const searchResult = await hubspotRequest(
-            accessToken,
-            "POST",
-            "/crm/v3/objects/contacts/search",
-            {
-              filterGroups: [
-                {
-                  filters: [
-                    { propertyName: "email", operator: "EQ", value: profile.email },
-                  ],
-                },
-              ],
-            }
-          );
-          if (searchResult.results?.length > 0) {
-            const contactId = searchResult.results[0].id;
-            await hubspotRequest(
+        } catch (createErr: any) {
+          // Contact may already exist — search by email and update
+          try {
+            const searchResult = await hubspotRequest(
               accessToken,
-              "PATCH",
-              `/crm/v3/objects/contacts/${contactId}`,
-              { properties }
+              "POST",
+              "/crm/v3/objects/contacts/search",
+              {
+                filterGroups: [
+                  {
+                    filters: [
+                      { propertyName: "email", operator: "EQ", value: profile.email },
+                    ],
+                  },
+                ],
+              }
             );
-            await supabase
-              .from("profiles")
-              .update({ hubspot_contact_id: contactId })
-              .eq("id", profile.id);
+            if (searchResult.results?.length > 0) {
+              const contactId = searchResult.results[0].id;
+              await hubspotRequest(
+                accessToken,
+                "PATCH",
+                `/crm/v3/objects/contacts/${contactId}`,
+                { properties }
+              );
+              await supabase
+                .from("profiles")
+                .update({ hubspot_contact_id: contactId })
+                .eq("id", profile.id);
+            }
+          } catch (searchErr) {
+            console.error(`Failed search/update for profile ${profile.id}:`, searchErr);
           }
         }
       }
@@ -332,6 +335,76 @@ async function syncEventActivity(supabase: any, accessToken: string) {
   }
   return logged;
 }
+async function syncGuestTicketBuyers(supabase: any, accessToken: string) {
+  // Get guest ticket buyers (non-members) - they have guest_email but no user_id
+  const { data: guestTickets, error } = await supabase
+    .from("tickets")
+    .select("id, guest_email, guest_name, event_id")
+    .is("user_id", null)
+    .not("guest_email", "is", null)
+    .eq("status", "confirmed");
+
+  if (error || !guestTickets || guestTickets.length === 0) return 0;
+
+  // Deduplicate by email
+  const uniqueGuests = new Map<string, { email: string; name: string }>();
+  for (const t of guestTickets) {
+    if (!uniqueGuests.has(t.guest_email)) {
+      uniqueGuests.set(t.guest_email, {
+        email: t.guest_email,
+        name: t.guest_name || "",
+      });
+    }
+  }
+
+  let synced = 0;
+  for (const [, guest] of uniqueGuests) {
+    try {
+      const nameParts = guest.name.split(" ");
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
+      const properties: Record<string, string> = {
+        email: guest.email,
+        firstname: firstName,
+        lastname: lastName,
+        lead_type: "Social Prospect",
+      };
+
+      try {
+        await hubspotRequest(accessToken, "POST", "/crm/v3/objects/contacts", { properties });
+      } catch {
+        // Contact may already exist — search and update
+        try {
+          const searchResult = await hubspotRequest(
+            accessToken,
+            "POST",
+            "/crm/v3/objects/contacts/search",
+            {
+              filterGroups: [
+                { filters: [{ propertyName: "email", operator: "EQ", value: guest.email }] },
+              ],
+            }
+          );
+          if (searchResult.results?.length > 0) {
+            await hubspotRequest(
+              accessToken,
+              "PATCH",
+              `/crm/v3/objects/contacts/${searchResult.results[0].id}`,
+              { properties }
+            );
+          }
+        } catch (searchErr) {
+          console.error(`Failed search/update for guest ${guest.email}:`, searchErr);
+        }
+      }
+      synced++;
+    } catch (err) {
+      console.error(`Failed to sync guest ${guest.email}:`, err);
+    }
+  }
+  return synced;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -432,12 +505,14 @@ Deno.serve(async (req) => {
     const membersSynced = await syncMembers(supabase, accessToken);
     const prospectsSynced = await syncProspects(supabase, accessToken);
     const sponsorsSynced = await syncSponsors(supabase, accessToken);
+    const guestBuyersSynced = await syncGuestTicketBuyers(supabase, accessToken);
     const activitiesLogged = await syncEventActivity(supabase, accessToken);
 
     const syncSummary = {
       members: membersSynced,
       prospects: prospectsSynced,
       sponsors: sponsorsSynced,
+      guest_buyers: guestBuyersSynced,
       activities: activitiesLogged,
       synced_at: new Date().toISOString(),
     };
@@ -452,6 +527,7 @@ Deno.serve(async (req) => {
             members: membersSynced,
             prospects: prospectsSynced,
             sponsors: sponsorsSynced,
+            guest_buyers: guestBuyersSynced,
             activities: activitiesLogged,
           },
         },

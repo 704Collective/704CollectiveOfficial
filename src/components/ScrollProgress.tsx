@@ -18,7 +18,7 @@ export default function ScrollProgress() {
         left: 0,
         right: 0,
         height: "2px",
-        background: "linear-gradient(90deg, #C6A664, #D4B876)",
+        background: "linear-gradient(90deg, rgba(255,255,255,0.6), rgba(255,255,255,0.9))",
         transformOrigin: "0%",
         scaleX,
         zIndex: 100,

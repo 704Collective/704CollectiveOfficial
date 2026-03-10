@@ -1,10 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const logStep = (step: string, details?: unknown) => {
@@ -35,7 +35,7 @@ serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
 
-    // Use anon key + user's auth header for proper JWT validation on cookie-based auth
+    // Use anon key + user's auth header for proper JWT validation on Lovable Cloud (ES256 tokens)
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
@@ -91,9 +91,8 @@ serve(async (req) => {
       logStep("Profile fetch error", { message: profileError.message });
     }
 
-    // If membership_override is true AND no Stripe customer, skip sync (truly admin-managed).
-    // If they have a stripe_customer_id, proceed with normal sync even if override is set.
-    if (profile?.membership_override === true && !profile?.stripe_customer_id) {
+    // If membership_override is true, always skip Stripe sync — admin controls this member's status.
+    if (profile?.membership_override === true) {
       logStep("Membership override enabled; skipping Stripe sync", {
         currentStatus: profile.subscription_status,
       });
@@ -164,14 +163,36 @@ serve(async (req) => {
     const hasActiveSub = subscriptions.data.length > 0;
     let productId: string | null = null;
     let subscriptionEnd: string | null = null;
-    let subscriptionStatus = "inactive";
+    // If user was previously active but no longer has an active sub, mark as "canceled"
+    const previousStatus = profile?.subscription_status;
+    let subscriptionStatus = previousStatus === "active" ? "canceled" : (previousStatus || "inactive");
 
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
-      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+
+      // In Stripe Basil API (2025-03-31+), current_period_end moved from
+      // subscription level to subscription item level.
+      const itemPeriodEnd = subscription.items?.data?.[0]?.current_period_end;
+      logStep("Raw item-level current_period_end", { itemPeriodEnd, type: typeof itemPeriodEnd });
+
+      if (typeof itemPeriodEnd === "number") {
+        subscriptionEnd = new Date(itemPeriodEnd * 1000).toISOString();
+      } else if (typeof itemPeriodEnd === "string") {
+        subscriptionEnd = new Date(itemPeriodEnd).toISOString();
+      }
+      
       productId = subscription.items.data[0].price.product as string;
       subscriptionStatus = "active";
-      logStep("Active subscription found", { subscriptionId: subscription.id, productId, endDate: subscriptionEnd });
+
+      // Sync cancel_at_period_end flag from Stripe
+      const isCancelingAtPeriodEnd = subscription.cancel_at_period_end === true;
+
+      logStep("Active subscription found", {
+        subscriptionId: subscription.id,
+        productId,
+        endDate: subscriptionEnd,
+        cancelAtPeriodEnd: isCancelingAtPeriodEnd,
+      });
     } else {
       logStep("No active subscription found");
     }
@@ -181,6 +202,15 @@ serve(async (req) => {
       subscription_status: subscriptionStatus,
       subscription_ends_at: subscriptionEnd,
     };
+
+    // Sync cancel_at_period_end flag
+    if (hasActiveSub) {
+      const subscription = subscriptions.data[0];
+      updateData.cancel_at_period_end = subscription.cancel_at_period_end === true;
+    } else {
+      // No active sub = no pending cancel
+      updateData.cancel_at_period_end = false;
+    }
 
     // Set member_since if this is a new active subscription
     if (hasActiveSub) {
