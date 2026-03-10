@@ -138,7 +138,7 @@ export function AdminMemberProfileSheet({
       .eq('user_id', member.id)
       .order('created_at', { ascending: false })
       .limit(20)
-      .then(({ data }) => { if (data) setTickets(data as Ticket[]); })
+      .then(({ data }) => { if (data) setTickets(data as unknown as Ticket[]); })
       .finally(() => setTicketsLoading(false));
   }, [activeTab, member?.id]);
 
