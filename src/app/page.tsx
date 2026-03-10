@@ -15,7 +15,6 @@ import {
   WordReveal,
 } from "@/components/Animations";
 import TiltCard from "@/components/TiltCard";
-import HeroDots from "@/components/HeroDots";
 import GradientShift from "@/components/GradientShift";
 
 export const metadata: Metadata = {
@@ -79,28 +78,43 @@ export default function Home() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: "#000000",
             position: "relative",
             overflow: "hidden",
           }}
         >
-          {/* Subtle radial glow */}
+          {/* Background photo */}
           <div
             style={{
               position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: "800px",
-              height: "800px",
-              background:
-                "radial-gradient(circle, rgba(255,255,255,0.02) 0%, transparent 70%)",
-              pointerEvents: "none",
+              inset: 0,
+              backgroundImage: "url('/hero-home.jpg')",
+              backgroundSize: "cover",
+              backgroundPosition: "center 30%",
+              transform: "scale(1.04)",
+              transition: "transform 8s ease-out",
             }}
           />
 
-          {/* Animated dot grid */}
-          <HeroDots />
+          {/* Dark overlay — bottom heavy so text pops */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.70) 60%, rgba(0,0,0,0.85) 100%)",
+            }}
+          />
+
+          {/* Gold vignette edge */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.4) 100%)",
+              pointerEvents: "none",
+            }}
+          />
 
           <div
             style={{
