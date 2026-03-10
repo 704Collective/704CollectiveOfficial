@@ -101,10 +101,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabaseRef.current.auth.onAuthStateChange(async (event, session) => {
+      console.log('[Auth] onAuthStateChange fired:', event, 'session:', !!session, 'mounted:', mounted);
       if (!mounted) return;
 
       if (session?.user) {
+        console.log('[Auth] fetching profile for:', session.user.id);
         const { profile, isAdmin, isActiveMember } = await fetchProfile(session.user.id);
+        console.log('[Auth] fetchProfile result:', { profile: !!profile, isAdmin, isActiveMember });
         if (mounted) {
           setState({
             user: session.user,
