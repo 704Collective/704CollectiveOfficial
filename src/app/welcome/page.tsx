@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import Nav from '@/components/Nav';
 
 type Status = 'loading' | 'success' | 'error';
 
-export default function WelcomePage() {
+function WelcomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
@@ -160,5 +160,13 @@ export default function WelcomePage() {
         @keyframes progress { from { width: 0% } to { width: 100% } }
       `}</style>
     </>
+  );
+}
+
+export default function WelcomePage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', backgroundColor: '#0d0d0d' }} />}>
+      <WelcomeContent />
+    </Suspense>
   );
 }
