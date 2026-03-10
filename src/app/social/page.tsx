@@ -20,7 +20,6 @@ import {
   WordReveal,
 } from '@/components/Animations';
 import TiltCard from '@/components/TiltCard';
-import HeroDots from '@/components/HeroDots';
 import GradientShift from '@/components/GradientShift';
 
 /* ─── Types ─── */
@@ -168,24 +167,43 @@ export default function SocialPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#000000',
             position: 'relative',
             overflow: 'hidden',
           }}
         >
+          {/* Background photo */}
           <div
             style={{
               position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: '800px',
-              height: '800px',
-              background: 'radial-gradient(circle, rgba(255,255,255,0.02) 0%, transparent 70%)',
+              inset: 0,
+              backgroundImage: "url('/social-hero.jpg')",
+              backgroundSize: 'cover',
+              backgroundPosition: 'center 30%',
+              transform: 'scale(1.04)',
+              transition: 'transform 8s ease-out',
+            }}
+          />
+
+          {/* Dark overlay — slightly lighter than business, social is warmer */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background:
+                'linear-gradient(to bottom, rgba(0,0,0,0.50) 0%, rgba(0,0,0,0.65) 60%, rgba(0,0,0,0.82) 100%)',
+            }}
+          />
+
+          {/* Vignette */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background:
+                'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.35) 100%)',
               pointerEvents: 'none',
             }}
           />
-          <HeroDots />
 
           <div
             style={{
