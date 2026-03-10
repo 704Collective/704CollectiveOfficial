@@ -199,8 +199,8 @@ export default function SetupPassword() {
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       className={errors.password ? 'border-destructive pr-10' : 'pr-10'}
+                      minLength={8}
                     />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
@@ -215,6 +215,7 @@ export default function SetupPassword() {
                     value={confirm}
                     onChange={e => setConfirm(e.target.value)}
                     className={errors.confirm ? 'border-destructive' : ''}
+                    minLength={8}
                   />
                   {errors.confirm && <p className="text-xs text-destructive">{errors.confirm}</p>}
                 </div>

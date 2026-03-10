@@ -289,7 +289,7 @@ export default function PartnerSignup() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={6}
+                  minLength={8}
                   style={inputStyle}
                   onFocus={handleFocus}
                   onBlur={handleBlur}
