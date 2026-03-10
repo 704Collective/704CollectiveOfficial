@@ -49,9 +49,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isActiveMember: false,
   });
 
-  const supabase = createClient();
-  // Keep supabase stable across renders
-  const supabaseRef = useRef(supabase);
+  // createClient() called once and stored in ref — never recreated
+  const supabaseRef = useRef(createClient());
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
@@ -93,29 +92,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Initial session check — runs once at app startup
-    supabaseRef.current.auth.getSession().then(async ({ data: { session } }) => {
+    let mounted = true;
+
+    // onAuthStateChange fires INITIAL_SESSION synchronously on mount —
+    // this is the single source of truth. No separate getSession() needed.
+    // Having both caused a race where INITIAL_SESSION fired first with a
+    // null session, triggering a redirect loop on normal (non-hard) refresh.
+    const {
+      data: { subscription },
+    } = supabaseRef.current.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+
       if (session?.user) {
         const { profile, isAdmin, isActiveMember } = await fetchProfile(session.user.id);
-        setState({ user: session.user, profile, session, loading: false, isAdmin, isActiveMember });
+        if (mounted) {
+          setState({
+            user: session.user,
+            profile,
+            session,
+            loading: false,
+            isAdmin,
+            isActiveMember,
+          });
+        }
       } else {
-        setState((prev) => ({ ...prev, loading: false }));
+        if (mounted) {
+          setState({
+            user: null,
+            profile: null,
+            session: null,
+            loading: false,
+            isAdmin: false,
+            isActiveMember: false,
+          });
+        }
       }
     });
 
-    // Auth state listener — handles sign in/out/token refresh
-    const { data: { subscription } } = supabaseRef.current.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
-          const { profile, isAdmin, isActiveMember } = await fetchProfile(session.user.id);
-          setState({ user: session.user, profile, session, loading: false, isAdmin, isActiveMember });
-        } else {
-          setState({ user: null, profile: null, session: null, loading: false, isAdmin: false, isActiveMember: false });
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [fetchProfile]);
 
   const signIn = async (email: string, password: string) => {
@@ -148,7 +165,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ ...state, signIn, signUp, signInWithGoogle, signOut, resetPassword }}>
+    <AuthContext.Provider
+      value={{ ...state, signIn, signUp, signInWithGoogle, signOut, resetPassword }}
+    >
       {children}
     </AuthContext.Provider>
   );
