@@ -16,6 +16,8 @@ interface Profile {
   member_since?: string;
   calendar_token?: string;
   subscription_end?: string;
+  subscription_ends_at?: string | null;
+  cancel_at_period_end?: boolean;
 }
 
 interface AuthState {
@@ -48,8 +50,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   const supabase = createClient();
+  // Keep supabase stable across renders
   const supabaseRef = useRef(supabase);
-  const initializedRef = useRef(false);
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
@@ -59,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .select('*')
           .eq('id', userId)
           .is('deleted_at', null)
-          .single(),
+          .maybeSingle(),
         supabaseRef.current
           .from('user_roles')
           .select('role')
@@ -91,28 +93,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Safety net — if getSession hangs for any reason, stop loading after 3s
-    const timeout = setTimeout(() => {
-      setState((prev) => prev.loading ? { ...prev, loading: false } : prev);
-    }, 3000);
-
     // Initial session check — runs once at app startup
     supabaseRef.current.auth.getSession().then(async ({ data: { session } }) => {
-      clearTimeout(timeout);
       if (session?.user) {
         const { profile, isAdmin, isActiveMember } = await fetchProfile(session.user.id);
         setState({ user: session.user, profile, session, loading: false, isAdmin, isActiveMember });
       } else {
         setState((prev) => ({ ...prev, loading: false }));
       }
-      initializedRef.current = true;
     });
 
-    // Auth state listener — skip INITIAL_SESSION since getSession() already handled it
+    // Auth state listener — handles sign in/out/token refresh
     const { data: { subscription } } = supabaseRef.current.auth.onAuthStateChange(
       async (event, session) => {
-        if (event === 'INITIAL_SESSION') return;
-
         if (session?.user) {
           const { profile, isAdmin, isActiveMember } = await fetchProfile(session.user.id);
           setState({ user: session.user, profile, session, loading: false, isAdmin, isActiveMember });

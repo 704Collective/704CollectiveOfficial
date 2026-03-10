@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  LayoutDashboard, Calendar, Users, QrCode, ClipboardList, Settings,
+  LayoutDashboard, Calendar, Users, QrCode, ClipboardList, Settings, BarChart2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminSection } from '@/components/AdminLayout';
@@ -74,6 +74,7 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
             { icon: LayoutDashboard, label: 'Overview', section: 'dashboard' as AdminSection },
             { icon: Calendar, label: 'Events', section: 'events' as AdminSection },
             { icon: Users, label: 'Members', section: 'members' as AdminSection },
+            { icon: BarChart2, label: 'Financials', section: 'financials' as AdminSection },
           ].map((item) => {
             const isActive = isOnDashboard && activeSection === item.section;
             return (

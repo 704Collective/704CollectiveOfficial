@@ -576,8 +576,9 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                           {isUpcoming ? <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20 text-xs">Upcoming</Badge> : <Badge variant="secondary" className="text-xs">Past</Badge>}
                         </div>
                       </div>
-                      <div className="flex items-center justify-end mt-2">
+                      <div className="flex items-center justify-end mt-2 gap-2">
                         <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); openEdit(event); }}><Pencil className="w-3 h-3 mr-1" /> Edit</Button>
+                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={e => { e.stopPropagation(); setDeleteId(event.id); setDeleteDialogOpen(true); }}><Trash2 className="w-3 h-3 mr-1" /> Delete</Button>
                       </div>
                     </CardContent>
                   </Card>

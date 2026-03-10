@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { QuickAddMemberDialog } from '@/components/admin/QuickAddMemberDialog';
 import { DeleteConfirmDialog } from '@/components/admin/DeleteConfirmDialog';
+import { AdminMemberProfileSheet } from '@/components/admin/AdminMemberProfileSheet';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -124,6 +125,8 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
   const [resendingWelcome, setResendingWelcome] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [page, setPage] = useState(1);
+  const [profileSheetOpen, setProfileSheetOpen] = useState(false);
+  const [profileMember, setProfileMember] = useState<Member | null>(null);
 
   const activeFilter = (searchParams.get('filter') as FilterType) || 'all';
 
@@ -201,6 +204,9 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
     setEditingMemberIsAdmin(adminUserIds.has(member.id));
     setForm({ full_name: member.full_name || '', subscription_status: member.subscription_status || 'inactive', membership_override: member.membership_override ?? false });
     setDialogOpen(true);
+    // Also open the CRM profile sheet
+    setProfileMember(member);
+    setProfileSheetOpen(true);
   };
 
   const handleSubmit = () => {
@@ -409,8 +415,9 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
                 <SelectContent>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="canceled">Canceled</SelectItem>
                   <SelectItem value="past_due">Past Due</SelectItem>
+                  <SelectItem value="trialing">Trialing</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -478,6 +485,15 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
       <DeleteConfirmDialog open={showRemoveAdminConfirm} onOpenChange={setShowRemoveAdminConfirm} onConfirm={() => editingMember && removeAdminMutation.mutate(editingMember.id)} title="Remove Admin Access" description={`Are you sure you want to remove admin access for "${editingMember?.full_name || editingMember?.email}"?`} loading={removeAdminMutation.isPending} />
       <DeleteConfirmDialog open={showDeactivateConfirm} onOpenChange={setShowDeactivateConfirm} onConfirm={() => editingMember && deactivateMutation.mutate(editingMember.id)} title="Deactivate Member" description={`Are you sure you want to deactivate "${editingMember?.full_name || editingMember?.email}"? They will no longer be able to log in.`} loading={deactivateMutation.isPending} />
       <QuickAddMemberDialog open={quickAddOpen} onOpenChange={setQuickAddOpen} onSuccess={invalidateMembers} />
+
+      {/* 5-tab CRM Profile Sheet */}
+      <AdminMemberProfileSheet
+        member={profileMember}
+        adminUserIds={adminUserIds}
+        open={profileSheetOpen}
+        onOpenChange={setProfileSheetOpen}
+        onMemberUpdated={invalidateMembers}
+      />
     </div>
   );
 }

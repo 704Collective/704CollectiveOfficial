@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Calendar, Users, ScanLine, CheckSquare, Settings } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, ScanLine, CheckSquare, Settings, BarChart2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminSection } from '@/components/AdminLayout';
 
@@ -21,6 +21,7 @@ const NAV_ITEMS: NavItem[] = [
   { icon: LayoutDashboard, label: 'Overview', section: 'dashboard' },
   { icon: Calendar,        label: 'Events',   section: 'events'    },
   { icon: Users,           label: 'Members',  section: 'members'   },
+  { icon: BarChart2,       label: 'Finance',  section: 'financials' },
   { icon: ScanLine,        label: 'Check-in', section: 'checkin'   },
   { icon: CheckSquare,     label: 'Tasks',    section: 'tasks'     },
   { icon: Settings,        label: 'Settings', href: '/admin/settings' },

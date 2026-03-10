@@ -2,16 +2,18 @@
 
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { Check, Crown, CreditCard, Loader2, Settings } from 'lucide-react';
+import { Check, Crown, CreditCard, Loader2, Settings, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { WalletButtons } from '@/components/WalletButtons';
 
 interface MembershipStatusBarProps {
   isActiveMember: boolean;
   memberSince: string | null;
   subscriptionEnd: string | null;
+  subscriptionEndsAt?: string | null;
+  cancelAtPeriodEnd?: boolean;
   membershipOverride: boolean;
+  subscriptionStatus?: string;
   onManageBilling: () => void;
   isPortalLoading: boolean;
 }
@@ -20,10 +22,16 @@ export function MembershipStatusBar({
   isActiveMember,
   memberSince,
   subscriptionEnd,
+  subscriptionEndsAt,
+  cancelAtPeriodEnd,
   membershipOverride,
+  subscriptionStatus,
   onManageBilling,
   isPortalLoading,
 }: MembershipStatusBarProps) {
+  const isCanceling = cancelAtPeriodEnd === true;
+  const endDate = subscriptionEndsAt || subscriptionEnd;
+
   if (!isActiveMember) {
     return (
       <div className="card-elevated p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:justify-between">
@@ -35,31 +43,40 @@ export function MembershipStatusBar({
           </div>
         </div>
         <Button variant="hero" size="sm" asChild>
-          <Link href="/join">
+          <a href="https://buy.stripe.com/704collective" target="_blank" rel="noopener noreferrer">
             <Crown className="w-3.5 h-3.5" />
             Become a Member
-          </Link>
+          </a>
         </Button>
       </div>
     );
   }
 
   return (
-    <div className="card-elevated p-4 sm:p-5 space-y-4">
+    <div className="card-elevated p-4 sm:p-5 space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
         <div className="flex items-center gap-3 flex-wrap">
-          <Badge className="bg-green-500/10 text-green-500 border-green-500/30">
-            <Check className="w-3 h-3 mr-1" />
-            Active
-          </Badge>
+          {isCanceling ? (
+            <Badge className="bg-orange-500/10 text-orange-400 border-orange-500/30">
+              <AlertTriangle className="w-3 h-3 mr-1" />
+              Canceling
+            </Badge>
+          ) : (
+            <Badge className="bg-green-500/10 text-green-500 border-green-500/30">
+              <Check className="w-3 h-3 mr-1" />
+              Active
+            </Badge>
+          )}
           {memberSince && (
             <span className="text-sm text-muted-foreground">
               Member since {format(new Date(memberSince), 'MMM yyyy')}
             </span>
           )}
-          {subscriptionEnd && !membershipOverride && (
+          {endDate && !membershipOverride && (
             <span className="text-xs text-muted-foreground">
-              Renews {format(new Date(subscriptionEnd), 'MMM d, yyyy')}
+              {isCanceling
+                ? `Access until ${format(new Date(endDate), 'MMM d, yyyy')}`
+                : `Renews ${format(new Date(endDate), 'MMM d, yyyy')}`}
             </span>
           )}
           {membershipOverride && (
@@ -68,15 +85,21 @@ export function MembershipStatusBar({
         </div>
         <div className="flex items-center gap-2">
           {!membershipOverride && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onManageBilling}
-              disabled={isPortalLoading}
-            >
-              {isPortalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CreditCard className="w-3.5 h-3.5" />}
-              Billing
-            </Button>
+            <>
+              {isCanceling ? (
+                <Button variant="hero" size="sm" asChild>
+                  <a href="https://buy.stripe.com/704collective" target="_blank" rel="noopener noreferrer">
+                    <Crown className="w-3.5 h-3.5" />
+                    Reactivate
+                  </a>
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" onClick={onManageBilling} disabled={isPortalLoading}>
+                  {isPortalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CreditCard className="w-3.5 h-3.5" />}
+                  Billing
+                </Button>
+              )}
+            </>
           )}
           <Button variant="outline" size="sm" asChild>
             <Link href="/dashboard/settings">
@@ -85,9 +108,6 @@ export function MembershipStatusBar({
             </Link>
           </Button>
         </div>
-      </div>
-      <div id="wallet-section">
-        <WalletButtons />
       </div>
     </div>
   );

@@ -1,7 +1,5 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -16,17 +14,19 @@ import { CalendarSyncButton } from '@/components/CalendarSyncButton';
 import { MembershipStatusBar } from '@/components/MembershipStatusBar';
 import { MembershipCard } from '@/components/MembershipCard';
 import { WalletButtons } from '@/components/WalletButtons';
+import { CommunityStatsWidget } from '@/components/CommunityStatsWidget';
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
 import { OnboardingCard } from '@/components/OnboardingCard';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Crown, AlertCircle, CreditCard, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
+export const dynamic = 'force-dynamic';
+
 export default function Dashboard() {
-  const { user, profile, isActiveMember, isAdmin, loading } = useAuth();
+  const { user, profile, isActiveMember, isAdmin } = useAuth();
   usePageTitle('Member Portal');
   const [isPortalLoading, setIsPortalLoading] = useState(false);
   const [heroEventId, setHeroEventId] = useState<string | null>(null);
@@ -59,21 +59,6 @@ export default function Dashboard() {
     }
   };
 
-  // Show skeleton while auth is resolving
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-56 w-full rounded-xl" />
-          <Skeleton className="h-32 w-full rounded-xl" />
-          <Skeleton className="h-48 w-full rounded-xl" />
-        </main>
-      </div>
-    );
-  }
-
   if (!user || !profile) return null;
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -85,6 +70,7 @@ export default function Dashboard() {
     : p.email?.split('@')[0] ?? 'Member';
 
   const subscriptionStatus = p.subscription_status;
+  const isCanceling = p.cancel_at_period_end === true;
   const isCanceledOrInactive =
     subscriptionStatus === 'canceled' ||
     subscriptionStatus === 'inactive' ||
@@ -101,15 +87,19 @@ export default function Dashboard() {
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
 
+        {/* Sub-nav */}
         <DashboardNav />
 
+        {/* Past due warning */}
         {isPastDue && (
           <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:justify-between">
             <div className="flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-yellow-500 mt-0.5 shrink-0" />
               <div>
                 <p className="font-medium text-sm">There's an issue with your payment</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Update your billing info to keep your membership active.</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Update your billing info to keep your membership active.
+                </p>
               </div>
             </div>
             <Button variant="outline" size="sm" onClick={handleManageSubscription} disabled={isPortalLoading} className="shrink-0">
@@ -119,32 +109,34 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Inactive / canceled banner */}
         {isCanceledOrInactive && !isActiveMember && (
           <div className="rounded-xl border border-border bg-card p-6 text-center space-y-4">
             <Crown className="w-10 h-10 text-primary mx-auto" />
             <div>
               <h2 className="text-lg font-semibold">Your membership is inactive</h2>
-              <p className="text-sm text-muted-foreground mt-1">Reactivate to unlock free RSVPs, guest passes, and all member benefits.</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Reactivate to unlock free RSVPs, guest passes, and all member benefits.
+              </p>
             </div>
-            <Button variant="default" asChild>
-              <Link href="/join"><Crown className="w-4 h-4 mr-2" />Reactivate Membership</Link>
+            <Button variant="hero" asChild>
+              <a href="https://buy.stripe.com/704collective" target="_blank" rel="noopener noreferrer">
+                <Crown className="w-4 h-4 mr-2" />
+                Reactivate Membership
+              </a>
             </Button>
           </div>
         )}
 
-        {isActiveMember && (
-          <SectionErrorBoundary>
-            <OnboardingCard userId={user.id} />
-          </SectionErrorBoundary>
-        )}
-
+        {/* Welcome heading */}
         <h1 className="text-2xl sm:text-3xl font-semibold text-foreground">
           Welcome back, {firstName}
         </h1>
 
+        {/* Membership card + wallet buttons inline — TOP of dashboard (G55-G57) */}
         {isActiveMember && (
-          <div className="space-y-3">
-            <div className="max-w-xs">
+          <div className="flex flex-col sm:flex-row gap-4 items-start">
+            <div className="w-full max-w-xs">
               <MembershipCard
                 name={p.full_name || 'Member'}
                 memberId={user.id}
@@ -152,22 +144,33 @@ export default function Dashboard() {
                 memberSince={memberSince}
               />
             </div>
-            <div className="max-w-xs">
-              <WalletButtons />
+            <div className="flex flex-col gap-2 sm:pt-2">
+              <WalletButtons compact />
             </div>
           </div>
         )}
 
+        {/* Onboarding checklist */}
+        {isActiveMember && (
+          <SectionErrorBoundary>
+            <OnboardingCard userId={user.id} />
+          </SectionErrorBoundary>
+        )}
+
+        {/* Next Event */}
         {(isActiveMember || isPastDue) && (
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Your Next Event</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+              Your Next Event
+            </p>
             <SectionErrorBoundary>
               <NextEventHero userId={user.id} onEventLoaded={setHeroEventId} />
             </SectionErrorBoundary>
           </div>
         )}
 
-        {isActiveMember && (
+        {/* Calendar sync — compact banner (G58) */}
+        {isActiveMember && p.calendar_token && (
           <CalendarSyncButton
             calendarToken={p.calendar_token}
             baseUrl={supabaseUrl || ''}
@@ -175,10 +178,13 @@ export default function Dashboard() {
           />
         )}
 
+        {/* Two-column grid: MY SCHEDULE + GROW THE COMMUNITY */}
         {(isActiveMember || isPastDue) && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">My Schedule</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                My Schedule
+              </p>
               <SectionErrorBoundary>
                 <MyEventsSection userId={user.id} excludeEventId={heroEventId} />
               </SectionErrorBoundary>
@@ -187,7 +193,9 @@ export default function Dashboard() {
             <div className="space-y-5">
               {isActiveMember && (
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Grow The Community</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                    Grow The Community
+                  </p>
                   <SectionErrorBoundary>
                     <GuestPassSection userId={user.id} />
                   </SectionErrorBoundary>
@@ -202,14 +210,27 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Community stats widget (U2/G52) */}
+        {isActiveMember && (
+          <SectionErrorBoundary>
+            <CommunityStatsWidget />
+          </SectionErrorBoundary>
+        )}
+
+        {/* Membership status bar */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Your Membership</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+            Your Membership
+          </p>
           <SectionErrorBoundary>
             <MembershipStatusBar
               isActiveMember={isActiveMember}
               memberSince={p.member_since}
               subscriptionEnd={p.subscription_end}
+              subscriptionEndsAt={p.subscription_ends_at}
+              cancelAtPeriodEnd={p.cancel_at_period_end}
               membershipOverride={p.membership_override ?? false}
+              subscriptionStatus={subscriptionStatus}
               onManageBilling={handleManageSubscription}
               isPortalLoading={isPortalLoading}
             />

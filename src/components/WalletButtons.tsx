@@ -32,7 +32,7 @@ function useDevicePlatform() {
   }, []);
 }
 
-export function WalletButtons() {
+export function WalletButtons({ compact = false }: { compact?: boolean }) {
   const [googleLoading, setGoogleLoading] = useState(false);
   const platform = useDevicePlatform();
 
@@ -83,6 +83,21 @@ export function WalletButtons() {
   };
 
   const isApplePrimary = platform === 'apple';
+
+  if (compact) {
+    return (
+      <div className="flex flex-row gap-2">
+        <Button variant="outline" size="sm" className="text-xs px-3" onClick={handleGoogleWallet} disabled={googleLoading}>
+          {googleLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <GoogleWalletIcon className="w-3.5 h-3.5" />}
+          Google
+        </Button>
+        <Button variant="outline" size="sm" className="text-xs px-3" onClick={handleAppleWallet}>
+          <AppleIcon className="w-3.5 h-3.5" />
+          Apple
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-2 mt-4">

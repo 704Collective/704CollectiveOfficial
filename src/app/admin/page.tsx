@@ -8,19 +8,35 @@ import { AdminLayout, AdminSection } from "@/components/AdminLayout";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SectionErrorBoundary } from "@/components/SectionErrorBoundary";
+import dynamic from 'next/dynamic';
 
-// Tab components
-import { AdminOverviewTab } from "@/components/admin/AdminOverviewTab";
-import { AdminEventsTab } from "@/components/admin/AdminEventsTab";
-import { AdminMembersTab } from "@/components/admin/AdminMembersTab";
-import { AdminProspectsTab } from "@/components/admin/AdminProspectsTab";
-import { AdminSponsorsTab } from "@/components/admin/AdminSponsorsTab";
-import { AdminCheckIn } from "@/components/AdminCheckIn";
-import { TaskBoard } from "@/components/admin/TaskBoard";
+// Dynamically loaded tab components — code split per tab
+const AdminOverviewTab = dynamic(() => import('@/components/admin/AdminOverviewTab').then(m => ({ default: m.AdminOverviewTab })), { loading: () => <TabSkeleton /> });
+const AdminEventsTab = dynamic(() => import('@/components/admin/AdminEventsTab').then(m => ({ default: m.AdminEventsTab })), { loading: () => <TabSkeleton /> });
+const AdminMembersTab = dynamic(() => import('@/components/admin/AdminMembersTab').then(m => ({ default: m.AdminMembersTab })), { loading: () => <TabSkeleton /> });
+const AdminProspectsTab = dynamic(() => import('@/components/admin/AdminProspectsTab').then(m => ({ default: m.AdminProspectsTab })), { loading: () => <TabSkeleton /> });
+const AdminSponsorsTab = dynamic(() => import('@/components/admin/AdminSponsorsTab').then(m => ({ default: m.AdminSponsorsTab })), { loading: () => <TabSkeleton /> });
+const AdminCheckIn = dynamic(() => import('@/components/AdminCheckIn').then(m => ({ default: m.AdminCheckIn })), { loading: () => <TabSkeleton /> });
+const TaskBoard = dynamic(() => import('@/components/admin/TaskBoard').then(m => ({ default: m.TaskBoard })), { loading: () => <TabSkeleton /> });
+
+const AdminFinancialsTab = dynamic(() => import('@/components/admin/AdminFinancialsTab').then(m => ({ default: m.AdminFinancialsTab })), { loading: () => <TabSkeleton /> });
+
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
-const VALID_SECTIONS: AdminSection[] = ['dashboard', 'events', 'members', 'checkin', 'tasks', 'prospects', 'sponsors'];
+function TabSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-8 w-48" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[1,2,3,4].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}
+      </div>
+      <Skeleton className="h-52 rounded-xl" />
+    </div>
+  );
+}
+
+const VALID_SECTIONS: AdminSection[] = ['dashboard', 'events', 'members', 'checkin', 'tasks', 'prospects', 'sponsors', 'financials'];
 
 export default function AdminPage() {
   return (
@@ -156,6 +172,12 @@ function AdminDashboard() {
         {activeSection === 'sponsors' && (
           <SectionErrorBoundary>
             <AdminSponsorsTab onNavigateToDashboard={goToDashboard} />
+          </SectionErrorBoundary>
+        )}
+
+        {activeSection === 'financials' && (
+          <SectionErrorBoundary>
+            <AdminFinancialsTab onNavigateToDashboard={goToDashboard} />
           </SectionErrorBoundary>
         )}
 

@@ -15,7 +15,8 @@ export type AdminSection =
   | 'checkin'
   | 'tasks'
   | 'prospects'
-  | 'sponsors';
+  | 'sponsors'
+  | 'financials';
 
 interface AdminLayoutProps {
   children: ReactNode;
