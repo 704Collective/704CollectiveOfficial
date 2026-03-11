@@ -50,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   const supabaseRef = useRef(createClient());
+  const profileLoadedForRef = useRef<string | null>(null);
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
@@ -112,6 +113,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
 
       if (session?.user) {
+        // Skip redundant SIGNED_IN refetch if we already have this user's profile loaded.
+        // SIGNED_IN fires on every navigation and the Supabase query hangs each time,
+        // while INITIAL_SESSION handles the real cold-load fetch reliably.
+        if (event === 'SIGNED_IN' && profileLoadedForRef.current === session.user.id) {
+          console.log('[Auth] Skipping redundant SIGNED_IN refetch for:', session.user.id);
+          return;
+        }
+        profileLoadedForRef.current = session.user.id;
         console.log('[Auth] fetching profile for:', session.user.id);
         const { profile, isAdmin, isActiveMember } = await fetchProfile(session.user.id);
         if (mounted) {
