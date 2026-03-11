@@ -52,7 +52,7 @@ export default function Nav() {
 
         {/* Desktop Links */}
         <div style={{ display: "flex", alignItems: "center", gap: "32px" }} className="desktop-nav">
-          <Link href="/#about" className="nav-link">About</Link>
+          <Link href="/about" className="nav-link">About</Link>
           <Link href="/#how-it-works" className="nav-link">How It Works</Link>
 
           {/* Membership Dropdown */}
@@ -216,7 +216,7 @@ export default function Nav() {
       {mobileOpen && (
         <div id="mobile-menu" role="menu" className="mobile-nav-menu" style={{ backgroundColor: "#000000", borderTop: "1px solid rgba(255, 255, 255, 0.06)", padding: "24px" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-            <Link href="/#about" role="menuitem" onClick={() => setMobileOpen(false)} style={{ color: "rgba(255, 255, 255, 0.7)", textDecoration: "none", padding: "12px 0", fontSize: "1rem", borderBottom: "1px solid rgba(255, 255, 255, 0.06)" }}>About</Link>
+            <Link href="/about" role="menuitem" onClick={() => setMobileOpen(false)} style={{ color: "rgba(255, 255, 255, 0.7)", textDecoration: "none", padding: "12px 0", fontSize: "1rem", borderBottom: "1px solid rgba(255, 255, 255, 0.06)" }}>About</Link>
             <Link href="/#how-it-works" role="menuitem" onClick={() => setMobileOpen(false)} style={{ color: "rgba(255, 255, 255, 0.7)", textDecoration: "none", padding: "12px 0", fontSize: "1rem", borderBottom: "1px solid rgba(255, 255, 255, 0.06)" }}>How It Works</Link>
 
             <div style={{ padding: "12px 0", borderBottom: "1px solid rgba(255, 255, 255, 0.06)" }}>
