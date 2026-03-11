@@ -113,11 +113,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
 
       if (session?.user) {
-        // Skip redundant SIGNED_IN refetch if we already have this user's profile loaded.
-        // SIGNED_IN fires on every navigation and the Supabase query hangs each time,
-        // while INITIAL_SESSION handles the real cold-load fetch reliably.
-        if (event === 'SIGNED_IN' && profileLoadedForRef.current === session.user.id) {
-          console.log('[Auth] Skipping redundant SIGNED_IN refetch for:', session.user.id);
+        // SIGNED_IN is ignored — it fires before INITIAL_SESSION and consistently
+        // causes Supabase query timeouts. INITIAL_SESSION handles cold load correctly.
+        if (event === 'SIGNED_IN') {
+          console.log('[Auth] Ignoring SIGNED_IN event, waiting for INITIAL_SESSION');
           return;
         }
         profileLoadedForRef.current = session.user.id;
