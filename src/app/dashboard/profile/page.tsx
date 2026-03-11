@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 
 export default function ProfilePage() {
-  const { user, profile, isActiveMember} = useAuth();
+  const { user, profile, isActiveMember, loading } = useAuth();
   usePageTitle('My Profile');
 
   const [fullName, setFullName] = useState('');
@@ -57,6 +57,11 @@ export default function ProfilePage() {
     setSaving(false);
   };
 
+  if (loading) return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+    </div>
+  );
   if (!user || !profile) return null;
 
   const p = profile as any;
@@ -68,7 +73,7 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         <DashboardNav />
 
         <div>

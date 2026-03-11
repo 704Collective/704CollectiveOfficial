@@ -26,7 +26,7 @@ import { format } from 'date-fns';
 export const dynamic = 'force-dynamic';
 
 export default function Dashboard() {
-  const { user, profile, isActiveMember, isAdmin } = useAuth();
+  const { user, profile, isActiveMember, isAdmin, loading } = useAuth();
   usePageTitle('Member Portal');
   const [isPortalLoading, setIsPortalLoading] = useState(false);
   const [heroEventId, setHeroEventId] = useState<string | null>(null);
@@ -59,6 +59,11 @@ export default function Dashboard() {
     }
   };
 
+  if (loading) return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+    </div>
+  );
   if (!user || !profile) return null;
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

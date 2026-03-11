@@ -49,23 +49,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isActiveMember: false,
   });
 
-  // createClient() called once and stored in ref — never recreated
   const supabaseRef = useRef(createClient());
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
-      const [profileRes, rolesRes] = await Promise.all([
-        supabaseRef.current
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .is('deleted_at', null)
-          .maybeSingle(),
-        supabaseRef.current
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', userId),
-      ]);
+      const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> =>
+        Promise.race([
+          promise,
+          new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error(`Supabase query timed out after ${ms}ms`)), ms)
+          ),
+        ]);
+
+      const [profileRes, rolesRes] = await withTimeout(
+        Promise.all([
+          supabaseRef.current
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .is('deleted_at', null)
+            .maybeSingle(),
+          supabaseRef.current
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', userId),
+        ]),
+        5000
+      );
 
       const { data: profile, error: profileError } = profileRes;
       const { data: roles, error: rolesError } = rolesRes;
@@ -84,9 +94,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profile?.subscription_status === 'active' ||
         profile?.membership_override === true;
 
+      console.log('[Auth] fetchProfile result:', { profile: !!profile, isAdmin, isActiveMember });
       return { profile, isAdmin, isActiveMember };
     } catch (err) {
-      console.error('[AuthContext] Unexpected error:', err);
+      console.error('[AuthContext] fetchProfile failed or timed out:', err);
       return { profile: null, isAdmin: false, isActiveMember: false };
     }
   }, []);
@@ -94,10 +105,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // onAuthStateChange fires INITIAL_SESSION synchronously on mount —
-    // this is the single source of truth. No separate getSession() needed.
-    // Having both caused a race where INITIAL_SESSION fired first with a
-    // null session, triggering a redirect loop on normal (non-hard) refresh.
     const {
       data: { subscription },
     } = supabaseRef.current.auth.onAuthStateChange(async (event, session) => {
@@ -107,7 +114,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         console.log('[Auth] fetching profile for:', session.user.id);
         const { profile, isAdmin, isActiveMember } = await fetchProfile(session.user.id);
-        console.log('[Auth] fetchProfile result:', { profile: !!profile, isAdmin, isActiveMember });
         if (mounted) {
           setState({
             user: session.user,
