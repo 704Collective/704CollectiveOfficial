@@ -36,6 +36,18 @@ function Login() {
   const { user, loading: authLoading } = useAuth();
   const isDeactivated = searchParams.get('deactivated') === 'true';
   usePageTitle('Sign In');
+
+  useEffect(() => {
+    const error = searchParams.get('error');
+    const errorDescription = searchParams.get('error_description');
+    if (error) {
+      if (errorDescription?.includes('unable to fetch records') || errorDescription?.includes('confirmation_token')) {
+        toast.error('No account found. Please join 704 Collective to create an account.');
+      } else {
+        toast.error(errorDescription || 'Sign in failed. Please try again.');
+      }
+    }
+  }, []);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
