@@ -41,13 +41,20 @@ function Login() {
     const error = searchParams.get('error');
     const errorDescription = searchParams.get('error_description');
     if (error) {
-      if (errorDescription?.includes('unable to fetch records') || errorDescription?.includes('confirmation_token')) {
+      if (error === 'no_account') {
+        toast.error("You don't have an account. Please register first.");
+      } else if (
+        errorDescription?.includes('unable to fetch records') ||
+        errorDescription?.includes('confirmation_token') ||
+        errorDescription?.includes('email_change')
+      ) {
         toast.error("You don't have an account. Please register first.");
       } else {
         toast.error(errorDescription || 'Sign in failed. Please try again.');
       }
     }
   }, []);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -55,7 +62,7 @@ function Login() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!authLoading && user) {
       const path = window.location.pathname;
       if (path !== '/setup-password' && path !== '/update-password') {
         router.push('/dashboard');
@@ -106,10 +113,9 @@ function Login() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback?source=login`,
       },
     });
-
     if (error) {
       toast.error('Failed to sign in with Google');
     }
@@ -198,12 +204,8 @@ function Login() {
                   transition: 'border-color 200ms ease',
                   boxSizing: 'border-box',
                 }}
-                onFocus={(e) => {
-                  if (!errors.email) e.currentTarget.style.borderColor = '#C6A664';
-                }}
-                onBlur={(e) => {
-                  if (!errors.email) e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-                }}
+                onFocus={(e) => { if (!errors.email) e.currentTarget.style.borderColor = '#C6A664'; }}
+                onBlur={(e) => { if (!errors.email) e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
               />
               {errors.email && (
                 <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '6px' }}>{errors.email}</p>
@@ -243,12 +245,8 @@ function Login() {
                     transition: 'border-color 200ms ease',
                     boxSizing: 'border-box',
                   }}
-                  onFocus={(e) => {
-                    if (!errors.password) e.currentTarget.style.borderColor = '#C6A664';
-                  }}
-                  onBlur={(e) => {
-                    if (!errors.password) e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-                  }}
+                  onFocus={(e) => { if (!errors.password) e.currentTarget.style.borderColor = '#C6A664'; }}
+                  onBlur={(e) => { if (!errors.password) e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
                 />
                 <button
                   type="button"
@@ -326,14 +324,7 @@ function Login() {
           </form>
 
           {/* Divider */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px',
-              margin: '24px 0',
-            }}
-          >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', margin: '24px 0' }}>
             <div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.08)' }} />
             <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Or continue with
@@ -393,6 +384,10 @@ function Login() {
           </Link>
         </p>
       </div>
+
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+      `}</style>
     </div>
   );
 }
