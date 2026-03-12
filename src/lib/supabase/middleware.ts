@@ -25,6 +25,7 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   const protectedPaths = ['/dashboard', '/admin', '/events/manage'];
+  const openAuthPaths = ['/join/checkout', '/welcome'];
   const authPaths = ['/login'];
   const isProtectedRoute = protectedPaths.some((p) => path.startsWith(p));
   const isAuthRoute = authPaths.some((p) => path.startsWith(p));
@@ -45,6 +46,10 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Logged in on dashboard → check subscription, gate non-paying users
+  if (openAuthPaths.some(p => path.startsWith(p))) {
+    return supabaseResponse;
+  }
+
   if (user && path.startsWith('/dashboard')) {
     const { data: profile } = await supabase
       .from('profiles')
