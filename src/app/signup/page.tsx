@@ -33,7 +33,7 @@ export default function SignupPage() {
 function Signup() {
   usePageTitle('Create Account');
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isActiveMember } = useAuth();
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -51,8 +51,8 @@ function Signup() {
   const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; confirm?: string }>({});
 
   useEffect(() => {
-    if (user) router.push('/dashboard');
-  }, [user, router]);
+    if (user && isActiveMember) router.push('/dashboard');
+  }, [user, isActiveMember, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
