@@ -42,7 +42,7 @@ function Login() {
     const errorDescription = searchParams.get('error_description');
     if (error) {
       if (errorDescription?.includes('unable to fetch records') || errorDescription?.includes('confirmation_token')) {
-        toast.error('No account found. Please join 704 Collective to create an account.');
+        toast.error("You don't have an account. Please register first.");
       } else {
         toast.error(errorDescription || 'Sign in failed. Please try again.');
       }
