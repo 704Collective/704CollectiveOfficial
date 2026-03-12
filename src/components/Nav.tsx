@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 export default function Nav() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [membershipOpen, setMembershipOpen] = useState(false);
-  const { user, loading } = useAuth();
+  const { user, loading, isActiveMember, isAdmin } = useAuth();
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -135,7 +135,7 @@ export default function Nav() {
           {/* Auth CTAs — auth-aware */}
           {loading ? (
             <div style={{ width: '120px' }} />
-          ) : user ? (
+          ) : user && (isActiveMember || isAdmin) ? (
             <Link
               href="/dashboard"
               style={{
