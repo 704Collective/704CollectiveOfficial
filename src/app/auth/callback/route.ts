@@ -6,7 +6,8 @@ import type { NextRequest } from 'next/server';
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
-  const source = requestUrl.searchParams.get('source'); // 'login' or undefined (signup)
+  const source = requestUrl.searchParams.get('source');
+  const origin = requestUrl.origin;
 
   if (code) {
     const cookieStore = await cookies();
@@ -46,25 +47,25 @@ export async function GET(request: NextRequest) {
 
         const isAdmin = profile?.member_type === 'admin';
 
-        // If came from login page and not an active member → they don't have an account
-        // Sign them out and redirect to login with error
+        // Came from login page but no active subscription → not a member
+        // Redirect back to login with error — do NOT call signOut() as it
+        // redirects to Supabase Site URL (localhost) instead of our origin
         if (source === 'login' && !isActive && !isAdmin) {
-          await supabase.auth.signOut();
           return NextResponse.redirect(
-            new URL('/login?error=no_account', requestUrl.origin)
+            new URL('/login?error=no_account', origin)
           );
         }
 
-        // If came from signup and not active → send to checkout
+        // New signup without active subscription → send to checkout
         if (!isActive && !isAdmin) {
-          return NextResponse.redirect(new URL('/join/checkout', requestUrl.origin));
+          return NextResponse.redirect(new URL('/join/checkout', origin));
         }
 
         // Active member or admin → dashboard
-        return NextResponse.redirect(new URL('/dashboard', requestUrl.origin));
+        return NextResponse.redirect(new URL('/dashboard', origin));
       }
     }
   }
 
-  return NextResponse.redirect(new URL('/login?error=oauth', requestUrl.origin));
+  return NextResponse.redirect(new URL('/login?error=oauth', origin));
 }
