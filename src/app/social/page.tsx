@@ -126,7 +126,7 @@ const faqs = [
 export default function SocialPage() {
   usePageTitle('704 Social | Charlotte\'s Activity Club & Social Community');
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isActiveMember } = useAuth();
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
 
@@ -799,7 +799,7 @@ export default function SocialPage() {
                 </div>
 
                 <Link
-                  href={user ? '/dashboard' : '/signup'}
+                  href={isActiveMember ? '/dashboard' : '/signup'}
                   className="btn-primary"
                   style={{ display: 'block', textAlign: 'center', padding: '16px 36px', fontSize: '0.9375rem' }}
                 >
@@ -1071,7 +1071,7 @@ export default function SocialPage() {
             <ScaleUp delay={0.2}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'center', marginTop: '40px' }}>
                 <Link
-                  href={user ? '/dashboard' : '/signup'}
+                  href={isActiveMember ? '/dashboard' : '/signup'}
                   className="btn-primary"
                   style={{ padding: '16px 36px', fontSize: '0.9375rem' }}
                 >
