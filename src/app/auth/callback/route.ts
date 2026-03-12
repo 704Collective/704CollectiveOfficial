@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
@@ -47,12 +48,19 @@ export async function GET(request: NextRequest) {
 
         const isAdmin = profile?.member_type === 'admin';
 
-        // Came from login page but no active subscription → not a member
-        // Redirect back to login with error — do NOT call signOut() as it
-        // redirects to Supabase Site URL (localhost) instead of our origin
+        // Came from login page and not an active member/admin —
+        // delete the auto-created user so Supabase stays clean,
+        // then redirect to signup with a toast message
         if (source === 'login' && !isActive && !isAdmin) {
+          // Use service role to delete the ghost user
+          const adminClient = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+          );
+          await adminClient.auth.admin.deleteUser(user.id);
+
           return NextResponse.redirect(
-            new URL('/login?error=no_account', origin)
+            new URL('/signup?error=no_account', origin)
           );
         }
 

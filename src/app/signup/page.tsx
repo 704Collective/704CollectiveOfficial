@@ -1,8 +1,9 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { Button } from '@/components/ui/button';
@@ -21,10 +22,26 @@ const signupSchema = z.object({
   confirm: z.string(),
 }).refine(d => d.password === d.confirm, { message: "Passwords don't match", path: ['confirm'] });
 
-export default function Signup() {
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', backgroundColor: '#000000' }} />}>
+      <Signup />
+    </Suspense>
+  );
+}
+
+function Signup() {
   usePageTitle('Create Account');
   const router = useRouter();
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('error') === 'no_account') {
+      toast.error("You don't have an account. Please register first.");
+    }
+  }, []);
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
