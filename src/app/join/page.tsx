@@ -127,7 +127,7 @@ export default function Join() {
               <Link
                 href="/join/checkout"
                 style={{
-                  width: '100%', maxWidth: '320px', justifyContent: 'center',,
+                  width: '100%', maxWidth: '320px', justifyContent: 'center',
                   alignItems: 'center',
                   gap: '8px',
                   padding: '14px 32px',
