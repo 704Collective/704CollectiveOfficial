@@ -45,8 +45,8 @@ export function AdminLayout({
       </aside>
 
       {/* ── Mobile Sidebar ── Sheet drawer */}
-      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-        <SheetContent side="left" className="w-60 p-0 bg-sidebar border-border">
+      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen} modal={true}>
+        <SheetContent side="left" className="w-60 p-0 bg-sidebar border-border" style={{ boxShadow: '4px 0 24px rgba(0,0,0,0.6)' }}>
           <AdminSidebar
             activeSection={activeSection}
             onSectionChange={onSectionChange}
@@ -55,16 +55,15 @@ export function AdminLayout({
         </SheetContent>
       </Sheet>
 
-      {/*
-       * ── Main content column ──
-       * lg:ml-60 pushes the entire block right of the fixed sidebar.
-       * This is more reliable than flex+pl-60 because the fixed sidebar
-       * is out of flow — flex children don't account for it naturally.
-       */}
       <div className="lg:ml-60 min-h-screen flex flex-col">
 
         {/* Mobile top bar */}
         <header className="lg:hidden sticky top-0 z-20 flex h-14 items-center justify-between px-4 border-b border-border bg-background/95 backdrop-blur-sm shrink-0">
+          {/* Spacer keeps title visually centered */}
+          <div className="w-9" />
+          <span className="text-sm font-semibold text-foreground">
+            704 Collective
+          </span>
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
@@ -85,11 +84,6 @@ export function AdminLayout({
               <line x1="2" y1="13.5" x2="16" y2="13.5" />
             </svg>
           </button>
-          <span className="text-sm font-semibold text-foreground">
-            704 Collective
-          </span>
-          {/* Spacer keeps title visually centered */}
-          <div className="w-9" />
         </header>
 
         {/* Page content */}

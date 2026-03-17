@@ -156,7 +156,7 @@ export function Header() {
                   {user ? (
                     <>
                       <SheetClose asChild>
-                        <Link href="/dashboard" className={mobileLinkClass('/dashboard')}>
+                        <Link href="/dashboard" className={cn("text-base font-medium transition-colors py-3 px-4 rounded-lg", pathname === '/dashboard' ? "text-primary bg-primary/10 border-l-2 border-primary" : "text-foreground hover:text-primary hover:bg-muted/50")}>
                           <LayoutDashboard className="inline-block w-4 h-4 mr-2 -mt-0.5" />Dashboard
                         </Link>
                       </SheetClose>

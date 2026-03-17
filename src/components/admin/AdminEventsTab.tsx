@@ -655,7 +655,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
 
       {/* Event Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-full max-w-2xl max-h-[90dvh] overflow-y-auto mx-4 sm:mx-auto">
           <DialogHeader>
             <DialogTitle>{editingEvent ? 'Edit Event' : 'Create Event'}</DialogTitle>
             <DialogDescription>{editingEvent ? 'Update the event details below.' : 'Fill in the details to create a new event.'}</DialogDescription>

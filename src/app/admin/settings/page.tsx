@@ -278,7 +278,7 @@ function AdminSettings() {
   return (
     <AdminLayout title="Settings">
       <div className="max-w-2xl">
-        <div className="overflow-x-auto -mx-4 px-4 lg:-mx-0 lg:px-0 mb-6 scrollbar-none">
+        <div className="overflow-x-auto -mx-4 px-4 lg:-mx-0 lg:px-0 mb-6">
           <div className="flex border-b border-border" style={{ minWidth: 'max-content' }}>
             {TABS.map((tab) => (
               <button
