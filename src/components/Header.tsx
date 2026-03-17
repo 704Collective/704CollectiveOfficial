@@ -99,7 +99,7 @@ export function Header() {
         </nav>
 
         {/* Right — avatar */}
-        <div className="flex items-center gap-2 justify-end">
+        <div className="flex items-center gap-2 justify-end ml-auto">
           {/* Mobile hamburger */}
           <Sheet>
             <SheetTrigger asChild>
