@@ -11,7 +11,6 @@ interface BusinessProfile {
   company_name: string | null;
   title: string | null;
   bio: string | null;
-  avatar_url: string | null;
   is_visible: boolean;
 }
 
