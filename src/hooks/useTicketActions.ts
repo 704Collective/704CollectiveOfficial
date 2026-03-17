@@ -49,13 +49,14 @@ export function useTicketActions(): UseTicketActionsReturn {
   const [showThankYou, setShowThankYou] = useState(false);
   const [thankYouType, setThankYouType] = useState<'member' | 'guest'>('member');
 
+  const p = profile as any;
+
   // Fetch user's confirmed tickets whenever the user changes
   const refreshUserTickets = useCallback(async () => {
     if (!user) {
       setUserTicketIds(new Set());
       return;
     }
-
     const { data } = await supabase
       .from('tickets')
       .select('event_id')
@@ -78,13 +79,13 @@ export function useTicketActions(): UseTicketActionsReturn {
 
   /**
    * Core RSVP flow for members:
-   * 1. Insert ticket row
-   * 2. Handle duplicate / capacity errors
-   * 3. Fire-and-forget confirmation email
-   * 4. Open thank-you modal
+   * 1. Insert member ticket row
+   * 2. If business member → insert automatic +1 guest ticket
+   * 3. Handle duplicate / capacity errors
+   * 4. Fire-and-forget confirmation email
+   * 5. Open thank-you modal
    *
    * Returns `true` on success, `false` on handled error.
-   * Throws on unexpected errors so callers can decide what to do.
    */
   const registerMemberTicket = useCallback(
     async (event: TicketActionEvent): Promise<boolean> => {
@@ -103,11 +104,13 @@ export function useTicketActions(): UseTicketActionsReturn {
       setRsvpLoadingId(event.id);
 
       try {
+        // Insert member's own ticket
         const { error } = await supabase.from('tickets').insert({
           event_id: event.id,
           user_id: user.id,
           ticket_type: 'member_free',
           status: 'confirmed',
+          source: 'member_rsvp',
         });
 
         if (error) {
@@ -122,32 +125,58 @@ export function useTicketActions(): UseTicketActionsReturn {
           throw error;
         }
 
+        // ── Business member +1 ──────────────────────────────────────────────
+        // Business members automatically get a free +1 scan-in for any social
+        // event they RSVP to. No guest info required — just an extra ticket.
+        const isBusinessMember = p?.member_type === 'business';
+        if (isBusinessMember) {
+          await supabase.from('tickets').insert({
+            event_id: event.id,
+            user_id: user.id,
+            ticket_type: 'business_plus_one',
+            status: 'confirmed',
+            source: 'business_plus_one',
+            guest_name: 'Guest (+1)',
+          }).then(({ error: plusOneError }) => {
+            if (plusOneError) {
+              // Silently fail — member's own ticket is already confirmed
+              console.warn('[useTicketActions] +1 ticket insert failed:', plusOneError.message);
+            }
+          });
+        }
+
         // Optimistic update
         setUserTicketIds(prev => new Set([...prev, event.id]));
         setThankYouType('member');
         setShowThankYou(true);
 
+        // Toast for business +1
+        if (isBusinessMember) {
+          toast.success('RSVP confirmed! Your +1 guest ticket is included.', { duration: 4000 });
+        }
+
         // Fire-and-forget confirmation email
-        if (profile?.email) {
+        if (p?.email) {
           const eventDate = new Date(event.start_time);
           const endDate = new Date(event.end_time);
           supabase.functions
             .invoke('send-email', {
               body: {
-                to: profile.email,
+                to: p.email,
                 template: 'rsvp-confirmation',
                 data: {
-                  name: profile.full_name || 'there',
+                  name: p.full_name || 'there',
                   eventName: event.title,
                   eventDate: format(eventDate, 'EEEE, MMMM d, yyyy'),
-                  eventTime: `${format(eventDate, 'h:mm a')} – ${format(endDate, 'h:mm a')}`,
+                  eventTime: `${format(eventDate, 'h:mm a')} — ${format(endDate, 'h:mm a')}`,
                   eventLocation: event.location_name || 'TBA',
                   eventUrl: `${window.location.origin}/events/${event.id}`,
+                  plusOne: isBusinessMember,
                 },
               },
             })
             .catch(() => {
-              // Silently fail — RSVP is already confirmed
+              // Silently fail — RSVP already confirmed
             });
         }
 
@@ -160,7 +189,7 @@ export function useTicketActions(): UseTicketActionsReturn {
         setRsvpLoadingId(null);
       }
     },
-    [user, profile, isActiveMember, userTicketIds],
+    [user, p, isActiveMember, userTicketIds],
   );
 
   return {

@@ -6,11 +6,11 @@ import { LayoutDashboard, Calendar, User, Settings, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { href: '/dashboard', label: 'Overview', icon: LayoutDashboard, exact: true },
-  { href: '/dashboard/events', label: 'My Events', icon: Calendar },
-  { href: '/dashboard/profile', label: 'Profile', icon: User },
-  { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
-  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+  { href: '/dashboard',               label: 'Overview',       icon: LayoutDashboard, exact: true },
+  { href: '/dashboard/events',        label: 'My Events',      icon: Calendar },
+  { href: '/dashboard/profile',       label: 'Profile',        icon: User },
+  { href: '/dashboard/notifications', label: 'Notifications',  icon: Bell },
+  { href: '/dashboard/settings',      label: 'Settings',       icon: Settings },
 ];
 
 export function DashboardNav() {
@@ -29,7 +29,8 @@ export function DashboardNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              'flex items-center gap-2 px-1 py-3 mr-6 text-sm font-medium whitespace-nowrap transition-colors relative shrink-0',
+              // Increased py for better touch targets on mobile (min 44px tap area)
+              'flex items-center gap-1.5 sm:gap-2 px-1 py-3.5 sm:py-3 mr-4 sm:mr-6 text-sm font-medium whitespace-nowrap transition-colors relative shrink-0',
               'last:mr-0',
               active
                 ? 'text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full'
@@ -37,7 +38,8 @@ export function DashboardNav() {
             )}
           >
             <Icon className="w-4 h-4 shrink-0" />
-            <span>{item.label}</span>
+            {/* Hide text labels on very small screens, show icons only */}
+            <span className="hidden xs:inline sm:inline">{item.label}</span>
           </Link>
         );
       })}

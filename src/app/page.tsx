@@ -74,7 +74,8 @@ export default function Home() {
         <section
           id="hero"
           style={{
-            minHeight: "calc(100vh - 64px)",
+            minHeight: "calc(100dvh - 64px)"
+,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",

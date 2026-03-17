@@ -21,6 +21,7 @@ import { SmartDateTimePicker } from '@/components/SmartDateTimePicker';
 import { RecurrenceSelector, RecurrenceRule, parseRecurrenceRule } from '@/components/RecurrenceSelector';
 import { EventCategory, CATEGORY_CONFIG, detectCategoryFromTitle } from '@/components/CategoryBadge';
 import { DeleteConfirmDialog } from '@/components/admin/DeleteConfirmDialog';
+import { AddMembersToEventDialog } from '@/components/admin/AddMembersToEventDialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -28,10 +29,10 @@ import { format, getDay, getDate } from 'date-fns';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Calendar, Plus, Pencil, Trash2, Search, Copy, Lock,
-  ChevronLeft, ChevronRight, MoreHorizontal, ArrowLeft, Upload, X as XIcon, Gift, Mail, Check,
+  ChevronLeft, ChevronRight, MoreHorizontal, ArrowLeft, Upload, X as XIcon, Gift, Mail, Check, UserPlus, Bell,
 } from 'lucide-react';
 
-// ── Types ──────────────────────────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────────────────────
 interface Event {
   id: string;
   title: string;
@@ -43,6 +44,7 @@ interface Event {
   image_url: string | null;
   capacity: number | null;
   is_members_only: boolean;
+  is_business_only: boolean;
   ticket_price: number;
   created_at: string;
   category: string | null;
@@ -61,7 +63,7 @@ interface EventForm {
   location_address: string;
   image_url: string;
   capacity: string;
-  is_members_only: boolean;
+  visibility: 'public' | 'members_only' | 'business_only';
   ticket_price: string;
   category: EventCategory;
   recurrence_rule: RecurrenceRule;
@@ -72,20 +74,20 @@ interface EventForm {
   allows_guest_passes: boolean;
 }
 
-// ── Helpers ────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 const getDefaultStartTime = (): Date => { const d = new Date(); d.setHours(18, 0, 0, 0); return d; };
 const getDefaultEndTime = (s: Date): Date => { const e = new Date(s); e.setHours(e.getHours() + 2); return e; };
 const getDefaultEventForm = (): EventForm => ({
   title: '', description: '', start_time: getDefaultStartTime(), end_time: getDefaultEndTime(getDefaultStartTime()),
-  location_name: '', location_address: '', image_url: '', capacity: '', is_members_only: true, ticket_price: '0',
+  location_name: '', location_address: '', image_url: '', capacity: '', visibility: 'members_only' as const, ticket_price: '0',
   category: 'other', recurrence_rule: 'none', recurrence_end_type: 'occurrences', recurrence_occurrences: 4,
   recurrence_end_date: '', tags: [], allows_guest_passes: true,
 });
 
 const PAGE_SIZE = 20;
-const EVENTS_STALE_TIME = 5 * 60 * 1000; // 5 minutes
+const EVENTS_STALE_TIME = 5 * 60 * 1000;
 
-// ── Data fetching function ─────────────────────────────────────────
+// ── Data fetching ────────────────────────────────────────────────────────────
 async function fetchEventsData(page: number, filter: 'all' | 'upcoming' | 'past') {
   const start = (page - 1) * PAGE_SIZE;
   const end = start + PAGE_SIZE - 1;
@@ -123,7 +125,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
 
-  // UI-only state
+  // UI state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [form, setForm] = useState<EventForm>(getDefaultEventForm());
@@ -132,10 +134,13 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   const [page, setPage] = useState(1);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteInEditOpen, setDeleteInEditOpen] = useState(false);
   const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
+  const [addMembersEvent, setAddMembersEvent] = useState<Event | null>(null);
+  const [sentReminders, setSentReminders] = useState<Record<string, boolean>>({});
 
-  // ── React Query: fetch events ────────────────────────────────────
+  // ── React Query ──────────────────────────────────────────────────────────
   const { data, isLoading, isError } = useQuery({
     queryKey: ['admin-events', page, filter],
     queryFn: () => fetchEventsData(page, filter),
@@ -150,15 +155,19 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
 
   const invalidateEvents = () => queryClient.invalidateQueries({ queryKey: ['admin-events'] });
 
-  // ── Mutations ────────────────────────────────────────────────────
+  // ── Mutations ────────────────────────────────────────────────────────────
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('events').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success('Event deleted'); invalidateEvents(); },
+    onSuccess: () => {
+      toast.success('Event deleted');
+      invalidateEvents();
+      setDialogOpen(false);
+    },
     onError: () => toast.error('Failed to delete event'),
-    onSettled: () => { setDeleteDialogOpen(false); setDeleteId(null); },
+    onSettled: () => { setDeleteDialogOpen(false); setDeleteInEditOpen(false); setDeleteId(null); },
   });
 
   const submitMutation = useMutation({
@@ -266,7 +275,26 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
     onError: () => toast.error('Failed to send follow-up emails'),
   });
 
-  // ── Form helpers ─────────────────────────────────────────────────
+  const reminderMutation = useMutation({
+    mutationFn: async (event: Event) => {
+      const res = await supabase.functions.invoke('notify-event-change', {
+        body: {
+          event_id: event.id,
+          type: 'reminder',
+          origin: window.location.origin,
+        },
+      });
+      if (res.error) throw res.error;
+      return res.data as { sent: number };
+    },
+    onSuccess: (result, event) => {
+      toast.success(`Sent reminder to ${result?.sent ?? 0} member${result?.sent !== 1 ? 's' : ''}`);
+      setSentReminders(prev => ({ ...prev, [event.id]: true }));
+    },
+    onError: () => toast.error('Failed to send reminders'),
+  });
+
+  // ── Form helpers ─────────────────────────────────────────────────────────
   const openCreate = () => { setEditingEvent(null); setForm(getDefaultEventForm()); setDialogOpen(true); };
 
   const openEdit = (event: Event) => {
@@ -276,7 +304,9 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       title: event.title, description: event.description || '', start_time: new Date(event.start_time),
       end_time: event.end_time ? new Date(event.end_time) : undefined, location_name: event.location_name || '',
       location_address: event.location_address || '', image_url: event.image_url || '',
-      capacity: event.capacity?.toString() || '', is_members_only: event.is_members_only, ticket_price: price,
+      capacity: event.capacity?.toString() || '', 
+      visibility: event.is_business_only ? 'business_only' : event.is_members_only ? 'members_only' : 'public' as const,
+      ticket_price: price,
       category: (event.category && event.category !== 'other') ? event.category as EventCategory : detectCategoryFromTitle(event.title) || 'other',
       recurrence_rule: (event.recurrence_rule as RecurrenceRule) || 'none',
       recurrence_end_type: 'occurrences', recurrence_occurrences: 4, recurrence_end_date: '', tags: event.tags || [],
@@ -297,7 +327,9 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       title: event.title, description: event.description || '', start_time: getDefaultStartTime(),
       end_time: getDefaultEndTime(getDefaultStartTime()), location_name: event.location_name || '',
       location_address: event.location_address || '', image_url: event.image_url || '',
-      capacity: event.capacity?.toString() || '', is_members_only: event.is_members_only, ticket_price: price,
+      capacity: event.capacity?.toString() || '', 
+      visibility: event.is_business_only ? 'business_only' : event.is_members_only ? 'members_only' : 'public' as const,
+      ticket_price: price,
       category: (event.category as EventCategory) || 'other', recurrence_rule: 'none',
       recurrence_end_type: 'occurrences', recurrence_occurrences: 4, recurrence_end_date: '', tags: event.tags || [],
       allows_guest_passes: event.allows_guest_passes ?? true,
@@ -305,9 +337,11 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
     setDialogOpen(true);
   };
 
-  // ── Build data ───────────────────────────────────────────────────
+  // ── Build data ───────────────────────────────────────────────────────────
   const buildEventData = () => {
     const priceInCents = Math.round((parseFloat(form.ticket_price) || 0) * 100);
+    const is_business_only = form.visibility === 'business_only';
+    const is_members_only = form.visibility === 'members_only' || is_business_only;
     return {
       title: form.title.trim(), description: form.description.trim() || null,
       start_time: form.start_time ? form.start_time.toISOString() : new Date().toISOString(),
@@ -315,7 +349,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       location_name: form.location_name.trim() || null, location_address: form.location_address.trim() || null,
       image_url: form.image_url.trim() || null,
       capacity: form.capacity ? Math.min(Math.max(parseInt(form.capacity, 10), 0), 10000) : null,
-      is_members_only: form.is_members_only, ticket_price: priceInCents,
+      is_members_only, is_business_only, ticket_price: priceInCents,
       category: form.category, recurrence_rule: form.recurrence_rule === 'none' ? null : form.recurrence_rule,
       tags: form.tags.length > 0 ? form.tags : null,
       allows_guest_passes: form.allows_guest_passes,
@@ -324,18 +358,20 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
 
   const buildBulkUpdateFields = () => {
     const priceInCents = Math.round((parseFloat(form.ticket_price) || 0) * 100);
+    const is_business_only = form.visibility === 'business_only';
+    const is_members_only = form.visibility === 'members_only' || is_business_only;
     return {
       title: form.title.trim(), description: form.description.trim() || null,
       location_name: form.location_name.trim() || null, location_address: form.location_address.trim() || null,
       image_url: form.image_url.trim() || null,
       capacity: form.capacity ? Math.min(Math.max(parseInt(form.capacity, 10), 0), 10000) : null,
-      is_members_only: form.is_members_only, ticket_price: priceInCents,
+      is_members_only, is_business_only, ticket_price: priceInCents,
       category: form.category, tags: form.tags.length > 0 ? form.tags : null,
       allows_guest_passes: form.allows_guest_passes,
     };
   };
 
-  // ── Recurring helpers ────────────────────────────────────────────
+  // ── Recurring helpers ────────────────────────────────────────────────────
   const isPartOfSeries = (e: Event | null) => e ? !!(e.recurrence_rule || e.parent_event_id) : false;
   const dateChanged = (e: Event | null) => {
     if (!e || !form.start_time) return false;
@@ -409,7 +445,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
     return result.length > 0 ? result : [{ ...baseData, start_time: startTime.toISOString(), end_time: endTime?.toISOString() || null, occurrence_index: 0 }];
   };
 
-  // ── Bulk edit (recurring) ────────────────────────────────────────
+  // ── Bulk edit (recurring) ────────────────────────────────────────────────
   const applyBulkEdit = (scope: 'this' | 'future' | 'all') => {
     if (!editingEvent) return;
     bulkEditMutation.mutate({
@@ -420,7 +456,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
     });
   };
 
-  // ── Submit ───────────────────────────────────────────────────────
+  // ── Submit ───────────────────────────────────────────────────────────────
   const handleSubmit = () => {
     if (!form.title.trim()) { toast.error('Event title is required'); return; }
     if (form.title.trim().length > 200) { toast.error('Event title must be under 200 characters'); return; }
@@ -452,7 +488,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   const submitting = submitMutation.isPending || bulkEditMutation.isPending;
   const filtered = events.filter(e => e.title.toLowerCase().includes(search.toLowerCase()));
 
-  // ── Render ───────────────────────────────────────────────────────
+  // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="animate-in fade-in-0 duration-200">
       <div className="flex items-center gap-3 mb-6">
@@ -521,7 +557,8 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                         <TableCell className="py-3">
                           <div className="flex items-center gap-1.5">
                             {isUpcoming ? <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20 text-xs">Upcoming</Badge> : <Badge variant="secondary" className="text-xs">Past</Badge>}
-                            {event.is_members_only && <Lock className="w-3 h-3 text-muted-foreground" aria-label="Members only" />}
+                            {event.is_business_only && <Badge className="bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 text-xs">Business</Badge>}
+                            {event.is_members_only && !event.is_business_only && <Lock className="w-3 h-3 text-muted-foreground" aria-label="Members only" />}
                           </div>
                         </TableCell>
                         <TableCell className="py-3">
@@ -532,9 +569,16 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={e => { e.stopPropagation(); openEdit(event); }}><Pencil className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
                               <DropdownMenuItem onClick={e => { e.stopPropagation(); duplicate(event); }}><Copy className="w-4 h-4 mr-2" /> Duplicate</DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={e => { e.stopPropagation(); setDeleteId(event.id); setDeleteDialogOpen(true); }}>
-                                <Trash2 className="w-4 h-4 mr-2" /> Delete
-                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={e => { e.stopPropagation(); setAddMembersEvent(event); }}><UserPlus className="w-4 h-4 mr-2" /> Add Members</DropdownMenuItem>
+                              {isUpcoming && (
+                                <DropdownMenuItem
+                                  disabled={sentReminders[event.id] || reminderMutation.isPending}
+                                  onClick={e => { e.stopPropagation(); reminderMutation.mutate(event); }}
+                                >
+                                  {sentReminders[event.id] ? <Check className="w-4 h-4 mr-2" /> : <Bell className="w-4 h-4 mr-2" />}
+                                  {sentReminders[event.id] ? 'Reminder Sent' : 'Send Reminder'}
+                                </DropdownMenuItem>
+                              )}
                               {!isUpcoming && (followupCounts[event.id] || 0) > 0 && (
                                 <DropdownMenuItem
                                   disabled={sentFollowups[event.id] || followupMutation.isPending}
@@ -544,6 +588,9 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                                   {sentFollowups[event.id] ? 'Follow-Ups Sent' : `Send Follow-Ups (${followupCounts[event.id]})`}
                                 </DropdownMenuItem>
                               )}
+                              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={e => { e.stopPropagation(); setDeleteId(event.id); setDeleteDialogOpen(true); }}>
+                                <Trash2 className="w-4 h-4 mr-2" /> Delete
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -576,8 +623,14 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                           {isUpcoming ? <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20 text-xs">Upcoming</Badge> : <Badge variant="secondary" className="text-xs">Past</Badge>}
                         </div>
                       </div>
-                      <div className="flex items-center justify-end mt-2 gap-2">
+                      <div className="flex items-center justify-end mt-2 gap-2 flex-wrap">
                         <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); openEdit(event); }}><Pencil className="w-3 h-3 mr-1" /> Edit</Button>
+                        <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setAddMembersEvent(event); }}><UserPlus className="w-3 h-3 mr-1" /> Add</Button>
+                        {isUpcoming && (
+                          <Button variant="ghost" size="sm" disabled={sentReminders[event.id]} onClick={e => { e.stopPropagation(); reminderMutation.mutate(event); }}>
+                            <Bell className="w-3 h-3 mr-1" /> {sentReminders[event.id] ? 'Sent' : 'Remind'}
+                          </Button>
+                        )}
                         <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={e => { e.stopPropagation(); setDeleteId(event.id); setDeleteDialogOpen(true); }}><Trash2 className="w-3 h-3 mr-1" /> Delete</Button>
                       </div>
                     </CardContent>
@@ -672,9 +725,16 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
               <div className="space-y-2"><Label htmlFor="capacity">Capacity</Label><Input id="capacity" type="number" value={form.capacity} onChange={e => setForm(prev => ({ ...prev, capacity: e.target.value }))} placeholder="Leave empty for unlimited" /></div>
               <div className="space-y-2"><Label htmlFor="ticket_price">Ticket Price ($)</Label><Input id="ticket_price" type="number" step="0.01" value={form.ticket_price} onChange={e => setForm(prev => ({ ...prev, ticket_price: e.target.value }))} /></div>
             </div>
-            <div className="flex items-center gap-3">
-              <Switch id="is_members_only" checked={form.is_members_only} onCheckedChange={c => setForm(prev => ({ ...prev, is_members_only: c }))} />
-              <Label htmlFor="is_members_only">Members Only</Label>
+            <div className="space-y-2">
+              <Label>Event Visibility</Label>
+              <Select value={form.visibility} onValueChange={v => setForm(prev => ({ ...prev, visibility: v as 'public' | 'members_only' | 'business_only' }))}>
+                <SelectTrigger><SelectValue placeholder="Select visibility" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public">Public — Anyone can see and attend</SelectItem>
+                  <SelectItem value="members_only">Members Only — Social + Business members</SelectItem>
+                  <SelectItem value="business_only">Business Only — Business members only</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex items-center gap-3">
               <Switch id="allows_guest_passes" checked={form.allows_guest_passes} onCheckedChange={c => setForm(prev => ({ ...prev, allows_guest_passes: c }))} />
@@ -691,9 +751,24 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
               />
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={submitting}>{submitting ? 'Saving...' : editingEvent ? 'Update' : 'Create'}</Button>
+          <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between gap-2">
+            {/* Delete button on left when editing */}
+            {editingEvent ? (
+              <Button
+                variant="destructive"
+                onClick={() => setDeleteInEditOpen(true)}
+                disabled={submitting || deleteMutation.isPending}
+                className="w-full sm:w-auto"
+              >
+                <Trash2 className="w-4 h-4 mr-2" /> Delete Event
+              </Button>
+            ) : <div />}
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button variant="outline" onClick={() => setDialogOpen(false)} className="flex-1 sm:flex-none">Cancel</Button>
+              <Button onClick={handleSubmit} disabled={submitting} className="flex-1 sm:flex-none">
+                {submitting ? 'Saving...' : editingEvent ? 'Update' : 'Create'}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -719,7 +794,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Delete Confirmation */}
+      {/* Delete from list */}
       <DeleteConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={open => { setDeleteDialogOpen(open); if (!open) setDeleteId(null); }}
@@ -728,6 +803,26 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
         description="Are you sure you want to delete this event? This action cannot be undone."
         loading={deleteMutation.isPending}
       />
+
+      {/* Delete from inside edit dialog */}
+      <DeleteConfirmDialog
+        open={deleteInEditOpen}
+        onOpenChange={setDeleteInEditOpen}
+        onConfirm={() => editingEvent && deleteMutation.mutate(editingEvent.id)}
+        title="Delete Event"
+        description="Are you sure you want to delete this event? This action cannot be undone."
+        loading={deleteMutation.isPending}
+      />
+
+      {/* Add Members to Event Dialog */}
+      {addMembersEvent && (
+        <AddMembersToEventDialog
+          open={!!addMembersEvent}
+          onOpenChange={(open) => { if (!open) setAddMembersEvent(null); }}
+          eventId={addMembersEvent.id}
+          eventTitle={addMembersEvent.title}
+        />
+      )}
     </div>
   );
 }

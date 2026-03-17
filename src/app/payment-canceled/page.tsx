@@ -5,6 +5,7 @@ import { XCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import logo from '@/assets/704-logo.png';
+import Image from 'next/image';
 
 export default function PaymentCanceled() {
   usePageTitle('Payment Canceled');
@@ -15,8 +16,7 @@ export default function PaymentCanceled() {
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-lg">
         <div className="container flex h-16 items-center">
           <Link href="/" className="flex items-center gap-2">
-            <img src={logo.src}
- alt="704 Collective" className="h-9 w-auto" />
+            <Image src={logo} alt="704 Collective" height={36} width={36} className="h-9 w-auto" />
             <span className="text-foreground text-lg font-medium">Social</span>
           </Link>
         </div>

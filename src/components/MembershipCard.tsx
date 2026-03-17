@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { QRCodeSVG } from 'qrcode.react';
 
 interface MembershipCardProps {
@@ -12,13 +13,13 @@ interface MembershipCardProps {
 export function MembershipCard({ name, memberId, avatarUrl, memberSince }: MembershipCardProps) {
   return (
     <div
-      className="membership-card relative w-full max-w-sm overflow-hidden rounded-2xl"
+      className="membership-card relative w-full overflow-hidden rounded-2xl"
       style={{
         background: 'linear-gradient(145deg, #2a2a2a 0%, #333333 50%, #252525 100%)',
         border: '1px solid rgba(198, 166, 100, 0.35)',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.04) inset',
         aspectRatio: '1.586 / 1',
-        padding: '24px',
+        padding: 'clamp(16px, 4%, 24px)',
       }}
     >
       {/* Shine effect overlay */}
@@ -38,46 +39,70 @@ export function MembershipCard({ name, memberId, avatarUrl, memberSince }: Membe
         {/* Top row: 704 + badge */}
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-2xl font-bold tracking-wider text-white leading-none">704</h2>
-            <p className="text-[10px] tracking-[0.3em] text-white/50 uppercase mt-0.5">Social</p>
+            <h2 className="font-bold tracking-wider text-white leading-none"
+              style={{ fontSize: 'clamp(1.25rem, 4vw, 1.5rem)' }}>
+              704
+            </h2>
+            <p className="tracking-[0.3em] text-white/50 uppercase mt-0.5"
+              style={{ fontSize: 'clamp(8px, 1.5vw, 10px)' }}>
+              Social
+            </p>
           </div>
-          <div className="px-2.5 py-1 rounded-full border border-white/15 bg-white/5">
-            <span className="text-[10px] font-semibold tracking-widest text-white/80 uppercase">
+          <div className="px-2 py-1 rounded-full border border-white/15 bg-white/5">
+            <span className="font-semibold tracking-widest text-white/80 uppercase"
+              style={{ fontSize: 'clamp(7px, 1.5vw, 10px)' }}>
               Social Member
             </span>
           </div>
         </div>
 
         {/* Middle row: avatar + name */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {avatarUrl ? (
-            <img
-              src={avatarUrl}
-              alt={name}
-              className="w-11 h-11 rounded-full object-cover border-2 border-white/20 shrink-0"
-            />
+            <div className="relative shrink-0"
+              style={{ width: 'clamp(36px, 8%, 44px)', height: 'clamp(36px, 8%, 44px)' }}>
+              <Image
+                src={avatarUrl}
+                alt={name}
+                fill
+                className="rounded-full object-cover border-2 border-white/20"
+                unoptimized
+              />
+            </div>
           ) : (
-            <div className="w-11 h-11 rounded-full bg-white/10 flex items-center justify-center border-2 border-white/20 shrink-0">
-              <span className="text-base font-bold text-white">
+            <div
+              className="rounded-full bg-white/10 flex items-center justify-center border-2 border-white/20 shrink-0"
+              style={{ width: 'clamp(36px, 8%, 44px)', height: 'clamp(36px, 8%, 44px)' }}
+            >
+              <span className="font-bold text-white"
+                style={{ fontSize: 'clamp(0.875rem, 3vw, 1rem)' }}>
                 {name.charAt(0).toUpperCase()}
               </span>
             </div>
           )}
           <div className="min-w-0">
-            <p className="text-base font-semibold text-white truncate">{name}</p>
+            <p className="font-semibold text-white truncate"
+              style={{ fontSize: 'clamp(0.8125rem, 3vw, 1rem)' }}>
+              {name}
+            </p>
             {memberSince && (
-              <p className="text-[11px] text-white/45 mt-0.5">Member since {memberSince}</p>
+              <p className="text-white/45 mt-0.5"
+                style={{ fontSize: 'clamp(9px, 2vw, 11px)' }}>
+                Member since {memberSince}
+              </p>
             )}
           </div>
         </div>
 
         {/* Bottom row: location + QR */}
         <div className="flex items-end justify-between">
-          <p className="text-[11px] text-white/35">Charlotte, NC</p>
-          <div className="bg-white rounded-lg p-1.5">
+          <p className="text-white/35" style={{ fontSize: 'clamp(9px, 2vw, 11px)' }}>
+            Charlotte, NC
+          </p>
+          <div className="bg-white rounded-lg p-1 sm:p-1.5">
             <QRCodeSVG
               value={memberId}
-              size={44}
+              size={36}
               level="M"
               bgColor="#FFFFFF"
               fgColor="#000000"

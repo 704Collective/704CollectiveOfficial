@@ -229,10 +229,11 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
+          {/* Fixed: stacks vertically on mobile */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
               <p className="text-sm font-medium">
-                {memberType} – {monthlyPrice}/month
+                {memberType} — {monthlyPrice}/month
               </p>
               {memberSince && (
                 <p className="text-xs text-muted-foreground mt-0.5">Member since {memberSince}</p>
@@ -242,7 +243,7 @@ export default function SettingsPage() {
               )}
             </div>
             {isActiveMember && (
-              <Badge className="bg-green-500/15 text-green-500 border-green-500/30 hover:bg-green-500/15">
+              <Badge className="bg-green-500/15 text-green-500 border-green-500/30 hover:bg-green-500/15 self-start sm:self-auto">
                 Active
               </Badge>
             )}
@@ -271,10 +272,9 @@ export default function SettingsPage() {
               </p>
             </div>
           )}
-
         </section>
 
-        {/* Danger Zone — own card */}
+        {/* Danger Zone */}
         {isActiveMember && hasStripeSubscription && user && (
           <section className="card-elevated p-5 border border-destructive/20">
             <MembershipDangerZone
@@ -308,9 +308,10 @@ export default function SettingsPage() {
 
         {/* Sign Out */}
         <section className="card-elevated p-5">
-          <div className="flex items-center justify-between">
+          {/* Fixed: stacks vertically on very small screens */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
-              <LogOut className="w-4 h-4 text-muted-foreground" />
+              <LogOut className="w-4 h-4 text-muted-foreground shrink-0" />
               <div>
                 <h3 className="text-sm font-medium">Sign Out</h3>
                 <p className="text-xs text-muted-foreground">Sign out of your account</p>
@@ -321,6 +322,7 @@ export default function SettingsPage() {
               size="sm"
               onClick={handleSignOut}
               disabled={isSigningOut}
+              className="self-start sm:self-auto"
             >
               {isSigningOut ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Sign Out'}
             </Button>

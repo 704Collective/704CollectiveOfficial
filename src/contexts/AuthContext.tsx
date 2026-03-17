@@ -9,15 +9,28 @@ interface Profile {
   email: string;
   full_name: string;
   avatar_url: string | null;
-  member_type: string;
-  subscription_status: string;
+  // Role & member type
+  role: 'super_admin' | 'admin' | 'lead';
+  member_type: 'social' | 'business' | 'non_member' | 'partner' | 'vendor' | 'venue' | 'sponsor' | null;
+  membership_wave: 'founding' | 'wave_2' | 'wave_3' | 'wave_4' | 'wave_5' | null;
+  is_founding_member: boolean;
+  is_partner: boolean;
+  partner_type: 'vendor' | 'venue' | 'sponsor' | 'general' | null;
+  application_status: 'pending' | 'accepted' | 'denied' | 'waitlist' | null;
+  banned: boolean;
+  banned_at: string | null;
+  banned_reason: string | null;
+  // Subscription
+  subscription_status: string | null;
   membership_override: boolean;
   stripe_customer_id: string | null;
-  member_since?: string;
-  calendar_token?: string;
-  subscription_end?: string;
+  first_payment_at: string | null;
+  member_since?: string | null;
   subscription_ends_at?: string | null;
   cancel_at_period_end?: boolean;
+  // Misc
+  calendar_token?: string;
+  phone?: string | null;
 }
 
 interface AuthState {
@@ -25,8 +38,13 @@ interface AuthState {
   profile: Profile | null;
   session: Session | null;
   loading: boolean;
+  // Convenience flags
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   isActiveMember: boolean;
+  isBusinessMember: boolean;
+  isBanned: boolean;
+  isPendingApplication: boolean;
 }
 
 interface AuthContextValue extends AuthState {
@@ -35,6 +53,7 @@ interface AuthContextValue extends AuthState {
   signInWithGoogle: () => Promise<{ data: unknown; error: unknown }>;
   signOut: () => Promise<{ error: unknown }>;
   resetPassword: (email: string) => Promise<{ data: unknown; error: unknown }>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -46,7 +65,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session: null,
     loading: true,
     isAdmin: false,
+    isSuperAdmin: false,
     isActiveMember: false,
+    isBusinessMember: false,
+    isBanned: false,
+    isPendingApplication: false,
   });
 
   const supabaseRef = useRef(createClient());
@@ -62,46 +85,86 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ),
         ]);
 
-      const [profileRes, rolesRes] = await withTimeout(
-        Promise.all([
-          supabaseRef.current
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .is('deleted_at', null)
-            .maybeSingle(),
-          supabaseRef.current
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', userId),
-        ]),
+      const { data: profile, error: profileError } = await withTimeout(
+        supabaseRef.current
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .is('deleted_at', null)
+          .maybeSingle(),
         5000
       );
 
-      const { data: profile, error: profileError } = profileRes;
-      const { data: roles, error: rolesError } = rolesRes;
-
       if (profileError) {
         console.error('[AuthContext] Profile fetch error:', profileError.message);
-        return { profile: null, isAdmin: false, isActiveMember: false };
+        return {
+          profile: null,
+          isAdmin: false,
+          isSuperAdmin: false,
+          isActiveMember: false,
+          isBusinessMember: false,
+          isBanned: false,
+          isPendingApplication: false,
+        };
       }
 
-      if (rolesError) {
-        console.error('[AuthContext] Roles fetch error:', rolesError.message);
-      }
-
-      const isAdmin = roles?.some((r) => r.role === 'admin') ?? false;
+      const role = profile?.role ?? 'lead';
+      const isSuperAdmin = role === 'super_admin';
+      const isAdmin = role === 'admin' || isSuperAdmin;
       const isActiveMember =
         profile?.subscription_status === 'active' ||
+        profile?.subscription_status === 'trialing' ||
         profile?.membership_override === true;
+      const isBusinessMember = profile?.member_type === 'business';
+      const isBanned = profile?.banned === true;
+      const isPendingApplication = profile?.application_status === 'pending';
 
-      console.log('[Auth] fetchProfile result:', { profile: !!profile, isAdmin, isActiveMember });
-      return { profile, isAdmin, isActiveMember };
+      console.log('[Auth] fetchProfile result:', {
+        profile: !!profile,
+        role,
+        isAdmin,
+        isSuperAdmin,
+        isActiveMember,
+        isBusinessMember,
+        isBanned,
+      });
+
+      return {
+        profile: profile as Profile | null,
+        isAdmin,
+        isSuperAdmin,
+        isActiveMember,
+        isBusinessMember,
+        isBanned,
+        isPendingApplication,
+      };
     } catch (err) {
       console.error('[AuthContext] fetchProfile failed or timed out:', err);
-      return { profile: null, isAdmin: false, isActiveMember: false };
+      return {
+        profile: null,
+        isAdmin: false,
+        isSuperAdmin: false,
+        isActiveMember: false,
+        isBusinessMember: false,
+        isBanned: false,
+        isPendingApplication: false,
+      };
     }
   }, []);
+
+  const applyProfileState = useCallback(
+    async (user: User, session: Session) => {
+      profileLoadedForRef.current = user.id;
+      const result = await fetchProfile(user.id);
+      setState({
+        user,
+        session,
+        loading: false,
+        ...result,
+      });
+    },
+    [fetchProfile]
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -113,25 +176,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
 
       if (session?.user) {
-        // SIGNED_IN is ignored — it fires before INITIAL_SESSION and consistently
-        // causes Supabase query timeouts. INITIAL_SESSION handles cold load correctly.
+        // SIGNED_IN is ignored — fires before INITIAL_SESSION and causes timeouts.
+        // INITIAL_SESSION and TOKEN_REFRESHED handle all cases correctly.
         if (event === 'SIGNED_IN') {
           console.log('[Auth] Ignoring SIGNED_IN event, waiting for INITIAL_SESSION');
           return;
         }
-        profileLoadedForRef.current = session.user.id;
-        console.log('[Auth] fetching profile for:', session.user.id);
-        const { profile, isAdmin, isActiveMember } = await fetchProfile(session.user.id);
-        if (mounted) {
-          setState({
-            user: session.user,
-            profile,
-            session,
-            loading: false,
-            isAdmin,
-            isActiveMember,
-          });
-        }
+        await applyProfileState(session.user, session);
+        if (!mounted) return;
       } else {
         if (mounted) {
           setState({
@@ -140,7 +192,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             session: null,
             loading: false,
             isAdmin: false,
+            isSuperAdmin: false,
             isActiveMember: false,
+            isBusinessMember: false,
+            isBanned: false,
+            isPendingApplication: false,
           });
         }
       }
@@ -150,40 +206,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchProfile]);
+  }, [applyProfileState]);
 
-  const signIn = async (email: string, password: string) => {
-    return await supabaseRef.current.auth.signInWithPassword({ email, password });
-  };
+  // Expose a manual refresh — useful after profile updates (e.g. password set, plan upgrade)
+  const refreshProfile = useCallback(async () => {
+    const { data: { session } } = await supabaseRef.current.auth.getSession();
+    if (session?.user) {
+      await applyProfileState(session.user, session);
+    }
+  }, [applyProfileState]);
 
-  const signUp = async (email: string, password: string, fullName: string) => {
-    return await supabaseRef.current.auth.signUp({
+  const signIn = async (email: string, password: string) =>
+    supabaseRef.current.auth.signInWithPassword({ email, password });
+
+  const signUp = async (email: string, password: string, fullName: string) =>
+    supabaseRef.current.auth.signUp({
       email,
       password,
       options: { data: { full_name: fullName } },
     });
-  };
 
-  const signInWithGoogle = async () => {
-    return await supabaseRef.current.auth.signInWithOAuth({
+  const signInWithGoogle = async () =>
+    supabaseRef.current.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
-  };
 
-  const signOut = async () => {
-    return await supabaseRef.current.auth.signOut();
-  };
+  const signOut = async () => supabaseRef.current.auth.signOut();
 
-  const resetPassword = async (email: string) => {
-    return await supabaseRef.current.auth.resetPasswordForEmail(email, {
+  const resetPassword = async (email: string) =>
+    supabaseRef.current.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/reset-password`,
     });
-  };
 
   return (
     <AuthContext.Provider
-      value={{ ...state, signIn, signUp, signInWithGoogle, signOut, resetPassword }}
+      value={{ ...state, signIn, signUp, signInWithGoogle, signOut, resetPassword, refreshProfile }}
     >
       {children}
     </AuthContext.Provider>

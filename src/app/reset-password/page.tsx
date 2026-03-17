@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2, CheckCircle, ArrowLeft } from 'lucide-react';
 import { z } from 'zod';
 import logo from '@/assets/704-logo.png';
+import Image from 'next/image';
 
 const emailSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -66,8 +67,7 @@ export default function ResetPassword() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <Link href="/" className="inline-flex flex-col sm:flex-row items-center justify-center gap-2">
-            <img src={logo.src}
- alt="704 Collective" className="h-12 w-auto" />
+            <Image src={logo} alt="704 Collective" height={48} width={48} className="h-12 w-auto" />
             <span className="text-foreground text-2xl font-medium">Social</span>
           </Link>
         </div>

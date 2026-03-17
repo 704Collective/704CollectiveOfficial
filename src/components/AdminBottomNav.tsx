@@ -1,7 +1,9 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Calendar, Users, ScanLine, CheckSquare, Settings, BarChart2 } from 'lucide-react';
+import {
+  LayoutDashboard, Calendar, Users, ScanLine, CheckSquare, Settings, BarChart2,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminSection } from '@/components/AdminLayout';
 
@@ -18,13 +20,13 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { icon: LayoutDashboard, label: 'Overview', section: 'dashboard' },
-  { icon: Calendar,        label: 'Events',   section: 'events'    },
-  { icon: Users,           label: 'Members',  section: 'members'   },
-  { icon: BarChart2,       label: 'Finance',  section: 'financials' },
-  { icon: ScanLine,        label: 'Check-in', section: 'checkin'   },
-  { icon: CheckSquare,     label: 'Tasks',    section: 'tasks'     },
-  { icon: Settings,        label: 'Settings', href: '/admin/settings' },
+  { icon: LayoutDashboard, label: 'Overview',  section: 'dashboard'  },
+  { icon: Calendar,        label: 'Events',    section: 'events'     },
+  { icon: Users,           label: 'Members',   section: 'members'    },
+  { icon: BarChart2,       label: 'Finance',   section: 'financials' },
+  { icon: ScanLine,        label: 'Check-in',  section: 'checkin'    },
+  { icon: CheckSquare,     label: 'Tasks',     section: 'tasks'      },
+  { icon: Settings,        label: 'Settings',  href: '/admin/settings' },
 ];
 
 export function AdminBottomNav({ activeSection, onSectionChange }: AdminBottomNavProps) {
@@ -55,7 +57,7 @@ export function AdminBottomNav({ activeSection, onSectionChange }: AdminBottomNa
       className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background"
       style={{ touchAction: 'manipulation' }}
     >
-      <div className="flex items-stretch h-16">
+      <div className="flex items-stretch" style={{ height: '56px' }}>
         {NAV_ITEMS.map((item) => {
           const active = isActive(item);
           const Icon   = item.icon;
@@ -64,8 +66,9 @@ export function AdminBottomNav({ activeSection, onSectionChange }: AdminBottomNa
               type="button"
               key={item.label}
               onClick={() => handleTap(item)}
+              style={{ minHeight: '44px' }}
               className={cn(
-                'flex flex-col items-center justify-center flex-1 gap-1 text-[10px] font-medium transition-colors',
+                'flex flex-col items-center justify-center flex-1 gap-0.5 transition-colors',
                 active
                   ? 'text-primary'
                   : 'text-muted-foreground hover:text-foreground'
@@ -75,7 +78,16 @@ export function AdminBottomNav({ activeSection, onSectionChange }: AdminBottomNa
                 className={cn('w-5 h-5', active ? 'text-primary' : 'text-muted-foreground')}
                 strokeWidth={active ? 2.5 : 1.75}
               />
-              <span>{item.label}</span>
+              {/* Hide labels below 360px to prevent overflow with 7 items */}
+              <span
+                className="font-medium"
+                style={{
+                  fontSize: 'clamp(8px, 2vw, 10px)',
+                  lineHeight: 1,
+                }}
+              >
+                {item.label}
+              </span>
             </button>
           );
         })}

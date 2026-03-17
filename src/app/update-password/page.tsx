@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { z } from 'zod';
 import logo from '@/assets/704-logo.png';
+import Image from 'next/image';
 
 const passwordSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),

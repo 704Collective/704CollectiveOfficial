@@ -305,7 +305,7 @@ export default function About() {
                   backgroundColor: '#111',
                   border: '1px solid rgba(255,255,255,0.08)',
                   borderRadius: '20px',
-                  padding: '56px 40px',
+                  padding: 'clamp(32px, 6vw, 56px) clamp(20px, 5vw, 40px)',
                 }}>
                   <h2 style={{
                     fontSize: 'clamp(1.5rem, 3.5vw, 2.25rem)',

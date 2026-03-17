@@ -129,7 +129,7 @@ export default function DashboardEventsPage() {
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         <DashboardNav />
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold mb-1">My Events</h1>
             <p className="text-sm text-muted-foreground">

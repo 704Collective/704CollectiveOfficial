@@ -163,7 +163,7 @@ export default function SocialPage() {
         ════════════════════════════════════════════ */}
         <section
           style={{
-            minHeight: 'calc(100vh - 64px)',
+            minHeight: 'calc(100dvh - 64px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -757,7 +757,7 @@ export default function SocialPage() {
                   backgroundColor: '#111111',
                   border: '1px solid rgba(255, 255, 255, 0.08)',
                   borderRadius: '16px',
-                  padding: '44px 32px',
+                  padding: 'clamp(28px, 6vw, 44px) clamp(20px, 5vw, 32px)',
                   textAlign: 'center',
                 }}
               >
@@ -873,8 +873,9 @@ export default function SocialPage() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        gap: '20px',
-                        padding: '20px 24px',
+                        gap: '12px',
+                        padding: 'clamp(14px, 3vw, 20px) clamp(16px, 4vw, 24px)',
+                        flexWrap: 'wrap' as const,
                         backgroundColor: '#1A1A1A',
                         border: '1px solid rgba(255, 255, 255, 0.06)',
                         borderRadius: '12px',

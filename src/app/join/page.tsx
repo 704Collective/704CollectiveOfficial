@@ -76,7 +76,7 @@ export default function Join() {
   return (
     <>
       <Nav />
-      <main style={{ paddingTop: '64px', backgroundColor: '#000', minHeight: '100vh' }}>
+      <main style={{ paddingTop: '64px', backgroundColor: '#000', minHeight: '100dvh' }}>
         <div style={{ maxWidth: '960px', margin: '0 auto', padding: '48px 24px 80px' }}>
 
           {/* Hero CTA */}
@@ -127,7 +127,7 @@ export default function Join() {
               <Link
                 href="/join/checkout"
                 style={{
-                  display: 'inline-flex',
+                  width: '100%', maxWidth: '320px', justifyContent: 'center',,
                   alignItems: 'center',
                   gap: '8px',
                   padding: '14px 32px',

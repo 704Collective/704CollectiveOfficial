@@ -21,7 +21,7 @@ const loginSchema = z.object({
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div style={{ minHeight: '100vh', backgroundColor: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100dvh', backgroundColor: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ width: '48px', height: '48px', border: '2px solid rgba(255,255,255,0.1)', borderTopColor: '#C6A664', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
       </div>
     }>
@@ -86,7 +86,6 @@ function Login() {
     }
 
     setLoading(true);
-
     const { error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
@@ -112,19 +111,15 @@ function Login() {
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?source=login`,
-      },
+      options: { redirectTo: `${window.location.origin}/auth/callback?source=login` },
     });
-    if (error) {
-      toast.error('Failed to sign in with Google');
-    }
+    if (error) toast.error('Failed to sign in with Google');
   };
 
   return (
     <div
       style={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
         backgroundColor: '#000000',
         display: 'flex',
         alignItems: 'center',
@@ -133,11 +128,14 @@ function Login() {
       }}
     >
       <div style={{ width: '100%', maxWidth: '420px' }}>
+
         {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
-            <Image src="/logo-nav.png" alt="704 Collective" width={48} height={48} style={{ height: '48px', width: 'auto' }} />
-            <span style={{ color: '#FFFFFF', fontSize: '1.5rem', fontWeight: 600 }}>704 Collective</span>
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
+            <Image src="/logo-nav.png" alt="704 Collective" width={40} height={40} />
+            <span style={{ color: '#FFFFFF', fontSize: 'clamp(1.25rem, 5vw, 1.5rem)', fontWeight: 600 }}>
+              704 Collective
+            </span>
           </Link>
           <p style={{ marginTop: '8px', color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.9375rem' }}>
             Welcome back
@@ -146,143 +144,120 @@ function Login() {
 
         {/* Deactivated Alert */}
         {isDeactivated && (
-          <div
-            style={{
-              backgroundColor: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              borderRadius: '12px',
-              padding: '16px',
-              marginBottom: '24px',
-              color: '#ef4444',
-              fontSize: '0.875rem',
-              textAlign: 'center',
-            }}
-          >
+          <div style={{
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            borderRadius: '12px',
+            padding: '16px',
+            marginBottom: '20px',
+            color: '#ef4444',
+            fontSize: '0.875rem',
+            textAlign: 'center',
+          }}>
             This account is no longer active. Please contact support at hello@704collective.com.
           </div>
         )}
 
-        {/* Login Card */}
-        <div
-          style={{
-            backgroundColor: '#1A1A1A',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRadius: '16px',
-            padding: '40px 32px',
-          }}
-        >
+        {/* Login Card — responsive padding */}
+        <div style={{
+          backgroundColor: '#1A1A1A',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: '16px',
+          padding: 'clamp(24px, 6vw, 40px) clamp(20px, 5vw, 32px)',
+        }}>
           <form onSubmit={handleLogin}>
+
             {/* Email */}
             <div style={{ marginBottom: '20px' }}>
-              <label
-                htmlFor="email"
-                style={{
-                  display: 'block',
-                  fontSize: '0.8125rem',
-                  fontWeight: 600,
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  marginBottom: '8px',
-                }}
-              >
+              <label htmlFor="email" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)', marginBottom: '8px' }}>
                 Email
               </label>
               <input
                 id="email"
                 type="email"
+                autoComplete="email"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '12px 16px',
+                  padding: '13px 16px',
                   backgroundColor: '#2E2E2E',
                   border: errors.email ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.1)',
                   borderRadius: '8px',
                   color: '#FFFFFF',
-                  fontSize: '0.9375rem',
+                  fontSize: '16px', // Prevents iOS zoom
                   outline: 'none',
                   transition: 'border-color 200ms ease',
                   boxSizing: 'border-box',
+                  minHeight: '48px',
                 }}
                 onFocus={(e) => { if (!errors.email) e.currentTarget.style.borderColor = '#C6A664'; }}
                 onBlur={(e) => { if (!errors.email) e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
               />
-              {errors.email && (
-                <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '6px' }}>{errors.email}</p>
-              )}
+              {errors.email && <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '6px' }}>{errors.email}</p>}
             </div>
 
             {/* Password */}
             <div style={{ marginBottom: '16px' }}>
-              <label
-                htmlFor="password"
-                style={{
-                  display: 'block',
-                  fontSize: '0.8125rem',
-                  fontWeight: 600,
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  marginBottom: '8px',
-                }}
-              >
+              <label htmlFor="password" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)', marginBottom: '8px' }}>
                 Password
               </label>
               <div style={{ position: 'relative' }}>
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '12px 48px 12px 16px',
+                    padding: '13px 52px 13px 16px',
                     backgroundColor: '#2E2E2E',
                     border: errors.password ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.1)',
                     borderRadius: '8px',
                     color: '#FFFFFF',
-                    fontSize: '0.9375rem',
+                    fontSize: '16px', // Prevents iOS zoom
                     outline: 'none',
                     transition: 'border-color 200ms ease',
                     boxSizing: 'border-box',
+                    minHeight: '48px',
                   }}
                   onFocus={(e) => { if (!errors.password) e.currentTarget.style.borderColor = '#C6A664'; }}
                   onBlur={(e) => { if (!errors.password) e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
                 />
+                {/* Eye button — proper 44px touch target */}
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                   style={{
                     position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
+                    right: '0',
+                    top: '0',
+                    bottom: '0',
+                    width: '48px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
                     color: 'rgba(255, 255, 255, 0.4)',
-                    padding: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
                   }}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              {errors.password && (
-                <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '6px' }}>{errors.password}</p>
-              )}
+              {errors.password && <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '6px' }}>{errors.password}</p>}
             </div>
 
             {/* Forgot Password */}
             <div style={{ textAlign: 'right', marginBottom: '24px' }}>
               <Link
                 href="/reset-password"
-                style={{
-                  fontSize: '0.8125rem',
-                  color: 'rgba(255, 255, 255, 0.4)',
-                  textDecoration: 'none',
-                  transition: 'color 200ms ease',
-                }}
+                style={{ fontSize: '0.8125rem', color: 'rgba(255, 255, 255, 0.4)', textDecoration: 'none', transition: 'color 200ms ease', display: 'inline-block', padding: '4px 0' }}
                 onMouseEnter={(e) => { e.currentTarget.style.color = '#C6A664'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255, 255, 255, 0.4)'; }}
               >
@@ -297,6 +272,7 @@ function Login() {
               style={{
                 width: '100%',
                 padding: '14px',
+                minHeight: '48px',
                 backgroundColor: '#FFFFFF',
                 color: '#000000',
                 fontWeight: 600,
@@ -313,13 +289,8 @@ function Login() {
               }}
             >
               {loading ? (
-                <>
-                  <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
-                  Signing in...
-                </>
-              ) : (
-                'Sign In'
-              )}
+                <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />Signing in...</>
+              ) : 'Sign In'}
             </button>
           </form>
 
@@ -339,6 +310,7 @@ function Login() {
             style={{
               width: '100%',
               padding: '14px',
+              minHeight: '48px',
               backgroundColor: 'transparent',
               color: '#FFFFFF',
               fontWeight: 500,
@@ -352,16 +324,10 @@ function Login() {
               justifyContent: 'center',
               gap: '10px',
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'; e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'; e.currentTarget.style.backgroundColor = 'transparent'; }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24">
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
               <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />

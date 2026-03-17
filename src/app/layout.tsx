@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import ScrollProgress from "@/components/ScrollProgress";
 import ScrollToTop from "@/components/ScrollToTop";
@@ -62,6 +62,17 @@ export const metadata: Metadata = {
   },
 };
 
+// ── Viewport export (Next.js 14+ App Router standard) ─────────────────────────
+// This is the correct way to set viewport in App Router.
+// It generates <meta name="viewport"> automatically.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,       // Allow pinch zoom (accessibility)
+  userScalable: true,    // Never disable user scaling
+  themeColor: "#1A1A1A",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -70,7 +81,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${plusJakarta.variable} ${headingFont.variable}`}>
       <head>
-        <meta name="theme-color" content="#1A1A1A" />
         <link rel="dns-prefetch" href="https://bnmtynevbuplqpuqvmna.supabase.co" />
         <link rel="preconnect" href="https://bnmtynevbuplqpuqvmna.supabase.co" crossOrigin="anonymous" />
         <JsonLd />

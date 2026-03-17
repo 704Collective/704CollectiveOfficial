@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Mail, ArrowLeft } from 'lucide-react';
 import logo from '@/assets/704-logo.png';
 import { Skeleton } from '@/components/ui/skeleton';
+import Image from 'next/image';
 
 export default function VerifyEmailPage() {
   return (

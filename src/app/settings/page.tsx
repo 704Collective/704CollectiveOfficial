@@ -246,7 +246,7 @@ export default function Settings() {
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-4 rounded-lg bg-muted/50">
                 <div>
                   <p className="font-medium">
                     {isActiveMember ? 'Social - $30/month' : 'No active membership'}
@@ -334,7 +334,7 @@ export default function Settings() {
 
           {/* Sign Out */}
           <div className="card-elevated p-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
                   <LogOut className="w-5 h-5 text-destructive" />
@@ -344,7 +344,7 @@ export default function Settings() {
                   <p className="text-sm text-muted-foreground">Sign out of your account</p>
                 </div>
               </div>
-              <Button variant="destructive" onClick={handleSignOut}>
+              <Button variant="destructive" onClick={handleSignOut} className="self-start sm:self-auto">
                 Sign Out
               </Button>
             </div>

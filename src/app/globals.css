@@ -86,11 +86,16 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
   }
 
   html {
     scroll-behavior: smooth;
     background: var(--background);
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overflow-x: hidden;
+    width: 100%;
   }
 
   body {
@@ -99,6 +104,10 @@
     color: var(--foreground);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    width: 100%;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -108,6 +117,11 @@
   a {
     color: inherit;
     text-decoration: none;
+  }
+
+  /* Use dynamic viewport height everywhere */
+  .min-h-screen {
+    min-height: 100dvh;
   }
 }
 
@@ -547,4 +561,89 @@ summary:focus-visible {
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MOBILE OPTIMIZATION
+   Global cascade-safe rules for all pages.
+═══════════════════════════════════════════════════════════ */
+
+/* ── Prevent iOS zoom on input focus ────────────────────────
+   iOS zooms in when input font-size < 16px. Enforcing 16px
+   minimum prevents this on all form elements.               */
+@media (max-width: 640px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* ── Portal & dashboard mobile layout ───────────────────────  */
+@media (max-width: 640px) {
+  /* Ensure nav tabs are scrollable */
+  nav.overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+  }
+
+  /* Main content padding on small screens */
+  main.max-w-3xl,
+  main.max-w-5xl,
+  main.max-w-6xl {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  /* Admin table overflow */
+  .overflow-x-auto table {
+    min-width: 600px;
+  }
+}
+
+/* ── Modal/dialog on mobile ──────────────────────────────────  */
+@media (max-width: 640px) {
+  [role="dialog"] > div {
+    width: calc(100vw - 32px) !important;
+    max-width: calc(100vw - 32px) !important;
+    margin: 0 16px !important;
+  }
+
+  [role="dialog"] {
+    max-height: 90dvh;
+    overflow-y: auto;
+  }
+}
+
+/* ── Dropdown menus — prevent off-screen ────────────────────  */
+@media (max-width: 640px) {
+  [data-radix-popper-content-wrapper] {
+    max-width: calc(100vw - 32px) !important;
+  }
+}
+
+/* ── Typography scaling on very small phones ────────────────  */
+@media (max-width: 380px) {
+  h1 { font-size: clamp(1.375rem, 6vw, 1.875rem) !important; }
+  h2 { font-size: clamp(1.125rem, 5vw, 1.5rem) !important; }
+}
+
+/* ── Messages page full height fix on mobile ────────────────  */
+@media (max-width: 640px) {
+  .messages-layout {
+    height: calc(100dvh - 128px) !important;
+  }
+}
+
+/* ── Bottom safe area — iPhone home indicator ───────────────  */
+@media (max-width: 640px) {
+  .portal-main-content {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
 }
