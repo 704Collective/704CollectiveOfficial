@@ -790,7 +790,7 @@ export default function BusinessFeedPage() {
 
             {/* Comments section */}
             {expandedComments.has(post.id) && (
-              <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '12px 16px', space: '10px' }}>
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '12px 16px' }}>
                 {/* Comment list */}
                 <div className="space-y-3 mb-3">
                   {(comments[post.id] || []).map(comment => (
