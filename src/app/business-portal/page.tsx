@@ -205,7 +205,7 @@ export default function BusinessPortalPage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  shrink: 0,
+                  flexShrink: 0,
                 }}
               >
                 <Icon style={{ width: '18px', height: '18px', color: '#C6A664' }} />
