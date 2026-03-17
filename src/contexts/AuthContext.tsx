@@ -168,8 +168,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // SIGNED_IN is ignored — fires before INITIAL_SESSION and causes timeouts.
         // INITIAL_SESSION and TOKEN_REFRESHED handle all cases correctly.
         if (event === 'SIGNED_IN') {
-          console.log('[Auth] Ignoring SIGNED_IN event, waiting for INITIAL_SESSION');
-          return;
+          console.log('[Auth] Handling SIGNED_IN event');
+          // Fall through to applyProfileState below
         }
         await applyProfileState(session.user, session);
         if (!mounted) return;
