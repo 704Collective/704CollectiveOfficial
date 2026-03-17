@@ -233,7 +233,7 @@ export default function BusinessDirectoryPage() {
                               <Image src={member.logo_url} alt={member.company_name} fill style={{ objectFit: 'contain' }} unoptimized />
                             </div>
                           ) : null}
-                          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', truncate: true }}>
+                          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
                             {member.company_name}
                           </p>
                         </div>
