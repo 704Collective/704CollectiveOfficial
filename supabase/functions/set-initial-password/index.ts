@@ -32,13 +32,12 @@ async function checkRateLimit(supabase: any, key: string, max: number): Promise<
 
   const windowStart = new Date(data.window_start);
   if (now.getTime() - windowStart.getTime() > RATE_LIMIT_WINDOW_MS) {
-    // Window expired, reset
     await supabase.from("rate_limits").upsert({ key, attempts: 1, window_start: now.toISOString() }, { onConflict: "key" });
     return false;
   }
 
   if (data.attempts >= max) {
-    return true; // Rate limited
+    return true;
   }
 
   await supabase.from("rate_limits").update({ attempts: data.attempts + 1 }).eq("key", key);
@@ -51,7 +50,16 @@ serve(async (req) => {
   }
 
   try {
-    const { email, password, session_id } = await req.json();
+    const {
+      email,
+      password,
+      session_id,
+      first_name,
+      last_name,
+      phone,
+      company,
+      title,
+    } = await req.json();
 
     // ── Input validation ──
     if (!email || typeof email !== "string") {
@@ -76,7 +84,21 @@ serve(async (req) => {
       );
     }
 
-    // ── Rate limiting (5 attempts per email per hour) ──
+    if (!first_name || !last_name) {
+      return new Response(
+        JSON.stringify({ error: "First name and last name are required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!phone) {
+      return new Response(
+        JSON.stringify({ error: "Phone number is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── Rate limiting ──
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -111,7 +133,6 @@ serve(async (req) => {
       );
     }
 
-    // Check payment status
     if (session.payment_status !== "paid") {
       log("Session not paid", { status: session.payment_status });
       return new Response(
@@ -120,7 +141,6 @@ serve(async (req) => {
       );
     }
 
-    // Check email matches
     const sessionEmail = session.customer_details?.email?.toLowerCase();
     if (!sessionEmail || sessionEmail !== email.toLowerCase()) {
       log("Email mismatch", { provided: email, session: sessionEmail });
@@ -130,10 +150,9 @@ serve(async (req) => {
       );
     }
 
-    // Check session age (created within last 60 minutes)
-    const sessionCreatedAt = session.created * 1000; // Stripe uses seconds
+    const sessionCreatedAt = session.created * 1000;
     if (Date.now() - sessionCreatedAt > SESSION_MAX_AGE_MS) {
-      log("Session too old", { created: session.created, ageMinutes: Math.round((Date.now() - sessionCreatedAt) / 60000) });
+      log("Session too old", { ageMinutes: Math.round((Date.now() - sessionCreatedAt) / 60000) });
       return new Response(
         JSON.stringify({ error: "Checkout session has expired. Please contact support." }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -142,8 +161,7 @@ serve(async (req) => {
 
     log("Stripe session verified", { email: sessionEmail });
 
-    // ── Look up user by email (reusing supabase client from above) ──
-
+    // ── Look up user by email ──
     log("Looking up user", { email });
     const { data: userData, error: lookupErr } = await supabase.auth.admin.getUserByEmail(email);
 
@@ -157,9 +175,9 @@ serve(async (req) => {
 
     const user = userData.user;
 
-    // ── Safety check: only allow for users who have NEVER signed in ──
+    // ── Safety check: only allow for users who have never signed in ──
     if (user.last_sign_in_at) {
-      log("User has already signed in — rejecting", { userId: user.id, lastSignIn: user.last_sign_in_at });
+      log("User has already signed in — rejecting", { userId: user.id });
       return new Response(
         JSON.stringify({ error: "already_setup" }),
         { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -180,6 +198,26 @@ serve(async (req) => {
     }
 
     log("Password set successfully", { userId: user.id });
+
+    // ── Update profile with all additional fields ──
+    const fullName = `${first_name.trim()} ${last_name.trim()}`;
+    const profileUpdate: Record<string, unknown> = {
+      full_name: fullName,
+      phone: phone.trim(),
+    };
+    if (company?.trim()) profileUpdate.company = company.trim();
+    if (title?.trim()) profileUpdate.title = title.trim();
+
+    const { error: profileErr } = await supabase
+      .from("profiles")
+      .update(profileUpdate)
+      .eq("id", user.id);
+
+    if (profileErr) {
+      log("Profile update failed (non-blocking)", { error: profileErr.message });
+    } else {
+      log("Profile updated", { userId: user.id, fields: Object.keys(profileUpdate) });
+    }
 
     return new Response(
       JSON.stringify({ success: true }),

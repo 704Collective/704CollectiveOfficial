@@ -1447,7 +1447,7 @@ export default function Home() {
                 }}
               >
                 <Link
-                  href="/social"
+                  href="/join/checkout"
                   className="btn-primary"
                   style={{ padding: "16px 36px", fontSize: "0.9375rem" }}
                 >

@@ -10,7 +10,6 @@ export default function Nav() {
   const [membershipOpen, setMembershipOpen] = useState(false);
   const { user, loading, isActiveMember, isAdmin } = useAuth();
 
-  // Close menu on escape key
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape" && mobileOpen) setMobileOpen(false);
@@ -19,7 +18,6 @@ export default function Nav() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [mobileOpen]);
 
-  // Prevent body scroll when mobile menu is open
   useEffect(() => {
     if (mobileOpen) {
       document.body.style.overflow = "hidden";
@@ -61,10 +59,7 @@ export default function Nav() {
         </Link>
 
         {/* Desktop Links */}
-        <div
-          style={{ display: "flex", alignItems: "center", gap: "32px" }}
-          className="desktop-nav"
-        >
+        <div style={{ display: "flex", alignItems: "center", gap: "32px" }} className="desktop-nav">
           <Link href="/about" className="nav-link">About</Link>
           <Link href="/#how-it-works" className="nav-link">How It Works</Link>
 
@@ -86,41 +81,33 @@ export default function Nav() {
               }}
             >
               Membership
-              <svg
-                width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true"
-                style={{ transform: membershipOpen ? "rotate(180deg)" : "rotate(0)", transition: "transform 200ms ease" }}
-              >
+              <svg width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true"
+                style={{ transform: membershipOpen ? "rotate(180deg)" : "rotate(0)", transition: "transform 200ms ease" }}>
                 <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
 
             {membershipOpen && (
               <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", paddingTop: "8px" }}>
-                <div
-                  role="menu"
-                  style={{
-                    backgroundColor: "#1A1A1A",
-                    border: "1px solid rgba(255, 255, 255, 0.08)",
-                    borderRadius: "12px", padding: "8px",
-                    minWidth: "200px",
-                    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
-                  }}
-                >
-                  <Link
-                    href="/social" role="menuitem"
+                <div role="menu" style={{
+                  backgroundColor: "#1A1A1A",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: "12px", padding: "8px",
+                  minWidth: "200px",
+                  boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
+                }}>
+                  {/* EXCEPTION: stays as /social */}
+                  <Link href="/social" role="menuitem"
                     style={{ display: "block", padding: "10px 16px", borderRadius: "8px", fontSize: "0.875rem", color: "rgba(255, 255, 255, 0.7)", textDecoration: "none", transition: "all 200ms ease" }}
                     onMouseEnter={e => { e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.06)"; e.currentTarget.style.color = "#FFFFFF"; }}
-                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "rgba(255, 255, 255, 0.7)"; }}
-                  >
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "rgba(255, 255, 255, 0.7)"; }}>
                     <span style={{ fontWeight: 600 }}>704 Social</span>
                     <span style={{ display: "block", fontSize: "0.75rem", color: "rgba(255, 255, 255, 0.4)", marginTop: "2px" }}>Events, wellness &amp; community</span>
                   </Link>
-                  <Link
-                    href="/business" role="menuitem"
+                  <Link href="/business" role="menuitem"
                     style={{ display: "block", padding: "10px 16px", borderRadius: "8px", fontSize: "0.875rem", color: "rgba(255, 255, 255, 0.7)", textDecoration: "none", transition: "all 200ms ease" }}
                     onMouseEnter={e => { e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.06)"; e.currentTarget.style.color = "#FFFFFF"; }}
-                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "rgba(255, 255, 255, 0.7)"; }}
-                  >
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "rgba(255, 255, 255, 0.7)"; }}>
                     <span style={{ fontWeight: 600 }}>704 Business</span>
                     <span style={{ display: "block", fontSize: "0.75rem", color: "rgba(255, 255, 255, 0.4)", marginTop: "2px" }}>Strategic networking &amp; growth</span>
                   </Link>
@@ -149,30 +136,25 @@ export default function Nav() {
           {loading ? (
             <div style={{ width: "120px" }} />
           ) : user && (isActiveMember || isAdmin) ? (
-            <Link
-              href="/dashboard"
+            <Link href="/dashboard"
               style={{ backgroundColor: "#FFFFFF", color: "#000000", fontWeight: 600, fontSize: "0.8125rem", padding: "10px 24px", borderRadius: "8px", textDecoration: "none", letterSpacing: "0.02em", transition: "all 200ms ease" }}
               onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(255, 255, 255, 0.15)"; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
-            >
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
               Dashboard
             </Link>
           ) : (
             <>
-              <Link
-                href="/social"
+              {/* CHANGED: /social → /join/checkout */}
+              <Link href="/join/checkout"
                 style={{ backgroundColor: "#FFFFFF", color: "#000000", fontWeight: 600, fontSize: "0.8125rem", padding: "10px 24px", borderRadius: "8px", textDecoration: "none", letterSpacing: "0.02em", transition: "all 200ms ease" }}
                 onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(255, 255, 255, 0.15)"; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
-              >
+                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
                 Join Now
               </Link>
-              <Link
-                href="/login"
+              <Link href="/login"
                 style={{ backgroundColor: "transparent", color: "#FFFFFF", fontWeight: 600, fontSize: "0.8125rem", padding: "10px 24px", borderRadius: "8px", textDecoration: "none", letterSpacing: "0.02em", transition: "all 200ms ease", border: "1px solid rgba(255, 255, 255, 0.25)" }}
                 onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.5)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(255, 255, 255, 0.1)"; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.25)"; e.currentTarget.style.boxShadow = "none"; }}
-              >
+                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.25)"; e.currentTarget.style.boxShadow = "none"; }}>
                 Member Login
               </Link>
             </>
@@ -200,12 +182,9 @@ export default function Nav() {
         </button>
       </div>
 
-      {/* Mobile Menu — full screen overlay */}
+      {/* Mobile Menu */}
       {mobileOpen && (
-        <div
-          id="mobile-menu"
-          role="menu"
-          className="mobile-nav-menu"
+        <div id="mobile-menu" role="menu" className="mobile-nav-menu"
           style={{
             backgroundColor: "#000000",
             borderTop: "1px solid rgba(255, 255, 255, 0.06)",
@@ -213,8 +192,7 @@ export default function Nav() {
             maxHeight: "calc(100dvh - 64px)",
             overflowY: "auto",
             WebkitOverflowScrolling: "touch",
-          }}
-        >
+          }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
 
             <Link href="/about" role="menuitem" onClick={() => setMobileOpen(false)}
@@ -226,7 +204,7 @@ export default function Nav() {
               How It Works
             </Link>
 
-            {/* Membership group */}
+            {/* Membership group — EXCEPTION: 704 Social stays as /social */}
             <div style={{ padding: "16px 0", borderBottom: "1px solid rgba(255, 255, 255, 0.06)" }}>
               <span style={{ color: "rgba(255, 255, 255, 0.4)", fontSize: "0.6875rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em" }}>
                 Membership
@@ -250,10 +228,7 @@ export default function Nav() {
               Blog
             </Link>
 
-            {/* Social icons + Auth CTAs */}
             <div style={{ paddingTop: "24px", display: "flex", flexDirection: "column", gap: "16px" }}>
-
-              {/* Social icons */}
               <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
                 <a href="https://www.instagram.com/704_collective" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255, 255, 255, 0.5)", minWidth: "44px", minHeight: "44px", display: "flex", alignItems: "center", justifyContent: "center" }} aria-label="Instagram">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><circle cx="12" cy="12" r="5" /><circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" /></svg>
@@ -266,29 +241,20 @@ export default function Nav() {
                 </a>
               </div>
 
-              {/* Auth CTAs — stacked vertically on mobile, full width */}
               {user ? (
-                <Link
-                  href="/dashboard"
-                  onClick={() => setMobileOpen(false)}
-                  style={{ backgroundColor: "#FFFFFF", color: "#000000", fontWeight: 600, fontSize: "0.9375rem", padding: "14px 24px", borderRadius: "8px", textDecoration: "none", textAlign: "center", display: "block" }}
-                >
+                <Link href="/dashboard" onClick={() => setMobileOpen(false)}
+                  style={{ backgroundColor: "#FFFFFF", color: "#000000", fontWeight: 600, fontSize: "0.9375rem", padding: "14px 24px", borderRadius: "8px", textDecoration: "none", textAlign: "center", display: "block" }}>
                   Go to Dashboard
                 </Link>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                  <Link
-                    href="/social"
-                    onClick={() => setMobileOpen(false)}
-                    style={{ backgroundColor: "#FFFFFF", color: "#000000", fontWeight: 600, fontSize: "0.9375rem", padding: "14px 24px", borderRadius: "8px", textDecoration: "none", textAlign: "center", display: "block" }}
-                  >
+                  {/* CHANGED: /social → /join/checkout */}
+                  <Link href="/join/checkout" onClick={() => setMobileOpen(false)}
+                    style={{ backgroundColor: "#FFFFFF", color: "#000000", fontWeight: 600, fontSize: "0.9375rem", padding: "14px 24px", borderRadius: "8px", textDecoration: "none", textAlign: "center", display: "block" }}>
                     Join Now — $30/mo
                   </Link>
-                  <Link
-                    href="/login"
-                    onClick={() => setMobileOpen(false)}
-                    style={{ backgroundColor: "transparent", color: "#FFFFFF", fontWeight: 600, fontSize: "0.9375rem", padding: "14px 24px", borderRadius: "8px", textDecoration: "none", textAlign: "center", display: "block", border: "1px solid rgba(255, 255, 255, 0.25)" }}
-                  >
+                  <Link href="/login" onClick={() => setMobileOpen(false)}
+                    style={{ backgroundColor: "transparent", color: "#FFFFFF", fontWeight: 600, fontSize: "0.9375rem", padding: "14px 24px", borderRadius: "8px", textDecoration: "none", textAlign: "center", display: "block", border: "1px solid rgba(255, 255, 255, 0.25)" }}>
                     Member Login
                   </Link>
                 </div>

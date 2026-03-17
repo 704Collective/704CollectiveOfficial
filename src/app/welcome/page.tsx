@@ -9,7 +9,26 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import Nav from '@/components/Nav';
 
-type Status = 'loading' | 'set-password' | 'success' | 'error';
+type Status = 'loading' | 'setup' | 'success' | 'error';
+
+interface FormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  password: string;
+  confirmPassword: string;
+  company: string;
+  title: string;
+}
+
+interface FormErrors {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  password?: string;
+  confirmPassword?: string;
+}
 
 function WelcomeContent() {
   const router = useRouter();
@@ -17,17 +36,22 @@ function WelcomeContent() {
   const sessionId = searchParams.get('session_id');
 
   const [status, setStatus] = useState<Status>('loading');
-  const [memberName, setMemberName] = useState('');
-  const [memberEmail, setMemberEmail] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-
-  // Password setup state
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [settingPassword, setSettingPassword] = useState(false);
-  const [passwordError, setPasswordError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+
+  const [form, setForm] = useState<FormData>({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+    company: '',
+    title: '',
+  });
 
   const attemptRef = useRef(0);
   const maxAttempts = 5;
@@ -56,18 +80,20 @@ function WelcomeContent() {
           return;
         }
 
-        const name = data?.name || data?.email || 'Member';
-        const email = data?.email || '';
-        setMemberName(name);
-        setMemberEmail(email);
+        const fullName = (data?.name || '').trim();
+        const nameParts = fullName.split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
 
-        // Show password setup for new members (never signed in)
-        if (data?.requires_password_setup) {
-          setStatus('set-password');
-        } else {
-          setStatus('success');
-          setTimeout(() => router.push('/dashboard?welcome=1'), 3000);
-        }
+        setForm(prev => ({
+          ...prev,
+          firstName,
+          lastName,
+          email: data?.email || '',
+          phone: data?.phone || '',
+        }));
+
+        setStatus('setup');
       } catch {
         attemptRef.current += 1;
         if (attemptRef.current < maxAttempts) {
@@ -82,204 +108,388 @@ function WelcomeContent() {
     verify();
   }, [sessionId, router]);
 
-  const handleSetPassword = async () => {
-    setPasswordError('');
-
-    if (password.length < 8) {
-      setPasswordError('Password must be at least 8 characters');
-      return;
+  const updateField = (field: keyof FormData, value: string) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    if (formErrors[field as keyof FormErrors]) {
+      setFormErrors(prev => ({ ...prev, [field]: undefined }));
     }
-    if (password !== confirmPassword) {
-      setPasswordError('Passwords do not match');
-      return;
-    }
+  };
 
-    setSettingPassword(true);
+  const validate = (): boolean => {
+    const errors: FormErrors = {};
+    if (!form.firstName.trim()) errors.firstName = 'First name is required';
+    if (!form.lastName.trim()) errors.lastName = 'Last name is required';
+    if (!form.phone.trim()) errors.phone = 'Phone number is required';
+    if (form.password.length < 8) errors.password = 'Password must be at least 8 characters';
+    if (form.password !== form.confirmPassword) errors.confirmPassword = 'Passwords do not match';
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validate()) return;
+    setSubmitting(true);
+
     try {
       const { data, error } = await supabase.functions.invoke('set-initial-password', {
-        body: { session_id: sessionId, password },
+        body: {
+          session_id: sessionId,
+          email: form.email,
+          password: form.password,
+          first_name: form.firstName,
+          last_name: form.lastName,
+          phone: form.phone,
+          company: form.company,
+          title: form.title,
+        },
       });
 
       if (error || data?.error) {
-        setPasswordError(data?.error || 'Failed to set password. Please contact support.');
-        setSettingPassword(false);
+        const msg = data?.error || error?.message || 'Failed to set up account.';
+        if (msg === 'already_setup') {
+          const { error: signInErr } = await supabase.auth.signInWithPassword({
+            email: form.email,
+            password: form.password,
+          });
+          if (signInErr) {
+            setFormErrors({ password: 'This account is already set up. Try signing in.' });
+            setSubmitting(false);
+            return;
+          }
+          setStatus('success');
+          setTimeout(() => router.push('/dashboard?welcome=1'), 2000);
+          return;
+        }
+        setFormErrors({ password: msg });
+        setSubmitting(false);
+        return;
+      }
+
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email: form.email,
+        password: form.password,
+      });
+
+      if (signInErr) {
+        setFormErrors({ password: 'Account created but sign-in failed. Please sign in manually.' });
+        setSubmitting(false);
         return;
       }
 
       setStatus('success');
-      setTimeout(() => router.push('/dashboard?welcome=1'), 3000);
+      setTimeout(() => router.push('/dashboard?welcome=1'), 2000);
     } catch {
-      setPasswordError('Something went wrong. Please try again.');
-      setSettingPassword(false);
+      setFormErrors({ password: 'Something went wrong. Please try again.' });
+      setSubmitting(false);
     }
+  };
+
+  const inputStyle = {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    color: '#FFFFFF',
+    fontSize: '16px' as const,
+    minHeight: '48px',
+  };
+
+  const errorInputStyle = {
+    ...inputStyle,
+    border: '1px solid #ef4444',
   };
 
   return (
     <>
       <Nav />
-      <main
-        style={{
-          paddingTop: '64px',
-          backgroundColor: '#0d0d0d',
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <div style={{ maxWidth: '420px', width: '100%', padding: '0 24px', textAlign: 'center' }}>
+      <main style={{ paddingTop: '64px', backgroundColor: '#0d0d0d', minHeight: '100dvh' }}>
+        <div style={{
+          maxWidth: '480px',
+          width: '100%',
+          margin: '0 auto',
+          padding: 'clamp(32px, 6vw, 56px) clamp(16px, 5vw, 24px)',
+        }}>
 
           {/* Loading */}
           {status === 'loading' && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
-              <Loader2 style={{ width: '48px', height: '48px', color: '#C6A664', animation: 'spin 1s linear infinite' }} />
-              <div>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '8px' }}>
-                  Setting up your membership...
-                </h1>
-                <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.45)' }}>
-                  This only takes a moment.
-                </p>
-              </div>
+            <div style={{ textAlign: 'center', paddingTop: '48px' }}>
+              <Loader2 style={{ width: '48px', height: '48px', color: '#C6A664', animation: 'spin 1s linear infinite', margin: '0 auto 20px' }} />
+              <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '8px' }}>
+                Confirming your membership...
+              </h1>
+              <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.45)' }}>
+                This only takes a moment.
+              </p>
             </div>
           )}
 
-          {/* Password Setup */}
-          {status === 'set-password' && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px' }}>
-              <div
-                style={{
+          {/* Setup Form */}
+          {status === 'setup' && (
+            <div>
+              <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                <div style={{
                   width: '56px', height: '56px', borderRadius: '50%',
                   backgroundColor: 'rgba(198,166,100,0.15)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                <span style={{ fontSize: '1.5rem' }}>🔐</span>
-              </div>
-              <div>
-                <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '8px' }}>
-                  Welcome, {memberName.split(' ')[0]}!
+                  margin: '0 auto 16px', fontSize: '1.5rem',
+                }}>
+                  🎉
+                </div>
+                <h1 style={{ fontSize: 'clamp(1.5rem, 5vw, 1.875rem)', fontWeight: 700, color: '#FFFFFF', marginBottom: '8px' }}>
+                  Welcome to 704 Collective!
                 </h1>
                 <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>
-                  Your membership is confirmed. Set a password to access your portal.
+                  Your membership is confirmed. Finish setting up your account below.
                 </p>
               </div>
 
-              <div style={{ width: '100%', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {memberEmail && (
-                  <div>
-                    <Label style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8125rem' }}>Email</Label>
-                    <p style={{ color: '#FFFFFF', fontSize: '0.9375rem', marginTop: '4px' }}>{memberEmail}</p>
-                  </div>
-                )}
+              <div style={{
+                backgroundColor: '#1A1A1A',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '16px',
+                padding: 'clamp(24px, 5vw, 32px)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '20px',
+              }}>
 
+                {/* Name row */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <Label htmlFor="firstName" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem', marginBottom: '6px', display: 'block' }}>
+                      First Name <span style={{ color: '#ef4444' }}>*</span>
+                    </Label>
+                    <Input
+                      id="firstName"
+                      type="text"
+                      autoComplete="given-name"
+                      value={form.firstName}
+                      onChange={e => updateField('firstName', e.target.value)}
+                      style={formErrors.firstName ? errorInputStyle : inputStyle}
+                    />
+                    {formErrors.firstName && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px' }}>{formErrors.firstName}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem', marginBottom: '6px', display: 'block' }}>
+                      Last Name <span style={{ color: '#ef4444' }}>*</span>
+                    </Label>
+                    <Input
+                      id="lastName"
+                      type="text"
+                      autoComplete="family-name"
+                      value={form.lastName}
+                      onChange={e => updateField('lastName', e.target.value)}
+                      style={formErrors.lastName ? errorInputStyle : inputStyle}
+                    />
+                    {formErrors.lastName && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px' }}>{formErrors.lastName}</p>}
+                  </div>
+                </div>
+
+                {/* Email read-only */}
                 <div>
-                  <Label htmlFor="password" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem' }}>
-                    Create a Password
+                  <Label htmlFor="email" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem', marginBottom: '6px', display: 'block' }}>
+                    Email
                   </Label>
-                  <div style={{ position: 'relative', marginTop: '6px' }}>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={form.email}
+                    disabled
+                    style={{ ...inputStyle, opacity: 0.5, cursor: 'not-allowed' }}
+                  />
+                  <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem', marginTop: '4px' }}>
+                    From your Stripe checkout
+                  </p>
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <Label htmlFor="phone" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem', marginBottom: '6px', display: 'block' }}>
+                    Phone <span style={{ color: '#ef4444' }}>*</span>
+                  </Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    autoComplete="tel"
+                    placeholder="xxx-xxx-xxxx"
+                    value={form.phone}
+                    onChange={e => updateField('phone', e.target.value)}
+                    style={formErrors.phone ? errorInputStyle : inputStyle}
+                  />
+                  {formErrors.phone && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px' }}>{formErrors.phone}</p>}
+                </div>
+
+                {/* Password */}
+                <div>
+                  <Label htmlFor="password" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem', marginBottom: '6px', display: 'block' }}>
+                    Create Password <span style={{ color: '#ef4444' }}>*</span>
+                  </Label>
+                  <div style={{ position: 'relative' }}>
                     <Input
                       id="password"
                       type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
+                      autoComplete="new-password"
                       placeholder="Min. 8 characters"
-                      style={{ backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#FFFFFF', paddingRight: '44px' }}
-                      onKeyDown={e => { if (e.key === 'Enter') handleSetPassword(); }}
+                      value={form.password}
+                      onChange={e => updateField('password', e.target.value)}
+                      style={{ ...(formErrors.password ? errorInputStyle : inputStyle), paddingRight: '48px' }}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(v => !v)}
-                      style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', cursor: 'pointer' }}
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
+                  {formErrors.password && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px' }}>{formErrors.password}</p>}
                 </div>
 
+                {/* Confirm Password */}
                 <div>
-                  <Label htmlFor="confirm-password" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem' }}>
-                    Confirm Password
+                  <Label htmlFor="confirmPassword" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem', marginBottom: '6px', display: 'block' }}>
+                    Confirm Password <span style={{ color: '#ef4444' }}>*</span>
                   </Label>
-                  <div style={{ position: 'relative', marginTop: '6px' }}>
+                  <div style={{ position: 'relative' }}>
                     <Input
-                      id="confirm-password"
+                      id="confirmPassword"
                       type={showConfirm ? 'text' : 'password'}
-                      value={confirmPassword}
-                      onChange={e => setConfirmPassword(e.target.value)}
+                      autoComplete="new-password"
                       placeholder="Re-enter your password"
-                      style={{ backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#FFFFFF', paddingRight: '44px' }}
-                      onKeyDown={e => { if (e.key === 'Enter') handleSetPassword(); }}
+                      value={form.confirmPassword}
+                      onChange={e => updateField('confirmPassword', e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
+                      style={{ ...(formErrors.confirmPassword ? errorInputStyle : inputStyle), paddingRight: '48px' }}
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirm(v => !v)}
-                      style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                      aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                      style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', cursor: 'pointer' }}
                     >
                       {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
+                  {formErrors.confirmPassword && <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px' }}>{formErrors.confirmPassword}</p>}
                 </div>
 
-                {passwordError && (
-                  <p style={{ color: '#ef4444', fontSize: '0.875rem', textAlign: 'center' }}>{passwordError}</p>
-                )}
+                {/* Optional divider */}
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '4px' }}>
+                  <p style={{ fontSize: '0.6875rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>
+                    Optional
+                  </p>
+                </div>
 
-                <Button
-                  variant="hero"
-                  onClick={handleSetPassword}
-                  disabled={settingPassword || !password || !confirmPassword}
-                  style={{ width: '100%', marginTop: '4px' }}
+                {/* Company */}
+                <div>
+                  <Label htmlFor="company" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem', marginBottom: '6px', display: 'block' }}>
+                    Company
+                  </Label>
+                  <Input
+                    id="company"
+                    type="text"
+                    autoComplete="organization"
+                    placeholder="Where do you work?"
+                    value={form.company}
+                    onChange={e => updateField('company', e.target.value)}
+                    style={inputStyle}
+                  />
+                </div>
+
+                {/* Title */}
+                <div>
+                  <Label htmlFor="title" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem', marginBottom: '6px', display: 'block' }}>
+                    Title
+                  </Label>
+                  <Input
+                    id="title"
+                    type="text"
+                    autoComplete="organization-title"
+                    placeholder="What's your role?"
+                    value={form.title}
+                    onChange={e => updateField('title', e.target.value)}
+                    style={inputStyle}
+                  />
+                </div>
+
+                {/* Submit */}
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  style={{
+                    width: '100%',
+                    minHeight: '52px',
+                    backgroundColor: '#FFFFFF',
+                    color: '#000000',
+                    fontWeight: 700,
+                    fontSize: '0.9375rem',
+                    marginTop: '4px',
+                    border: 'none',
+                    borderRadius: '10px',
+                    cursor: submitting ? 'not-allowed' : 'pointer',
+                    opacity: submitting ? 0.7 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    transition: 'all 200ms ease',
+                  }}
                 >
-                  {settingPassword ? (
-                    <><Loader2 style={{ width: '16px', height: '16px', marginRight: '8px', animation: 'spin 1s linear infinite' }} />Setting up...</>
+                  {submitting ? (
+                    <><Loader2 style={{ width: '18px', height: '18px', animation: 'spin 1s linear infinite' }} />Setting up your account...</>
                   ) : (
-                    'Access My Portal →'
+                    'Complete Setup & Go to Dashboard →'
                   )}
-                </Button>
+                </button>
+
+                <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'rgba(255,255,255,0.25)' }}>
+                  You can add a profile photo from your dashboard
+                </p>
               </div>
             </div>
           )}
 
           {/* Success */}
           {status === 'success' && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
-              <CheckCircle style={{ width: '56px', height: '56px', color: '#22c55e' }} />
-              <div>
-                <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '8px' }}>
-                  Welcome to 704, {memberName.split(' ')[0]}!
-                </h1>
-                <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>
-                  Your membership is active. You&apos;re being taken to your dashboard now.
-                </p>
-              </div>
-              <div style={{ width: '100%', height: '2px', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: '1px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', backgroundColor: '#C6A664', animation: 'progress 3s linear forwards' }} />
+            <div style={{ textAlign: 'center', paddingTop: '48px' }}>
+              <CheckCircle style={{ width: '56px', height: '56px', color: '#22c55e', margin: '0 auto 20px' }} />
+              <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '8px' }}>
+                You&apos;re all set, {form.firstName}!
+              </h1>
+              <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, marginBottom: '24px' }}>
+                Taking you to your dashboard now...
+              </p>
+              <div style={{ height: '2px', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: '1px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', backgroundColor: '#C6A664', animation: 'progress 2s linear forwards' }} />
               </div>
             </div>
           )}
 
           {/* Error */}
           {status === 'error' && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
-              <XCircle style={{ width: '48px', height: '48px', color: '#ef4444' }} />
-              <div>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '8px' }}>
-                  Something went wrong
-                </h1>
-                <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.45)', marginBottom: '24px' }}>
-                  {errorMsg || "We couldn't verify your session. Your payment may still have gone through."}
-                </p>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
-                <Button variant="hero" onClick={() => router.push('/dashboard')}>Go to Dashboard</Button>
-                <Button variant="outline" asChild>
-                  <a href="mailto:hello@704collective.com">Contact Support</a>
-                </Button>
+            <div style={{ textAlign: 'center', paddingTop: '48px' }}>
+              <XCircle style={{ width: '48px', height: '48px', color: '#ef4444', margin: '0 auto 20px' }} />
+              <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '8px' }}>
+                Something went wrong
+              </h1>
+              <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.45)', marginBottom: '24px', lineHeight: 1.6 }}>
+                {errorMsg || "We couldn't verify your session. Your payment may still have gone through."}
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <button
+                  onClick={() => router.push('/dashboard')}
+                  style={{ width: '100%', minHeight: '48px', backgroundColor: '#FFFFFF', color: '#000000', fontWeight: 600, border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.9375rem' }}
+                >
+                  Try Dashboard
+                </button>
+                <a
+                  href="mailto:hello@704collective.com"
+                  style={{ display: 'block', textAlign: 'center', fontSize: '0.875rem', color: 'rgba(255,255,255,0.4)', textDecoration: 'none', padding: '12px' }}
+                >
+                  Contact Support
+                </a>
               </div>
             </div>
           )}
-
         </div>
       </main>
 
@@ -293,7 +503,7 @@ function WelcomeContent() {
 
 export default function WelcomePage() {
   return (
-    <Suspense fallback={<div style={{ minHeight: '100vh', backgroundColor: '#0d0d0d' }} />}>
+    <Suspense fallback={<div style={{ minHeight: '100dvh', backgroundColor: '#0d0d0d' }} />}>
       <WelcomeContent />
     </Suspense>
   );
