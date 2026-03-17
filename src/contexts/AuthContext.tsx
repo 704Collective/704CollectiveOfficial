@@ -77,24 +77,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
-      const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> =>
-        Promise.race([
-          promise,
-          new Promise<T>((_, reject) =>
-            setTimeout(() => reject(new Error(`Supabase query timed out after ${ms}ms`)), ms)
-          ),
-        ]);
-
-      const { data: profile, error: profileError } = await withTimeout(
-        supabaseRef.current
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .is('deleted_at', null)
-          .maybeSingle()
-          .then((res) => res),
-        5000
-      );
+      const { data: profile, error: profileError } = await supabaseRef.current
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .is('deleted_at', null)
+        .maybeSingle();
 
       if (profileError) {
         console.error('[AuthContext] Profile fetch error:', profileError.message);
