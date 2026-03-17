@@ -85,16 +85,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ),
         ]);
 
-      const result = await withTimeout(
+      const { data: profile, error: profileError } = await withTimeout(
         supabaseRef.current
           .from('profiles')
           .select('*')
           .eq('id', userId)
           .is('deleted_at', null)
-          .maybeSingle(),
+          .maybeSingle()
+          .then((res) => res),
         5000
-      ) as { data: any; error: any };
-      const { data: profile, error: profileError } = result;
+      );
 
       if (profileError) {
         console.error('[AuthContext] Profile fetch error:', profileError.message);
