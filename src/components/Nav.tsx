@@ -218,7 +218,7 @@ export default function Nav() {
           <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
 
             <Link href="/about" role="menuitem" onClick={() => setMobileOpen(false)}
-              style={{ color: "rgba(255, 255, 255, 0.7)", textDecoration: "none", padding: "16px 0", fontSize: "1rem", borderBottom: "1px solid rgba(255, 255, 255, 0.06)", display: "block", minHeight: "56px", display: "flex", alignItems: "center" }}>
+              style={{ color: "rgba(255, 255, 255, 0.7)", textDecoration: "none", padding: "16px 0", fontSize: "1rem", borderBottom: "1px solid rgba(255, 255, 255, 0.06)", display: "flex", alignItems: "center", minHeight: "56px" }}>
               About
             </Link>
             <Link href="/#how-it-works" role="menuitem" onClick={() => setMobileOpen(false)}
