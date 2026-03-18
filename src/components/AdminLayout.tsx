@@ -46,7 +46,12 @@ export function AdminLayout({
 
       {/* ── Mobile Sidebar ── Sheet drawer */}
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen} modal={true}>
-        <SheetContent side="left" className="w-60 p-0 bg-sidebar border-border" style={{ boxShadow: '4px 0 24px rgba(0,0,0,0.6)' }}>
+        {/* [&>button]:hidden removes the default SheetContent close button */}
+        <SheetContent
+          side="left"
+          className="w-60 p-0 bg-sidebar border-border [&>button]:hidden"
+          style={{ boxShadow: '4px 0 24px rgba(0,0,0,0.6)' }}
+        >
           <AdminSidebar
             activeSection={activeSection}
             onSectionChange={onSectionChange}
@@ -57,13 +62,8 @@ export function AdminLayout({
 
       <div className="lg:ml-60 min-h-screen flex flex-col">
 
-        {/* Mobile top bar */}
+        {/* Mobile top bar — hamburger on LEFT for admin */}
         <header className="lg:hidden sticky top-0 z-20 flex h-14 items-center justify-between px-4 border-b border-border bg-background/95 backdrop-blur-sm shrink-0">
-          {/* Spacer keeps title visually centered */}
-          <div className="w-9" />
-          <span className="text-sm font-semibold text-foreground">
-            704 Collective
-          </span>
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
@@ -84,6 +84,11 @@ export function AdminLayout({
               <line x1="2" y1="13.5" x2="16" y2="13.5" />
             </svg>
           </button>
+          <span className="text-sm font-semibold text-foreground">
+            704 Collective
+          </span>
+          {/* Spacer keeps title visually centered */}
+          <div className="w-9" />
         </header>
 
         {/* Page content */}
