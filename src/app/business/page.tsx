@@ -1146,7 +1146,6 @@ export default function BusinessPage() {
                       marginBottom: "8px",
                     }}
                   >
-                    [HubSpot application form embeds here]
                   </p>
                   <p
                     style={{

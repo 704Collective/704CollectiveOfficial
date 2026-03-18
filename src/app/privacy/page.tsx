@@ -91,7 +91,6 @@ export default function Privacy() {
               <li style={liStyle}><span style={strongStyle}>Stripe</span> — Payment processing</li>
               <li style={liStyle}><span style={strongStyle}>Supabase</span> — Database, authentication, and hosting</li>
               <li style={liStyle}><span style={strongStyle}>Google</span> — OAuth social login</li>
-              <li style={liStyle}><span style={strongStyle}>HubSpot</span> — Email communications and CRM</li>
               <li style={liStyle}><span style={strongStyle}>Resend</span> — Transactional email delivery</li>
               <li style={liStyle}><span style={strongStyle}>Sentry</span> — Error tracking and performance monitoring</li>
             </ul>

@@ -11,7 +11,6 @@ import { AdminHomepageImages } from '@/components/AdminHomepageImages';
 import { Apple, AlertCircle, Users, Check, X, Trash2, Loader2, Shield, Image, UserPlus } from 'lucide-react';
 import { GeneralSettings } from '@/components/admin/GeneralSettings';
 import { MembershipSettings } from '@/components/admin/MembershipSettings';
-import { HubSpotIntegrationCard } from '@/components/HubSpotIntegrationCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -470,7 +469,6 @@ function AdminSettings() {
 
           {activeTab === 'integrations' && (
             <div className="space-y-4">
-              <HubSpotIntegrationCard />
 
               <div className="card-elevated p-4 sm:p-6">
                 <div className="flex items-start gap-3">

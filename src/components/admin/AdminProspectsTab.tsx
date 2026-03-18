@@ -21,7 +21,6 @@ interface Prospect {
   notes: string | null;
   created_at: string | null;
   created_by: string | null;
-  hubspot_contact_id: string | null;
 }
 
 const STALE_TIME = 5 * 60 * 1000;
