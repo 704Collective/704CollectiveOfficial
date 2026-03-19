@@ -6,12 +6,13 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Calendar, Users, QrCode, ClipboardList, Settings, BarChart2,
   Contact, Mail, Workflow, PieChart, GitPullRequest, FileText, Share2, Megaphone,
-  ClipboardCheck, LayoutGrid, Inbox,
+  ClipboardCheck, LayoutGrid, Inbox, ClipboardSignature, UserX,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminSection } from '@/components/AdminLayout';
 import { WorkspaceSwitcher } from '@/components/admin/WorkspaceSwitcher';
 import { NotificationBell } from '@/components/business/NotificationBell';
+import { useAuth } from '@/hooks/useAuth';
 import logo from '@/assets/704-logo.png';
 
 interface AdminSidebarProps {
@@ -37,7 +38,11 @@ const CRM_NAV = [
 export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { profile } = useAuth();
   const isOnDashboard = pathname === '/admin';
+
+  const canSeeApplications =
+    profile?.role === 'super_admin' || profile?.role === 'admin';
 
   const handleSectionClick = (section: AdminSection) => {
     if (pathname !== '/admin') {
@@ -80,10 +85,34 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
         <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground px-3 mt-3 mb-1.5">Core</p>
         <div className="space-y-0.5">
           {[
-            { icon: LayoutDashboard, label: 'Overview',   section: 'dashboard'  as AdminSection },
-            { icon: Calendar,        label: 'Events',     section: 'events'     as AdminSection },
-            { icon: Users,           label: 'Members',    section: 'members'    as AdminSection },
-            { icon: BarChart2,       label: 'Financials', section: 'financials' as AdminSection },
+            { icon: LayoutDashboard,    label: 'Overview',     section: 'dashboard'    as AdminSection },
+            { icon: Calendar,           label: 'Events',       section: 'events'       as AdminSection },
+            { icon: Users,              label: 'Members',      section: 'members'      as AdminSection },
+            { icon: BarChart2,          label: 'Financials',   section: 'financials'   as AdminSection },
+          ].map((item) => {
+            const isActive = isOnDashboard && activeSection === item.section;
+            return (
+              <button
+                key={item.section}
+                type="button"
+                onClick={() => handleSectionClick(item.section)}
+                className={cn(
+                  'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors text-left',
+                  isActive
+                    ? 'bg-accent text-foreground border-l-2 border-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                )}
+              >
+                <item.icon className={cn('w-4 h-4 shrink-0', isActive && 'text-primary')} />
+                {item.label}
+              </button>
+            );
+          })}
+
+          {/* Applications + Non-Members — admin/super_admin only */}
+          {canSeeApplications && [
+            { icon: ClipboardSignature, label: 'Applications', section: 'applications' as AdminSection },
+            { icon: UserX,              label: 'Non-Members',  section: 'non-members'  as AdminSection },
           ].map((item) => {
             const isActive = isOnDashboard && activeSection === item.section;
             return (
