@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Calendar, Users, QrCode, ClipboardList, Settings, BarChart2,
+  Contact, Mail, Workflow, PieChart, GitPullRequest, FileText, Share2, Megaphone,
+  ClipboardCheck, LayoutGrid, Inbox,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminSection } from '@/components/AdminLayout';
@@ -17,6 +19,20 @@ interface AdminSidebarProps {
   onSectionChange?: (section: AdminSection) => void;
   onMobileClose?: () => void;
 }
+
+const CRM_NAV = [
+  { icon: LayoutGrid,     label: 'Dashboard',   href: '/admin/crm' },
+  { icon: Contact,        label: 'Contacts',    href: '/admin/crm/contacts' },
+  { icon: Mail,           label: 'Campaigns',   href: '/admin/crm/campaigns' },
+  { icon: Workflow,       label: 'Automations', href: '/admin/crm/automations' },
+  { icon: GitPullRequest, label: 'Pipeline',    href: '/admin/crm/pipeline' },
+  { icon: FileText,       label: 'Forms',       href: '/admin/crm/forms' },
+  { icon: Share2,         label: 'Social',      href: '/admin/crm/social' },
+  { icon: Megaphone,      label: 'Ads',         href: '/admin/crm/ads' },
+  { icon: ClipboardCheck, label: 'Surveys',     href: '/admin/crm/surveys' },
+  { icon: PieChart,       label: 'Reports',     href: '/admin/crm/reports' },
+  { icon: Inbox,          label: 'Inbox',       href: '/admin/crm/inbox' },
+];
 
 export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: AdminSidebarProps) {
   const pathname = usePathname();
@@ -94,8 +110,8 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
           <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground px-3 mb-1.5">Operations</p>
           <div className="space-y-0.5">
             {[
-              { icon: QrCode,         label: 'Check-in', section: 'checkin' as AdminSection },
-              { icon: ClipboardList,  label: 'Tasks',    section: 'tasks'   as AdminSection },
+              { icon: QrCode,        label: 'Check-in', section: 'checkin' as AdminSection },
+              { icon: ClipboardList, label: 'Tasks',    section: 'tasks'   as AdminSection },
             ].map((item) => {
               const isActive = isOnDashboard && activeSection === item.section;
               return (
@@ -113,6 +129,34 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
                   <item.icon className={cn('w-4 h-4 shrink-0', isActive && 'text-primary')} />
                   {item.label}
                 </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* CRM */}
+        <div className="mt-5 border-t border-border pt-3">
+          <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground px-3 mb-1.5">CRM</p>
+          <div className="space-y-0.5">
+            {CRM_NAV.map((item) => {
+              const isActive = item.href === '/admin/crm'
+                ? pathname === '/admin/crm'
+                : pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onMobileClose}
+                  className={cn(
+                    'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-accent text-foreground border-l-2 border-primary'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                  )}
+                >
+                  <item.icon className={cn('w-4 h-4 shrink-0', isActive && 'text-primary')} />
+                  {item.label}
+                </Link>
               );
             })}
           </div>
@@ -139,7 +183,7 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
         </div>
       </nav>
 
-      {/* Notification bell — pinned to bottom of sidebar */}
+      {/* Notification bell — pinned to bottom */}
       <div className="px-4 py-4 border-t border-border">
         <div className="flex items-center gap-3">
           <NotificationBell />

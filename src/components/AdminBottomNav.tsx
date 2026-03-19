@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  LayoutDashboard, Calendar, Users, ScanLine, CheckSquare, Settings, BarChart2,
+  LayoutDashboard, Calendar, Users, ScanLine, CheckSquare, Settings, Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminSection } from '@/components/AdminLayout';
@@ -20,20 +20,21 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { icon: LayoutDashboard, label: 'Overview',  section: 'dashboard'  },
-  { icon: Calendar,        label: 'Events',    section: 'events'     },
-  { icon: Users,           label: 'Members',   section: 'members'    },
-  { icon: BarChart2,       label: 'Finance',   section: 'financials' },
-  { icon: ScanLine,        label: 'Check-in',  section: 'checkin'    },
-  { icon: CheckSquare,     label: 'Tasks',     section: 'tasks'      },
-  { icon: Settings,        label: 'Settings',  href: '/admin/settings' },
+  { icon: LayoutDashboard, label: 'Overview', section: 'dashboard'      },
+  { icon: Calendar,        label: 'Events',   section: 'events'         },
+  { icon: Users,           label: 'Members',  section: 'members'        },
+  { icon: Layers,          label: 'CRM',      href: '/admin/crm'        },
+  { icon: ScanLine,        label: 'Check-in', section: 'checkin'        },
+  { icon: CheckSquare,     label: 'Tasks',    section: 'tasks'          },
+  { icon: Settings,        label: 'Settings', href: '/admin/settings'   },
 ];
 
 export function AdminBottomNav({ activeSection, onSectionChange }: AdminBottomNavProps) {
-  const router   = useRouter();
-  const pathname = usePathname();
+  const router        = useRouter();
+  const pathname      = usePathname();
   const isOnDashboard = pathname === '/admin';
   const isOnSettings  = pathname === '/admin/settings';
+  const isOnCrm       = pathname.startsWith('/admin/crm');
 
   const handleTap = (item: NavItem) => {
     if (item.href) {
@@ -48,7 +49,8 @@ export function AdminBottomNav({ activeSection, onSectionChange }: AdminBottomNa
   };
 
   const isActive = (item: NavItem) => {
-    if (item.href) return isOnSettings;
+    if (item.href === '/admin/settings') return isOnSettings;
+    if (item.href === '/admin/crm')      return isOnCrm;
     return isOnDashboard && activeSection === item.section;
   };
 
@@ -78,13 +80,9 @@ export function AdminBottomNav({ activeSection, onSectionChange }: AdminBottomNa
                 className={cn('w-5 h-5', active ? 'text-primary' : 'text-muted-foreground')}
                 strokeWidth={active ? 2.5 : 1.75}
               />
-              {/* Hide labels below 360px to prevent overflow with 7 items */}
               <span
                 className="font-medium"
-                style={{
-                  fontSize: 'clamp(8px, 2vw, 10px)',
-                  lineHeight: 1,
-                }}
+                style={{ fontSize: 'clamp(8px, 2vw, 10px)', lineHeight: 1 }}
               >
                 {item.label}
               </span>
