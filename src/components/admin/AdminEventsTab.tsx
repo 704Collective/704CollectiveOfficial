@@ -29,7 +29,7 @@ import { format, getDay, getDate } from 'date-fns';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Calendar, Plus, Pencil, Trash2, Search, Copy, Lock,
-  ChevronLeft, ChevronRight, MoreHorizontal, ArrowLeft, Upload, X as XIcon, Gift, Mail, Check, UserPlus, Bell,
+  ChevronLeft, ChevronRight, MoreHorizontal, ArrowLeft, Upload, X as XIcon, Gift, Mail, Check, UserPlus, Bell, ExternalLink,
 } from 'lucide-react';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -52,6 +52,9 @@ interface Event {
   parent_event_id: string | null;
   tags: string[] | null;
   allows_guest_passes: boolean;
+  eventbrite_event_id: string | null;
+  eventbrite_published: boolean | null;
+  eventbrite_url: string | null;
 }
 
 interface EventForm {
@@ -139,6 +142,8 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   const [imageUploading, setImageUploading] = useState(false);
   const [addMembersEvent, setAddMembersEvent] = useState<Event | null>(null);
   const [sentReminders, setSentReminders] = useState<Record<string, boolean>>({});
+  // Tracks which event IDs are currently mid-toggle to show loading state
+  const [eventbriteLoading, setEventbriteLoading] = useState<Record<string, boolean>>({});
 
   // ── React Query ──────────────────────────────────────────────────────────
   const { data, isLoading, isError } = useQuery({
@@ -154,6 +159,47 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   const [sentFollowups, setSentFollowups] = useState<Record<string, boolean>>({});
 
   const invalidateEvents = () => queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+
+  // ── Eventbrite toggle mutation ───────────────────────────────────────────
+  const eventbriteMutation = useMutation({
+    mutationFn: async ({ event_id, action }: { event_id: string; action: 'publish' | 'unpublish' }) => {
+      const { data, error } = await supabase.functions.invoke('eventbrite-publish', {
+        body: { event_id, action },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data as { success: boolean; action: string; eventbrite_url?: string };
+    },
+    onSuccess: (result, { action }) => {
+      if (action === 'publish') {
+        toast.success(
+          result.eventbrite_url
+            ? 'Published to Eventbrite'
+            : 'Published to Eventbrite',
+          result.eventbrite_url
+            ? { description: result.eventbrite_url, action: { label: 'View', onClick: () => window.open(result.eventbrite_url, '_blank') } }
+            : undefined
+        );
+      } else {
+        toast.success('Unpublished from Eventbrite');
+      }
+      invalidateEvents();
+    },
+    onError: (err, { event_id }) => {
+      toast.error('Eventbrite error: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      setEventbriteLoading(prev => ({ ...prev, [event_id]: false }));
+    },
+    onSettled: (_, __, { event_id }) => {
+      setEventbriteLoading(prev => ({ ...prev, [event_id]: false }));
+    },
+  });
+
+  const handleEventbriteToggle = (event: Event, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const action = event.eventbrite_published ? 'unpublish' : 'publish';
+    setEventbriteLoading(prev => ({ ...prev, [event.id]: true }));
+    eventbriteMutation.mutate({ event_id: event.id, action });
+  };
 
   // ── Mutations ────────────────────────────────────────────────────────────
   const deleteMutation = useMutation({
@@ -278,11 +324,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   const reminderMutation = useMutation({
     mutationFn: async (event: Event) => {
       const res = await supabase.functions.invoke('notify-event-change', {
-        body: {
-          event_id: event.id,
-          type: 'reminder',
-          origin: window.location.origin,
-        },
+        body: { event_id: event.id, type: 'reminder', origin: window.location.origin },
       });
       if (res.error) throw res.error;
       return res.data as { sent: number };
@@ -304,7 +346,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       title: event.title, description: event.description || '', start_time: new Date(event.start_time),
       end_time: event.end_time ? new Date(event.end_time) : undefined, location_name: event.location_name || '',
       location_address: event.location_address || '', image_url: event.image_url || '',
-      capacity: event.capacity?.toString() || '', 
+      capacity: event.capacity?.toString() || '',
       visibility: event.is_business_only ? 'business_only' : event.is_members_only ? 'members_only' : 'public' as const,
       ticket_price: price,
       category: (event.category && event.category !== 'other') ? event.category as EventCategory : detectCategoryFromTitle(event.title) || 'other',
@@ -327,7 +369,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       title: event.title, description: event.description || '', start_time: getDefaultStartTime(),
       end_time: getDefaultEndTime(getDefaultStartTime()), location_name: event.location_name || '',
       location_address: event.location_address || '', image_url: event.image_url || '',
-      capacity: event.capacity?.toString() || '', 
+      capacity: event.capacity?.toString() || '',
       visibility: event.is_business_only ? 'business_only' : event.is_members_only ? 'members_only' : 'public' as const,
       ticket_price: price,
       category: (event.category as EventCategory) || 'other', recurrence_rule: 'none',
@@ -448,12 +490,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   // ── Bulk edit (recurring) ────────────────────────────────────────────────
   const applyBulkEdit = (scope: 'this' | 'future' | 'all') => {
     if (!editingEvent) return;
-    bulkEditMutation.mutate({
-      scope,
-      editingEvent,
-      eventData: buildEventData(),
-      bulkFields: buildBulkUpdateFields(),
-    });
+    bulkEditMutation.mutate({ scope, editingEvent, eventData: buildEventData(), bulkFields: buildBulkUpdateFields() });
   };
 
   // ── Submit ───────────────────────────────────────────────────────────────
@@ -539,15 +576,18 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                     <TableHead className="text-xs uppercase tracking-wider">Time</TableHead>
                     <TableHead className="text-xs uppercase tracking-wider">RSVPs</TableHead>
                     <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider">Eventbrite</TableHead>
                     <TableHead className="text-xs uppercase tracking-wider w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No events match your search.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No events match your search.</TableCell></TableRow>
                   ) : filtered.map(event => {
                     const isUpcoming = new Date(event.start_time) > new Date();
                     const rsvpCount = rsvpCounts[event.id] || 0;
+                    const ebLoading = eventbriteLoading[event.id] ?? false;
+                    const ebPublished = event.eventbrite_published ?? false;
                     return (
                       <TableRow key={event.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openEdit(event)}>
                         <TableCell className="font-medium py-3 max-w-[250px]"><span className="truncate block">{event.title}</span></TableCell>
@@ -559,6 +599,24 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                             {isUpcoming ? <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20 text-xs">Upcoming</Badge> : <Badge variant="secondary" className="text-xs">Past</Badge>}
                             {event.is_business_only && <Badge className="bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 text-xs">Business</Badge>}
                             {event.is_members_only && !event.is_business_only && <Lock className="w-3 h-3 text-muted-foreground" aria-label="Members only" />}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-3" onClick={e => e.stopPropagation()}>
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={ebPublished}
+                              disabled={ebLoading}
+                              onCheckedChange={() => handleEventbriteToggle(event, { stopPropagation: () => {} } as React.MouseEvent)}
+                              aria-label="Publish to Eventbrite"
+                            />
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              {ebLoading ? 'Updating...' : ebPublished ? 'Live' : 'Off'}
+                            </span>
+                            {ebPublished && event.eventbrite_url && (
+                              <a href={event.eventbrite_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
+                                <ExternalLink className="w-3 h-3 text-muted-foreground hover:text-foreground" />
+                              </a>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="py-3">
@@ -610,6 +668,8 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
               ) : filtered.map(event => {
                 const isUpcoming = new Date(event.start_time) > new Date();
                 const rsvpCount = rsvpCounts[event.id] || 0;
+                const ebLoading = eventbriteLoading[event.id] ?? false;
+                const ebPublished = event.eventbrite_published ?? false;
                 return (
                   <Card key={event.id} className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => openEdit(event)}>
                     <CardContent className="p-4">
@@ -623,15 +683,33 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                           {isUpcoming ? <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20 text-xs">Upcoming</Badge> : <Badge variant="secondary" className="text-xs">Past</Badge>}
                         </div>
                       </div>
-                      <div className="flex items-center justify-end mt-2 gap-2 flex-wrap">
-                        <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); openEdit(event); }}><Pencil className="w-3 h-3 mr-1" /> Edit</Button>
-                        <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setAddMembersEvent(event); }}><UserPlus className="w-3 h-3 mr-1" /> Add</Button>
-                        {isUpcoming && (
-                          <Button variant="ghost" size="sm" disabled={sentReminders[event.id]} onClick={e => { e.stopPropagation(); reminderMutation.mutate(event); }}>
-                            <Bell className="w-3 h-3 mr-1" /> {sentReminders[event.id] ? 'Sent' : 'Remind'}
-                          </Button>
-                        )}
-                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={e => { e.stopPropagation(); setDeleteId(event.id); setDeleteDialogOpen(true); }}><Trash2 className="w-3 h-3 mr-1" /> Delete</Button>
+                      <div className="flex items-center justify-between mt-3">
+                        {/* Eventbrite toggle on mobile */}
+                        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                          <Switch
+                            checked={ebPublished}
+                            disabled={ebLoading}
+                            onCheckedChange={() => handleEventbriteToggle(event, { stopPropagation: () => {} } as React.MouseEvent)}
+                          />
+                          <span className="text-xs text-muted-foreground">
+                            {ebLoading ? 'Updating...' : ebPublished ? 'On Eventbrite' : 'Eventbrite off'}
+                          </span>
+                          {ebPublished && event.eventbrite_url && (
+                            <a href={event.eventbrite_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
+                              <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                            </a>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); openEdit(event); }}><Pencil className="w-3 h-3 mr-1" /> Edit</Button>
+                          <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setAddMembersEvent(event); }}><UserPlus className="w-3 h-3 mr-1" /> Add</Button>
+                          {isUpcoming && (
+                            <Button variant="ghost" size="sm" disabled={sentReminders[event.id]} onClick={e => { e.stopPropagation(); reminderMutation.mutate(event); }}>
+                              <Bell className="w-3 h-3 mr-1" /> {sentReminders[event.id] ? 'Sent' : 'Remind'}
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={e => { e.stopPropagation(); setDeleteId(event.id); setDeleteDialogOpen(true); }}><Trash2 className="w-3 h-3 mr-1" /> Delete</Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -752,14 +830,8 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
             )}
           </div>
           <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between gap-2">
-            {/* Delete button on left when editing */}
             {editingEvent ? (
-              <Button
-                variant="destructive"
-                onClick={() => setDeleteInEditOpen(true)}
-                disabled={submitting || deleteMutation.isPending}
-                className="w-full sm:w-auto"
-              >
+              <Button variant="destructive" onClick={() => setDeleteInEditOpen(true)} disabled={submitting || deleteMutation.isPending} className="w-full sm:w-auto">
                 <Trash2 className="w-4 h-4 mr-2" /> Delete Event
               </Button>
             ) : <div />}
