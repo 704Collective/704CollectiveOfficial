@@ -1009,7 +1009,7 @@ export default function BusinessPage() {
                   </div>
 
                   <a
-                    href="#apply"
+                    href="/apply/business"
                     className="btn-gold"
                     style={{
                       padding: "16px 40px",
@@ -1139,22 +1139,12 @@ export default function BusinessPage() {
                 }}
               >
                 <div>
-                  <p
-                    style={{
-                      color: "rgba(250,246,240,0.2)",
-                      fontSize: "0.85rem",
-                      marginBottom: "8px",
-                    }}
-                  >
+                  <p style={{ color: "#A0A0A0", fontSize: "0.95rem", lineHeight: 1.7, marginBottom: "16px" }}>
+                    Application-only. 16 questions. ~5 minutes. Reviewed personally within 48 hours.
                   </p>
-                  <p
-                    style={{
-                      color: "rgba(250,246,240,0.12)",
-                      fontSize: "0.75rem",
-                    }}
-                  >
-                    14-question form — connected when ready
-                  </p>
+                  <a href="/apply/business" className="btn-gold" style={{ padding: "16px 40px", fontSize: "0.875rem", display: "inline-block" }}>
+                    Start Your Application
+                  </a>
                 </div>
               </div>
             </ScaleUp>
@@ -1302,7 +1292,7 @@ export default function BusinessPage() {
                 }}
               >
                 <a
-                  href="#apply"
+                  href="/apply/business"
                   className="btn-gold"
                   style={{ padding: "16px 36px", fontSize: "0.875rem" }}
                 >

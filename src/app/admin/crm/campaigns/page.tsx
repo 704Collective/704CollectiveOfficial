@@ -8,7 +8,7 @@ import {
   Plus, MoreHorizontal, Search, X, ArrowLeft, Send, Clock,
   BarChart2, Copy, Trash2, ChevronUp, ChevronDown, GripVertical,
   Type, Image as ImageIcon, MousePointer, Minus, AlignLeft,
-  Calendar, Space, Eye, Code, Loader2, Users,
+  Calendar, Space, Eye, Code, Loader2, Users, ChevronDown as ChevronDownIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,7 @@ interface Campaign {
   name: string;
   subject: string;
   preview_text: string | null;
+  from_name: string | null;
   audience: Record<string, any>;
   status: CampaignStatus;
   scheduled_for: string | null;
@@ -77,6 +78,24 @@ const AUDIENCE_OPTIONS = [
   { value: 'event_guests',  label: 'Event Guests' },
 ];
 
+// All admins and super admins who can be sender
+const SENDER_NAMES = [
+  '704 Collective Team',
+  'Adam Gould',
+  'Timi Gould',
+  'Josh Ahart',
+  'Gabbi Baumann',
+  'Audrey Handleton',
+  'Nick Stathopoulos',
+];
+
+// Available tokens for insertion into text blocks
+const EMAIL_TOKENS = [
+  { label: 'First Name',       value: '{{first_name}}' },
+  { label: 'Sender Name',      value: '{{sender_name}}' },
+  { label: 'Unsubscribe Link', value: '{{unsubscribe_url}}' },
+];
+
 const BLOCK_PALETTE: { type: BlockType; label: string; icon: React.ElementType }[] = [
   { type: 'heading',     label: 'Heading',     icon: Type },
   { type: 'text',        label: 'Text Block',  icon: AlignLeft },
@@ -95,7 +114,7 @@ function uid() {
 function defaultContent(type: BlockType): Record<string, any> {
   switch (type) {
     case 'logo':       return { link: 'https://704collective.com' };
-    case 'greeting':   return { text: 'Hey {first_name},' };
+    case 'greeting':   return { text: 'Hey {{first_name}},' };
     case 'heading':    return { text: 'Section Heading', size: 'h2' };
     case 'text':       return { text: 'Write your message here…' };
     case 'image':      return { url: '', alt: '', link: '' };
@@ -103,7 +122,7 @@ function defaultContent(type: BlockType): Record<string, any> {
     case 'divider':    return { color: '#2E2E2E' };
     case 'spacer':     return { height: 24 };
     case 'events_list': return { days_ahead: 7, title: 'The Weekly Lineup' };
-    case 'signoff':    return { name: 'Josh Ahart', title: 'Co-Founder, 704 Collective', ps: '' };
+    case 'signoff':    return { name: '{{sender_name}}', title: 'Co-Founder, 704 Collective', ps: '' };
     case 'footer':     return { org: '704 Collective, Charlotte, NC' };
     default:           return {};
   }
@@ -117,6 +136,34 @@ const DEFAULT_BLOCKS: Block[] = [
   { id: uid(), type: 'signoff',    content: defaultContent('signoff') },
   { id: uid(), type: 'footer',     content: defaultContent('footer') },
 ];
+
+/* ─── Token Insert Button ─── */
+function TokenInsertButton({ onInsert }: { onInsert: (token: string) => void }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground border border-border rounded px-2 py-1 hover:bg-muted transition-colors"
+        >
+          Insert token <ChevronDownIcon className="w-3 h-3" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-48">
+        {EMAIL_TOKENS.map(token => (
+          <DropdownMenuItem
+            key={token.value}
+            onClick={() => onInsert(token.value)}
+            className="text-xs gap-2"
+          >
+            <code className="text-primary text-[10px] bg-primary/10 px-1 rounded">{token.value}</code>
+            {token.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 /* ─── Block Renderer (preview) ─── */
 function BlockPreview({ block }: { block: Block }) {
@@ -200,21 +247,51 @@ function BlockEditor({ block, onChange }: { block: Block; onChange: (b: Block) =
   const update = (key: string, value: any) => onChange({ ...block, content: { ...block.content, [key]: value } });
   const c = block.content;
 
+  // Insert token at cursor position in a textarea
+  const insertToken = (fieldKey: string, token: string, currentValue: string) => {
+    update(fieldKey, currentValue + token);
+  };
+
   switch (block.type) {
     case 'greeting':
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between mb-1">
+            <Label className="text-xs text-muted-foreground">Greeting text</Label>
+            <TokenInsertButton onInsert={(t) => insertToken('text', t, c.text)} />
+          </div>
+          <Textarea
+            value={c.text}
+            onChange={e => update('text', e.target.value)}
+            rows={2}
+            className="text-sm resize-none"
+            placeholder="Greeting line…"
+          />
+        </div>
+      );
     case 'text':
       return (
-        <Textarea
-          value={c.text}
-          onChange={e => update('text', e.target.value)}
-          rows={block.type === 'text' ? 5 : 2}
-          className="text-sm resize-none"
-          placeholder={block.type === 'text' ? 'Write your message…' : 'Greeting line…'}
-        />
+        <div className="space-y-2">
+          <div className="flex items-center justify-between mb-1">
+            <Label className="text-xs text-muted-foreground">Content</Label>
+            <TokenInsertButton onInsert={(t) => insertToken('text', t, c.text)} />
+          </div>
+          <Textarea
+            value={c.text}
+            onChange={e => update('text', e.target.value)}
+            rows={5}
+            className="text-sm resize-none"
+            placeholder="Write your message…"
+          />
+        </div>
       );
     case 'heading':
       return (
         <div className="space-y-2">
+          <div className="flex items-center justify-between mb-1">
+            <Label className="text-xs text-muted-foreground">Heading text</Label>
+            <TokenInsertButton onInsert={(t) => insertToken('text', t, c.text)} />
+          </div>
           <Input value={c.text} onChange={e => update('text', e.target.value)} placeholder="Heading text" className="text-sm" />
           <Select value={c.size} onValueChange={v => update('size', v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
@@ -278,9 +355,16 @@ function BlockEditor({ block, onChange }: { block: Block; onChange: (b: Block) =
     case 'signoff':
       return (
         <div className="space-y-2">
-          <Input value={c.name} onChange={e => update('name', e.target.value)} placeholder="Your name" className="text-sm" />
+          <div className="flex items-center justify-between mb-1">
+            <Label className="text-xs text-muted-foreground">Name</Label>
+            <TokenInsertButton onInsert={(t) => insertToken('name', t, c.name)} />
+          </div>
+          <Input value={c.name} onChange={e => update('name', e.target.value)} placeholder="Your name or {{sender_name}}" className="text-sm" />
           <Input value={c.title} onChange={e => update('title', e.target.value)} placeholder="Title" className="text-sm" />
           <Input value={c.ps} onChange={e => update('ps', e.target.value)} placeholder="P.S. line (optional)" className="text-sm" />
+          <p className="text-xs text-muted-foreground/60">
+            Use <code className="text-primary bg-primary/10 px-1 rounded text-[10px]">{"{{sender_name}}"}</code> to auto-fill from the "From Name" setting.
+          </p>
         </div>
       );
     case 'logo':
@@ -311,7 +395,6 @@ function BlockCard({
         isSelected ? 'border-primary shadow-md shadow-primary/10' : 'border-border hover:border-border/80'
       }`}
     >
-      {/* Block toolbar */}
       <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b border-border">
         <div className="flex items-center gap-2">
           <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40" />
@@ -320,47 +403,27 @@ function BlockCard({
         <div className="flex items-center gap-1">
           {!isFixed && (
             <>
-              <button
-                type="button"
-                onClick={() => onMove(index, index - 1)}
-                disabled={index === 0}
-                className="p-1 rounded hover:bg-muted disabled:opacity-30 transition-colors"
-              >
+              <button type="button" onClick={() => onMove(index, index - 1)} disabled={index === 0} className="p-1 rounded hover:bg-muted disabled:opacity-30 transition-colors">
                 <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
-              <button
-                type="button"
-                onClick={() => onMove(index, index + 1)}
-                disabled={index === total - 1}
-                className="p-1 rounded hover:bg-muted disabled:opacity-30 transition-colors"
-              >
+              <button type="button" onClick={() => onMove(index, index + 1)} disabled={index === total - 1} className="p-1 rounded hover:bg-muted disabled:opacity-30 transition-colors">
                 <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
-              <button
-                type="button"
-                onClick={() => onDelete(block.id)}
-                className="p-1 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors"
-              >
+              <button type="button" onClick={() => onDelete(block.id)} className="p-1 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors">
                 <X className="w-3.5 h-3.5" />
               </button>
             </>
           )}
-          <button
-            type="button"
-            onClick={() => onSelect(isSelected ? null : block.id)}
-            className="text-xs px-2 py-0.5 rounded bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
-          >
+          <button type="button" onClick={() => onSelect(isSelected ? null : block.id)} className="text-xs px-2 py-0.5 rounded bg-muted hover:bg-muted/80 text-muted-foreground transition-colors">
             {isSelected ? 'Done' : 'Edit'}
           </button>
         </div>
       </div>
 
-      {/* Preview */}
       <div className="px-4 py-1 bg-background cursor-pointer" onClick={() => onSelect(isSelected ? null : block.id)}>
         <BlockPreview block={block} />
       </div>
 
-      {/* Editor panel */}
       {isSelected && (
         <div className="px-4 py-3 bg-muted/20 border-t border-border">
           <BlockEditor block={block} onChange={onChange} />
@@ -371,11 +434,7 @@ function BlockCard({
 }
 
 /* ─── Schedule Dialog ─── */
-function ScheduleDialog({
-  open, onClose, campaign, onScheduled,
-}: {
-  open: boolean; onClose: () => void; campaign: Campaign | null; onScheduled: () => void;
-}) {
+function ScheduleDialog({ open, onClose, campaign, onScheduled }: { open: boolean; onClose: () => void; campaign: Campaign | null; onScheduled: () => void }) {
   const [datetime, setDatetime] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -436,10 +495,10 @@ function AnalyticsDialog({ open, onClose, campaign }: { open: boolean; onClose: 
         </DialogHeader>
         <div className="grid grid-cols-2 gap-3">
           {[
-            { label: 'Sent',       value: campaign.sent_count.toLocaleString(), sub: 'emails delivered' },
-            { label: 'Opened',     value: campaign.open_count.toLocaleString(),  sub: `${openRate}% open rate` },
-            { label: 'Clicked',    value: campaign.click_count.toLocaleString(), sub: `${clickRate}% click rate` },
-            { label: 'Sent Date',  value: campaign.sent_at ? format(new Date(campaign.sent_at), 'MMM d, yyyy') : '—', sub: '' },
+            { label: 'Sent',      value: campaign.sent_count.toLocaleString(),  sub: 'emails delivered' },
+            { label: 'Opened',    value: campaign.open_count.toLocaleString(),   sub: `${openRate}% open rate` },
+            { label: 'Clicked',   value: campaign.click_count.toLocaleString(), sub: `${clickRate}% click rate` },
+            { label: 'Sent Date', value: campaign.sent_at ? format(new Date(campaign.sent_at), 'MMM d, yyyy') : '—', sub: '' },
           ].map(s => (
             <div key={s.label} className="bg-muted/40 rounded-xl p-4 text-center">
               <p className="text-2xl font-bold text-foreground">{s.value}</p>
@@ -457,17 +516,12 @@ function AnalyticsDialog({ open, onClose, campaign }: { open: boolean; onClose: 
 }
 
 /* ─── Composer View ─── */
-function CampaignComposer({
-  campaign, onBack, onSaved,
-}: {
-  campaign: Campaign | null;
-  onBack: () => void;
-  onSaved: () => void;
-}) {
+function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | null; onBack: () => void; onSaved: () => void }) {
   const isNew = !campaign;
   const [name, setName] = useState(campaign?.name ?? '');
   const [subject, setSubject] = useState(campaign?.subject ?? '');
   const [previewText, setPreviewText] = useState(campaign?.preview_text ?? '');
+  const [fromName, setFromName] = useState(campaign?.from_name ?? '704 Collective Team');
   const [audience, setAudience] = useState(campaign?.audience?.type ?? 'all_active');
   const [blocks, setBlocks] = useState<Block[]>(campaign?.body_json ?? DEFAULT_BLOCKS);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
@@ -478,7 +532,6 @@ function CampaignComposer({
 
   const addBlock = (type: BlockType) => {
     const newBlock: Block = { id: uid(), type, content: defaultContent(type) };
-    // Insert before footer
     const footerIdx = blocks.findIndex(b => b.type === 'footer');
     const insertAt = footerIdx >= 0 ? footerIdx : blocks.length;
     const next = [...blocks];
@@ -515,6 +568,7 @@ function CampaignComposer({
         name: name.trim(),
         subject: subject.trim(),
         preview_text: previewText || null,
+        from_name: fromName,
         audience: { type: audience },
         body_json: blocks,
         status,
@@ -562,12 +616,7 @@ function CampaignComposer({
           <Button variant="outline" size="sm" onClick={() => setShowSchedule(true)} className="gap-2">
             <Clock className="w-4 h-4" /> Schedule
           </Button>
-          <Button
-            size="sm"
-            onClick={() => { setSending(true); handleSave('sending'); }}
-            disabled={saving || sending}
-            className="gap-2"
-          >
+          <Button size="sm" onClick={() => { setSending(true); handleSave('sending'); }} disabled={saving || sending} className="gap-2">
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             Send Now
           </Button>
@@ -593,7 +642,6 @@ function CampaignComposer({
       </div>
 
       {activeTab === 'settings' ? (
-        /* Settings tab */
         <div className="max-w-xl space-y-5">
           <div>
             <Label className="text-xs text-muted-foreground mb-1.5 block">Campaign Name <span className="text-red-400">*</span></Label>
@@ -610,6 +658,20 @@ function CampaignComposer({
             <p className="text-xs text-muted-foreground/60 mt-1">Shown below the subject line in most email clients</p>
           </div>
           <div>
+            <Label className="text-xs text-muted-foreground mb-1.5 block">From Name</Label>
+            <Select value={fromName} onValueChange={setFromName}>
+              <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {SENDER_NAMES.map(n => (
+                  <SelectItem key={n} value={n}>{n}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground/60 mt-1">
+              This name replaces <code className="text-primary bg-primary/10 px-1 rounded text-[10px]">{"{{sender_name}}"}</code> tokens throughout the email
+            </p>
+          </div>
+          <div>
             <Label className="text-xs text-muted-foreground mb-1.5 block">Audience</Label>
             <Select value={audience} onValueChange={setAudience}>
               <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
@@ -622,7 +684,6 @@ function CampaignComposer({
           </div>
         </div>
       ) : (
-        /* Design tab */
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Block palette */}
           <div className="lg:w-48 shrink-0">
@@ -640,11 +701,23 @@ function CampaignComposer({
                 </button>
               ))}
             </div>
+
+            {/* Token reference */}
+            <div className="mt-6 p-3 bg-muted/30 rounded-lg border border-border">
+              <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Tokens</p>
+              <div className="space-y-1.5">
+                {EMAIL_TOKENS.map(t => (
+                  <div key={t.value}>
+                    <code className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded block">{t.value}</code>
+                    <span className="text-[10px] text-muted-foreground/60">{t.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Canvas */}
           <div className="flex-1 space-y-3">
-            {/* Settings quick row */}
             {(!name || !subject) && (
               <div className="flex items-center gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-xs text-yellow-400">
                 <span>⚠</span> Fill in campaign name and subject in the Settings tab before sending.
@@ -669,12 +742,7 @@ function CampaignComposer({
         </div>
       )}
 
-      <ScheduleDialog
-        open={showSchedule}
-        onClose={() => setShowSchedule(false)}
-        campaign={campaign}
-        onScheduled={onSaved}
-      />
+      <ScheduleDialog open={showSchedule} onClose={() => setShowSchedule(false)} campaign={campaign} onScheduled={onSaved} />
     </div>
   );
 }
@@ -694,10 +762,7 @@ export default function CrmCampaignsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from('email_campaigns')
-        .select('*')
-        .order('created_at', { ascending: false });
+      let query = supabase.from('email_campaigns').select('*').order('created_at', { ascending: false });
       if (search) query = query.ilike('name', `%${search}%`);
       const { data, error } = await query;
       if (error) throw error;
@@ -717,6 +782,7 @@ export default function CrmCampaignsPage() {
         name: `${c.name} (Copy)`,
         subject: c.subject,
         preview_text: c.preview_text,
+        from_name: c.from_name,
         audience: c.audience,
         body_json: c.body_json,
         body_html: c.body_html,
@@ -758,7 +824,6 @@ export default function CrmCampaignsPage() {
 
   return (
     <div className="space-y-4 pb-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Campaigns</h1>
@@ -769,15 +834,9 @@ export default function CrmCampaignsPage() {
         </Button>
       </div>
 
-      {/* Search */}
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Search campaigns…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="pl-9 h-9 text-sm"
-        />
+        <Input placeholder="Search campaigns…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 text-sm" />
         {search && (
           <button type="button" onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
             <X className="w-3.5 h-3.5" />
@@ -792,6 +851,7 @@ export default function CrmCampaignsPage() {
             <tr className="border-b border-border bg-muted/30">
               <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Name</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Status</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">From</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Audience</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Date</th>
               <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Sent</th>
@@ -804,14 +864,14 @@ export default function CrmCampaignsPage() {
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i} className="border-b border-border">
-                  {Array.from({ length: 8 }).map((_, j) => (
+                  {Array.from({ length: 9 }).map((_, j) => (
                     <td key={j} className="px-4 py-3"><div className="h-4 bg-muted animate-pulse rounded w-full" /></td>
                   ))}
                 </tr>
               ))
             ) : campaigns.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-16 text-center">
+                <td colSpan={9} className="px-4 py-16 text-center">
                   <p className="text-muted-foreground text-sm mb-3">No campaigns yet</p>
                   <Button size="sm" onClick={() => setComposing(true)} className="gap-2">
                     <Plus className="w-4 h-4" /> Create your first campaign
@@ -826,28 +886,19 @@ export default function CrmCampaignsPage() {
                 const audienceLabel = AUDIENCE_OPTIONS.find(a => a.value === c.audience?.type)?.label ?? c.audience?.type ?? '—';
 
                 return (
-                  <tr
-                    key={c.id}
-                    className="border-b border-border hover:bg-muted/20 transition-colors cursor-pointer"
-                    onClick={() => setEditCampaign(c)}
-                  >
+                  <tr key={c.id} className="border-b border-border hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => setEditCampaign(c)}>
                     <td className="px-4 py-3">
                       <p className="font-medium text-foreground">{c.name}</p>
                       <p className="text-xs text-muted-foreground truncate max-w-xs">{c.subject}</p>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full border font-medium capitalize ${STATUS_STYLES[c.status] ?? ''}`}>
-                        {c.status}
-                      </span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full border font-medium capitalize ${STATUS_STYLES[c.status] ?? ''}`}>{c.status}</span>
                     </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{c.from_name ?? '704 Collective Team'}</td>
                     <td className="px-4 py-3">
-                      <span className="text-xs text-muted-foreground flex items-center gap-1.5">
-                        <Users className="w-3 h-3" />{audienceLabel}
-                      </span>
+                      <span className="text-xs text-muted-foreground flex items-center gap-1.5"><Users className="w-3 h-3" />{audienceLabel}</span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {date ? format(new Date(date), 'MMM d, yyyy') : '—'}
-                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{date ? format(new Date(date), 'MMM d, yyyy') : '—'}</td>
                     <td className="px-4 py-3 text-right text-sm text-foreground">{c.sent_count > 0 ? c.sent_count.toLocaleString() : '—'}</td>
                     <td className="px-4 py-3 text-right text-sm">
                       {openRate !== null ? <span className="text-emerald-400 font-medium">{openRate}%</span> : <span className="text-muted-foreground">—</span>}
@@ -858,31 +909,15 @@ export default function CrmCampaignsPage() {
                     <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="w-4 h-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-44">
-                          <DropdownMenuItem onClick={() => setEditCampaign(c)} className="gap-2 text-sm">
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDuplicate(c)} className="gap-2 text-sm">
-                            <Copy className="w-4 h-4" /> Duplicate
-                          </DropdownMenuItem>
-                          {c.status === 'draft' && (
-                            <DropdownMenuItem onClick={() => setScheduleCampaign(c)} className="gap-2 text-sm">
-                              <Clock className="w-4 h-4" /> Schedule
-                            </DropdownMenuItem>
-                          )}
-                          {c.status === 'sent' && (
-                            <DropdownMenuItem onClick={() => setAnalyticsCampaign(c)} className="gap-2 text-sm">
-                              <BarChart2 className="w-4 h-4" /> Analytics
-                            </DropdownMenuItem>
-                          )}
+                          <DropdownMenuItem onClick={() => setEditCampaign(c)} className="text-sm">Edit</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDuplicate(c)} className="gap-2 text-sm"><Copy className="w-4 h-4" /> Duplicate</DropdownMenuItem>
+                          {c.status === 'draft' && <DropdownMenuItem onClick={() => setScheduleCampaign(c)} className="gap-2 text-sm"><Clock className="w-4 h-4" /> Schedule</DropdownMenuItem>}
+                          {c.status === 'sent' && <DropdownMenuItem onClick={() => setAnalyticsCampaign(c)} className="gap-2 text-sm"><BarChart2 className="w-4 h-4" /> Analytics</DropdownMenuItem>}
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setDeleteCampaign(c)} className="gap-2 text-sm text-red-400 focus:text-red-400">
-                            <Trash2 className="w-4 h-4" /> Delete
-                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setDeleteCampaign(c)} className="gap-2 text-sm text-red-400 focus:text-red-400"><Trash2 className="w-4 h-4" /> Delete</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>
@@ -897,34 +932,25 @@ export default function CrmCampaignsPage() {
       {/* Cards — mobile */}
       <div className="md:hidden space-y-3">
         {loading ? (
-          Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-28 bg-muted animate-pulse rounded-xl" />
-          ))
+          Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-28 bg-muted animate-pulse rounded-xl" />)
         ) : campaigns.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground text-sm mb-3">No campaigns yet</p>
-            <Button size="sm" onClick={() => setComposing(true)} className="gap-2">
-              <Plus className="w-4 h-4" /> Create your first campaign
-            </Button>
+            <Button size="sm" onClick={() => setComposing(true)} className="gap-2"><Plus className="w-4 h-4" /> Create your first campaign</Button>
           </div>
         ) : (
           campaigns.map(c => {
             const openRate = c.sent_count > 0 ? Math.round((c.open_count / c.sent_count) * 100) : null;
             const date = c.sent_at ?? c.scheduled_for ?? c.created_at;
             return (
-              <div
-                key={c.id}
-                className="bg-card border border-border rounded-xl p-4 cursor-pointer"
-                onClick={() => setEditCampaign(c)}
-              >
+              <div key={c.id} className="bg-card border border-border rounded-xl p-4 cursor-pointer" onClick={() => setEditCampaign(c)}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="font-medium text-foreground truncate">{c.name}</p>
                     <p className="text-xs text-muted-foreground truncate">{c.subject}</p>
+                    {c.from_name && <p className="text-xs text-muted-foreground/60 mt-0.5">From: {c.from_name}</p>}
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full border font-medium capitalize shrink-0 ${STATUS_STYLES[c.status] ?? ''}`}>
-                    {c.status}
-                  </span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full border font-medium capitalize shrink-0 ${STATUS_STYLES[c.status] ?? ''}`}>{c.status}</span>
                 </div>
                 <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
                   {date && <span>{format(new Date(date), 'MMM d, yyyy')}</span>}
@@ -937,7 +963,6 @@ export default function CrmCampaignsPage() {
         )}
       </div>
 
-      {/* Dialogs */}
       <AnalyticsDialog open={!!analyticsCampaign} onClose={() => setAnalyticsCampaign(null)} campaign={analyticsCampaign} />
       <ScheduleDialog open={!!scheduleCampaign} onClose={() => setScheduleCampaign(null)} campaign={scheduleCampaign} onScheduled={load} />
 
@@ -949,9 +974,7 @@ export default function CrmCampaignsPage() {
           </DialogHeader>
           <DialogFooter className="gap-2 flex-col sm:flex-row">
             <Button variant="outline" onClick={() => setDeleteCampaign(null)} className="w-full sm:w-auto">Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="w-full sm:w-auto">
-              {deleting ? 'Deleting…' : 'Delete'}
-            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="w-full sm:w-auto">{deleting ? 'Deleting…' : 'Delete'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

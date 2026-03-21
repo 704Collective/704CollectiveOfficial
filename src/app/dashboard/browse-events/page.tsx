@@ -9,14 +9,14 @@ import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
 import { ThankYouModal } from '@/components/ThankYouModal';
 import { EventListItem } from '@/components/EventListItem';
 import { EventGridCard } from '@/components/EventGridCard';
+import { EventCalendarView } from '@/components/EventCalendarView';
 import { FeaturedEventBanner } from '@/components/FeaturedEventBanner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useTicketActions } from '@/hooks/useTicketActions';
 import { createClient } from '@/lib/supabase/client';
-import { toast } from 'sonner';
-import { format, addDays, startOfMonth } from 'date-fns';
+import { format, addDays, startOfMonth, subMinutes } from 'date-fns';
 import { Search, X, Crown, LayoutGrid, List, Calendar } from 'lucide-react';
 import { EventCategory, CATEGORY_CONFIG } from '@/components/CategoryBadge';
 import { Input } from '@/components/ui/input';
@@ -27,12 +27,13 @@ interface Event {
   title: string;
   description: string | null;
   start_time: string;
-  end_time: string;
+  end_time: string | null;
   location_name: string | null;
   location_address: string | null;
   image_url: string | null;
   capacity: number | null;
   is_members_only: boolean;
+  is_business_only: boolean;
   ticket_price: number;
   category: string | null;
   tags: string[] | null;
@@ -41,13 +42,13 @@ interface Event {
 const supabase = createClient();
 
 async function fetchEvents(): Promise<Event[]> {
-  const now = new Date().toISOString();
+  const thirtyMinsAgo = subMinutes(new Date(), 30).toISOString();
   const sixtyDaysLater = addDays(new Date(), 60).toISOString();
   const { data, error } = await supabase
     .from('events')
     .select('*')
-    .gte('start_time', now)
     .lte('start_time', sixtyDaysLater)
+    .or(`end_time.gte.${thirtyMinsAgo},and(end_time.is.null,start_time.gte.${thirtyMinsAgo})`)
     .order('start_time', { ascending: true });
   if (error) throw error;
   return data || [];
@@ -58,9 +59,7 @@ async function fetchTicketCounts(eventIds: string[]): Promise<Record<string, num
   const { data, error } = await supabase.rpc('get_ticket_counts', { event_ids: eventIds });
   if (error) return {};
   const counts: Record<string, number> = {};
-  for (const row of (data || [])) {
-    counts[row.event_id] = Number(row.count);
-  }
+  for (const row of (data || [])) counts[row.event_id] = Number(row.count);
   return counts;
 }
 
@@ -80,7 +79,7 @@ export default function BrowseEventsPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [view, setView] = useState<'grid' | 'list'>('grid');
+  const [view, setView] = useState<'grid' | 'list' | 'calendar'>('grid');
   const [showMembersOnly, setShowMembersOnly] = useState(false);
   const [ticketCounts, setTicketCounts] = useState<Record<string, number>>({});
 
@@ -135,9 +134,7 @@ export default function BrowseEventsPage() {
     if (!user) { router.push('/login'); return; }
     if (isActiveMember) {
       const success = await registerMemberTicket(event);
-      if (success) {
-        fetchTicketCounts(events.map(e => e.id)).then(setTicketCounts);
-      }
+      if (success) fetchTicketCounts(events.map(e => e.id)).then(setTicketCounts);
     } else {
       router.push(`/events/${event.id}`);
     }
@@ -193,6 +190,14 @@ export default function BrowseEventsPage() {
               >
                 <List className="w-4 h-4" />
               </Button>
+              <Button
+                variant={view === 'calendar' ? 'default' : 'outline'}
+                size="icon"
+                onClick={() => setView('calendar')}
+                aria-label="Calendar view"
+              >
+                <Calendar className="w-4 h-4" />
+              </Button>
             </div>
           </div>
 
@@ -243,11 +248,9 @@ export default function BrowseEventsPage() {
         {/* Content */}
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3, 4, 5, 6].map(i => (
-              <Skeleton key={i} className="h-56 rounded-xl" />
-            ))}
+            {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-56 rounded-xl" />)}
           </div>
-        ) : filteredEvents.length === 0 ? (
+        ) : filteredEvents.length === 0 && view !== 'calendar' ? (
           <div className="text-center py-20">
             <Calendar className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">
@@ -263,94 +266,120 @@ export default function BrowseEventsPage() {
         ) : (
           <SectionErrorBoundary>
             <div className="space-y-10">
-              {/* Featured Event */}
-              {featuredEvent && !hasActiveFilters && (
-                <FeaturedEventBanner
-                  event={featuredEvent}
-                  userHasTicket={userTicketIds.has(featuredEvent.id)}
+
+              {/* Calendar view */}
+              {view === 'calendar' && (
+                <EventCalendarView
+                  events={filteredEvents}
                   isUserMember={!!isActiveMember}
-                  isLoggedIn={!!user}
-                  capacity={featuredEvent.capacity}
-                  ticketCount={ticketCounts[featuredEvent.id] || 0}
-                  onClick={() => router.push(`/events/${featuredEvent.id}`)}
+                  onEventClick={(id) => router.push(`/events/${id}`)}
+                  theme="dark"
                 />
               )}
 
-              {view === 'grid' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {(hasActiveFilters ? filteredEvents : remainingEvents).map(event => (
-                    <EventGridCard
-                      key={event.id}
-                      id={event.id}
-                      title={event.title}
-                      description={event.description || undefined}
-                      startTime={event.start_time}
-                      endTime={event.end_time}
-                      locationName={event.location_name || undefined}
-                      imageUrl={event.image_url || undefined}
-                      ticketPrice={event.ticket_price || 0}
-                      isActiveMembersOnly={event.is_members_only || false}
-                      userHasTicket={userTicketIds.has(event.id)}
+              {/* Grid view */}
+              {view === 'grid' && (
+                <>
+                  {featuredEvent && !hasActiveFilters && (
+                    <FeaturedEventBanner
+                      event={featuredEvent}
+                      userHasTicket={userTicketIds.has(featuredEvent.id)}
                       isUserMember={!!isActiveMember}
                       isLoggedIn={!!user}
-                      category={event.category}
-                      capacity={event.capacity}
-                      ticketCount={ticketCounts[event.id] || 0}
-                      tags={event.tags}
-                      loading={rsvpLoadingId === event.id}
-                      onGetTicket={() => handleGetTicket(event)}
-                      onGuestPurchase={() => router.push(`/events/${event.id}`)}
-                      onClick={() => router.push(`/events/${event.id}`)}
+                      capacity={featuredEvent.capacity}
+                      ticketCount={ticketCounts[featuredEvent.id] || 0}
+                      onClick={() => router.push(`/events/${featuredEvent.id}`)}
                     />
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-10">
-                  {Object.entries(groupedEvents).map(([month, monthEvents]) => (
-                    <div key={month}>
-                      <h2 className="text-base font-semibold text-foreground mb-3 pb-3 border-b border-border">
-                        {month}
-                      </h2>
-                      <div>
-                        {monthEvents.map(event => (
-                          <EventListItem
-                            key={event.id}
-                            id={event.id}
-                            title={event.title}
-                            startTime={event.start_time}
-                            endTime={event.end_time}
-                            locationName={event.location_name || undefined}
-                            imageUrl={event.image_url || undefined}
-                            ticketPrice={event.ticket_price || 0}
-                            isActiveMembersOnly={event.is_members_only || false}
-                            userHasTicket={userTicketIds.has(event.id)}
-                            isUserMember={!!isActiveMember}
-                            isLoggedIn={!!user}
-                            category={event.category}
-                            capacity={event.capacity}
-                            ticketCount={ticketCounts[event.id] || 0}
-                            tags={event.tags}
-                            loading={rsvpLoadingId === event.id}
-                            onGetTicket={() => handleGetTicket(event)}
-                            onGuestPurchase={() => router.push(`/events/${event.id}`)}
-                            onClick={() => router.push(`/events/${event.id}`)}
-                          />
-                        ))}
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {(hasActiveFilters ? filteredEvents : remainingEvents).map(event => (
+                      <EventGridCard
+                        key={event.id}
+                        id={event.id}
+                        title={event.title}
+                        description={event.description || undefined}
+                        startTime={event.start_time}
+                        endTime={event.end_time || event.start_time}
+                        locationName={event.location_name || undefined}
+                        imageUrl={event.image_url || undefined}
+                        ticketPrice={event.ticket_price || 0}
+                        isActiveMembersOnly={event.is_members_only || false}
+                        isBusinessOnly={event.is_business_only || false}
+                        userHasTicket={userTicketIds.has(event.id)}
+                        isUserMember={!!isActiveMember}
+                        isLoggedIn={!!user}
+                        category={event.category}
+                        capacity={event.capacity}
+                        ticketCount={ticketCounts[event.id] || 0}
+                        tags={event.tags}
+                        loading={rsvpLoadingId === event.id}
+                        onGetTicket={() => handleGetTicket(event)}
+                        onGuestPurchase={() => router.push(`/events/${event.id}`)}
+                        onClick={() => router.push(`/events/${event.id}`)}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* List view */}
+              {view === 'list' && (
+                <>
+                  {featuredEvent && !hasActiveFilters && (
+                    <FeaturedEventBanner
+                      event={featuredEvent}
+                      userHasTicket={userTicketIds.has(featuredEvent.id)}
+                      isUserMember={!!isActiveMember}
+                      isLoggedIn={!!user}
+                      capacity={featuredEvent.capacity}
+                      ticketCount={ticketCounts[featuredEvent.id] || 0}
+                      onClick={() => router.push(`/events/${featuredEvent.id}`)}
+                    />
+                  )}
+                  <div className="space-y-10">
+                    {Object.entries(groupedEvents).map(([month, monthEvents]) => (
+                      <div key={month}>
+                        <h2 className="text-base font-semibold text-foreground mb-3 pb-3 border-b border-border">
+                          {month}
+                        </h2>
+                        <div>
+                          {monthEvents.map(event => (
+                            <EventListItem
+                              key={event.id}
+                              id={event.id}
+                              title={event.title}
+                              startTime={event.start_time}
+                              endTime={event.end_time || event.start_time}
+                              locationName={event.location_name || undefined}
+                              imageUrl={event.image_url || undefined}
+                              ticketPrice={event.ticket_price || 0}
+                              isActiveMembersOnly={event.is_members_only || false}
+                              isBusinessOnly={event.is_business_only || false}
+                              userHasTicket={userTicketIds.has(event.id)}
+                              isUserMember={!!isActiveMember}
+                              isLoggedIn={!!user}
+                              category={event.category}
+                              capacity={event.capacity}
+                              ticketCount={ticketCounts[event.id] || 0}
+                              tags={event.tags}
+                              loading={rsvpLoadingId === event.id}
+                              onGetTicket={() => handleGetTicket(event)}
+                              onGuestPurchase={() => router.push(`/events/${event.id}`)}
+                              onClick={() => router.push(`/events/${event.id}`)}
+                            />
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           </SectionErrorBoundary>
         )}
       </main>
 
-      <ThankYouModal
-        open={showThankYou}
-        onOpenChange={setShowThankYou}
-        type={thankYouType}
-      />
+      <ThankYouModal open={showThankYou} onOpenChange={setShowThankYou} type={thankYouType} />
     </div>
   );
 }
