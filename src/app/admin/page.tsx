@@ -11,17 +11,17 @@ import { SectionErrorBoundary } from "@/components/SectionErrorBoundary";
 import dynamic from 'next/dynamic';
 
 // Dynamically loaded tab components — code split per tab
-const AdminOverviewTab = dynamic(() => import('@/components/admin/AdminOverviewTab').then(m => ({ default: m.AdminOverviewTab })), { loading: () => <TabSkeleton /> });
-const AdminEventsTab = dynamic(() => import('@/components/admin/AdminEventsTab').then(m => ({ default: m.AdminEventsTab })), { loading: () => <TabSkeleton /> });
-const AdminMembersTab = dynamic(() => import('@/components/admin/AdminMembersTab').then(m => ({ default: m.AdminMembersTab })), { loading: () => <TabSkeleton /> });
-const AdminProspectsTab = dynamic(() => import('@/components/admin/AdminProspectsTab').then(m => ({ default: m.AdminProspectsTab })), { loading: () => <TabSkeleton /> });
-const AdminSponsorsTab = dynamic(() => import('@/components/admin/AdminSponsorsTab').then(m => ({ default: m.AdminSponsorsTab })), { loading: () => <TabSkeleton /> });
-const AdminCheckIn = dynamic(() => import('@/components/AdminCheckIn').then(m => ({ default: m.AdminCheckIn })), { loading: () => <TabSkeleton /> });
-const TaskBoard = dynamic(() => import('@/components/admin/TaskBoard').then(m => ({ default: m.TaskBoard })), { loading: () => <TabSkeleton /> });
-const AdminFinancialsTab = dynamic(() => import('@/components/admin/AdminFinancialsTab').then(m => ({ default: m.AdminFinancialsTab })), { loading: () => <TabSkeleton /> });
-// New tabs — business application flow
+const AdminOverviewTab    = dynamic(() => import('@/components/admin/AdminOverviewTab').then(m => ({ default: m.AdminOverviewTab })), { loading: () => <TabSkeleton /> });
+const AdminEventsTab      = dynamic(() => import('@/components/admin/AdminEventsTab').then(m => ({ default: m.AdminEventsTab })), { loading: () => <TabSkeleton /> });
+const AdminMembersTab     = dynamic(() => import('@/components/admin/AdminMembersTab').then(m => ({ default: m.AdminMembersTab })), { loading: () => <TabSkeleton /> });
+const AdminProspectsTab   = dynamic(() => import('@/components/admin/AdminProspectsTab').then(m => ({ default: m.AdminProspectsTab })), { loading: () => <TabSkeleton /> });
+const AdminSponsorsTab    = dynamic(() => import('@/components/admin/AdminSponsorsTab').then(m => ({ default: m.AdminSponsorsTab })), { loading: () => <TabSkeleton /> });
+const AdminCheckIn        = dynamic(() => import('@/components/AdminCheckIn').then(m => ({ default: m.AdminCheckIn })), { loading: () => <TabSkeleton /> });
+const TaskBoard           = dynamic(() => import('@/components/admin/TaskBoard').then(m => ({ default: m.TaskBoard })), { loading: () => <TabSkeleton /> });
+const AdminFinancialsTab  = dynamic(() => import('@/components/admin/AdminFinancialsTab').then(m => ({ default: m.AdminFinancialsTab })), { loading: () => <TabSkeleton /> });
 const AdminApplicationsTab = dynamic(() => import('@/components/admin/AdminApplicationsTab').then(m => ({ default: m.AdminApplicationsTab })), { loading: () => <TabSkeleton /> });
-const AdminNonMembersTab = dynamic(() => import('@/components/admin/AdminNonMembersTab').then(m => ({ default: m.AdminNonMembersTab })), { loading: () => <TabSkeleton /> });
+const AdminNonMembersTab  = dynamic(() => import('@/components/admin/AdminNonMembersTab').then(m => ({ default: m.AdminNonMembersTab })), { loading: () => <TabSkeleton /> });
+const AdminSuggestionsTab = dynamic(() => import('@/components/admin/AdminSuggestionsTab').then(m => ({ default: m.AdminSuggestionsTab })), { loading: () => <TabSkeleton /> });
 
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -40,7 +40,8 @@ function TabSkeleton() {
 
 const VALID_SECTIONS: AdminSection[] = [
   'dashboard', 'events', 'members', 'checkin', 'tasks',
-  'prospects', 'sponsors', 'financials', 'applications', 'non-members',
+  'prospects', 'sponsors', 'financials',
+  'applications', 'non-members', 'suggestions',
 ];
 
 export default function AdminPage() {
@@ -73,35 +74,27 @@ function AdminDashboard() {
     sectionFromUrl && VALID_SECTIONS.includes(sectionFromUrl) ? sectionFromUrl : 'dashboard'
   );
 
-  // Sync section from URL params
   useEffect(() => {
     const s = searchParams.get('section') as AdminSection | null;
-    if (s && VALID_SECTIONS.includes(s)) {
-      setActiveSection(s);
-    }
+    if (s && VALID_SECTIONS.includes(s)) setActiveSection(s);
   }, [searchParams]);
 
-  // Auth guard
   useEffect(() => {
-    if (!authLoading && (!user || !isAdmin)) {
-      router.push("/admin/login");
-    }
+    if (!authLoading && (!user || !isAdmin)) router.push("/admin/login");
   }, [user, isAdmin, authLoading, router]);
 
   const goToDashboard = () => setActiveSection('dashboard');
 
   const handleFilterChange = (filter: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (filter === 'all') params.delete('filter');
-    else params.set('filter', filter);
+    if (filter === 'all') params.delete('filter'); else params.set('filter', filter);
     router.replace(`?${params.toString()}`);
   };
 
-  // Only super_admin and admin can see Applications + Non-Members
-  const canSeeApplications =
-    profile?.role === 'super_admin' || profile?.role === 'admin';
+  const p = profile as any;
+  const isSuperAdmin = p?.role === 'super_admin';
+  const isAdminOrSuper = p?.role === 'super_admin' || p?.role === 'admin';
 
-  // Loading skeleton
   if (authLoading) {
     return (
       <AdminLayout title="704 Collective" activeSection={activeSection} onSectionChange={setActiveSection}>
@@ -111,7 +104,7 @@ function AdminDashboard() {
             <Skeleton className="h-9 w-28" />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+            {[1,2,3,4].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Skeleton className="h-52 rounded-xl" />
@@ -184,21 +177,27 @@ function AdminDashboard() {
           </SectionErrorBoundary>
         )}
 
-        {activeSection === 'financials' && (
+        {activeSection === 'financials' && isSuperAdmin && (
           <SectionErrorBoundary>
             <AdminFinancialsTab onNavigateToDashboard={goToDashboard} />
           </SectionErrorBoundary>
         )}
 
-        {activeSection === 'applications' && canSeeApplications && (
+        {activeSection === 'applications' && isAdminOrSuper && (
           <SectionErrorBoundary>
             <AdminApplicationsTab onNavigateToDashboard={goToDashboard} />
           </SectionErrorBoundary>
         )}
 
-        {activeSection === 'non-members' && canSeeApplications && (
+        {activeSection === 'non-members' && isAdminOrSuper && (
           <SectionErrorBoundary>
             <AdminNonMembersTab onNavigateToDashboard={goToDashboard} />
+          </SectionErrorBoundary>
+        )}
+
+        {activeSection === 'suggestions' && isAdminOrSuper && (
+          <SectionErrorBoundary>
+            <AdminSuggestionsTab onNavigateToDashboard={goToDashboard} />
           </SectionErrorBoundary>
         )}
 

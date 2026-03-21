@@ -18,7 +18,8 @@ export type AdminSection =
   | 'sponsors'
   | 'financials'
   | 'applications'
-  | 'non-members';
+  | 'non-members'
+  | 'suggestions';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -38,7 +39,7 @@ export function AdminLayout({
   return (
     <div className="min-h-screen bg-background">
 
-      {/* ── Desktop Sidebar ── fixed, left edge, full height */}
+      {/* ── Desktop Sidebar ── */}
       <aside className="hidden lg:flex lg:flex-col fixed inset-y-0 left-0 w-60 border-r border-border bg-sidebar z-30">
         <AdminSidebar
           activeSection={activeSection}
@@ -46,9 +47,8 @@ export function AdminLayout({
         />
       </aside>
 
-      {/* ── Mobile Sidebar ── Sheet drawer */}
+      {/* ── Mobile Sidebar ── */}
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen} modal={true}>
-        {/* [&>button]:hidden removes the default SheetContent close button */}
         <SheetContent
           side="left"
           className="w-60 p-0 bg-sidebar border-border [&>button]:hidden"
@@ -64,7 +64,7 @@ export function AdminLayout({
 
       <div className="lg:ml-60 min-h-screen flex flex-col">
 
-        {/* Mobile top bar — hamburger on LEFT for admin */}
+        {/* Mobile top bar */}
         <header className="lg:hidden sticky top-0 z-20 flex h-14 items-center justify-between px-4 border-b border-border bg-background/95 backdrop-blur-sm shrink-0">
           <button
             type="button"
@@ -72,24 +72,13 @@ export function AdminLayout({
             className="flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             aria-label="Open navigation"
           >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 18 18"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <line x1="2" y1="4.5" x2="16" y2="4.5" />
               <line x1="2" y1="9" x2="16" y2="9" />
               <line x1="2" y1="13.5" x2="16" y2="13.5" />
             </svg>
           </button>
-          <span className="text-sm font-semibold text-foreground">
-            704 Collective
-          </span>
-          {/* Spacer keeps title visually centered */}
+          <span className="text-sm font-semibold text-foreground">704 Collective</span>
           <div className="w-9" />
         </header>
 

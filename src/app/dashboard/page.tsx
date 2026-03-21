@@ -17,6 +17,7 @@ import { WalletButtons } from '@/components/WalletButtons';
 import { CommunityStatsWidget } from '@/components/CommunityStatsWidget';
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
 import { OnboardingCard } from '@/components/OnboardingCard';
+import { NonMemberDashboard } from '@/components/NonMemberDashboard';
 import { Crown, AlertCircle, CreditCard, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,6 +31,8 @@ export default function Dashboard() {
   usePageTitle('Member Portal');
   const [isPortalLoading, setIsPortalLoading] = useState(false);
   const [heroEventId, setHeroEventId] = useState<string | null>(null);
+  const [application, setApplication] = useState<any>(null);
+  const [appLoaded, setAppLoaded] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -43,6 +46,27 @@ export default function Dashboard() {
       window.history.replaceState({}, '', `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`);
     }
   }, []);
+
+  // Load business application for business non-members
+  useEffect(() => {
+    if (!user || !profile) return;
+    const p = profile as any;
+    if (p.member_type === 'business_non_member') {
+      supabase
+        .from('business_applications')
+        .select('*')
+        .eq('email', p.email)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+        .then(({ data }) => {
+          setApplication(data ?? null);
+          setAppLoaded(true);
+        });
+    } else {
+      setAppLoaded(true);
+    }
+  }, [user, profile]);
 
   const handleManageSubscription = async () => {
     setIsPortalLoading(true);
@@ -59,15 +83,42 @@ export default function Dashboard() {
     }
   };
 
-  if (loading) return (
+  if (loading || !appLoaded) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
     </div>
   );
+
   if (!user || !profile) return null;
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const p = profile as any;
+
+  // ── Non-member view ─────────────────────────────────────────────
+  const isNonMember =
+    p.member_type === 'social_non_member' ||
+    p.member_type === 'business_non_member' ||
+    (p.member_type === 'non_member' && !isActiveMember);
+
+  if (isNonMember) {
+    return (
+      <>
+        <Header />
+        <NonMemberDashboard
+          profile={{
+            id: user.id,
+            email: p.email,
+            full_name: p.full_name,
+            member_type: p.member_type,
+            application_status: p.application_status,
+          }}
+          application={application}
+        />
+      </>
+    );
+  }
+
+  // ── Active member view (existing) ───────────────────────────────
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
   const displayName = p.full_name?.trim();
   const firstName = displayName
@@ -138,7 +189,19 @@ export default function Dashboard() {
           Welcome back, {firstName}
         </h1>
 
-        {/* Membership card + wallet buttons inline — TOP of dashboard (G55-G57) */}
+        {/* Business membership nudge for active social members */}
+        {isActiveMember && p.member_type === 'social' && (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex items-center justify-between gap-4">
+            <p className="text-sm text-foreground">
+              Think you're a fit for <strong>704 Business</strong>?
+            </p>
+            <Button variant="outline" size="sm" asChild>
+              <a href="/business">Learn more</a>
+            </Button>
+          </div>
+        )}
+
+        {/* Membership card + wallet buttons inline */}
         {isActiveMember && (
           <div className="flex flex-col sm:flex-row gap-4 items-start">
             <div className="w-full max-w-xs">
@@ -174,7 +237,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Calendar sync — compact banner (G58) */}
+        {/* Calendar sync */}
         {isActiveMember && p.calendar_token && (
           <CalendarSyncButton
             calendarToken={p.calendar_token}
@@ -183,7 +246,7 @@ export default function Dashboard() {
           />
         )}
 
-        {/* Two-column grid: MY SCHEDULE + GROW THE COMMUNITY */}
+        {/* Two-column grid */}
         {(isActiveMember || isPastDue) && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div>
@@ -215,7 +278,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Community stats widget (U2/G52) */}
+        {/* Community stats widget */}
         {isActiveMember && (
           <SectionErrorBoundary>
             <CommunityStatsWidget />
