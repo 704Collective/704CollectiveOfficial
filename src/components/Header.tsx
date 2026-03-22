@@ -43,7 +43,7 @@ export function Header() {
         .from('notifications')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', user.id)
-        .is('read_at', null);
+        .eq('is_read', false);
       setUnreadCount(count ?? 0);
     };
 
