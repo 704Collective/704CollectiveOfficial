@@ -189,16 +189,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!isMountedRef.current) return;
 
       if (session?.user) {
-        // Drop repeated SIGNED_IN events for the same user — Supabase can fire
-        // these on every tab focus, token refresh, and navigation, causing an
-        // infinite profile-fetch → setState → re-render loop.
-        if (event === 'SIGNED_IN' && lastProcessedUserIdRef.current === session.user.id) {
-          console.log('[Auth] Skipping redundant SIGNED_IN — already processed for', session.user.id);
-          return;
-        }
-
-        // Mark this user as processed BEFORE the async fetch so any further
-        // SIGNED_IN events that fire during the fetch are also dropped.
+        // Track the last processed user ID — used to deduplicate INITIAL_SESSION
+        // re-fires, but SIGNED_IN is always processed so OAuth logins always land.
         lastProcessedUserIdRef.current = session.user.id;
 
         await applyProfileStateRef.current(session.user, session);
