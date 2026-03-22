@@ -49,18 +49,22 @@ export default function Dashboard() {
     }
   }, []);
 
-  // Load business application for business non-members
+  // Load business application for business non-members or any user with application_status set
   useEffect(() => {
     if (!user || !profile) return;
     const p = profile as any;
-    if (p.member_type === 'business_non_member') {
+    const shouldFetchApp =
+      p.member_type === 'business_non_member' ||
+      (p.application_status && ['pending', 'reviewing', 'approved', 'denied', 'waitlisted'].includes(p.application_status));
+
+    if (shouldFetchApp) {
       supabase
         .from('business_applications')
         .select('*')
         .eq('email', p.email)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
         .then(({ data }) => {
           setApplication(data ?? null);
           setAppLoaded(true);
@@ -145,8 +149,23 @@ export default function Dashboard() {
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
 
-        {/* Sub-nav */}
-        <DashboardNav />
+        {/* Sub-nav + suggest event */}
+        <div className="flex items-center gap-2">
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <DashboardNav />
+          </div>
+          {isActiveMember && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="shrink-0 gap-1.5 text-muted-foreground hover:text-foreground whitespace-nowrap"
+              onClick={() => setSuggestModalOpen(true)}
+            >
+              <Lightbulb className="w-4 h-4" />
+              <span className="hidden sm:inline text-xs">Suggest</span>
+            </Button>
+          )}
+        </div>
 
         {/* Past due warning */}
         {isPastDue && (
@@ -307,20 +326,6 @@ export default function Dashboard() {
           </SectionErrorBoundary>
         </div>
 
-        {/* Suggest an Event */}
-        {isActiveMember && (
-          <div className="flex justify-center pb-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground gap-2"
-              onClick={() => setSuggestModalOpen(true)}
-            >
-              <Lightbulb className="w-4 h-4" />
-              Suggest an Event
-            </Button>
-          </div>
-        )}
 
       </main>
 

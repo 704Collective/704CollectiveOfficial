@@ -97,7 +97,7 @@ export function NonMemberDashboard({ profile, application }: NonMemberDashboardP
   const isSocialNonMember = profile.member_type === 'social_non_member' || profile.member_type === 'non_member';
   const firstName = profile.full_name?.split(' ')[0] ?? 'there';
 
-  const appStatus = application?.status ?? 'pending';
+  const appStatus = application?.status ?? profile.application_status ?? 'pending';
   const statusConfig = STATUS_CONFIG[appStatus] ?? STATUS_CONFIG.pending;
   const StatusIcon = statusConfig.icon;
 
@@ -130,7 +130,7 @@ export function NonMemberDashboard({ profile, application }: NonMemberDashboardP
     { id: 'dashboard' as Tab, label: 'Home',    icon: Crown },
     { id: 'events'    as Tab, label: 'Events',  icon: Calendar },
     { id: 'settings'  as Tab, label: 'Settings', icon: Settings },
-    ...(isBusinessNonMember ? [{ id: 'application' as Tab, label: 'Application', icon: FileText }] : []),
+    ...((isBusinessNonMember || profile.application_status) ? [{ id: 'application' as Tab, label: 'Application', icon: FileText }] : []),
   ];
 
   return (
@@ -285,22 +285,45 @@ export function NonMemberDashboard({ profile, application }: NonMemberDashboardP
           </div>
         )}
 
-        {/* ── APPLICATION TAB (business non-members only) ── */}
-        {activeTab === 'application' && isBusinessNonMember && (
+        {/* ── APPLICATION TAB ── */}
+        {activeTab === 'application' && (isBusinessNonMember || profile.application_status) && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Your Application</h2>
-              {application && (
-                <div className={`flex items-center gap-1.5 text-sm font-medium ${statusConfig.color}`}>
+              <div className={`flex items-center gap-1.5 text-sm font-medium ${statusConfig.color}`}>
+                <StatusIcon className="w-4 h-4" />
+                {statusConfig.label}
+              </div>
+            </div>
+
+            {!application && !profile.application_status ? (
+              <div className="rounded-xl border border-border bg-card p-6 text-center">
+                <p className="text-muted-foreground text-sm">No application found.</p>
+              </div>
+            ) : !application && profile.application_status ? (
+              /* No application row but profile has a status — show status card only */
+              <div className={`rounded-xl border p-4 ${
+                appStatus === 'approved' ? 'border-green-500/30 bg-green-500/5' :
+                appStatus === 'denied' ? 'border-red-500/30 bg-red-500/5' :
+                appStatus === 'waitlisted' ? 'border-orange-500/30 bg-orange-500/5' :
+                'border-yellow-500/30 bg-yellow-500/5'
+              }`}>
+                <div className={`flex items-center gap-2 font-medium mb-1 ${statusConfig.color}`}>
                   <StatusIcon className="w-4 h-4" />
                   {statusConfig.label}
                 </div>
-              )}
-            </div>
-
-            {!application ? (
-              <div className="rounded-xl border border-border bg-card p-6 text-center">
-                <p className="text-muted-foreground text-sm">No application found.</p>
+                <p className="text-sm text-muted-foreground">
+                  {appStatus === 'pending' && 'Your application is in our queue. We review every application personally — expect to hear from us within 48 hours.'}
+                  {appStatus === 'reviewing' && "Our team is currently reviewing your application. We'll be in touch shortly."}
+                  {appStatus === 'approved' && 'Congratulations! Your application has been approved. Check your email for next steps.'}
+                  {appStatus === 'denied' && "We appreciate your interest. Your application wasn't a fit at this time. You're welcome to join as a Social member."}
+                  {appStatus === 'waitlisted' && "You've been added to our waitlist. We'll reach out when a spot opens up. You're also welcome to join as a Social member in the meantime."}
+                </p>
+                {(appStatus === 'denied' || appStatus === 'waitlisted') && (
+                  <Button size="sm" className="mt-3" onClick={handleJoinSocial}>
+                    Join as Social Member — $30/mo
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="space-y-4">

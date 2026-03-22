@@ -33,6 +33,9 @@ interface AdminUser {
   user_id: string;
   email: string;
   full_name: string | null;
+  role: string;
+  member_type: string | null;
+  membership_override: boolean;
 }
 
 const TABS = [
@@ -76,6 +79,11 @@ function AdminSettings() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteSubmitting, setInviteSubmitting] = useState(false);
 
+  const [addByEmail, setAddByEmail] = useState('');
+  const [addByEmailLoading, setAddByEmailLoading] = useState(false);
+
+  const isSuperAdmin = (profile as any)?.role === 'super_admin';
+
   useEffect(() => {
     if (!loading && (!user || !isAdmin)) {
       router.push('/admin/login');
@@ -97,25 +105,34 @@ function AdminSettings() {
 
     const { data: roles } = await supabase
       .from('user_roles')
-      .select('id, user_id')
-      .eq('role', 'admin');
+      .select('id, user_id, role')
+      .in('role', ['admin', 'super_admin']);
 
     if (roles && roles.length > 0) {
       const userIds = roles.map(r => r.user_id);
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, email, full_name')
+        .select('id, email, full_name, member_type, membership_override')
         .in('id', userIds)
         .is('deleted_at', null);
 
-      const adminsList = roles.map(role => {
-        const profile = profiles?.find(p => p.id === role.user_id);
+      const adminsList: AdminUser[] = roles.map(role => {
+        const p = profiles?.find(p => p.id === role.user_id);
         return {
           id: role.id,
           user_id: role.user_id,
-          email: profile?.email || '',
-          full_name: profile?.full_name || null,
+          email: p?.email || '',
+          full_name: p?.full_name || null,
+          role: role.role,
+          member_type: p?.member_type || null,
+          membership_override: p?.membership_override ?? false,
         };
+      });
+      // Sort: super_admins first, then by name
+      adminsList.sort((a, b) => {
+        if (a.role === 'super_admin' && b.role !== 'super_admin') return -1;
+        if (b.role === 'super_admin' && a.role !== 'super_admin') return 1;
+        return (a.full_name || '').localeCompare(b.full_name || '');
       });
       setAdmins(adminsList);
     } else {
@@ -220,6 +237,95 @@ function AdminSettings() {
     }
   };
 
+  const handleChangeRole = async (admin: AdminUser, newRole: 'admin' | 'super_admin') => {
+    if (admin.user_id === user?.id) {
+      toast.error("You can't change your own role");
+      return;
+    }
+    setProcessingId(admin.id);
+    try {
+      const { error } = await supabase
+        .from('user_roles')
+        .update({ role: newRole })
+        .eq('id', admin.id);
+      if (error) throw error;
+      toast.success(`${admin.full_name || admin.email} is now a ${newRole === 'super_admin' ? 'Super Admin' : 'Admin'}`);
+      fetchAdminData();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to change role');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleToggleOverride = async (admin: AdminUser) => {
+    setProcessingId(admin.id);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ membership_override: !admin.membership_override })
+        .eq('id', admin.user_id);
+      if (error) throw error;
+      toast.success(`Membership override ${!admin.membership_override ? 'enabled' : 'disabled'} for ${admin.full_name || admin.email}`);
+      fetchAdminData();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to toggle override');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleAddByEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const emailTrimmed = addByEmail.trim().toLowerCase();
+    if (!emailTrimmed) return;
+    setAddByEmailLoading(true);
+    try {
+      const { data: found } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .eq('email', emailTrimmed)
+        .is('deleted_at', null)
+        .maybeSingle();
+
+      if (!found) {
+        toast.error('No account found with that email address');
+        return;
+      }
+
+      // Check if already an admin
+      const { data: existingRole } = await supabase
+        .from('user_roles')
+        .select('id')
+        .eq('user_id', found.id)
+        .in('role', ['admin', 'super_admin'])
+        .maybeSingle();
+
+      if (existingRole) {
+        toast.error(`${found.full_name || found.email} already has an admin role`);
+        return;
+      }
+
+      const { error: roleErr } = await supabase
+        .from('user_roles')
+        .insert({ user_id: found.id, role: 'admin' });
+      if (roleErr) throw roleErr;
+
+      await supabase
+        .from('profiles')
+        .update({ membership_override: true, member_type: 'business' })
+        .eq('id', found.id);
+
+      toast.success(`${found.full_name || found.email} is now an admin`);
+      setAddByEmail('');
+      fetchAdminData();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to add admin');
+    } finally {
+      setAddByEmailLoading(false);
+    }
+  };
+
   const handleInviteAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteFirstName.trim() || !inviteLastName.trim()) {
@@ -309,44 +415,89 @@ function AdminSettings() {
                 </div>
               </div>
 
+              {/* Role management list */}
               <div className="mb-5">
-                <h4 className="text-sm font-medium mb-3">Current Admins</h4>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-medium">Admin Team</h4>
+                  {!isSuperAdmin && (
+                    <span className="text-xs text-muted-foreground">View only — super admin required to make changes</span>
+                  )}
+                </div>
                 {loadingData ? (
                   <div className="text-sm text-muted-foreground">Loading...</div>
                 ) : admins.length > 0 ? (
                   <div className="space-y-2">
                     {admins.map((admin) => (
-                      <div key={admin.id} className="flex items-center justify-between p-3 rounded-lg border border-border gap-2">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0">
-                            <span className="text-sm font-bold text-primary-foreground">
-                              {(admin.full_name || admin.email).charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-medium text-sm truncate">
-                              {admin.full_name || 'No name'}
-                              {admin.user_id === user?.id && (
-                                <span className="ml-1.5 text-xs text-muted-foreground">(you)</span>
+                      <div key={admin.id} className="rounded-lg border border-border p-3 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0">
+                              <span className="text-sm font-bold text-primary-foreground">
+                                {(admin.full_name || admin.email).charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="font-medium text-sm truncate">
+                                  {admin.full_name || 'No name'}
+                                  {admin.user_id === user?.id && (
+                                    <span className="ml-1 text-xs text-muted-foreground">(you)</span>
+                                  )}
+                                </p>
+                                <span className={cn(
+                                  'text-[10px] font-semibold px-1.5 py-0.5 rounded-full',
+                                  admin.role === 'super_admin'
+                                    ? 'bg-primary/15 text-primary'
+                                    : 'bg-blue-500/10 text-blue-400'
+                                )}>
+                                  {admin.role === 'super_admin' ? 'Super Admin' : 'Admin'}
+                                </span>
+                                {admin.membership_override && (
+                                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-400">Override</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate">{admin.email}</p>
+                              {admin.member_type && (
+                                <p className="text-xs text-muted-foreground capitalize">{admin.member_type.replace(/_/g, ' ')}</p>
                               )}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">{admin.email}</p>
+                            </div>
                           </div>
+                          {isSuperAdmin && admin.user_id !== user?.id && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleRemoveAdmin(admin)}
+                              disabled={processingId === admin.id}
+                              className="shrink-0 text-destructive hover:text-destructive"
+                            >
+                              {processingId === admin.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                            </Button>
+                          )}
                         </div>
-                        {admin.user_id !== user?.id && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleRemoveAdmin(admin)}
-                            disabled={processingId === admin.id}
-                            className="shrink-0"
-                          >
-                            {processingId === admin.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                          </Button>
+
+                        {/* Super-admin controls */}
+                        {isSuperAdmin && admin.user_id !== user?.id && (
+                          <div className="flex flex-wrap gap-2 pt-1 border-t border-border/50">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              disabled={processingId === admin.id}
+                              onClick={() => handleChangeRole(admin, admin.role === 'super_admin' ? 'admin' : 'super_admin')}
+                            >
+                              {processingId === admin.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+                              {admin.role === 'super_admin' ? 'Demote to Admin' : 'Promote to Super Admin'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              disabled={processingId === admin.id}
+                              onClick={() => handleToggleOverride(admin)}
+                            >
+                              {admin.membership_override ? 'Remove Override' : 'Enable Override'}
+                            </Button>
+                          </div>
                         )}
                       </div>
                     ))}
@@ -356,10 +507,36 @@ function AdminSettings() {
                 )}
               </div>
 
+              {/* Add admin by email (super_admin only) */}
+              {isSuperAdmin && (
+                <div className="border-t border-border pt-5 mb-5">
+                  <h4 className="text-sm font-medium mb-1 flex items-center gap-2">
+                    <Shield className="w-4 h-4" />
+                    Add Admin by Email
+                  </h4>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Finds an existing member by email, grants admin role, enables membership override, and sets member_type to business.
+                  </p>
+                  <form onSubmit={handleAddByEmail} className="flex gap-2">
+                    <Input
+                      type="email"
+                      placeholder="member@example.com"
+                      value={addByEmail}
+                      onChange={e => setAddByEmail(e.target.value)}
+                      disabled={addByEmailLoading}
+                      className="flex-1"
+                    />
+                    <Button type="submit" disabled={addByEmailLoading || !addByEmail.trim()} className="shrink-0">
+                      {addByEmailLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add Admin'}
+                    </Button>
+                  </form>
+                </div>
+              )}
+
               <div className="border-t border-border pt-5">
                 <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
                   <UserPlus className="w-4 h-4" />
-                  Invite Admin
+                  Invite New Admin
                 </h4>
                 <form onSubmit={handleInviteAdmin} className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -370,7 +547,7 @@ function AdminSettings() {
                         value={inviteFirstName}
                         onChange={(e) => setInviteFirstName(e.target.value)}
                         placeholder="First name"
-                        disabled={inviteSubmitting}
+                        disabled={inviteSubmitting || !isSuperAdmin}
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -380,7 +557,7 @@ function AdminSettings() {
                         value={inviteLastName}
                         onChange={(e) => setInviteLastName(e.target.value)}
                         placeholder="Last name"
-                        disabled={inviteSubmitting}
+                        disabled={inviteSubmitting || !isSuperAdmin}
                       />
                     </div>
                   </div>
@@ -392,10 +569,10 @@ function AdminSettings() {
                       value={inviteEmail}
                       onChange={(e) => setInviteEmail(e.target.value)}
                       placeholder="email@example.com"
-                      disabled={inviteSubmitting}
+                      disabled={inviteSubmitting || !isSuperAdmin}
                     />
                   </div>
-                  <Button type="submit" disabled={inviteSubmitting} className="w-full sm:w-auto">
+                  <Button type="submit" disabled={inviteSubmitting || !isSuperAdmin} className="w-full sm:w-auto">
                     {inviteSubmitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -408,6 +585,9 @@ function AdminSettings() {
                       </>
                     )}
                   </Button>
+                  {!isSuperAdmin && (
+                    <p className="text-xs text-muted-foreground">Only super admins can send invites.</p>
+                  )}
                 </form>
               </div>
 

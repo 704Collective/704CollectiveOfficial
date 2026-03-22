@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       if (user) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('subscription_status, membership_override, member_type')
+          .select('subscription_status, membership_override, member_type, role')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -46,7 +46,10 @@ export async function GET(request: NextRequest) {
           profile?.subscription_status === 'trialing' ||
           profile?.membership_override === true;
 
-        const isAdmin = profile?.member_type === 'admin';
+        const isAdmin =
+          profile?.role === 'admin' ||
+          profile?.role === 'super_admin' ||
+          profile?.member_type === 'admin';
 
         const isNonMember =
           profile?.member_type === 'social_non_member' ||
