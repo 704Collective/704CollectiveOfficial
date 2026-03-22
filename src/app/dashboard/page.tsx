@@ -210,8 +210,8 @@ export default function Dashboard() {
           Welcome back, {firstName}
         </h1>
 
-        {/* Business membership nudge for active social members */}
-        {isActiveMember && p.member_type === 'social' && (
+        {/* Business membership nudge for active social members — hidden from admins */}
+        {isActiveMember && p.member_type === 'social' && !isAdmin && (
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex items-center justify-between gap-4">
             <p className="text-sm text-foreground">
               Think you're a fit for <strong>704 Business</strong>?
@@ -326,6 +326,24 @@ export default function Dashboard() {
           </SectionErrorBoundary>
         </div>
 
+        {/* Suggest an Event — bottom CTA for active members */}
+        {isActiveMember && (
+          <div className="rounded-xl border border-border bg-card/50 p-4 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-foreground">Have an event idea?</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Share it with the 704 Collective team.</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0 gap-1.5"
+              onClick={() => setSuggestModalOpen(true)}
+            >
+              <Lightbulb className="w-3.5 h-3.5" />
+              Suggest an Event
+            </Button>
+          </div>
+        )}
 
       </main>
 

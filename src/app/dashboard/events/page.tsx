@@ -22,7 +22,7 @@ interface EventTicket {
     id: string;
     title: string;
     start_time: string;
-    end_time: string;
+    end_time: string | null;
     location_name: string | null;
     image_url: string | null;
     is_members_only: boolean | null;
@@ -38,17 +38,23 @@ export default function DashboardEventsPage() {
   const now = new Date();
   const allTickets = (rawData ?? []) as unknown as EventTicket[];
 
+  // Keep an event in "upcoming" until 30 minutes after its end_time (or start_time if no end_time)
+  const effectiveCutoff = (t: EventTicket): number => {
+    const base = t.events.end_time ?? t.events.start_time;
+    return new Date(base).getTime() + 30 * 60 * 1000;
+  };
+
   const upcomingTickets = allTickets
-    .filter(t => t.events && new Date(t.events.start_time) > now)
+    .filter(t => t.events && effectiveCutoff(t) > now.getTime())
     .sort((a, b) => new Date(a.events.start_time).getTime() - new Date(b.events.start_time).getTime());
 
   const pastTickets = allTickets
-    .filter(t => t.events && new Date(t.events.start_time) <= now)
+    .filter(t => t.events && effectiveCutoff(t) <= now.getTime())
     .sort((a, b) => new Date(b.events.start_time).getTime() - new Date(a.events.start_time).getTime());
 
   const renderTicketRow = (ticket: EventTicket, isPast: boolean) => {
     const date = new Date(ticket.events.start_time);
-    const endDate = new Date(ticket.events.end_time);
+    const endDate = ticket.events.end_time ? new Date(ticket.events.end_time) : null;
     const checkedIn = !!ticket.checked_in_at;
 
     return (
@@ -69,7 +75,7 @@ export default function DashboardEventsPage() {
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="w-3 h-3" />
-              {format(date, 'h:mm a')} – {format(endDate, 'h:mm a')}
+              {format(date, 'h:mm a')}{endDate ? ` – ${format(endDate, 'h:mm a')}` : ''}
             </span>
             {ticket.events.location_name && (
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
