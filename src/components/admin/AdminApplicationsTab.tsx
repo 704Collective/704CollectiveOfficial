@@ -81,6 +81,8 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
   const [detailOpen, setDetailOpen] = useState(false);
   const [notes, setNotes] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<'denied' | 'waitlisted' | null>(null);
+  const [denyReason, setDenyReason] = useState('');
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['admin-applications'] });
 
@@ -105,7 +107,7 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
 
   // ── Action mutation ──────────────────────────────────────────────────────
   const actionMutation = useMutation({
-    mutationFn: async ({ appId, action, notesText }: { appId: string; action: 'reviewing' | 'approved' | 'denied' | 'waitlisted'; notesText: string }) => {
+    mutationFn: async ({ appId, action, notesText, reason }: { appId: string; action: 'reviewing' | 'approved' | 'denied' | 'waitlisted'; notesText: string; reason?: string }) => {
       const app = selectedApp;
       if (!app) throw new Error('No application selected');
 
@@ -120,9 +122,6 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
         .eq('id', appId);
       if (updateErr) throw updateErr;
 
-      // Send decision emails via Resend
-      const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://704collective.com';
-
       if (action === 'approved') {
         // Create the Supabase user + profile, charge the card
         await supabase.functions.invoke('approve-business-application', {
@@ -133,7 +132,7 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
           body: {
             application_id: appId,
             action,
-            reason: notesText || null,
+            reason: reason || null,
           },
         });
       }
@@ -146,6 +145,8 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
         waitlisted: 'Added to waitlist',
       };
       toast.success(labels[action] ?? 'Updated');
+      setPendingAction(null);
+      setDenyReason('');
       setDetailOpen(false);
       invalidate();
     },
@@ -155,8 +156,19 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
 
   const handleAction = (action: 'reviewing' | 'approved' | 'denied' | 'waitlisted') => {
     if (!selectedApp) return;
+    // Deny and Waitlist require a confirmation step with optional reason
+    if (action === 'denied' || action === 'waitlisted') {
+      setPendingAction(action);
+      return;
+    }
     setActionLoading(action);
     actionMutation.mutate({ appId: selectedApp.id, action, notesText: notes });
+  };
+
+  const handleConfirmDecision = () => {
+    if (!selectedApp || !pendingAction) return;
+    setActionLoading(pendingAction);
+    actionMutation.mutate({ appId: selectedApp.id, action: pendingAction, notesText: notes, reason: denyReason });
   };
 
   const saveNotes = async () => {
@@ -276,7 +288,7 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
       )}
 
       {/* Detail Dialog */}
-      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+      <Dialog open={detailOpen} onOpenChange={(open) => { setDetailOpen(open); if (!open) { setPendingAction(null); setDenyReason(''); } }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           {selectedApp && (
             <>
@@ -365,28 +377,68 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
                 </div>
               </div>
 
+              {/* Inline reason panel for Deny / Waitlist */}
+              {pendingAction && (
+                <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                  <p className="text-sm font-medium">
+                    {pendingAction === 'denied' ? 'Deny this application?' : 'Move to waitlist?'}
+                  </p>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-muted-foreground">
+                      Reason <span className="font-normal">(optional — will be included in the email to the applicant)</span>
+                    </label>
+                    <Textarea
+                      value={denyReason}
+                      onChange={e => setDenyReason(e.target.value)}
+                      placeholder={pendingAction === 'denied'
+                        ? 'e.g. We don\'t feel it\'s the right fit at this time...'
+                        : 'e.g. We\'d love to have you — we\'ll be in touch when a spot opens...'}
+                      rows={3}
+                      className="text-sm"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" size="sm" onClick={() => { setPendingAction(null); setDenyReason(''); }} disabled={!!actionLoading}>
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={pendingAction === 'denied' ? 'destructive' : 'outline'}
+                      className={pendingAction === 'waitlisted' ? 'text-orange-400 border-orange-400/30 hover:bg-orange-500/10' : ''}
+                      disabled={!!actionLoading}
+                      onClick={handleConfirmDecision}
+                    >
+                      {actionLoading === pendingAction
+                        ? 'Sending...'
+                        : pendingAction === 'denied' ? 'Confirm Deny' : 'Confirm Waitlist'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
                 <div className="flex gap-2 flex-wrap">
                   {selectedApp.status !== 'reviewing' && (
-                    <Button variant="outline" size="sm" disabled={!!actionLoading} onClick={() => handleAction('reviewing')}>
+                    <Button variant="outline" size="sm" disabled={!!actionLoading || !!pendingAction} onClick={() => handleAction('reviewing')}>
                       {actionLoading === 'reviewing' ? 'Updating...' : 'Mark Reviewing'}
                     </Button>
                   )}
                   {selectedApp.status !== 'waitlisted' && (
-                    <Button variant="outline" size="sm" className="text-orange-400 border-orange-400/30 hover:bg-orange-500/10" disabled={!!actionLoading} onClick={() => handleAction('waitlisted')}>
-                      <Clock className="w-4 h-4 mr-1" />{actionLoading === 'waitlisted' ? 'Updating...' : 'Waitlist'}
+                    <Button variant="outline" size="sm" className="text-orange-400 border-orange-400/30 hover:bg-orange-500/10" disabled={!!actionLoading || !!pendingAction} onClick={() => handleAction('waitlisted')}>
+                      <Clock className="w-4 h-4 mr-1" />{pendingAction === 'waitlisted' ? 'Waitlisting...' : 'Waitlist'}
                     </Button>
                   )}
                   {selectedApp.status !== 'denied' && (
-                    <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10" disabled={!!actionLoading} onClick={() => handleAction('denied')}>
-                      <XCircle className="w-4 h-4 mr-1" />{actionLoading === 'denied' ? 'Denying...' : 'Deny'}
+                    <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10" disabled={!!actionLoading || !!pendingAction} onClick={() => handleAction('denied')}>
+                      <XCircle className="w-4 h-4 mr-1" />{pendingAction === 'denied' ? 'Denying...' : 'Deny'}
                     </Button>
                   )}
                 </div>
                 {selectedApp.status !== 'approved' && (
                   <Button
                     className="bg-green-600 hover:bg-green-700 text-white"
-                    disabled={!!actionLoading || !selectedApp.card_saved}
+                    disabled={!!actionLoading || !!pendingAction || !selectedApp.card_saved}
                     onClick={() => handleAction('approved')}
                     title={!selectedApp.card_saved ? 'Card must be saved before approval' : ''}
                   >

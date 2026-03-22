@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -31,6 +31,39 @@ export function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const { user, profile, isAdmin } = useAuth();
+  const supabase = createClient();
+  const [unreadCount, setUnreadCount] = useState(0);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  useEffect(() => {
+    if (!user) { setUnreadCount(0); return; }
+
+    const fetchCount = async () => {
+      const { count } = await supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .is('read_at', null);
+      setUnreadCount(count ?? 0);
+    };
+
+    fetchCount();
+
+    // Real-time subscription so the badge updates without polling
+    channelRef.current = supabase
+      .channel(`notifications:${user.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${user.id}`,
+      }, () => fetchCount())
+      .subscribe();
+
+    return () => {
+      channelRef.current?.unsubscribe();
+    };
+  }, [user]);
 
   if (MARKETING_ROUTES.includes(pathname)) {
     return null;
@@ -204,6 +237,24 @@ export function Header() {
               </div>
             </SheetContent>
           </Sheet>
+
+          {/* Desktop notification bell */}
+          {user && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative hidden md:flex"
+              onClick={() => router.push('/dashboard/notifications')}
+              aria-label="Notifications"
+            >
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </Button>
+          )}
 
           {/* Desktop auth */}
           {user ? (
