@@ -282,7 +282,7 @@ export default function BrowseEventsPage() {
                 <>
                   {featuredEvent && !hasActiveFilters && (
                     <FeaturedEventBanner
-                      event={featuredEvent}
+                      event={{ ...featuredEvent, end_time: featuredEvent.end_time ?? '' }}
                       userHasTicket={userTicketIds.has(featuredEvent.id)}
                       isUserMember={!!isActiveMember}
                       isLoggedIn={!!user}
@@ -327,7 +327,7 @@ export default function BrowseEventsPage() {
                 <>
                   {featuredEvent && !hasActiveFilters && (
                     <FeaturedEventBanner
-                      event={featuredEvent}
+                      event={{ ...featuredEvent, end_time: featuredEvent.end_time ?? '' }}
                       userHasTicket={userTicketIds.has(featuredEvent.id)}
                       isUserMember={!!isActiveMember}
                       isLoggedIn={!!user}
