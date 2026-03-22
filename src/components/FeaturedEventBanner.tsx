@@ -15,6 +15,7 @@ interface Event {
   image_url?: string | null;
   ticket_price: number | null;
   is_members_only: boolean | null;
+  is_business_only?: boolean | null;
   category?: string | null;
 }
 
