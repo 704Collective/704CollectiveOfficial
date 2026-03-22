@@ -159,6 +159,15 @@ export default function BusinessApplicationPage() {
 
       if (error) throw error;
 
+      // Mark the profile as pending review
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser) {
+        await supabase
+          .from('profiles')
+          .update({ application_status: 'pending' })
+          .eq('id', currentUser.id);
+      }
+
       // Send notification email to admins
       await supabase.functions.invoke('send-email', {
         body: {

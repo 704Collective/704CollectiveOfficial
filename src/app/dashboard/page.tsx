@@ -18,7 +18,8 @@ import { CommunityStatsWidget } from '@/components/CommunityStatsWidget';
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
 import { OnboardingCard } from '@/components/OnboardingCard';
 import { NonMemberDashboard } from '@/components/NonMemberDashboard';
-import { Crown, AlertCircle, CreditCard, Loader2 } from 'lucide-react';
+import { SuggestEventModal } from '@/components/SuggestEventModal';
+import { Crown, AlertCircle, CreditCard, Loader2, Lightbulb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -33,6 +34,7 @@ export default function Dashboard() {
   const [heroEventId, setHeroEventId] = useState<string | null>(null);
   const [application, setApplication] = useState<any>(null);
   const [appLoaded, setAppLoaded] = useState(false);
+  const [suggestModalOpen, setSuggestModalOpen] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -305,7 +307,32 @@ export default function Dashboard() {
           </SectionErrorBoundary>
         </div>
 
+        {/* Suggest an Event */}
+        {isActiveMember && (
+          <div className="flex justify-center pb-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground gap-2"
+              onClick={() => setSuggestModalOpen(true)}
+            >
+              <Lightbulb className="w-4 h-4" />
+              Suggest an Event
+            </Button>
+          </div>
+        )}
+
       </main>
+
+      {isActiveMember && (
+        <SuggestEventModal
+          open={suggestModalOpen}
+          onOpenChange={setSuggestModalOpen}
+          profileId={user.id}
+          email={p.email ?? ''}
+          fullName={p.full_name ?? null}
+        />
+      )}
     </div>
   );
 }
