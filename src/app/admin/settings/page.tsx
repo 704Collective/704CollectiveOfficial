@@ -14,6 +14,7 @@ import { MembershipSettings } from '@/components/admin/MembershipSettings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -81,6 +82,9 @@ function AdminSettings() {
 
   const [addByEmail, setAddByEmail] = useState('');
   const [addByEmailLoading, setAddByEmailLoading] = useState(false);
+  const [showRevokeConfirm, setShowRevokeConfirm] = useState(false);
+  const [adminToRevoke, setAdminToRevoke] = useState<AdminUser | null>(null);
+  const [revokeLoading, setRevokeLoading] = useState(false);
 
   const isSuperAdmin = (profile as any)?.role === 'super_admin';
 
@@ -326,6 +330,32 @@ function AdminSettings() {
     }
   };
 
+  const handleRevokeAccess = async () => {
+    if (!adminToRevoke) return;
+    setRevokeLoading(true);
+    try {
+      const { error: roleErr } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('id', adminToRevoke.id);
+      if (roleErr) throw roleErr;
+
+      await supabase
+        .from('profiles')
+        .update({ role: 'lead' })
+        .eq('id', adminToRevoke.user_id);
+
+      toast.success(`Admin access removed for ${adminToRevoke.full_name || adminToRevoke.email}`);
+      setShowRevokeConfirm(false);
+      setAdminToRevoke(null);
+      fetchAdminData();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to remove admin access');
+    } finally {
+      setRevokeLoading(false);
+    }
+  };
+
   const handleInviteAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteFirstName.trim() || !inviteLastName.trim()) {
@@ -497,6 +527,15 @@ function AdminSettings() {
                             >
                               {admin.membership_override ? 'Remove Override' : 'Enable Override'}
                             </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs text-destructive hover:text-destructive border-destructive/30 hover:border-destructive/60"
+                              disabled={processingId === admin.id}
+                              onClick={() => { setAdminToRevoke(admin); setShowRevokeConfirm(true); }}
+                            >
+                              Remove Access
+                            </Button>
                           </div>
                         )}
                       </div>
@@ -504,6 +543,23 @@ function AdminSettings() {
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">No admins found</p>
+                )}
+
+                {/* Team summary */}
+                {!loadingData && admins.length > 0 && (
+                  <div className="flex gap-4 mt-4 pt-3 border-t border-border/60 text-xs text-muted-foreground">
+                    <span>
+                      <strong className="text-foreground">{admins.filter(a => a.role === 'super_admin').length}</strong>{' '}
+                      Super Admin{admins.filter(a => a.role === 'super_admin').length !== 1 ? 's' : ''}
+                    </span>
+                    <span>
+                      <strong className="text-foreground">{admins.filter(a => a.role === 'admin').length}</strong>{' '}
+                      Admin{admins.filter(a => a.role === 'admin').length !== 1 ? 's' : ''}
+                    </span>
+                    <span>
+                      <strong className="text-foreground">{admins.length}</strong> Total
+                    </span>
+                  </div>
                 )}
               </div>
 
@@ -797,6 +853,28 @@ function AdminSettings() {
           )}
         </div>
       </div>
+
+      {/* Revoke access confirmation dialog */}
+      <Dialog open={showRevokeConfirm} onOpenChange={setShowRevokeConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Admin Access</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove admin access for{' '}
+              <strong>{adminToRevoke?.full_name || adminToRevoke?.email}</strong>?{' '}
+              Their role will be set back to <strong>lead</strong> and they will lose all admin privileges.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRevokeConfirm(false)} disabled={revokeLoading}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleRevokeAccess} disabled={revokeLoading}>
+              {revokeLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Removing...</> : 'Remove Access'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }

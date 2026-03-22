@@ -35,6 +35,7 @@ interface Member {
   created_at: string;
   deleted_at: string | null;
   imported_at: string | null;
+  is_banned: boolean | null;
 }
 
 interface MemberForm {
@@ -43,7 +44,7 @@ interface MemberForm {
   membership_override: boolean;
 }
 
-type FilterType = 'all' | 'active' | 'inactive' | 'recent' | 'deactivated' | 'imported';
+type FilterType = 'all' | 'active' | 'inactive' | 'recent' | 'deactivated' | 'imported' | 'banned';
 
 // ── Avatar helpers ─────────────────────────────────────────────────
 const AVATAR_COLORS = [
@@ -82,10 +83,11 @@ async function fetchMembersData(page: number, activeFilter: FilterType) {
   const end = start + PAGE_SIZE - 1;
   let query = supabase
     .from('profiles')
-    .select('id, email, full_name, subscription_status, membership_override, created_at, deleted_at, imported_at', { count: 'exact' })
+    .select('id, email, full_name, subscription_status, membership_override, created_at, deleted_at, imported_at, is_banned', { count: 'exact' })
     .order('created_at', { ascending: false });
 
   if (activeFilter === 'deactivated') query = query.not('deleted_at', 'is', null);
+  else if (activeFilter === 'banned') query = query.eq('is_banned', true);
   else query = query.is('deleted_at', null);
   query = query.range(start, end);
 
@@ -282,6 +284,7 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
       case 'recent': { const w = new Date(); w.setDate(w.getDate() - 7); return new Date(member.created_at) >= w; }
       case 'deactivated': return true;
       case 'imported': return !!member.imported_at;
+      case 'banned': return !!member.is_banned;
       default: return true;
     }
   });
@@ -312,7 +315,7 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
           <div className="flex flex-col gap-3 mb-4">
             <div className="overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0">
               <div className="flex gap-2 w-max lg:w-auto lg:flex-wrap">
-                {(['all', 'active', 'inactive', 'recent', 'imported', 'deactivated'] as FilterType[]).map(f => (
+                {(['all', 'active', 'inactive', 'recent', 'imported', 'deactivated', 'banned'] as FilterType[]).map(f => (
                   <Button key={f} variant={activeFilter === f ? 'default' : 'outline'} size="sm" onClick={() => setFilter(f)}>
                     {f.charAt(0).toUpperCase() + f.slice(1)}
                   </Button>
@@ -359,6 +362,7 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
                               {member.full_name || 'No name'}
                               {adminUserIds.has(member.id) && <Badge className="bg-primary/10 text-primary hover:bg-primary/20 text-xs"><Shield className="w-3 h-3 mr-1" />Admin</Badge>}
                               {member.imported_at && <Badge variant="outline" className="text-xs">Imported</Badge>}
+                              {member.is_banned && <Badge className="bg-red-500/10 text-red-500 hover:bg-red-500/20 text-xs border-red-500/30">Banned</Badge>}
                             </span>
                           </span>
                         </TableCell>
@@ -394,6 +398,7 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
                         <span className="font-medium text-sm truncate">{member.full_name || 'No name'}</span>
                         {adminUserIds.has(member.id) && <Badge className="bg-primary/10 text-primary text-[10px] px-1.5 py-0">Admin</Badge>}
                         {member.imported_at && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Imported</Badge>}
+                        {member.is_banned && <Badge className="bg-red-500/10 text-red-500 border-red-500/30 text-[10px] px-1.5 py-0">Banned</Badge>}
                       </div>
                       <p className="text-sm text-muted-foreground truncate">{member.email}</p>
                       <p className="text-xs text-muted-foreground/70">Joined {format(new Date(member.created_at), 'MMM d, yyyy')}</p>

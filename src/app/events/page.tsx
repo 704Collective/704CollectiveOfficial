@@ -276,7 +276,7 @@ export default function Events() {
                     {featuredEvent && !hasActiveFilters && (
                       <div style={{ marginBottom: '48px' }}>
                         <FeaturedEventBanner
-                          event={{ ...featuredEvent, end_time: featuredEvent.end_time ?? '' }}
+                          event={{ ...featuredEvent, end_time: featuredEvent.end_time ?? '', is_business_only: featuredEvent.is_business_only ?? false }}
                           userHasTicket={userTicketIds.has(featuredEvent.id)}
                           isUserMember={!!isActiveMember}
                           isLoggedIn={!!user}
@@ -323,7 +323,7 @@ export default function Events() {
                     {featuredEvent && !hasActiveFilters && (
                       <div style={{ marginBottom: '48px' }}>
                         <FeaturedEventBanner
-                          event={{ ...featuredEvent, end_time: featuredEvent.end_time ?? '' }}
+                          event={{ ...featuredEvent, end_time: featuredEvent.end_time ?? '', is_business_only: featuredEvent.is_business_only ?? false }}
                           userHasTicket={userTicketIds.has(featuredEvent.id)}
                           isUserMember={!!isActiveMember}
                           isLoggedIn={!!user}

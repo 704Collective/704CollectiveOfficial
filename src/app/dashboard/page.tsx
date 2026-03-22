@@ -49,6 +49,16 @@ export default function Dashboard() {
     }
   }, []);
 
+  // Track last_seen_at for re-engagement cron
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('profiles')
+      .update({ last_seen_at: new Date().toISOString() })
+      .eq('id', user.id)
+      .then(() => {});
+  }, [user]);
+
   // Load business application for business non-members or any user with application_status set
   useEffect(() => {
     if (!user || !profile) return;
