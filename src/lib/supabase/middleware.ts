@@ -35,6 +35,27 @@ export async function updateSession(request: NextRequest) {
   const isOpenAuthRoute  = openAuthPaths.some((p) => path.startsWith(p));
   const isSignupRoute    = signupPaths.some((p) => path.startsWith(p));
 
+  // ── 0. Banned user check — applies to all authenticated users ─────────────
+  if (user && !isAuthRoute) {
+    const { data: banCheck } = await supabase
+      .from('profiles')
+      .select('is_banned')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (banCheck?.is_banned === true) {
+      await supabase.auth.signOut();
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      url.searchParams.set('error', 'banned');
+      const bannedRedirect = NextResponse.redirect(url);
+      supabaseResponse.cookies.getAll().forEach(cookie => {
+        bannedRedirect.cookies.set(cookie.name, cookie.value);
+      });
+      return bannedRedirect;
+    }
+  }
+
   // ── 1. Not logged in → redirect to login ───────────────────────────────────
   if (isProtectedRoute && !user) {
     const url = request.nextUrl.clone();
@@ -78,12 +99,17 @@ export async function updateSession(request: NextRequest) {
     const isBanned        = profile?.banned === true;
     const isPending       = profile?.application_status === 'pending';
 
-    // ── Banned users → login with error ──────────────────────────────────────
+    // ── Banned users → login with error (fallback check) ─────────────────────
     if (isBanned) {
+      await supabase.auth.signOut();
       const url = request.nextUrl.clone();
       url.pathname = '/login';
-      url.searchParams.set('error', 'account_banned');
-      return NextResponse.redirect(url);
+      url.searchParams.set('error', 'banned');
+      const bannedRedirect = NextResponse.redirect(url);
+      supabaseResponse.cookies.getAll().forEach(cookie => {
+        bannedRedirect.cookies.set(cookie.name, cookie.value);
+      });
+      return bannedRedirect;
     }
 
     // ── Pending business applicants → holding page ────────────────────────────

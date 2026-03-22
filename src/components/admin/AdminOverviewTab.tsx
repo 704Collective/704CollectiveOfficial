@@ -10,7 +10,7 @@ import { AdminBroadcast } from '@/components/AdminBroadcast';
 import { AddMemberDialog } from '@/components/admin/AddMemberDialog';
 import { AddProspectDialog } from '@/components/admin/AddProspectDialog';
 import { AddSponsorDialog } from '@/components/admin/AddSponsorDialog';
-import { Calendar, Users, Plus, UserPlus, Target, Building2, TrendingUp } from 'lucide-react';
+import { Calendar, Users, Plus, UserPlus, Target, Building2, TrendingUp, Ban } from 'lucide-react';
 import { format } from 'date-fns';
 import type { AdminSection } from '@/components/AdminLayout';
 
@@ -32,6 +32,7 @@ interface OverviewData {
   totalMembers: number;
   activeMembers: number;
   newThisWeek: number;
+  bannedCount: number;
   recentSignups: RecentSignup[];
   upcomingEvents: UpcomingEvent[];
 }
@@ -42,11 +43,12 @@ async function fetchOverviewData(): Promise<OverviewData> {
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-  const [eventsRes, totalRes, activeRes, newRes, signupsRes, upcomingRes] = await Promise.all([
+  const [eventsRes, totalRes, activeRes, newRes, bannedRes, signupsRes, upcomingRes] = await Promise.all([
     supabase.from('events').select('*', { count: 'exact', head: true }),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).is('deleted_at', null),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').is('deleted_at', null),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', oneWeekAgo.toISOString()).is('deleted_at', null),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_banned', true),
     supabase.from('profiles').select('full_name, email, created_at').is('deleted_at', null).order('created_at', { ascending: false }).limit(5),
     supabase.from('events').select('id, title, start_time, location_name').gte('start_time', new Date().toISOString()).order('start_time', { ascending: true }).limit(3),
   ]);
@@ -56,6 +58,7 @@ async function fetchOverviewData(): Promise<OverviewData> {
     totalMembers: totalRes.count || 0,
     activeMembers: activeRes.count || 0,
     newThisWeek: newRes.count || 0,
+    bannedCount: bannedRes.count || 0,
     recentSignups: (signupsRes.data || []) as RecentSignup[],
     upcomingEvents: (upcomingRes.data || []) as UpcomingEvent[],
   };
@@ -85,6 +88,7 @@ export function AdminOverviewTab({ onSectionChange, onFilterChange }: AdminOverv
     totalMembers = 0,
     activeMembers = 0,
     newThisWeek = 0,
+    bannedCount = 0,
     recentSignups = [],
     upcomingEvents = [],
   } = data ?? {};
@@ -147,6 +151,14 @@ export function AdminOverviewTab({ onSectionChange, onFilterChange }: AdminOverv
       iconClass: 'text-primary',
       onClick: () => { onFilterChange('recent'); onSectionChange('members'); },
     },
+    ...(bannedCount > 0 ? [{
+      label: 'Banned Members',
+      value: bannedCount,
+      icon: Ban,
+      iconClass: 'text-red-500',
+      valueClass: 'text-red-500',
+      onClick: () => onSectionChange('members'),
+    }] : []),
   ];
 
   return (

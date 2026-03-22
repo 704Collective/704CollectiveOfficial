@@ -22,7 +22,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
   Users, Search, UserPlus, ArrowLeft, Shield, ShieldOff, Mail, Loader2,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Ban,
 } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -127,6 +127,7 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
   const [page, setPage] = useState(1);
   const [profileSheetOpen, setProfileSheetOpen] = useState(false);
   const [profileMember, setProfileMember] = useState<Member | null>(null);
+  const [showBanConfirm, setShowBanConfirm] = useState(false);
 
   const activeFilter = (searchParams.get('filter') as FilterType) || 'all';
 
@@ -196,6 +197,28 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
     },
     onSuccess: () => { toast.success('Member reactivated successfully'); setDialogOpen(false); invalidateMembers(); },
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to reactivate member'),
+  });
+
+  const banMutation = useMutation({
+    mutationFn: async (memberId: string) => {
+      const { error: banErr } = await supabase
+        .from('profiles')
+        .update({
+          is_banned: true,
+          banned_at: new Date().toISOString(),
+          banned_by: user?.id,
+        })
+        .eq('id', memberId);
+      if (banErr) throw banErr;
+      await supabase.functions.invoke('admin-delete-user', { body: { userId: memberId } });
+    },
+    onSuccess: () => {
+      toast.success('Member banned.');
+      setShowBanConfirm(false);
+      setDialogOpen(false);
+      invalidateMembers();
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to ban member'),
   });
 
   // ── Handlers ─────────────────────────────────────────────────────
@@ -471,7 +494,18 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
             {editingMember?.deleted_at ? (
               <Button variant="outline" onClick={() => editingMember && reactivateMutation.mutate(editingMember.id)} disabled={reactivateMutation.isPending}>{reactivateMutation.isPending ? 'Reactivating...' : 'Reactivate Member'}</Button>
             ) : (
-              <Button variant="destructive" onClick={() => setShowDeactivateConfirm(true)} disabled={editingMember?.id === user?.id}>Deactivate Member</Button>
+              <div className="flex gap-2 flex-wrap">
+                <Button variant="destructive" onClick={() => setShowDeactivateConfirm(true)} disabled={editingMember?.id === user?.id}>Deactivate Member</Button>
+                <Button
+                  variant="destructive"
+                  className="bg-red-900 hover:bg-red-950 border-red-800"
+                  onClick={() => setShowBanConfirm(true)}
+                  disabled={editingMember?.id === user?.id}
+                >
+                  <Ban className="w-4 h-4 mr-1.5" />
+                  Ban Member
+                </Button>
+              </div>
             )}
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
@@ -484,6 +518,7 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
       {/* Confirmation Dialogs */}
       <DeleteConfirmDialog open={showRemoveAdminConfirm} onOpenChange={setShowRemoveAdminConfirm} onConfirm={() => editingMember && removeAdminMutation.mutate(editingMember.id)} title="Remove Admin Access" description={`Are you sure you want to remove admin access for "${editingMember?.full_name || editingMember?.email}"?`} loading={removeAdminMutation.isPending} />
       <DeleteConfirmDialog open={showDeactivateConfirm} onOpenChange={setShowDeactivateConfirm} onConfirm={() => editingMember && deactivateMutation.mutate(editingMember.id)} title="Deactivate Member" description={`Are you sure you want to deactivate "${editingMember?.full_name || editingMember?.email}"? They will no longer be able to log in.`} loading={deactivateMutation.isPending} />
+      <DeleteConfirmDialog open={showBanConfirm} onOpenChange={setShowBanConfirm} onConfirm={() => editingMember && banMutation.mutate(editingMember.id)} title="Ban Member" description={`Are you sure you want to ban "${editingMember?.full_name || editingMember?.email}"? They will be permanently blocked from re-registering with this email or name.`} loading={banMutation.isPending} />
       <QuickAddMemberDialog open={quickAddOpen} onOpenChange={setQuickAddOpen} onSuccess={invalidateMembers} />
 
       {/* 5-tab CRM Profile Sheet */}

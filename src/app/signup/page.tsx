@@ -38,6 +38,30 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
+      // Check if this email or name is banned before creating an account
+      const normalizedEmail = email.trim().toLowerCase();
+      const fullName = `${firstName.trim()} ${lastName.trim()}`;
+
+      const { data: bannedByEmail } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', normalizedEmail)
+        .eq('is_banned', true)
+        .maybeSingle();
+
+      const { data: bannedByName } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('full_name', fullName)
+        .eq('is_banned', true)
+        .maybeSingle();
+
+      if (bannedByEmail || bannedByName) {
+        toast.error('This email address is not eligible to create an account. Please contact hello@704collective.com.');
+        setLoading(false);
+        return;
+      }
+
       // Sign up with Supabase auth
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),

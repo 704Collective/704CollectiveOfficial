@@ -37,6 +37,7 @@ function Login() {
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const isDeactivated = searchParams.get('deactivated') === 'true';
+  const isBanned = searchParams.get('error') === 'banned';
   usePageTitle('Sign In');
 
   useEffect(() => {
@@ -197,6 +198,13 @@ function Login() {
             {magicLinkMode ? 'Sign in with a magic link' : 'Welcome back'}
           </p>
         </div>
+
+        {/* Banned Alert */}
+        {isBanned && (
+          <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', padding: '16px', marginBottom: '20px', color: '#ef4444', fontSize: '0.875rem', textAlign: 'center' }}>
+            Your account has been banned. Please contact <a href="mailto:hello@704collective.com" style={{ color: '#ef4444', fontWeight: 600, textDecoration: 'underline' }}>hello@704collective.com</a> if you believe this is a mistake.
+          </div>
+        )}
 
         {/* Deactivated Alert */}
         {isDeactivated && (
