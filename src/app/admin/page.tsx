@@ -25,6 +25,7 @@ const AdminSuggestionsTab = dynamic(() => import('@/components/admin/AdminSugges
 
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { supabase } from '@/integrations/supabase/client';
 
 function TabSkeleton() {
   return (
@@ -63,10 +64,22 @@ export default function AdminPage() {
 }
 
 function AdminDashboard() {
-  const { user, loading: authLoading, isAdmin, profile } = useAuth();
+  const { user, loading: authLoading, isAdmin, profile, refreshProfile } = useAuth();
   usePageTitle('Admin Dashboard');
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  // Self-healing fallback: wait 800 ms then check whether a session exists but
+  // the profile never loaded. Mirrors the same guard in dashboard/page.tsx.
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user && !profile) {
+        refreshProfile();
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps — intentionally runs once on mount
 
   const sectionFromUrl = searchParams.get('section') as AdminSection | null;
 

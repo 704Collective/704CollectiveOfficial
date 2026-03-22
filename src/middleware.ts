@@ -1,7 +1,14 @@
-import { type NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 
 export async function middleware(request: NextRequest) {
+  // Hard-bypass for manifest and other static resources — must be the very
+  // first check so no auth logic runs for these paths regardless of matcher.
+  const { pathname } = request.nextUrl;
+  if (pathname === '/manifest.json' || pathname === '/manifest.webmanifest') {
+    return NextResponse.next();
+  }
+
   return await updateSession(request);
 }
 

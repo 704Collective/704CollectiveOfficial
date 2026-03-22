@@ -33,7 +33,7 @@ async function fetchSuggestions(page: number, unreadOnly: boolean) {
 
   let query = supabase
     .from('event_suggestions')
-    .select('*, profiles(full_name, email)', { count: 'exact' })
+    .select('*', { count: 'exact' })
     .is('deleted_at', null)
     .order('created_at', { ascending: false });
 
@@ -150,7 +150,7 @@ export function AdminSuggestionsTab({ onNavigateToDashboard }: AdminSuggestionsT
         <>
           <div className="space-y-3">
             {suggestions.map(s => {
-              const submitterName = s.profiles?.full_name ?? s.full_name ?? s.profiles?.email ?? s.email ?? 'Unknown member';
+              const submitterName = s.full_name ?? s.email ?? 'Unknown member';
               return (
                 <div
                   key={s.id}

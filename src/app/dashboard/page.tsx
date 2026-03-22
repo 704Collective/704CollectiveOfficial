@@ -38,6 +38,20 @@ export default function Dashboard() {
   const [appLoaded, setAppLoaded] = useState(false);
   const [suggestModalOpen, setSuggestModalOpen] = useState(false);
 
+  // Self-healing fallback: wait 800 ms then check whether a session exists but
+  // the profile never loaded. This catches the case where SIGNED_IN was
+  // deduplicated across the OAuth callback → dashboard redirect and the
+  // profile fetch never ran.
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user && !profile) {
+        refreshProfile();
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps — intentionally runs once on mount
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.has('welcome')) {
@@ -100,25 +114,6 @@ export default function Dashboard() {
       setIsPortalLoading(false);
     }
   };
-
-  // Self-healing fallback: if we land here with a valid session but the auth
-  // context profile is still null (happens when SIGNED_IN deduplication
-  // suppressed the event during the OAuth callback → dashboard redirect), wait
-  // 500 ms and force a profile load via refreshProfile so the page never gets
-  // permanently stuck in the loading skeleton.
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    const check = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user && !profile) {
-        timer = setTimeout(() => {
-          refreshProfile();
-        }, 500);
-      }
-    };
-    check();
-    return () => clearTimeout(timer);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps — intentionally runs once on mount
 
   // Redirect to login as soon as we know auth has resolved with no user.
   // Using an effect (rather than a sync redirect) satisfies React's rules of
