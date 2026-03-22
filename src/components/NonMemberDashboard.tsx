@@ -79,6 +79,45 @@ const BUSINESS_PERKS = [
   'Priority to all events and programs',
 ];
 
+// ── Shared status card used in both "no application row" and "full view" ──────
+function StatusOnlyCard({
+  appStatus,
+  statusConfig,
+  StatusIcon,
+  onJoinSocial,
+}: {
+  appStatus: string;
+  statusConfig: { label: string; color: string };
+  StatusIcon: React.ElementType;
+  onJoinSocial: () => void;
+}) {
+  return (
+    <div className={`rounded-xl border p-4 ${
+      appStatus === 'approved'  ? 'border-green-500/30 bg-green-500/5' :
+      appStatus === 'denied'    ? 'border-red-500/30 bg-red-500/5' :
+      appStatus === 'waitlisted'? 'border-orange-500/30 bg-orange-500/5' :
+      'border-yellow-500/30 bg-yellow-500/5'
+    }`}>
+      <div className={`flex items-center gap-2 font-medium mb-1 ${statusConfig.color}`}>
+        <StatusIcon className="w-4 h-4" />
+        {statusConfig.label}
+      </div>
+      <p className="text-sm text-muted-foreground">
+        {appStatus === 'pending'    && 'Your application is in our queue. We review every application personally — expect to hear from us within 48 hours.'}
+        {appStatus === 'reviewing'  && "Our team is currently reviewing your application. We'll be in touch shortly."}
+        {appStatus === 'approved'   && 'Congratulations! Your application has been approved. Check your email for next steps.'}
+        {appStatus === 'denied'     && "We appreciate your interest. Your application wasn't a fit at this time. You're welcome to join as a Social member."}
+        {appStatus === 'waitlisted' && "You've been added to our waitlist. We'll reach out when a spot opens up. You're also welcome to join as a Social member in the meantime."}
+      </p>
+      {(appStatus === 'denied' || appStatus === 'waitlisted') && (
+        <Button size="sm" className="mt-3" onClick={onJoinSocial}>
+          Join as Social Member — $30/mo
+        </Button>
+      )}
+    </div>
+  );
+}
+
 interface NonMemberDashboardProps {
   profile: Profile;
   application?: Application | null;
@@ -87,7 +126,6 @@ interface NonMemberDashboardProps {
 export function NonMemberDashboard({ profile, application }: NonMemberDashboardProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
-  const [portalLoading, setPortalLoading] = useState(false);
   const [emailSubject, setEmailSubject] = useState('');
   const [emailBody, setEmailBody] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -300,57 +338,24 @@ export function NonMemberDashboard({ profile, application }: NonMemberDashboardP
               <div className="rounded-xl border border-border bg-card p-6 text-center">
                 <p className="text-muted-foreground text-sm">No application found.</p>
               </div>
-            ) : !application && profile.application_status ? (
+            ) : !application ? (
               /* No application row but profile has a status — show status card only */
-              <div className={`rounded-xl border p-4 ${
-                appStatus === 'approved' ? 'border-green-500/30 bg-green-500/5' :
-                appStatus === 'denied' ? 'border-red-500/30 bg-red-500/5' :
-                appStatus === 'waitlisted' ? 'border-orange-500/30 bg-orange-500/5' :
-                'border-yellow-500/30 bg-yellow-500/5'
-              }`}>
-                <div className={`flex items-center gap-2 font-medium mb-1 ${statusConfig.color}`}>
-                  <StatusIcon className="w-4 h-4" />
-                  {statusConfig.label}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {appStatus === 'pending' && 'Your application is in our queue. We review every application personally — expect to hear from us within 48 hours.'}
-                  {appStatus === 'reviewing' && "Our team is currently reviewing your application. We'll be in touch shortly."}
-                  {appStatus === 'approved' && 'Congratulations! Your application has been approved. Check your email for next steps.'}
-                  {appStatus === 'denied' && "We appreciate your interest. Your application wasn't a fit at this time. You're welcome to join as a Social member."}
-                  {appStatus === 'waitlisted' && "You've been added to our waitlist. We'll reach out when a spot opens up. You're also welcome to join as a Social member in the meantime."}
-                </p>
-                {(appStatus === 'denied' || appStatus === 'waitlisted') && (
-                  <Button size="sm" className="mt-3" onClick={handleJoinSocial}>
-                    Join as Social Member — $30/mo
-                  </Button>
-                )}
-              </div>
+              <StatusOnlyCard
+                appStatus={appStatus}
+                statusConfig={statusConfig}
+                StatusIcon={StatusIcon}
+                onJoinSocial={handleJoinSocial}
+              />
             ) : (
+              /* Full application view — application is guaranteed non-null here */
               <div className="space-y-4">
                 {/* Status card */}
-                <div className={`rounded-xl border p-4 ${
-                  appStatus === 'approved' ? 'border-green-500/30 bg-green-500/5' :
-                  appStatus === 'denied' ? 'border-red-500/30 bg-red-500/5' :
-                  appStatus === 'waitlisted' ? 'border-orange-500/30 bg-orange-500/5' :
-                  'border-yellow-500/30 bg-yellow-500/5'
-                }`}>
-                  <div className={`flex items-center gap-2 font-medium mb-1 ${statusConfig.color}`}>
-                    <StatusIcon className="w-4 h-4" />
-                    {statusConfig.label}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {appStatus === 'pending' && 'Your application is in our queue. We review every application personally — expect to hear from us within 48 hours.'}
-                    {appStatus === 'reviewing' && 'Our team is currently reviewing your application. We\'ll be in touch shortly.'}
-                    {appStatus === 'approved' && 'Congratulations! Your application has been approved. Check your email for next steps.'}
-                    {appStatus === 'denied' && 'We appreciate your interest. Your application wasn\'t a fit at this time. You\'re welcome to join as a Social member.'}
-                    {appStatus === 'waitlisted' && 'You\'ve been added to our waitlist. We\'ll reach out when a spot opens up. You\'re also welcome to join as a Social member in the meantime.'}
-                  </p>
-                  {(appStatus === 'denied' || appStatus === 'waitlisted') && (
-                    <Button size="sm" className="mt-3" onClick={handleJoinSocial}>
-                      Join as Social Member — $30/mo
-                    </Button>
-                  )}
-                </div>
+                <StatusOnlyCard
+                  appStatus={appStatus}
+                  statusConfig={statusConfig}
+                  StatusIcon={StatusIcon}
+                  onJoinSocial={handleJoinSocial}
+                />
 
                 {/* Full application read-only */}
                 <div className="rounded-xl border border-border bg-card p-5 space-y-5">
