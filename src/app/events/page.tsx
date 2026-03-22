@@ -136,7 +136,7 @@ export default function Events() {
   const handleGetTicket = async (event: Event) => {
     if (!user) { router.push('/login'); return; }
     if (isActiveMember) {
-      const success = await registerMemberTicket(event);
+      const success = await registerMemberTicket({ ...event, end_time: event.end_time ?? '' });
       if (success) fetchTicketCounts(events.map(e => e.id)).then(setTicketCounts);
     } else {
       router.push(`/events/${event.id}`);
@@ -276,7 +276,7 @@ export default function Events() {
                     {featuredEvent && !hasActiveFilters && (
                       <div style={{ marginBottom: '48px' }}>
                         <FeaturedEventBanner
-                          event={featuredEvent}
+                          event={{ ...featuredEvent, end_time: featuredEvent.end_time ?? '' }}
                           userHasTicket={userTicketIds.has(featuredEvent.id)}
                           isUserMember={!!isActiveMember}
                           isLoggedIn={!!user}
@@ -323,7 +323,7 @@ export default function Events() {
                     {featuredEvent && !hasActiveFilters && (
                       <div style={{ marginBottom: '48px' }}>
                         <FeaturedEventBanner
-                          event={featuredEvent}
+                          event={{ ...featuredEvent, end_time: featuredEvent.end_time ?? '' }}
                           userHasTicket={userTicketIds.has(featuredEvent.id)}
                           isUserMember={!!isActiveMember}
                           isLoggedIn={!!user}
