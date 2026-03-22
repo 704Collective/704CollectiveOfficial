@@ -38,12 +38,10 @@ const CRM_NAV = [
 export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { profile } = useAuth();
+  const { isSuperAdmin, isAdmin } = useAuth();
   const isOnDashboard = pathname === '/admin';
 
-  const p = profile as any;
-  const isSuperAdmin = p?.role === 'super_admin';
-  const isAdminOrSuper = p?.role === 'super_admin' || p?.role === 'admin';
+  const isAdminOrSuper = isAdmin;
 
   const handleSectionClick = (section: AdminSection) => {
     if (pathname !== '/admin') {

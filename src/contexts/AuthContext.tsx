@@ -165,11 +165,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
 
       if (session?.user) {
-        // SIGNED_IN is ignored — fires before INITIAL_SESSION and causes timeouts.
-        // INITIAL_SESSION and TOKEN_REFRESHED handle all cases correctly.
-        if (event === 'SIGNED_IN') {
-          console.log('[Auth] Handling SIGNED_IN event');
-          // Fall through to applyProfileState below
+        // Skip redundant SIGNED_IN events when the profile is already loaded for
+        // this user — prevents the infinite re-render / dashboard spinner loop.
+        if (event === 'SIGNED_IN' && profileLoadedForRef.current === session.user.id) {
+          console.log('[Auth] Skipping redundant SIGNED_IN — profile already loaded for', session.user.id);
+          return;
         }
         await applyProfileState(session.user, session);
         if (!mounted) return;

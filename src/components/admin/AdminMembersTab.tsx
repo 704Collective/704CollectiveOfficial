@@ -224,14 +224,18 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
   });
 
   // ── Handlers ─────────────────────────────────────────────────────
+  // Row click → side panel only
+  const openProfileSheet = (member: Member) => {
+    setProfileMember(member);
+    setProfileSheetOpen(true);
+  };
+
+  // Explicit Edit button (inside side panel or dropdown) → edit modal only
   const openEdit = (member: Member) => {
     setEditingMember(member);
     setEditingMemberIsAdmin(adminUserIds.has(member.id));
     setForm({ full_name: member.full_name || '', subscription_status: member.subscription_status || 'inactive', membership_override: member.membership_override ?? false });
     setDialogOpen(true);
-    // Also open the CRM profile sheet
-    setProfileMember(member);
-    setProfileSheetOpen(true);
   };
 
   const handleSubmit = () => {
@@ -354,7 +358,7 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
                   {filtered.map(member => {
                     const statusColor = member.deleted_at ? 'bg-destructive' : member.subscription_status === 'active' ? 'bg-green-500' : 'bg-muted-foreground/50';
                     return (
-                      <TableRow key={member.id} className="cursor-pointer hover:bg-accent/50" onClick={() => openEdit(member)}>
+                      <TableRow key={member.id} className="cursor-pointer hover:bg-accent/50" onClick={() => openProfileSheet(member)}>
                         <TableCell className="font-medium py-3">
                           <span className="flex items-center gap-3">
                             <MemberAvatar name={member.full_name || member.email} />
@@ -391,7 +395,7 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
                 const statusColor = member.deleted_at ? 'bg-destructive' : member.subscription_status === 'active' ? 'bg-green-500' : 'bg-muted-foreground/50';
                 const statusText = member.deleted_at ? 'Deactivated' : (member.subscription_status || 'Inactive');
                 return (
-                  <div key={member.id} className="flex items-center gap-3 py-3 px-1 cursor-pointer active:bg-accent/30" onClick={() => openEdit(member)}>
+                  <div key={member.id} className="flex items-center gap-3 py-3 px-1 cursor-pointer active:bg-accent/30" onClick={() => openProfileSheet(member)}>
                     <MemberAvatar name={member.full_name || member.email} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">

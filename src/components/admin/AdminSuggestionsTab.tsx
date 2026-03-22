@@ -40,7 +40,10 @@ async function fetchSuggestions(page: number, unreadOnly: boolean) {
   if (unreadOnly) query = query.eq('is_read', false);
 
   const { data, error, count } = await query.range(start, end);
-  if (error) throw error;
+  if (error) {
+    console.error('[AdminSuggestionsTab] Failed to load suggestions:', error);
+    throw error;
+  }
   return { suggestions: (data ?? []) as Suggestion[], totalCount: count ?? 0 };
 }
 
@@ -58,10 +61,11 @@ export function AdminSuggestionsTab({ onNavigateToDashboard }: AdminSuggestionsT
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['admin-suggestions'] });
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['admin-suggestions', page, unreadOnly],
     queryFn: () => fetchSuggestions(page, unreadOnly),
     staleTime: 30 * 1000,
+    retry: 2,
   });
 
   const suggestions = data?.suggestions ?? [];
@@ -130,7 +134,7 @@ export function AdminSuggestionsTab({ onNavigateToDashboard }: AdminSuggestionsT
       {isError ? (
         <div className="text-center py-12">
           <p className="text-sm text-destructive mb-2">Failed to load suggestions.</p>
-          <Button variant="outline" size="sm" onClick={invalidate}>Retry</Button>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>Retry</Button>
         </div>
       ) : isLoading ? (
         <div className="space-y-3">{[1,2,3,4].map(i => <Skeleton key={i} className="h-24 w-full" />)}</div>

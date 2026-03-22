@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { User, Key, Bell, CreditCard, Calendar, LogOut, Loader2, Camera } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { DashboardNav } from '@/components/DashboardNav';
@@ -26,11 +26,20 @@ export default function SettingsPage() {
   const [isPortalLoading, setIsPortalLoading] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const [fullName, setFullName] = useState((profile as any)?.full_name || '');
-  const [avatarUrl, setAvatarUrl] = useState((profile as any)?.avatar_url || '');
+  const [fullName, setFullName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const p = profile as any;
+
+  // Populate form fields once the profile is loaded from Supabase
+  useEffect(() => {
+    if (profile) {
+      setFullName((profile as any)?.full_name || '');
+      setAvatarUrl((profile as any)?.avatar_url || '');
+    }
+  }, [profile]);
+
   const hasStripeSubscription = !!p?.stripe_subscription_id;
   const supabase = createClient();
 
@@ -103,8 +112,15 @@ export default function SettingsPage() {
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
-    await signOut();
-    router.push('/');
+    try {
+      await Promise.race([
+        signOut(),
+        new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+      ]);
+    } catch {
+      // Sign out failed or timed out — redirect anyway
+    }
+    router.push('/login');
   };
 
   const initials = (p?.full_name || p?.email || 'M')

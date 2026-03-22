@@ -107,31 +107,23 @@ function AdminSettings() {
       .eq('status', 'pending')
       .order('requested_at', { ascending: false });
 
-    const { data: roles } = await supabase
-      .from('user_roles')
-      .select('id, user_id, role')
-      .in('role', ['admin', 'super_admin']);
+    // Query profiles directly so super_admins and the current user are always included
+    const { data: adminProfiles } = await supabase
+      .from('profiles')
+      .select('id, email, full_name, role, member_type, membership_override')
+      .in('role', ['admin', 'super_admin'])
+      .is('deleted_at', null);
 
-    if (roles && roles.length > 0) {
-      const userIds = roles.map(r => r.user_id);
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, email, full_name, member_type, membership_override')
-        .in('id', userIds)
-        .is('deleted_at', null);
-
-      const adminsList: AdminUser[] = roles.map(role => {
-        const p = profiles?.find(p => p.id === role.user_id);
-        return {
-          id: role.id,
-          user_id: role.user_id,
-          email: p?.email || '',
-          full_name: p?.full_name || null,
-          role: role.role,
-          member_type: p?.member_type || null,
-          membership_override: p?.membership_override ?? false,
-        };
-      });
+    if (adminProfiles && adminProfiles.length > 0) {
+      const adminsList: AdminUser[] = adminProfiles.map(p => ({
+        id: p.id,
+        user_id: p.id,
+        email: p.email || '',
+        full_name: p.full_name || null,
+        role: p.role,
+        member_type: p.member_type || null,
+        membership_override: p.membership_override ?? false,
+      }));
       // Sort: super_admins first, then by name
       adminsList.sort((a, b) => {
         if (a.role === 'super_admin' && b.role !== 'super_admin') return -1;
@@ -155,8 +147,9 @@ function AdminSettings() {
     setProcessingId(request.id);
     try {
       const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({ user_id: request.user_id, role: 'admin' });
+        .from('profiles')
+        .update({ role: 'admin' })
+        .eq('id', request.user_id);
       if (roleError) throw roleError;
 
       const { error: updateError } = await supabase
@@ -228,9 +221,9 @@ function AdminSettings() {
     setProcessingId(admin.id);
     try {
       const { error } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('id', admin.id);
+        .from('profiles')
+        .update({ role: 'lead' })
+        .eq('id', admin.user_id);
       if (error) throw error;
       toast.success(`Admin access removed for ${admin.full_name || admin.email}`);
       fetchAdminData();
@@ -249,9 +242,9 @@ function AdminSettings() {
     setProcessingId(admin.id);
     try {
       const { error } = await supabase
-        .from('user_roles')
+        .from('profiles')
         .update({ role: newRole })
-        .eq('id', admin.id);
+        .eq('id', admin.user_id);
       if (error) throw error;
       toast.success(`${admin.full_name || admin.email} is now a ${newRole === 'super_admin' ? 'Super Admin' : 'Admin'}`);
       fetchAdminData();
@@ -287,7 +280,7 @@ function AdminSettings() {
     try {
       const { data: found } = await supabase
         .from('profiles')
-        .select('id, full_name, email')
+        .select('id, full_name, email, role')
         .eq('email', emailTrimmed)
         .is('deleted_at', null)
         .maybeSingle();
@@ -297,28 +290,16 @@ function AdminSettings() {
         return;
       }
 
-      // Check if already an admin
-      const { data: existingRole } = await supabase
-        .from('user_roles')
-        .select('id')
-        .eq('user_id', found.id)
-        .in('role', ['admin', 'super_admin'])
-        .maybeSingle();
-
-      if (existingRole) {
+      if (found.role === 'admin' || found.role === 'super_admin') {
         toast.error(`${found.full_name || found.email} already has an admin role`);
         return;
       }
 
       const { error: roleErr } = await supabase
-        .from('user_roles')
-        .insert({ user_id: found.id, role: 'admin' });
-      if (roleErr) throw roleErr;
-
-      await supabase
         .from('profiles')
-        .update({ membership_override: true, member_type: 'business' })
+        .update({ role: 'admin', membership_override: true, member_type: 'business' })
         .eq('id', found.id);
+      if (roleErr) throw roleErr;
 
       toast.success(`${found.full_name || found.email} is now an admin`);
       setAddByEmail('');
@@ -335,15 +316,10 @@ function AdminSettings() {
     setRevokeLoading(true);
     try {
       const { error: roleErr } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('id', adminToRevoke.id);
-      if (roleErr) throw roleErr;
-
-      await supabase
         .from('profiles')
         .update({ role: 'lead' })
         .eq('id', adminToRevoke.user_id);
+      if (roleErr) throw roleErr;
 
       toast.success(`Admin access removed for ${adminToRevoke.full_name || adminToRevoke.email}`);
       setShowRevokeConfirm(false);
