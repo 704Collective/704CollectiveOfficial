@@ -4,7 +4,7 @@ import { Suspense, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import logo from '@/assets/704-logo.png';
-import { handleOAuthCallback } from './actions';
+import { supabase } from '@/integrations/supabase/client';
 
 // Full-screen loading overlay — renders immediately on page load and stays
 // visible until the redirect fires, so the user never sees a blank screen.
@@ -56,13 +56,17 @@ function LoadingScreen() {
 }
 
 /**
- * Reads ?code from the URL, calls the server action to exchange it for a
- * session (server-side, so auth cookies are set correctly for the middleware),
- * then navigates to the returned destination.
+ * Reads ?code from the URL, exchanges it for a session using the shared
+ * supabase singleton (the same instance AuthContext subscribes to), then
+ * navigates to the appropriate destination.
  *
- * A hasRunRef guard ensures the exchange is attempted exactly once even in
- * React Strict Mode or if the component re-renders before the redirect fires.
- * A 15-second timeout forces a redirect to /login if the server action hangs.
+ * Using the shared singleton is critical: calling exchangeCodeForSession on
+ * the same GoTrueClient instance that AuthContext's onAuthStateChange listener
+ * is attached to guarantees the SIGNED_IN event fires immediately and auth
+ * state is updated without requiring a manual page refresh.
+ *
+ * A hasRunRef guard ensures the exchange runs exactly once.
+ * A 15-second timeout forces a fallback redirect so the user never gets stuck.
  */
 function CallbackHandler() {
   const searchParams = useSearchParams();
@@ -82,24 +86,73 @@ function CallbackHandler() {
       return;
     }
 
-    // Safety net: if the server action hasn't resolved in 15 s, force a redirect
-    // so the user is never permanently stuck on the loading screen.
+    // Safety net: force-redirect if the exchange hangs beyond 15 seconds.
     const timeoutId = setTimeout(() => {
       console.error('[auth/callback] Timeout waiting for session exchange — forcing redirect');
       router.replace('/login?error=oauth_failed');
     }, 15_000);
 
-    handleOAuthCallback(code, source)
-      .then((destination) => {
+    const run = async () => {
+      // Exchange the PKCE code for a session using the shared singleton.
+      // This also fires SIGNED_IN on AuthContext's onAuthStateChange listener.
+      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
+      if (exchangeError) {
         clearTimeout(timeoutId);
-        router.replace(destination);
-      })
-      .catch((err) => {
-        clearTimeout(timeoutId);
-        console.error('[auth/callback] handleOAuthCallback threw:', err);
+        console.error('[auth/callback] exchangeCodeForSession error:', exchangeError.message);
         router.replace('/login?error=oauth_failed');
-      });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps — intentionally run once
+        return;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        clearTimeout(timeoutId);
+        console.error('[auth/callback] No user after successful code exchange');
+        router.replace('/login?error=oauth_failed');
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('subscription_status, membership_override, member_type, role')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const isActive =
+        profile?.subscription_status === 'active' ||
+        profile?.subscription_status === 'trialing' ||
+        profile?.membership_override === true;
+
+      const isAdmin =
+        profile?.role === 'admin' ||
+        profile?.role === 'super_admin';
+
+      const isNonMember =
+        profile?.member_type === 'social_non_member' ||
+        profile?.member_type === 'business_non_member' ||
+        profile?.member_type === 'non_member';
+
+      let destination = '/dashboard';
+
+      if (source === 'login' && !isActive && !isAdmin && !isNonMember) {
+        destination = '/signup?error=no_account';
+      } else if (!isActive && !isAdmin && !isNonMember) {
+        destination = '/signup';
+      }
+
+      console.log(`[auth/callback] Exchange OK — userId: ${user.id} → ${destination}`);
+
+      clearTimeout(timeoutId);
+      router.replace(destination);
+    };
+
+    run().catch((err) => {
+      clearTimeout(timeoutId);
+      console.error('[auth/callback] Unexpected error in OAuth flow:', err);
+      router.replace('/login?error=oauth_failed');
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps — intentionally run once on mount
 
   return null;
 }
