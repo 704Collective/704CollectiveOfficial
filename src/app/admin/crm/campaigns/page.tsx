@@ -79,15 +79,6 @@ const AUDIENCE_OPTIONS = [
 ];
 
 // All admins and super admins who can be sender
-const SENDER_NAMES = [
-  '704 Collective Team',
-  'Adam Gould',
-  'Timi Gould',
-  'Josh Ahart',
-  'Gabbi Baumann',
-  'Audrey Handleton',
-  'Nick Stathopoulos',
-];
 
 // Available tokens for insertion into text blocks
 const EMAIL_TOKENS = [
@@ -529,6 +520,21 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
   const [showSchedule, setShowSchedule] = useState(false);
   const [sending, setSending] = useState(false);
   const [activeTab, setActiveTab] = useState<'design' | 'settings'>('design');
+  const [senderNames, setSenderNames] = useState<string[]>(['704 Collective Team']);
+
+  useEffect(() => {
+    supabase
+      .from('profiles')
+      .select('full_name')
+      .in('role', ['admin', 'super_admin'])
+      .not('full_name', 'is', null)
+      .then(({ data }) => {
+        const names = (data ?? [])
+          .map((p: { full_name: string | null }) => p.full_name)
+          .filter((n): n is string => !!n);
+        setSenderNames(['704 Collective Team', ...names]);
+      });
+  }, []);
 
   const addBlock = (type: BlockType) => {
     const newBlock: Block = { id: uid(), type, content: defaultContent(type) };
@@ -662,7 +668,7 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
             <Select value={fromName} onValueChange={setFromName}>
               <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {SENDER_NAMES.map(n => (
+                {senderNames.map(n => (
                   <SelectItem key={n} value={n}>{n}</SelectItem>
                 ))}
               </SelectContent>

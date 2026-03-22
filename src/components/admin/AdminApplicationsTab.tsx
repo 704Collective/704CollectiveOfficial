@@ -128,32 +128,23 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
         await supabase.functions.invoke('approve-business-application', {
           body: { application_id: appId },
         });
-      } else if (action === 'denied') {
-        await supabase.functions.invoke('send-email', {
+      } else if (action === 'denied' || action === 'waitlisted') {
+        await supabase.functions.invoke('deny-business-application', {
           body: {
-            to: app.email,
-            template: 'business-application-denied',
-            data: {
-              name: app.first_name,
-              notes: notesText || null,
-            },
-          },
-        });
-      } else if (action === 'waitlisted') {
-        await supabase.functions.invoke('send-email', {
-          body: {
-            to: app.email,
-            template: 'business-application-waitlisted',
-            data: {
-              name: app.first_name,
-              notes: notesText || null,
-            },
+            application_id: appId,
+            action,
+            reason: notesText || null,
           },
         });
       }
     },
     onSuccess: (_, { action }) => {
-      const labels: Record<string, string> = { reviewing: 'Moved to reviewing', approved: 'Application approved', denied: 'Application denied', waitlisted: 'Added to waitlist' };
+      const labels: Record<string, string> = {
+        reviewing:  'Moved to reviewing',
+        approved:   'Application approved — member has been notified',
+        denied:     'Application denied',
+        waitlisted: 'Added to waitlist',
+      };
       toast.success(labels[action] ?? 'Updated');
       setDetailOpen(false);
       invalidate();
