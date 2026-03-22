@@ -398,7 +398,7 @@ function Login() {
         <p style={{ textAlign: 'center', marginTop: '28px', fontSize: '0.875rem', color: 'rgba(255, 255, 255, 0.5)' }}>
           Don{"'"}t have an account?{' '}
           <Link
-            href="/join/checkout"
+            href="/signup"
             style={{ color: '#C6A664', textDecoration: 'none', fontWeight: 600 }}
             onMouseEnter={(e) => { e.currentTarget.style.textDecoration = 'underline'; }}
             onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}

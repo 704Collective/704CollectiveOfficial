@@ -48,10 +48,15 @@ export async function GET(request: NextRequest) {
 
         const isAdmin = profile?.member_type === 'admin';
 
-        // Came from login page and not an active member/admin —
+        const isNonMember =
+          profile?.member_type === 'social_non_member' ||
+          profile?.member_type === 'business_non_member' ||
+          profile?.member_type === 'non_member';
+
+        // Came from login page and not an active member/admin/non-member portal user —
         // delete the auto-created user so Supabase stays clean,
         // then redirect to signup with a toast message
-        if (source === 'login' && !isActive && !isAdmin) {
+        if (source === 'login' && !isActive && !isAdmin && !isNonMember) {
           // Use service role to delete the ghost user
           const adminClient = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -64,9 +69,14 @@ export async function GET(request: NextRequest) {
           );
         }
 
-        // New signup without active subscription → send to checkout
+        // Non-members (social/business applicants) → their portal dashboard
+        if (isNonMember) {
+          return NextResponse.redirect(new URL('/dashboard', origin));
+        }
+
+        // New signup without active subscription → send to signup
         if (!isActive && !isAdmin) {
-          return NextResponse.redirect(new URL('/join/checkout', origin));
+          return NextResponse.redirect(new URL('/signup', origin));
         }
 
         // Active member or admin → dashboard

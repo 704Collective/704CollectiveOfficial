@@ -125,7 +125,7 @@ export default function Join() {
               </p>
 
               <Link
-                href="/join/checkout"
+                href="/signup"
                 style={{
                   width: '100%', maxWidth: '320px', justifyContent: 'center',
                   alignItems: 'center',

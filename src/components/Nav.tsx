@@ -144,8 +144,7 @@ export default function Nav() {
             </Link>
           ) : (
             <>
-              {/* CHANGED: /social → /join/checkout */}
-              <Link href="/join/checkout"
+              <Link href="/signup"
                 style={{ backgroundColor: "#FFFFFF", color: "#000000", fontWeight: 600, fontSize: "0.8125rem", padding: "10px 24px", borderRadius: "8px", textDecoration: "none", letterSpacing: "0.02em", transition: "all 200ms ease" }}
                 onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(255, 255, 255, 0.15)"; }}
                 onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
@@ -248,8 +247,7 @@ export default function Nav() {
                 </Link>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                  {/* CHANGED: /social → /join/checkout */}
-                  <Link href="/join/checkout" onClick={() => setMobileOpen(false)}
+                  <Link href="/signup" onClick={() => setMobileOpen(false)}
                     style={{ backgroundColor: "#FFFFFF", color: "#000000", fontWeight: 600, fontSize: "0.9375rem", padding: "14px 24px", borderRadius: "8px", textDecoration: "none", textAlign: "center", display: "block" }}>
                     Join Now — $30/mo
                   </Link>

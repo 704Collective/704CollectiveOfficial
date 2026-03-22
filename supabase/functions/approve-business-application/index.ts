@@ -120,7 +120,10 @@ serve(async (req) => {
 
     // Create business subscription via Stripe
     // This creates a subscription starting now, first invoice = chargeAmount
-    const businessPriceId = Deno.env.get("STRIPE_BUSINESS_PRICE_ID") ?? "";
+    const billingPlan = app.billing_plan ?? "monthly";
+    const businessPriceId = billingPlan === "annual"
+      ? (Deno.env.get("STRIPE_BUSINESS_ANNUAL_PRICE_ID") ?? "")
+      : (Deno.env.get("STRIPE_BUSINESS_PRICE_ID") ?? "");
     let newSubscriptionId: string | null = null;
 
     if (businessPriceId) {

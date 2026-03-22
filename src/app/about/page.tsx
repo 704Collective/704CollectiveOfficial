@@ -328,7 +328,7 @@ export default function About() {
                     most active professional community.
                   </p>
                   <Link
-                    href="/join/checkout"
+                    href="/signup"
                     className="btn-primary"
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '14px 32px' }}
                   >

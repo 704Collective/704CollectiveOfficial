@@ -26,9 +26,9 @@ export async function updateSession(request: NextRequest) {
 
   // ── Route categories ────────────────────────────────────────────────────────
   const protectedPaths = ['/dashboard', '/admin', '/events/manage', '/business-portal'];
-  const openAuthPaths    = ['/join/checkout', '/welcome'];        // exempt from subscription gate
+  const openAuthPaths    = ['/join/checkout', '/welcome', '/apply/business', '/signup'];  // exempt from subscription gate
   const authPaths        = ['/login'];
-  const signupPaths      = ['/signup'];                           // non-paying users allowed
+  const signupPaths: string[] = [];                               // folded into openAuthPaths
 
   const isProtectedRoute = protectedPaths.some((p) => path.startsWith(p));
   const isAuthRoute      = authPaths.some((p) => path.startsWith(p));
@@ -71,6 +71,10 @@ export async function updateSession(request: NextRequest) {
       profile?.subscription_status === 'active' ||
       profile?.subscription_status === 'trialing' ||
       profile?.membership_override === true;
+    const isNonMember     =
+      profile?.member_type === 'social_non_member' ||
+      profile?.member_type === 'business_non_member' ||
+      profile?.member_type === 'non_member';
     const isBanned        = profile?.banned === true;
     const isPending       = profile?.application_status === 'pending';
 
@@ -100,9 +104,10 @@ export async function updateSession(request: NextRequest) {
     }
 
     // ── Subscription gate for dashboard ──────────────────────────────────────
-    if (path.startsWith('/dashboard') && !isActive && !isAdmin) {
+    // Non-members (social/business applicants) land on NonMemberDashboard — let them through
+    if (path.startsWith('/dashboard') && !isActive && !isAdmin && !isNonMember) {
       const url = request.nextUrl.clone();
-      url.pathname = '/join/checkout';
+      url.pathname = '/signup';
       return NextResponse.redirect(url);
     }
   }
