@@ -215,7 +215,6 @@ export default function BlogPage() {
               {posts.map((post, i) => (
                 <StaggerItem
                   key={post.slug}
-                  className="card-hover"
                   style={{
                     backgroundColor: "#2E2E2E",
                     border: "1px solid rgba(255, 255, 255, 0.06)",
@@ -223,6 +222,8 @@ export default function BlogPage() {
                     overflow: "hidden",
                     display: "flex",
                     flexDirection: "column",
+                    cursor: "default",
+                    pointerEvents: "none",
                   }}
                 >
                   {/* Placeholder image area */}

@@ -924,7 +924,7 @@ export default function SocialPage() {
                             ) : (
                               <>
                                 <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.6)' }}>
-                                  Non-Member: ${event.ticket_price}
+                                  Non-Member: ${(event.ticket_price / 100).toFixed(0)}
                                 </span>
                                 <span style={{ fontSize: '0.75rem', color: '#C6A664', fontWeight: 600, marginLeft: '12px' }}>
                                   Free for Members

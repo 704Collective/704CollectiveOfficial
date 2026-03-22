@@ -177,9 +177,9 @@ export default function EventDetail() {
       );
       return (
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '2px' }}>{formatPrice(ticketPrice)}</div>
-          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', marginBottom: '18px' }}>One-time ticket</p>
-          <button onClick={handleGuestPurchase} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> Redirecting...</> : 'Purchase Ticket'}</button>
+          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '2px' }}>{ticketPrice > 0 ? formatPrice(ticketPrice) : 'Free'}</div>
+          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', marginBottom: '18px' }}>{ticketPrice > 0 ? 'One-time ticket' : 'Sign in to get your ticket'}</p>
+          <button onClick={ticketPrice === 0 ? () => router.push('/login') : handleGuestPurchase} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> Redirecting...</> : ticketPrice === 0 ? 'Sign In to RSVP' : 'Purchase Ticket'}</button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0' }}><div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255,255,255,0.06)' }} /><span style={{ fontSize: '0.625rem', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>or</span><div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255,255,255,0.06)' }} /></div>
           <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', marginBottom: '10px' }}>Already a member? Login to RSVP for free.</p>
           <Link href="/login" style={{ ...linkBtn, color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)' }}>Sign In</Link>
@@ -222,7 +222,7 @@ export default function EventDetail() {
     return 'Purchase Ticket';
   };
   const handleMobileCTA = () => {
-    if (!user) { if (event.is_members_only) router.push('/login'); else handleGuestPurchase(); return; }
+    if (!user) { if (event.is_members_only || ticketPrice === 0) router.push('/login'); else handleGuestPurchase(); return; }
     if (isActiveMember) { if (isAtCapacity) handleJoinWaitlist(); else handleMemberRegister(); return; }
     handlePurchaseTicket();
   };
@@ -276,7 +276,7 @@ export default function EventDetail() {
                 )}
               </div>
 
-              {event.description && (
+              {event.description && event.description.trim() !== '' && (
                 <div style={{ marginBottom: '24px' }}>
                   <h2 style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'rgba(255,255,255,0.4)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>About This Event</h2>
                   <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.55)', lineHeight: 1.75, whiteSpace: 'pre-wrap' }}>{event.description}</p>

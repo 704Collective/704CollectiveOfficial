@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Nav from '@/components/Nav';
+import { usePageTitle } from '@/hooks/usePageTitle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,6 +14,7 @@ import { Loader2, Crown, Ticket } from 'lucide-react';
 type Step = 'form' | 'verify' | 'choice';
 
 export default function SignupPage() {
+  usePageTitle('Sign Up | 704 Collective');
   const router = useRouter();
   const [step, setStep] = useState<Step>('form');
   const [loading, setLoading] = useState(false);
@@ -261,7 +263,7 @@ export default function SignupPage() {
                 <Label htmlFor="firstName">First name</Label>
                 <Input
                   id="firstName"
-                  placeholder="Adam"
+                  placeholder="First name"
                   value={firstName}
                   onChange={e => setFirstName(e.target.value)}
                   required
@@ -272,7 +274,7 @@ export default function SignupPage() {
                 <Label htmlFor="lastName">Last name</Label>
                 <Input
                   id="lastName"
-                  placeholder="Gould"
+                  placeholder="Last name"
                   value={lastName}
                   onChange={e => setLastName(e.target.value)}
                   required

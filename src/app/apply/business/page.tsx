@@ -395,11 +395,11 @@ export default function BusinessApplicationPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="firstName">First name *</Label>
-                <Input id="firstName" placeholder="Adam" value={form.firstName} onChange={set('firstName')} required autoComplete="given-name" />
+                <Input id="firstName" placeholder="First name" value={form.firstName} onChange={set('firstName')} required autoComplete="given-name" />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="lastName">Last name *</Label>
-                <Input id="lastName" placeholder="Gould" value={form.lastName} onChange={set('lastName')} required autoComplete="family-name" />
+                <Input id="lastName" placeholder="Last name" value={form.lastName} onChange={set('lastName')} required autoComplete="family-name" />
               </div>
             </div>
             <div className="space-y-1.5">

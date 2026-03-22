@@ -68,7 +68,7 @@ export default function ResetPassword() {
         <div className="text-center">
           <Link href="/" className="inline-flex flex-col sm:flex-row items-center justify-center gap-2">
             <Image src={logo} alt="704 Collective" height={48} width={48} className="h-12 w-auto" />
-            <span className="text-foreground text-2xl font-medium">Social</span>
+            <span className="text-foreground text-2xl font-medium">704 Collective</span>
           </Link>
         </div>
 

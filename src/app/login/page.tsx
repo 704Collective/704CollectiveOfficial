@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { Eye, EyeOff, Loader2, Mail, ArrowLeft } from 'lucide-react';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
+import Nav from '@/components/Nav';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -183,7 +184,9 @@ function Login() {
   };
 
   return (
-    <div style={{ minHeight: '100dvh', backgroundColor: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+    <>
+    <Nav />
+    <div style={{ minHeight: '100dvh', backgroundColor: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', paddingTop: '80px' }}>
       <div style={{ width: '100%', maxWidth: '420px' }}>
 
         {/* Logo */}
@@ -420,5 +423,6 @@ function Login() {
         @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
       `}</style>
     </div>
+    </>
   );
 }
