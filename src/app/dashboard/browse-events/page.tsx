@@ -133,7 +133,7 @@ export default function BrowseEventsPage() {
   const handleGetTicket = async (event: Event) => {
     if (!user) { router.push('/login'); return; }
     if (isActiveMember) {
-      const success = await registerMemberTicket(event);
+      const success = await registerMemberTicket({ ...event, end_time: event.end_time ?? '' });
       if (success) fetchTicketCounts(events.map(e => e.id)).then(setTicketCounts);
     } else {
       router.push(`/events/${event.id}`);
