@@ -3,6 +3,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { Header } from '@/components/Header';
 import { DashboardNav } from '@/components/DashboardNav';
@@ -29,6 +30,7 @@ export const dynamic = 'force-dynamic';
 
 export default function Dashboard() {
   const { user, profile, isActiveMember, isAdmin, loading } = useAuth();
+  const router = useRouter();
   usePageTitle('Member Portal');
   const [isPortalLoading, setIsPortalLoading] = useState(false);
   const [heroEventId, setHeroEventId] = useState<string | null>(null);
@@ -99,12 +101,22 @@ export default function Dashboard() {
     }
   };
 
+  // Redirect to login as soon as we know auth has resolved with no user.
+  // Using an effect (rather than a sync redirect) satisfies React's rules of
+  // hooks — all hooks above must run unconditionally before any early return.
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace('/login');
+    }
+  }, [loading, user, router]);
+
   if (loading || !appLoaded) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
     </div>
   );
 
+  // Auth resolved but no user — redirect is in flight via the effect above.
   if (!user || !profile) return null;
 
   const p = profile as any;

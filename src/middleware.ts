@@ -5,8 +5,14 @@ export async function middleware(request: NextRequest) {
   return await updateSession(request);
 }
 
+// Positive allowlist: middleware only runs on routes that require auth checks.
+// Everything else — manifest.json, static assets, public marketing pages — is
+// completely excluded, eliminating the 401 errors on public resources.
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|manifest\\.json|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)).*)',
+    '/dashboard/:path*',
+    '/admin/:path*',
+    '/api/:path*',
+    '/auth/callback',
   ],
 };

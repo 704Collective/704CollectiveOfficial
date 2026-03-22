@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -31,12 +31,14 @@ export function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const { user, profile, isAdmin } = useAuth();
-  const supabase = createClient();
+  const supabaseRef = useRef(createClient());
   const [unreadCount, setUnreadCount] = useState(0);
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabaseRef.current.channel> | null>(null);
 
   useEffect(() => {
     if (!user) { setUnreadCount(0); return; }
+
+    const supabase = supabaseRef.current;
 
     const fetchCount = async () => {
       const { count } = await supabase
@@ -91,16 +93,25 @@ export function Header() {
   const displayEmail = user?.email || '';
   const avatarUrl = (profile as any)?.avatar_url || user?.user_metadata?.avatar_url || null;
 
-  const handleSignOut = async () => {
-    const supabase = createClient();
-    const { error } = await supabase.auth.signOut();
+  const handleSignOut = useCallback(async () => {
+    const { error } = await supabaseRef.current.auth.signOut();
     if (error) {
       toast.error('Failed to sign out');
     } else {
       toast.success('Signed out successfully');
       router.push('/');
     }
-  };
+  }, [router]);
+
+  // Stable navigation callbacks — avoids recreating inline arrow functions on
+  // every render, which can cause DropdownMenuItems to lose their handlers
+  // briefly during re-renders triggered by auth state changes.
+  const goToDashboard = useCallback(() => router.push('/dashboard'), [router]);
+  const goToBrowseEvents = useCallback(() => router.push('/dashboard/browse-events'), [router]);
+  const goToProfile = useCallback(() => router.push('/dashboard/profile'), [router]);
+  const goToSettings = useCallback(() => router.push('/dashboard/settings'), [router]);
+  const goToNotifications = useCallback(() => router.push('/dashboard/notifications'), [router]);
+  const goToAdmin = useCallback(() => router.push('/admin'), [router]);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-lg">
@@ -244,7 +255,7 @@ export function Header() {
               variant="ghost"
               size="icon"
               className="relative hidden md:flex"
-              onClick={() => router.push('/dashboard/notifications')}
+              onClick={goToNotifications}
               aria-label="Notifications"
             >
               <Bell className="h-5 w-5" />
@@ -278,22 +289,22 @@ export function Header() {
                   <p className="text-xs text-muted-foreground">{displayEmail}</p>
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push('/dashboard')}>
+                <DropdownMenuItem onClick={goToDashboard}>
                   <LayoutDashboard className="w-4 h-4 mr-2" />Dashboard
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/dashboard/browse-events')}>
+                <DropdownMenuItem onClick={goToBrowseEvents}>
                   <Calendar className="w-4 h-4 mr-2" />Browse Events
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/dashboard/profile')}>
+                <DropdownMenuItem onClick={goToProfile}>
                   <User className="w-4 h-4 mr-2" />Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/dashboard/settings')}>
+                <DropdownMenuItem onClick={goToSettings}>
                   <Settings className="w-4 h-4 mr-2" />Settings
                 </DropdownMenuItem>
                 {isAdmin && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => router.push('/admin')}>
+                    <DropdownMenuItem onClick={goToAdmin}>
                       <User className="w-4 h-4 mr-2" />Admin Panel
                     </DropdownMenuItem>
                   </>

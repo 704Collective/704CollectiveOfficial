@@ -72,6 +72,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isPendingApplication: false,
   });
 
+  // True until getSession() resolves — prevents a flash of null-user content
+  // on protected pages during the brief cookie-read phase on hard refresh.
+  const [initializing, setInitializing] = useState(true);
+
   const supabaseRef = useRef(createClient());
 
   // Tracks whether the component is still mounted — set to false in cleanup
@@ -175,6 +179,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     applyProfileStateRef.current = applyProfileState;
   }, [applyProfileState]);
 
+  // Fast-path: read the session from cookies immediately on mount instead of
+  // waiting for onAuthStateChange to deliver INITIAL_SESSION asynchronously.
+  // This ensures protected pages receive a valid user on hard refresh without
+  // an intermediate null render that causes the "stuck dashboard" symptom.
+  useEffect(() => {
+    const init = async () => {
+      const { data: { session } } = await supabaseRef.current.auth.getSession();
+
+      // Cookie read is done — let children render. Protected pages rely on
+      // loading:true to show their own skeleton while the profile is fetched.
+      if (isMountedRef.current) setInitializing(false);
+
+      if (session?.user) {
+        // Pre-populate the dedup ref so any SIGNED_IN event that fires for the
+        // same user is dropped by the onAuthStateChange handler below.
+        lastProcessedUserIdRef.current = session.user.id;
+        await applyProfileStateRef.current(session.user, session);
+      } else {
+        if (isMountedRef.current) {
+          setState(prev => ({ ...prev, loading: false }));
+        }
+      }
+    };
+    init();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Set up the Supabase auth subscription exactly ONCE (empty dep array).
   // All mutable values are accessed via refs so they're always current without
   // requiring the effect to re-run.
@@ -187,6 +217,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('[Auth] onAuthStateChange fired:', event, 'session:', !!session);
 
       if (!isMountedRef.current) return;
+
+      // INITIAL_SESSION is handled synchronously by the getSession() fast-path
+      // effect above — skipping it here avoids a redundant profile fetch on
+      // every page load.
+      if (event === 'INITIAL_SESSION') return;
 
       if (session?.user) {
         // Drop repeated SIGNED_IN events for the same user — Supabase can fire
@@ -256,6 +291,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabaseRef.current.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/reset-password`,
     });
+
+  // Show a minimal full-screen loader for the brief window between mount and
+  // getSession() resolution (~10-50 ms). This prevents protected pages from
+  // rendering with a null user and then re-rendering once auth resolves.
+  if (initializing) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--background, #0a0a0a)',
+      }}>
+        <div style={{
+          width: 32,
+          height: 32,
+          borderRadius: '50%',
+          border: '2px solid rgba(198,166,100,0.2)',
+          borderTopColor: '#C6A664',
+          animation: 'spin 0.75s linear infinite',
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider
