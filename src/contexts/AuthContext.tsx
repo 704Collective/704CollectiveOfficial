@@ -73,7 +73,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   const supabaseRef = useRef(createClient());
-  const profileLoadedForRef = useRef<string | null>(null);
+
+  // Tracks whether the component is still mounted — set to false in cleanup
+  // so async callbacks never call setState on an unmounted provider.
+  const isMountedRef = useRef(true);
+
+  // Deduplication guard: stores the user ID whose SIGNED_IN event we have
+  // already processed. Any subsequent SIGNED_IN for the same ID is dropped
+  // immediately, preventing the infinite re-render loop.
+  const lastProcessedUserIdRef = useRef<string | null>(null);
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
@@ -143,38 +151,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const applyProfileState = useCallback(
     async (user: User, session: Session) => {
-      profileLoadedForRef.current = user.id;
       const result = await fetchProfile(user.id);
-      setState({
-        user,
-        session,
-        loading: false,
-        ...result,
-      });
+      // Guard: don't call setState if the component has been unmounted
+      // (async fetch may complete after navigation away)
+      if (isMountedRef.current) {
+        setState({
+          user,
+          session,
+          loading: false,
+          ...result,
+        });
+      }
     },
     [fetchProfile]
   );
 
+  // Keep a stable ref to applyProfileState so the subscription effect below
+  // can always call the latest version without needing it in its dependency
+  // array — which would otherwise cause the subscription to be torn down and
+  // re-created on every render, re-firing SIGNED_IN and looping infinitely.
+  const applyProfileStateRef = useRef(applyProfileState);
   useEffect(() => {
-    let mounted = true;
+    applyProfileStateRef.current = applyProfileState;
+  }, [applyProfileState]);
+
+  // Set up the Supabase auth subscription exactly ONCE (empty dep array).
+  // All mutable values are accessed via refs so they're always current without
+  // requiring the effect to re-run.
+  useEffect(() => {
+    isMountedRef.current = true;
 
     const {
       data: { subscription },
     } = supabaseRef.current.auth.onAuthStateChange(async (event, session) => {
-      console.log('[Auth] onAuthStateChange fired:', event, 'session:', !!session, 'mounted:', mounted);
-      if (!mounted) return;
+      console.log('[Auth] onAuthStateChange fired:', event, 'session:', !!session);
+
+      if (!isMountedRef.current) return;
 
       if (session?.user) {
-        // Skip redundant SIGNED_IN events when the profile is already loaded for
-        // this user — prevents the infinite re-render / dashboard spinner loop.
-        if (event === 'SIGNED_IN' && profileLoadedForRef.current === session.user.id) {
-          console.log('[Auth] Skipping redundant SIGNED_IN — profile already loaded for', session.user.id);
+        // Drop repeated SIGNED_IN events for the same user — Supabase can fire
+        // these on every tab focus, token refresh, and navigation, causing an
+        // infinite profile-fetch → setState → re-render loop.
+        if (event === 'SIGNED_IN' && lastProcessedUserIdRef.current === session.user.id) {
+          console.log('[Auth] Skipping redundant SIGNED_IN — already processed for', session.user.id);
           return;
         }
-        await applyProfileState(session.user, session);
-        if (!mounted) return;
+
+        // Mark this user as processed BEFORE the async fetch so any further
+        // SIGNED_IN events that fire during the fetch are also dropped.
+        lastProcessedUserIdRef.current = session.user.id;
+
+        await applyProfileStateRef.current(session.user, session);
       } else {
-        if (mounted) {
+        if (isMountedRef.current) {
           setState({
             user: null,
             profile: null,
@@ -192,10 +221,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
-      mounted = false;
+      isMountedRef.current = false;
       subscription.unsubscribe();
     };
-  }, [applyProfileState]);
+  }, []); // Empty array — subscription is created exactly once per provider mount
 
   // Expose a manual refresh — useful after profile updates (e.g. password set, plan upgrade)
   const refreshProfile = useCallback(async () => {
