@@ -78,13 +78,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // so async callbacks never call setState on an unmounted provider.
   const isMountedRef = useRef(true);
 
-  // Deduplication guards for SIGNED_IN events.
-  // ID-based: tracks the last user processed.
-  // Time-based: repeated SIGNED_IN for the same user within 5 s are dropped,
-  // which collapses the callback-page → dashboard redirect double-fire without
-  // blocking genuine re-logins after the window expires.
+  // Deduplication guard: once a SIGNED_IN has been processed for a given user
+  // ID, any further SIGNED_IN for the same ID within this provider mount is
+  // dropped. This prevents the infinite re-render loop caused by Supabase
+  // firing SIGNED_IN on every tab focus / token refresh.
   const lastProcessedUserIdRef = useRef<string | null>(null);
-  const lastSignedInAtRef = useRef<number>(0);
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
@@ -192,22 +190,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!isMountedRef.current) return;
 
       if (session?.user) {
-        // Drop SIGNED_IN events for the same user that arrive within 5 seconds
-        // of the last processed one. This collapses the double-fire that happens
-        // when the OAuth callback page exchanges the code and then immediately
-        // redirects to the dashboard (both fire SIGNED_IN within milliseconds).
-        // After 5 s the guard resets, so a genuine re-login is always processed.
-        if (
-          event === 'SIGNED_IN' &&
-          lastProcessedUserIdRef.current === session.user.id &&
-          Date.now() - lastSignedInAtRef.current < 5000
-        ) {
-          console.log('[Auth] Skipping duplicate SIGNED_IN within 5 s for', session.user.id);
+        // Skip repeated SIGNED_IN events for the same user — Supabase fires
+        // these on tab focus, token refresh, and navigation. The dashboard
+        // self-heals via refreshProfile if the profile is missing (see
+        // dashboard/page.tsx), so suppressing here is safe.
+        if (event === 'SIGNED_IN' && lastProcessedUserIdRef.current === session.user.id) {
+          console.log('[Auth] Skipping redundant SIGNED_IN — already processed for', session.user.id);
           return;
         }
 
         lastProcessedUserIdRef.current = session.user.id;
-        lastSignedInAtRef.current = Date.now();
 
         await applyProfileStateRef.current(session.user, session);
       } else {
@@ -278,4 +270,13 @@ export function useAuthContext(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuthContext must be used inside AuthProvider');
   return ctx;
+}
+
+// Utility for pages that need to check the session directly without depending
+// on the auth event system — used as a self-healing fallback when SIGNED_IN
+// deduplication suppresses the event and the profile has not been loaded yet.
+export async function getInitialSession() {
+  const { createClient } = await import('@/lib/supabase/client');
+  const { data: { session } } = await createClient().auth.getSession();
+  return session;
 }

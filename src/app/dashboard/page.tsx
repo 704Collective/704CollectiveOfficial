@@ -29,7 +29,7 @@ import { format } from 'date-fns';
 export const dynamic = 'force-dynamic';
 
 export default function Dashboard() {
-  const { user, profile, isActiveMember, isAdmin, loading } = useAuth();
+  const { user, profile, isActiveMember, isAdmin, loading, refreshProfile } = useAuth();
   const router = useRouter();
   usePageTitle('Member Portal');
   const [isPortalLoading, setIsPortalLoading] = useState(false);
@@ -100,6 +100,25 @@ export default function Dashboard() {
       setIsPortalLoading(false);
     }
   };
+
+  // Self-healing fallback: if we land here with a valid session but the auth
+  // context profile is still null (happens when SIGNED_IN deduplication
+  // suppressed the event during the OAuth callback → dashboard redirect), wait
+  // 500 ms and force a profile load via refreshProfile so the page never gets
+  // permanently stuck in the loading skeleton.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const check = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user && !profile) {
+        timer = setTimeout(() => {
+          refreshProfile();
+        }, 500);
+      }
+    };
+    check();
+    return () => clearTimeout(timer);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps — intentionally runs once on mount
 
   // Redirect to login as soon as we know auth has resolved with no user.
   // Using an effect (rather than a sync redirect) satisfies React's rules of
