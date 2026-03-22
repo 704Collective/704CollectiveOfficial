@@ -1,7 +1,25 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+// Paths that must bypass all authentication checks entirely.
+// Keeps static/public assets from triggering Supabase getUser() calls,
+// which would otherwise return 401 for unauthenticated requests.
+const ALWAYS_PUBLIC = [
+  '/manifest.json',
+  '/manifest.webmanifest',
+  '/favicon.ico',
+  '/robots.txt',
+  '/sitemap.xml',
+];
+
 export async function updateSession(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+
+  // Hard bypass — return immediately without any Supabase auth work.
+  if (ALWAYS_PUBLIC.some((p) => path === p || path.startsWith(p + '/'))) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -22,7 +40,6 @@ export async function updateSession(request: NextRequest) {
   );
 
   const { data: { user } } = await supabase.auth.getUser();
-  const path = request.nextUrl.pathname;
 
   // ── Route categories ────────────────────────────────────────────────────────
   const protectedPaths = ['/dashboard', '/admin', '/events/manage', '/business-portal'];

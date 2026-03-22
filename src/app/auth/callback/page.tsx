@@ -1,13 +1,13 @@
 'use client';
 
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import logo from '@/assets/704-logo.png';
-import { createClient } from '@/lib/supabase/client';
+import { handleOAuthCallback } from './actions';
 
-// Full-screen loading overlay — renders immediately and stays until the
-// redirect fires so the user never sees a blank screen during OAuth.
+// Full-screen loading overlay — renders immediately on page load and stays
+// visible until the redirect fires, so the user never sees a blank screen.
 function LoadingScreen() {
   return (
     <div
@@ -55,79 +55,51 @@ function LoadingScreen() {
   );
 }
 
-// Reads the ?code param, exchanges it for a session client-side, then
-// redirects the user to the appropriate destination.
+/**
+ * Reads ?code from the URL, calls the server action to exchange it for a
+ * session (server-side, so auth cookies are set correctly for the middleware),
+ * then navigates to the returned destination.
+ *
+ * A hasRunRef guard ensures the exchange is attempted exactly once even in
+ * React Strict Mode or if the component re-renders before the redirect fires.
+ * A 15-second timeout forces a redirect to /login if the server action hangs.
+ */
 function CallbackHandler() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const hasRunRef = useRef(false);
 
   useEffect(() => {
+    if (hasRunRef.current) return;
+    hasRunRef.current = true;
+
     const code = searchParams.get('code');
     const source = searchParams.get('source');
 
-    const run = async () => {
-      if (!code) {
-        router.replace('/login?error=oauth');
-        return;
-      }
+    if (!code) {
+      console.error('[auth/callback] No code in URL — redirecting to login');
+      router.replace('/login?error=oauth_failed');
+      return;
+    }
 
-      const supabase = createClient();
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
+    // Safety net: if the server action hasn't resolved in 15 s, force a redirect
+    // so the user is never permanently stuck on the loading screen.
+    const timeoutId = setTimeout(() => {
+      console.error('[auth/callback] Timeout waiting for session exchange — forcing redirect');
+      router.replace('/login?error=oauth_failed');
+    }, 15_000);
 
-      if (error) {
-        console.error('[auth/callback] exchangeCodeForSession error:', error.message);
-        router.replace('/login?error=oauth');
-        return;
-      }
-
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        router.replace('/login?error=oauth');
-        return;
-      }
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('subscription_status, membership_override, member_type, role')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      const isActive =
-        profile?.subscription_status === 'active' ||
-        profile?.subscription_status === 'trialing' ||
-        profile?.membership_override === true;
-
-      const isAdmin =
-        profile?.role === 'admin' ||
-        profile?.role === 'super_admin';
-
-      const isNonMember =
-        profile?.member_type === 'social_non_member' ||
-        profile?.member_type === 'business_non_member' ||
-        profile?.member_type === 'non_member';
-
-      // Came from login page but has no active membership — send to signup
-      if (source === 'login' && !isActive && !isAdmin && !isNonMember) {
-        router.replace('/signup?error=no_account');
-        return;
-      }
-
-      if (isNonMember) {
-        router.replace('/dashboard');
-        return;
-      }
-
-      if (!isActive && !isAdmin) {
-        router.replace('/signup');
-        return;
-      }
-
-      router.replace('/dashboard');
-    };
-
-    run();
-  }, [searchParams, router]);
+    handleOAuthCallback(code, source)
+      .then((destination) => {
+        clearTimeout(timeoutId);
+        router.replace(destination);
+      })
+      .catch((err) => {
+        clearTimeout(timeoutId);
+        console.error('[auth/callback] handleOAuthCallback threw:', err);
+        router.replace('/login?error=oauth_failed');
+      });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps — intentionally run once
 
   return null;
 }
@@ -135,12 +107,10 @@ function CallbackHandler() {
 export default function AuthCallbackPage() {
   return (
     <>
-      {/* Loading screen renders immediately — visible during the entire
-          async exchange so the user never sees a blank page. */}
+      {/* Renders immediately — visible for the entire duration of the exchange */}
       <LoadingScreen />
 
-      {/* CallbackHandler uses useSearchParams() so it must be inside
-          Suspense per Next.js App Router rules. */}
+      {/* CallbackHandler uses useSearchParams() which requires Suspense */}
       <Suspense fallback={null}>
         <CallbackHandler />
       </Suspense>
