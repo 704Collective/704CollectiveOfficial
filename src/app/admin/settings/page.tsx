@@ -8,7 +8,7 @@ import { AdminLayout } from '@/components/AdminLayout';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { supabase } from '@/integrations/supabase/client';
 import { AdminHomepageImages } from '@/components/AdminHomepageImages';
-import { Apple, AlertCircle, Users, Check, X, Trash2, Loader2, Shield, Image, UserPlus } from 'lucide-react';
+import { Apple, AlertCircle, Users, Check, X, Trash2, Loader2, Shield, Image, UserPlus, ExternalLink, CalendarDays } from 'lucide-react';
 import { GeneralSettings } from '@/components/admin/GeneralSettings';
 import { MembershipSettings } from '@/components/admin/MembershipSettings';
 import { Button } from '@/components/ui/button';
@@ -470,6 +470,7 @@ function AdminSettings() {
           {activeTab === 'integrations' && (
             <div className="space-y-4">
 
+              {/* ── Google ── */}
               <div className="card-elevated p-4 sm:p-6">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
@@ -481,45 +482,129 @@ function AdminSettings() {
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold">Google</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Used for Google Wallet digital membership cards and calendar integrations.
-                    </p>
-                    <div className="flex items-center gap-2 mt-3">
-                      <div className="flex items-center gap-2 text-sm text-amber-500">
-                        <AlertCircle className="w-4 h-4" />
-                        <span>Not connected</span>
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold">Google</h3>
+                      <span className="flex items-center gap-1 text-xs text-green-400 font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                        Connected
+                      </span>
                     </div>
-                    <Button className="mt-3" variant="outline" size="sm" disabled>Connect Google</Button>
-                    <p className="text-xs text-muted-foreground mt-2">Google Wallet integration coming soon</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Google services are live for authentication, payments, and digital wallet passes.
+                    </p>
+                    <div className="mt-3 space-y-2">
+                      {['Google Login', 'Google Pay', 'Google Wallet'].map(service => (
+                        <div key={service} className="flex items-center gap-2 text-sm">
+                          <Check className="w-3.5 h-3.5 text-green-400 shrink-0" />
+                          <span className="text-foreground">{service}</span>
+                          <span className="text-xs text-green-400 font-medium">Active</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
 
+              {/* ── Apple ── */}
               <div className="card-elevated p-4 sm:p-6">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
                     <Apple className="w-5 h-5 text-muted-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold">Apple Developer</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Upload your Apple Developer certificates to enable Apple Wallet passes.
-                    </p>
-                    <div className="flex items-center gap-2 mt-3">
-                      <div className="flex items-center gap-2 text-sm text-amber-500">
-                        <AlertCircle className="w-4 h-4" />
-                        <span>Certificates required</span>
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-muted-foreground">Apple</h3>
+                      <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">Coming Soon</span>
                     </div>
-                    <Button className="mt-3" variant="outline" size="sm" disabled>Upload Certificates</Button>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Apple Wallet integration coming soon. Requires $99/year Apple Developer Program.
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Apple services for authentication, payments, and Wallet passes.
+                    </p>
+                    <div className="mt-3 space-y-2 opacity-50">
+                      {['Apple Login', 'Apple Pay', 'Apple Wallet'].map(service => (
+                        <div key={service} className="flex items-center gap-2 text-sm">
+                          <AlertCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-muted-foreground">{service}</span>
+                          <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded font-medium">Coming Soon</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-3">
+                      Waiting on Apple Developer account ($99/yr program required).
                     </p>
                   </div>
                 </div>
               </div>
+
+              {/* ── Eventbrite ── */}
+              <div className="card-elevated p-4 sm:p-6">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-orange-500" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.5 14.25H7.5v-1.5h9v1.5zm0-3H7.5v-1.5h9v1.5zm0-3H7.5V8.75h9v1.5z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold">Eventbrite</h3>
+                      <span className="flex items-center gap-1 text-xs text-green-400 font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                        Active
+                      </span>
+                      <a
+                        href="https://www.eventbrite.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors ml-auto"
+                      >
+                        eventbrite.com <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      API key configured. Event sync and ticket management are live.
+                    </p>
+                    <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                      <div>
+                        <span className="text-muted-foreground text-xs uppercase tracking-wider font-medium">Organization</span>
+                        <p className="text-foreground font-medium mt-0.5">704 Collective</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground text-xs uppercase tracking-wider font-medium">Org ID</span>
+                        <p className="text-foreground font-medium mt-0.5 font-mono text-xs">2989352320198</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Calendar Sync ── */}
+              <div className="card-elevated p-4 sm:p-6">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <CalendarDays className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold">Calendar Sync</h3>
+                      <span className="flex items-center gap-1 text-xs text-green-400 font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                        Active
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Members can subscribe to the 704 Collective event calendar directly from their dashboard.
+                    </p>
+                    <div className="mt-3 flex items-center gap-2 text-sm">
+                      <Check className="w-3.5 h-3.5 text-green-400 shrink-0" />
+                      <span className="text-foreground">calendar-feed edge function</span>
+                      <span className="text-xs text-green-400 font-medium">Live</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Served as a live iCal feed — compatible with Apple Calendar, Google Calendar, and Outlook.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
             </div>
           )}
 
