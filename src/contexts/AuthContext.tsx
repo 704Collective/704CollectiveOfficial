@@ -84,12 +84,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchAndApply = useCallback(async (user: User, session: Session) => {
     console.log('[Auth] fetchAndApply called with userId:', user.id);
     try {
-      const { data: profile } = await createClient()
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .is('deleted_at', null)
-        .maybeSingle();
+      // Use a raw fetch instead of the Supabase JS client to avoid the
+      // navigator.locks deadlock that occurs on soft refresh (Ctrl+R).
+      // createBrowserClient serialises token refreshes via a named
+      // navigator.locks lock. On soft refresh the old JS context can still
+      // hold that lock while the new context is already running, causing any
+      // Supabase client query to hang silently and indefinitely.
+      // A direct PostgREST REST call with the access_token from the session
+      // bypasses the lock entirely and is immune to this race condition.
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}&deleted_at=is.null&select=*&limit=1`,
+        {
+          headers: {
+            'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      );
+      const rows = res.ok ? await res.json() : [];
+      const profile = Array.isArray(rows) ? (rows[0] ?? null) : null;
       console.log('[Auth] profile fetch resolved:', profile ? profile.id : null);
       if (!isMounted.current) return;
       setState({ user, session, loading: false, profile: profile as Profile | null, ...deriveFlags(profile) });
