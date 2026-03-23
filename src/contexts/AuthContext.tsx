@@ -156,32 +156,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const applyProfileState = useCallback(
     async (user: User, session: Session) => {
-      // Unblock the loading gate immediately so the page renders with the
-      // authenticated user present. Profile fields arrive in a second setState
-      // once the DB fetch completes — this eliminates the stuck-spinner on
-      // soft refresh (Ctrl+R) where INITIAL_SESSION fires but the profile
-      // fetch takes a few hundred ms.
-      if (isMountedRef.current) {
-        setState(prev => ({
-          ...prev,
-          user,
-          session,
-          loading: false,
-        }));
-      }
-
       const result = await fetchProfile(user.id);
-
       // Guard: don't call setState if the component has been unmounted
       // (async fetch may complete after navigation away)
       if (isMountedRef.current) {
-        setState(prev => ({
-          ...prev,
+        setState({
           user,
           session,
           loading: false,
           ...result,
-        }));
+        });
       }
     },
     [fetchProfile]
