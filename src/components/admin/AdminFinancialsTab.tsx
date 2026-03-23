@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { supabase } from '@/integrations/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -64,11 +64,24 @@ export function AdminFinancialsTab({ onNavigateToDashboard }: AdminFinancialsTab
   const fetchData = async (bust = false) => {
     try {
       setError(null);
-      const { data: res, error: err } = await supabase.functions.invoke('admin-financials', {
-        body: bust ? { bust_cache: true } : {},
-      });
-      if (err || res?.error) throw new Error(err?.message || res?.error);
-      setData(res);
+      const { data: { session } } = await createClient().auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) throw new Error('Not authenticated');
+      const res = await fetch(
+        'https://bnmtynevbuplqpuqvmna.supabase.co/functions/v1/admin-financials',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJubXR5bmV2YnVwbHFwdXF2bW5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk0NzQyMjQsImV4cCI6MjA1NTA1MDIyNH0.o3-rHiEhpQdi1gSNrKZQKjU7o5QkLGaEECoSNAP7hRE',
+          },
+          body: JSON.stringify(bust ? { force_refresh: true } : {}),
+        }
+      );
+      const json = await res.json();
+      if (!res.ok || json?.error) throw new Error(json?.error || `HTTP ${res.status}`);
+      setData(json);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load financials');
     } finally {
