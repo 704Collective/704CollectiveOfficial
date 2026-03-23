@@ -208,9 +208,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabaseRef.current.auth.onAuthStateChange(async (event, session) => {
       // Drop redundant SIGNED_IN events immediately — before logging, before
       // mounted check, before any state access — so they cause zero side effects.
-      // Exception: never drop SIGNED_IN if the previous event was SIGNED_OUT,
-      // because the user may have signed back in with the same account and the
-      // profile must be reloaded in that case.
+      // Exceptions:
+      //  - Never drop if the previous event was SIGNED_OUT (re-login same account).
+      //  - INITIAL_SESSION is never subject to this guard — it must always be
+      //    processed so that soft refresh (Ctrl+R) reloads the profile correctly.
       if (
         event === 'SIGNED_IN' &&
         lastProcessedUserIdRef.current === session?.user?.id &&
@@ -222,7 +223,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!isMountedRef.current) return;
 
       if (session?.user) {
-        lastProcessedUserIdRef.current = session.user.id;
+        // Only stamp the dedup ref for SIGNED_IN — not for INITIAL_SESSION.
+        // If we stamped on INITIAL_SESSION, the SIGNED_IN that fires immediately
+        // after a soft refresh would be silently dropped, leaving the profile
+        // never loaded.
+        if (event === 'SIGNED_IN') {
+          lastProcessedUserIdRef.current = session.user.id;
+        }
         await applyProfileStateRef.current(session.user, session);
         lastEventRef.current = event;
       } else {
