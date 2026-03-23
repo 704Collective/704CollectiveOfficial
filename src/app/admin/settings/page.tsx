@@ -7,8 +7,7 @@ import { useEffect, useState } from 'react';
 import { AdminLayout } from '@/components/AdminLayout';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { supabase } from '@/integrations/supabase/client';
-import { AdminHomepageImages } from '@/components/AdminHomepageImages';
-import { Apple, AlertCircle, Users, Check, X, Trash2, Loader2, Shield, Image, UserPlus, ExternalLink, CalendarDays } from 'lucide-react';
+import { Apple, AlertCircle, Users, Check, X, Trash2, Loader2, Shield, UserPlus, ExternalLink, CalendarDays } from 'lucide-react';
 import { GeneralSettings } from '@/components/admin/GeneralSettings';
 import { MembershipSettings } from '@/components/admin/MembershipSettings';
 import { Button } from '@/components/ui/button';
@@ -41,7 +40,6 @@ interface AdminUser {
 
 const TABS = [
   { key: 'team', label: 'Team' },
-  { key: 'appearance', label: 'Appearance' },
   { key: 'integrations', label: 'Integrations' },
   { key: 'general', label: 'General' },
   { key: 'membership', label: 'Membership' },
@@ -659,23 +657,6 @@ function AdminSettings() {
                   </div>
                 </div>
               )}
-            </div>
-          )}
-
-          {activeTab === 'appearance' && (
-            <div className="card-elevated p-4 sm:p-6">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                  <Image className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Homepage Images</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Manage the images displayed on the homepage hero
-                  </p>
-                </div>
-              </div>
-              <AdminHomepageImages userId={user?.id || ''} />
             </div>
           )}
 

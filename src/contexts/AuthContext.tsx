@@ -83,6 +83,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // dropped. This prevents the infinite re-render loop caused by Supabase
   // firing SIGNED_IN on every tab focus / token refresh.
   const lastProcessedUserIdRef = useRef<string | null>(null);
+  // Tracks the last processed event so the dedup guard can be bypassed when
+  // the previous event was SIGNED_OUT — ensuring sign-back-in with the same
+  // account always reloads the profile correctly.
+  const lastEventRef = useRef<string>('');
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
@@ -187,17 +191,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabaseRef.current.auth.onAuthStateChange(async (event, session) => {
       // Drop redundant SIGNED_IN events immediately — before logging, before
       // mounted check, before any state access — so they cause zero side effects.
-      if (event === 'SIGNED_IN' && lastProcessedUserIdRef.current === session?.user?.id) return;
+      // Exception: never drop SIGNED_IN if the previous event was SIGNED_OUT,
+      // because the user may have signed back in with the same account and the
+      // profile must be reloaded in that case.
+      if (
+        event === 'SIGNED_IN' &&
+        lastProcessedUserIdRef.current === session?.user?.id &&
+        lastEventRef.current !== 'SIGNED_OUT'
+      ) return;
 
       console.log('[Auth] onAuthStateChange fired:', event, 'session:', !!session);
 
       if (!isMountedRef.current) return;
 
       if (session?.user) {
-
         lastProcessedUserIdRef.current = session.user.id;
-
         await applyProfileStateRef.current(session.user, session);
+        lastEventRef.current = event;
       } else {
         if (isMountedRef.current) {
           setState({
@@ -213,6 +223,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isPendingApplication: false,
           });
         }
+        lastEventRef.current = event;
       }
     });
 
