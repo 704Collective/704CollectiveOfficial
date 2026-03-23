@@ -107,17 +107,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (session?.user) {
         const userId = session.user.id;
-        const isSameUser = activeUserId.current === userId;
-        const isSignedIn = event === 'SIGNED_IN';
-        const wasSignedOut = lastEvent.current === 'SIGNED_OUT';
 
         lastEvent.current = event;
-
-        // Skip redundant SIGNED_IN for same user UNLESS we just signed out.
-        // This allows soft refresh INITIAL_SESSION to always process
-        // while blocking the duplicate SIGNED_IN that fires milliseconds later.
-        if (isSignedIn && isSameUser && !wasSignedOut) return;
-
         activeUserId.current = userId;
         await fetchAndApply(session.user, session);
       } else {
