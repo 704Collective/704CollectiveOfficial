@@ -70,13 +70,14 @@ serve(async (req) => {
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
     if (userError || !userData.user) throw new Error("Not authenticated");
 
-    const { data: roleData } = await supabase
-      .from("user_roles")
+    const { data: profileData } = await supabase
+      .from("profiles")
       .select("role")
-      .eq("user_id", userData.user.id)
-      .eq("role", "admin")
+      .eq("id", userData.user.id)
       .maybeSingle();
-    if (!roleData) throw new Error("Not an admin");
+    if (!profileData || (profileData.role !== "admin" && profileData.role !== "super_admin")) {
+      throw new Error("Not an admin");
+    }
     log("Admin verified", { userId: userData.user.id });
 
     // Parse body for force_refresh
