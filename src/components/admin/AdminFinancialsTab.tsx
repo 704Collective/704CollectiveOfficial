@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { createClient } from '@/lib/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -64,7 +64,7 @@ export function AdminFinancialsTab({ onNavigateToDashboard }: AdminFinancialsTab
   const fetchData = async (bust = false) => {
     try {
       setError(null);
-      const { data: { session } } = await createClient().auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
       if (!accessToken) throw new Error('Not authenticated');
       const res = await fetch(
