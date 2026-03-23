@@ -73,7 +73,13 @@ export default function Dashboard() {
       .then(() => {});
   }, [user]);
 
-  // Load business application for business non-members or any user with application_status set
+  // Unlock the loading gate as soon as auth resolves — do not wait for profile,
+  // which may arrive slightly later and would otherwise leave the spinner stuck.
+  useEffect(() => {
+    if (!loading) setAppLoaded(true);
+  }, [loading]);
+
+  // Load business application when profile is available (does not gate appLoaded).
   useEffect(() => {
     if (!user || !profile) return;
     const p = profile as any;
@@ -91,10 +97,7 @@ export default function Dashboard() {
         .maybeSingle()
         .then(({ data }) => {
           setApplication(data ?? null);
-          setAppLoaded(true);
         });
-    } else {
-      setAppLoaded(true);
     }
   }, [user, profile]);
 
