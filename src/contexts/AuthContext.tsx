@@ -9,7 +9,6 @@ interface Profile {
   email: string;
   full_name: string;
   avatar_url: string | null;
-  // Role & member type
   role: 'super_admin' | 'admin' | 'lead';
   member_type: 'social' | 'business' | 'non_member' | 'partner' | 'vendor' | 'venue' | 'sponsor' | null;
   membership_wave: 'founding' | 'wave_2' | 'wave_3' | 'wave_4' | 'wave_5' | null;
@@ -20,7 +19,6 @@ interface Profile {
   banned: boolean;
   banned_at: string | null;
   banned_reason: string | null;
-  // Subscription
   subscription_status: string | null;
   membership_override: boolean;
   stripe_customer_id: string | null;
@@ -28,7 +26,6 @@ interface Profile {
   member_since?: string | null;
   subscription_ends_at?: string | null;
   cancel_at_period_end?: boolean;
-  // Misc
   calendar_token?: string;
   phone?: string | null;
 }
@@ -38,7 +35,6 @@ interface AuthState {
   profile: Profile | null;
   session: Session | null;
   loading: boolean;
-  // Convenience flags
   isAdmin: boolean;
   isSuperAdmin: boolean;
   isActiveMember: boolean;
@@ -58,240 +54,111 @@ interface AuthContextValue extends AuthState {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const LOGGED_OUT_STATE: AuthState = {
+  user: null, profile: null, session: null, loading: false,
+  isAdmin: false, isSuperAdmin: false, isActiveMember: false,
+  isBusinessMember: false, isBanned: false, isPendingApplication: false,
+};
+
+function deriveFlags(profile: any) {
+  const role = profile?.role ?? 'lead';
+  const isSuperAdmin = role === 'super_admin';
+  const isAdmin = role === 'admin' || isSuperAdmin;
+  const isActiveMember =
+    profile?.subscription_status === 'active' ||
+    profile?.subscription_status === 'trialing' ||
+    profile?.membership_override === true;
+  const isBusinessMember = profile?.member_type === 'business';
+  const isBanned = profile?.banned === true;
+  const isPendingApplication = profile?.application_status === 'pending';
+  return { isAdmin, isSuperAdmin, isActiveMember, isBusinessMember, isBanned, isPendingApplication };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    profile: null,
-    session: null,
-    loading: true,
-    isAdmin: false,
-    isSuperAdmin: false,
-    isActiveMember: false,
-    isBusinessMember: false,
-    isBanned: false,
-    isPendingApplication: false,
-  });
+  const [state, setState] = useState<AuthState>({ ...LOGGED_OUT_STATE, loading: true });
+  const supabase = useRef(createClient()).current;
+  const isMounted = useRef(true);
+  const activeUserId = useRef<string | null>(null);
+  const lastEvent = useRef<string>('');
 
-  const supabaseRef = useRef(createClient());
-
-  // Tracks whether the component is still mounted — set to false in cleanup
-  // so async callbacks never call setState on an unmounted provider.
-  const isMountedRef = useRef(true);
-
-  // Deduplication guard: once a SIGNED_IN has been processed for a given user
-  // ID, any further SIGNED_IN for the same ID within this provider mount is
-  // dropped. This prevents the infinite re-render loop caused by Supabase
-  // firing SIGNED_IN on every tab focus / token refresh.
-  const lastProcessedUserIdRef = useRef<string | null>(null);
-  // Tracks the last processed event so the dedup guard can be bypassed when
-  // the previous event was SIGNED_OUT — ensuring sign-back-in with the same
-  // account always reloads the profile correctly.
-  const lastEventRef = useRef<string>('');
-
-  const fetchProfile = useCallback(async (userId: string) => {
+  const fetchAndApply = useCallback(async (user: User, session: Session) => {
     try {
-      const { data: profile, error: profileError } = await supabaseRef.current
+      const { data: profile } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('id', user.id)
         .is('deleted_at', null)
         .maybeSingle();
-
-      if (profileError) {
-        console.error('[AuthContext] Profile fetch error:', profileError.message);
-        return {
-          profile: null,
-          isAdmin: false,
-          isSuperAdmin: false,
-          isActiveMember: false,
-          isBusinessMember: false,
-          isBanned: false,
-          isPendingApplication: false,
-        };
-      }
-
-      const role = profile?.role ?? 'lead';
-      const isSuperAdmin = role === 'super_admin';
-      const isAdmin = role === 'admin' || isSuperAdmin;
-      const isActiveMember =
-        profile?.subscription_status === 'active' ||
-        profile?.subscription_status === 'trialing' ||
-        profile?.membership_override === true;
-      const isBusinessMember = profile?.member_type === 'business';
-      const isBanned = profile?.banned === true;
-      const isPendingApplication = profile?.application_status === 'pending';
-
-      console.log('[Auth] fetchProfile result:', {
-        profile: !!profile,
-        role,
-        isAdmin,
-        isSuperAdmin,
-        isActiveMember,
-        isBusinessMember,
-        isBanned,
-      });
-
-      return {
-        profile: profile as Profile | null,
-        isAdmin,
-        isSuperAdmin,
-        isActiveMember,
-        isBusinessMember,
-        isBanned,
-        isPendingApplication,
-      };
-    } catch (err) {
-      console.error('[AuthContext] fetchProfile failed or timed out:', err);
-      return {
-        profile: null,
-        isAdmin: false,
-        isSuperAdmin: false,
-        isActiveMember: false,
-        isBusinessMember: false,
-        isBanned: false,
-        isPendingApplication: false,
-      };
+      if (!isMounted.current) return;
+      setState({ user, session, loading: false, profile: profile as Profile | null, ...deriveFlags(profile) });
+    } catch {
+      if (!isMounted.current) return;
+      setState({ user, session, loading: false, profile: null, ...deriveFlags(null) });
     }
-  }, []);
+  }, [supabase]);
 
-  const applyProfileState = useCallback(
-    async (user: User, session: Session) => {
-      const result = await fetchProfile(user.id);
-      // Guard: don't call setState if the component has been unmounted
-      // (async fetch may complete after navigation away)
-      if (isMountedRef.current) {
-        setState({
-          user,
-          session,
-          loading: false,
-          ...result,
-        });
-      }
-    },
-    [fetchProfile]
-  );
-
-  // Keep a stable ref to applyProfileState so the subscription effect below
-  // can always call the latest version without needing it in its dependency
-  // array — which would otherwise cause the subscription to be torn down and
-  // re-created on every render, re-firing SIGNED_IN and looping infinitely.
-  const applyProfileStateRef = useRef(applyProfileState);
   useEffect(() => {
-    applyProfileStateRef.current = applyProfileState;
-  }, [applyProfileState]);
+    isMounted.current = true;
 
-  // Safety net: if loading is still true after 3 seconds something has gone
-  // wrong (network issue, missed auth event, etc.). Force it to false so the
-  // page never gets permanently stuck on the spinner.
-  const loadingTimeoutFiredRef = useRef(false);
-  useEffect(() => {
-    const id = setTimeout(() => {
-      if (!isMountedRef.current) return;
-      setState(prev => {
-        if (!prev.loading) return prev; // already resolved — no-op
-        loadingTimeoutFiredRef.current = true;
-        console.warn('[Auth] Loading timeout fired — forcing loading to false');
-        return { ...prev, loading: false };
-      });
-    }, 3000);
-    return () => clearTimeout(id);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[Auth]', event, !!session?.user);
 
-  // Set up the Supabase auth subscription exactly ONCE (empty dep array).
-  // All mutable values are accessed via refs so they're always current without
-  // requiring the effect to re-run.
-  useEffect(() => {
-    isMountedRef.current = true;
-
-    const {
-      data: { subscription },
-    } = supabaseRef.current.auth.onAuthStateChange(async (event, session) => {
-      // Drop redundant SIGNED_IN events immediately — before logging, before
-      // mounted check, before any state access — so they cause zero side effects.
-      // Exceptions:
-      //  - Never drop if the previous event was SIGNED_OUT (re-login same account).
-      //  - INITIAL_SESSION is never subject to this guard — it must always be
-      //    processed so that soft refresh (Ctrl+R) reloads the profile correctly.
-      if (
-        event === 'SIGNED_IN' &&
-        lastProcessedUserIdRef.current === session?.user?.id &&
-        lastEventRef.current !== 'SIGNED_OUT'
-      ) return;
-
-      console.log('[Auth] onAuthStateChange fired:', event, 'session:', !!session);
-
-      if (!isMountedRef.current) return;
+      if (!isMounted.current) return;
 
       if (session?.user) {
-        // Only stamp the dedup ref for SIGNED_IN — not for INITIAL_SESSION.
-        // If we stamped on INITIAL_SESSION, the SIGNED_IN that fires immediately
-        // after a soft refresh would be silently dropped, leaving the profile
-        // never loaded.
-        if (event === 'SIGNED_IN') {
-          lastProcessedUserIdRef.current = session.user.id;
-        }
-        await applyProfileStateRef.current(session.user, session);
-        lastEventRef.current = event;
+        const userId = session.user.id;
+        const isSameUser = activeUserId.current === userId;
+        const isSignedIn = event === 'SIGNED_IN';
+        const wasSignedOut = lastEvent.current === 'SIGNED_OUT';
+
+        lastEvent.current = event;
+
+        // Skip redundant SIGNED_IN for same user UNLESS we just signed out.
+        // This allows soft refresh INITIAL_SESSION to always process
+        // while blocking the duplicate SIGNED_IN that fires milliseconds later.
+        if (isSignedIn && isSameUser && !wasSignedOut) return;
+
+        activeUserId.current = userId;
+        await fetchAndApply(session.user, session);
       } else {
-        if (isMountedRef.current) {
-          setState({
-            user: null,
-            profile: null,
-            session: null,
-            loading: false,
-            isAdmin: false,
-            isSuperAdmin: false,
-            isActiveMember: false,
-            isBusinessMember: false,
-            isBanned: false,
-            isPendingApplication: false,
-          });
-        }
-        lastEventRef.current = event;
+        lastEvent.current = event;
+        activeUserId.current = null;
+        if (isMounted.current) setState(LOGGED_OUT_STATE);
       }
     });
 
     return () => {
-      isMountedRef.current = false;
+      isMounted.current = false;
       subscription.unsubscribe();
     };
-  }, []); // Empty array — subscription is created exactly once per provider mount
+  }, [fetchAndApply, supabase]);
 
-  // Expose a manual refresh — useful after profile updates (e.g. password set, plan upgrade)
   const refreshProfile = useCallback(async () => {
-    const { data: { session } } = await supabaseRef.current.auth.getSession();
-    if (session?.user) {
-      await applyProfileState(session.user, session);
-    }
-  }, [applyProfileState]);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) await fetchAndApply(session.user, session);
+  }, [fetchAndApply, supabase]);
 
-  const signIn = async (email: string, password: string) =>
-    supabaseRef.current.auth.signInWithPassword({ email, password });
+  const signIn = (email: string, password: string) =>
+    supabase.auth.signInWithPassword({ email, password });
 
-  const signUp = async (email: string, password: string, fullName: string) =>
-    supabaseRef.current.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: fullName } },
-    });
+  const signUp = (email: string, password: string, fullName: string) =>
+    supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
 
-  const signInWithGoogle = async () =>
-    supabaseRef.current.auth.signInWithOAuth({
+  const signInWithGoogle = () =>
+    supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
 
-  const signOut = async () => supabaseRef.current.auth.signOut();
+  const signOut = () => supabase.auth.signOut();
 
-  const resetPassword = async (email: string) =>
-    supabaseRef.current.auth.resetPasswordForEmail(email, {
+  const resetPassword = (email: string) =>
+    supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/reset-password`,
     });
 
   return (
-    <AuthContext.Provider
-      value={{ ...state, signIn, signUp, signInWithGoogle, signOut, resetPassword, refreshProfile }}
-    >
+    <AuthContext.Provider value={{ ...state, signIn, signUp, signInWithGoogle, signOut, resetPassword, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
@@ -303,9 +170,6 @@ export function useAuthContext(): AuthContextValue {
   return ctx;
 }
 
-// Utility for pages that need to check the session directly without depending
-// on the auth event system — used as a self-healing fallback when SIGNED_IN
-// deduplication suppresses the event and the profile has not been loaded yet.
 export async function getInitialSession() {
   const { createClient } = await import('@/lib/supabase/client');
   const { data: { session } } = await createClient().auth.getSession();
