@@ -76,14 +76,15 @@ function deriveFlags(profile: any) {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({ ...LOGGED_OUT_STATE, loading: true });
-  const supabase = useRef(createClient()).current;
+  const supabaseRef = useRef(createClient());
   const isMounted = useRef(true);
   const activeUserId = useRef<string | null>(null);
   const lastEvent = useRef<string>('');
 
   const fetchAndApply = useCallback(async (user: User, session: Session) => {
+    console.log('[Auth] fetchAndApply called with userId:', user.id);
     try {
-      const { data: profile } = await supabase
+      const { data: profile } = await supabaseRef.current
         .from('profiles')
         .select('*')
         .eq('id', user.id)
@@ -95,12 +96,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!isMounted.current) return;
       setState({ user, session, loading: false, profile: null, ...deriveFlags(null) });
     }
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
     isMounted.current = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabaseRef.current.auth.onAuthStateChange(async (event, session) => {
       console.log('[Auth]', event, !!session?.user);
 
       if (!isMounted.current) return;
@@ -122,29 +123,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isMounted.current = false;
       subscription.unsubscribe();
     };
-  }, [fetchAndApply, supabase]);
+  }, [fetchAndApply]);
 
   const refreshProfile = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabaseRef.current.auth.getSession();
     if (session?.user) await fetchAndApply(session.user, session);
-  }, [fetchAndApply, supabase]);
+  }, [fetchAndApply]);
 
   const signIn = (email: string, password: string) =>
-    supabase.auth.signInWithPassword({ email, password });
+    supabaseRef.current.auth.signInWithPassword({ email, password });
 
   const signUp = (email: string, password: string, fullName: string) =>
-    supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
+    supabaseRef.current.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
 
   const signInWithGoogle = () =>
-    supabase.auth.signInWithOAuth({
+    supabaseRef.current.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
 
-  const signOut = () => supabase.auth.signOut();
+  const signOut = () => supabaseRef.current.auth.signOut();
 
   const resetPassword = (email: string) =>
-    supabase.auth.resetPasswordForEmail(email, {
+    supabaseRef.current.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/reset-password`,
     });
 
