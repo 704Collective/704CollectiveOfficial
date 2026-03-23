@@ -1,6 +1,7 @@
 'use client';
 
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { AdminBottomNav } from '@/components/AdminBottomNav';
 import {
@@ -35,6 +36,14 @@ export function AdminLayout({
   onSectionChange,
 }: AdminLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Close the mobile sheet whenever the route changes so its Radix portal
+  // backdrop doesn't persist as an invisible click-blocking overlay after
+  // navigating away from the admin panel.
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   return (
     <div className="min-h-screen bg-background">

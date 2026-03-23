@@ -15,6 +15,7 @@ export default function AuthCallbackLoading() {
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
         zIndex: 9999,
+        pointerEvents: 'none',
       }}
     >
       <Image
