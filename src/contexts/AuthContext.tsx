@@ -185,19 +185,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabaseRef.current.auth.onAuthStateChange(async (event, session) => {
+      // Drop redundant SIGNED_IN events immediately — before logging, before
+      // mounted check, before any state access — so they cause zero side effects.
+      if (event === 'SIGNED_IN' && lastProcessedUserIdRef.current === session?.user?.id) return;
+
       console.log('[Auth] onAuthStateChange fired:', event, 'session:', !!session);
 
       if (!isMountedRef.current) return;
 
       if (session?.user) {
-        // Skip repeated SIGNED_IN events for the same user — Supabase fires
-        // these on tab focus, token refresh, and navigation. The dashboard
-        // self-heals via refreshProfile if the profile is missing (see
-        // dashboard/page.tsx), so suppressing here is safe.
-        if (event === 'SIGNED_IN' && lastProcessedUserIdRef.current === session.user.id) {
-          console.log('[Auth] Skipping redundant SIGNED_IN — already processed for', session.user.id);
-          return;
-        }
 
         lastProcessedUserIdRef.current = session.user.id;
 
