@@ -63,22 +63,31 @@ serve(async (req) => {
   );
 
   try {
-    // Auth: verify admin
+    // Auth: verify admin via direct fetch to avoid JWT audience mismatch that
+    // occurs when supabase.auth.getUser is called with a token issued for a
+    // different host (e.g. Vercel preview URL vs. production URL).
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header");
     const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !userData.user) throw new Error("Not authenticated");
+
+    const userRes = await fetch(`${Deno.env.get("SUPABASE_URL")}/auth/v1/user`, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "apikey": Deno.env.get("SUPABASE_ANON_KEY")!,
+      },
+    });
+    const userJson = await userRes.json();
+    if (!userJson?.id) throw new Error("Not authenticated");
 
     const { data: profileData } = await supabase
       .from("profiles")
       .select("role")
-      .eq("id", userData.user.id)
+      .eq("id", userJson.id)
       .maybeSingle();
     if (!profileData || (profileData.role !== "admin" && profileData.role !== "super_admin")) {
       throw new Error("Not an admin");
     }
-    log("Admin verified", { userId: userData.user.id });
+    log("Admin verified", { userId: userJson.id });
 
     // Parse body for force_refresh
     let forceRefresh = false;
