@@ -33,7 +33,6 @@ export default function Dashboard() {
   const [isPortalLoading, setIsPortalLoading] = useState(false);
   const [heroEventId, setHeroEventId] = useState<string | null>(null);
   const [application, setApplication] = useState<any>(null);
-  const [appLoaded, setAppLoaded] = useState(false);
   const [suggestModalOpen, setSuggestModalOpen] = useState(false);
 
   // Self-healing fallback: wait 800 ms then check whether a session exists but
@@ -73,13 +72,7 @@ export default function Dashboard() {
       .then(() => {});
   }, [user]);
 
-  // Unlock the loading gate as soon as auth resolves — do not wait for profile,
-  // which may arrive slightly later and would otherwise leave the spinner stuck.
-  useEffect(() => {
-    if (!loading) setAppLoaded(true);
-  }, [loading]);
-
-  // Load business application when profile is available (does not gate appLoaded).
+  // Load business application when profile is available.
   useEffect(() => {
     if (!user || !profile) return;
     const p = profile as any;
@@ -125,7 +118,7 @@ export default function Dashboard() {
     }
   }, [loading, user, router]);
 
-  if (loading || !appLoaded) return (
+  if (loading) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
     </div>
