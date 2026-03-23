@@ -84,12 +84,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchAndApply = useCallback(async (user: User, session: Session) => {
     console.log('[Auth] fetchAndApply called with userId:', user.id);
     try {
-      const { data: profile } = await supabaseRef.current
+      const { data: profile } = await createClient()
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .is('deleted_at', null)
         .maybeSingle();
+      console.log('[Auth] profile fetch resolved:', profile ? profile.id : null);
       if (!isMounted.current) return;
       setState({ user, session, loading: false, profile: profile as Profile | null, ...deriveFlags(profile) });
     } catch {
