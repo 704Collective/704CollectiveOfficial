@@ -92,8 +92,8 @@ export function DashboardNav() {
 
   const navItems: NavItem[] = [
     { href: '/dashboard',                   label: 'Overview',        icon: LayoutDashboard, exact: true },
-    ...(canSeeSocialFeed   ? [{ href: '/dashboard/feed/social',   label: 'Social Feed',   icon: Rss }]            : []),
-    ...(canSeeBusinessFeed ? [{ href: '/dashboard/feed/business', label: 'Business Feed', icon: Briefcase }]       : []),
+    ...(canSeeSocialFeed   ? [{ href: '/dashboard/social-feed',   label: 'Social Feed',   icon: Rss }]            : []),
+    ...(canSeeBusinessFeed ? [{ href: '/dashboard/business-feed', label: 'Business Feed', icon: Briefcase }]       : []),
     ...(canSeeMessages     ? [{ href: '/dashboard/messages',       label: 'Messages',      icon: MessageCircle, badge: unreadMessages }] : []),
     ...(canSeeDirectory    ? [{ href: '/dashboard/directory',      label: 'Directory',     icon: BookUser }]        : []),
     ...(canSeeHubs         ? [{ href: '/dashboard/hubs',           label: 'Hubs',          icon: Network }]         : []),

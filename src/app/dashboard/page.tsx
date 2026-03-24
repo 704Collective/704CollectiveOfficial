@@ -20,11 +20,148 @@ import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
 import { OnboardingCard } from '@/components/OnboardingCard';
 import { NonMemberDashboard } from '@/components/NonMemberDashboard';
 import { SuggestEventModal } from '@/components/SuggestEventModal';
-import { Crown, AlertCircle, CreditCard, Loader2, Lightbulb } from 'lucide-react';
+import { Crown, AlertCircle, CreditCard, Loader2, Lightbulb, Heart, ArrowRight, Rss, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
+
+// ---------------------------------------------------------------------------
+// Feed preview widget (read-only, 3 most recent posts)
+// ---------------------------------------------------------------------------
+interface PreviewPost {
+  id: string;
+  content: string | null;
+  created_at: string;
+  like_count: number;
+  author: { full_name: string | null; avatar_url: string | null } | null;
+}
+
+function FeedPreviewWidget({ feedType, href }: { feedType: 'social' | 'business'; href: string }) {
+  const [posts, setPosts] = useState<PreviewPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from('posts')
+      .select(`
+        id, content, created_at,
+        author:profiles!posts_author_id_fkey(full_name, avatar_url),
+        like_count:post_likes(count)
+      `)
+      .eq('feed_type', feedType)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(3)
+      .then(({ data, error: err }) => {
+        if (cancelled) return;
+        if (err) { setError(true); setLoading(false); return; }
+        setPosts(
+          ((data ?? []) as any[]).map((row) => ({
+            ...row,
+            author: Array.isArray(row.author) ? row.author[0] ?? null : row.author,
+            like_count: Array.isArray(row.like_count) ? ((row.like_count[0] as any)?.count ?? 0) : 0,
+          }))
+        );
+        setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [feedType]);
+
+  const label = feedType === 'social' ? 'Social Feed' : 'Business Feed';
+  const Icon = feedType === 'social' ? Rss : Briefcase;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Icon className="w-4 h-4 text-primary" />
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</p>
+        </div>
+        <Button variant="ghost" size="sm" asChild className="h-7 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground">
+          <Link href={href}>
+            View All <ArrowRight className="w-3 h-3" />
+          </Link>
+        </Button>
+      </div>
+
+      {loading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="card-elevated p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <Skeleton className="w-7 h-7 rounded-full" />
+                <div className="space-y-1">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-2.5 w-16" />
+                </div>
+              </div>
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-2/3" />
+            </div>
+          ))}
+        </div>
+      ) : error ? (
+        <div className="card-elevated p-4 text-center text-sm text-muted-foreground">
+          Unable to load feed preview.
+        </div>
+      ) : posts.length === 0 ? (
+        <div className="card-elevated p-4 text-center">
+          <p className="text-sm text-muted-foreground">No posts yet.</p>
+          <Button variant="outline" size="sm" asChild className="mt-2">
+            <Link href={href}>Be the first to post</Link>
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {posts.map((post) => {
+            const name = post.author?.full_name ?? 'Member';
+            const initials = name.split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase();
+            return (
+              <Link key={post.id} href={href} className="block card-elevated p-3 hover:bg-accent/30 transition-colors rounded-xl">
+                <div className="flex items-start gap-2.5">
+                  <Avatar className="w-7 h-7 shrink-0 mt-0.5">
+                    <AvatarImage src={post.author?.avatar_url ?? undefined} />
+                    <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-foreground truncate">{name}</span>
+                      <span className="text-[10px] text-muted-foreground shrink-0">
+                        {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+                      </span>
+                    </div>
+                    {post.content && (
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
+                        {post.content}
+                      </p>
+                    )}
+                    {post.like_count > 0 && (
+                      <div className="flex items-center gap-1 mt-1.5">
+                        <Heart className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-[10px] text-muted-foreground">{post.like_count}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+          <Button variant="outline" size="sm" asChild className="w-full gap-1.5 text-xs mt-1">
+            <Link href={href}>
+              <Icon className="w-3.5 h-3.5" />
+              View {label}
+            </Link>
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const { user, profile, isActiveMember, isAdmin, loading, refreshProfile } = useAuth();
@@ -274,6 +411,23 @@ export default function Dashboard() {
           <SectionErrorBoundary>
             <OnboardingCard userId={user.id} />
           </SectionErrorBoundary>
+        )}
+
+        {/* Feed previews — shown for active members only */}
+        {isActiveMember && (
+          <>
+            {/* Social feed preview — all active members */}
+            <SectionErrorBoundary>
+              <FeedPreviewWidget feedType="social" href="/dashboard/social-feed" />
+            </SectionErrorBoundary>
+
+            {/* Business feed preview — business members, admins, super admins */}
+            {(p.member_type === 'business' || isAdmin) && (
+              <SectionErrorBoundary>
+                <FeedPreviewWidget feedType="business" href="/dashboard/business-feed" />
+              </SectionErrorBoundary>
+            )}
+          </>
         )}
 
         {/* Next Event */}
