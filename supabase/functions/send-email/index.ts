@@ -339,6 +339,22 @@ ${ctaButton("View Event Details", data.eventUrl)}
   };
 }
 
+function hubAddedTemplate(data: { name: string; hubTitle: string; addedByName: string; hubUrl: string }): { subject: string; html: string } {
+  return {
+    subject: `You've been added to a hub: ${data.hubTitle}`,
+    html: baseLayout(`
+<h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${BRAND.text};">Welcome to the hub!</h2>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Hi ${data.name},</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">
+  <strong style="color:${BRAND.accent};">${data.addedByName}</strong> has added you to the hub 
+  <strong style="color:${BRAND.text};">${data.hubTitle}</strong> on the 704 Collective member portal.
+  You can now view the hub feed, connect with members, and access shared resources.
+</p>
+${ctaButton("View Hub", data.hubUrl)}
+`),
+  };
+}
+
 function newMessageTemplate(data: { name: string; senderName: string; messagesUrl: string }): { subject: string; html: string } {
   return {
     subject: `New message from ${data.senderName}`,
@@ -397,6 +413,8 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
       });
     case "new-message":
       return newMessageTemplate(data as { name: string; senderName: string; messagesUrl: string });
+    case "hub-added":
+      return hubAddedTemplate(data as { name: string; hubTitle: string; addedByName: string; hubUrl: string });
     default:
       throw new Error(`Unknown email template: ${template}`);
   }

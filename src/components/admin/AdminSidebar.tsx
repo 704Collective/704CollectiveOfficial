@@ -7,6 +7,7 @@ import {
   LayoutDashboard, Calendar, Users, QrCode, ClipboardList, Settings, BarChart2,
   Contact, Mail, Workflow, PieChart, GitPullRequest, FileText, Share2, Megaphone,
   ClipboardCheck, LayoutGrid, Inbox, ClipboardSignature, UserX, Lightbulb,
+  FolderOpen, Network, Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminSection } from '@/components/AdminLayout';
@@ -152,6 +153,56 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
             })}
           </div>
         </div>
+
+        {/* PORTAL — admin + super admin */}
+        {isAdminOrSuper && (
+          <div className="mt-5 border-t border-border pt-3">
+            <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground px-3 mb-1.5">Portal</p>
+            <div className="space-y-0.5">
+              <Link
+                href="/admin/hubs"
+                onClick={onMobileClose}
+                className={cn(
+                  'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  pathname.startsWith('/admin/hubs')
+                    ? 'bg-accent text-foreground border-l-2 border-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                )}
+              >
+                <Network className={cn('w-4 h-4 shrink-0', pathname.startsWith('/admin/hubs') && 'text-primary')} />
+                Hubs
+              </Link>
+              <Link
+                href="/admin/resources"
+                onClick={onMobileClose}
+                className={cn(
+                  'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  pathname.startsWith('/admin/resources')
+                    ? 'bg-accent text-foreground border-l-2 border-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                )}
+              >
+                <FolderOpen className={cn('w-4 h-4 shrink-0', pathname.startsWith('/admin/resources') && 'text-primary')} />
+                Resources
+              </Link>
+              {isSuperAdmin && (
+                <Link
+                  href="/admin/user-security"
+                  onClick={onMobileClose}
+                  className={cn(
+                    'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    pathname.startsWith('/admin/user-security')
+                      ? 'bg-accent text-foreground border-l-2 border-primary'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                  )}
+                >
+                  <Shield className={cn('w-4 h-4 shrink-0', pathname.startsWith('/admin/user-security') && 'text-primary')} />
+                  User Security
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* SETTINGS — super admin only */}
         {isSuperAdmin && (
