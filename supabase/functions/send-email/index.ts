@@ -370,6 +370,21 @@ ${ctaButton("View Message", data.messagesUrl)}
   };
 }
 
+function feedMentionTemplate(data: { name: string; mentionerName: string; dashboardUrl: string }): { subject: string; html: string } {
+  return {
+    subject: `${data.mentionerName} mentioned you on 704 Collective`,
+    html: baseLayout(`
+<h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${BRAND.text};">You were mentioned</h2>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Hi ${data.name},</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">
+  <strong style="color:${BRAND.accent};">${data.mentionerName}</strong> mentioned you in a post on the member portal.
+</p>
+${ctaButton("Open your dashboard", data.dashboardUrl)}
+<p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">This is a one-time email for this mention.</p>
+`),
+  };
+}
+
 // ── template router ──────────────────────────────────────────────────────
 
 function getTemplate(template: string, data: Record<string, unknown>): { subject: string; html: string } {
@@ -415,6 +430,8 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
       return newMessageTemplate(data as { name: string; senderName: string; messagesUrl: string });
     case "hub-added":
       return hubAddedTemplate(data as { name: string; hubTitle: string; addedByName: string; hubUrl: string });
+    case "feed-mention":
+      return feedMentionTemplate(data as { name: string; mentionerName: string; dashboardUrl: string });
     default:
       throw new Error(`Unknown email template: ${template}`);
   }
@@ -440,7 +457,7 @@ serve(async (req) => {
     const isServiceRole = token === serviceRoleKey;
 
     // Templates that require service role (internal/admin only)
-    const restrictedTemplates = ["admin-invite", "welcome-setup", "welcome", "password-setup", "event-change", "guest-followup", "ticket-followup", "guest-pass"];
+    const restrictedTemplates = ["admin-invite", "welcome-setup", "welcome", "password-setup", "event-change", "guest-followup", "ticket-followup", "guest-pass", "feed-mention"];
 
     // ── Parse body first so we can check template ──
     const { to, template, data, skipCc } = await req.json();
@@ -496,6 +513,11 @@ serve(async (req) => {
     const resendKey = Deno.env.get("RESEND_API_KEY");
     if (!resendKey) throw new Error("RESEND_API_KEY not set");
 
+    const fromAddress =
+      template === "feed-mention"
+        ? "704 Collective <no-reply@704collective.com>"
+        : "704 Collective <hello@704collective.com>";
+
     const resendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -503,7 +525,7 @@ serve(async (req) => {
         Authorization: `Bearer ${resendKey}`,
       },
       body: JSON.stringify({
-        from: "704 Collective <hello@704collective.com>",
+        from: fromAddress,
         to: [to],
         ...(!skipCc && (template === "welcome" || template === "password-setup" || template === "welcome-setup")
           ? { cc: ["hello@704collective.com"] }

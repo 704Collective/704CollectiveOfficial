@@ -6,6 +6,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function randomPublicId12(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => chars[b % chars.length]).join("");
+}
+
 /**
  * approve-business-application
  *
@@ -183,6 +190,36 @@ serve(async (req) => {
         full_name: `${app.first_name} ${app.last_name}`,
         phone: app.phone,
       });
+    }
+
+    // Ensure digital business card exists (first-time business membership)
+    const { data: cardProfile } = await supabase
+      .from("profiles")
+      .select("id, full_name, email, phone, avatar_url")
+      .eq("email", app.email)
+      .single();
+
+    if (cardProfile) {
+      const { data: existingCard } = await supabase
+        .from("business_cards")
+        .select("id")
+        .eq("user_id", cardProfile.id)
+        .maybeSingle();
+
+      if (!existingCard) {
+        await supabase.from("business_cards").insert({
+          user_id: cardProfile.id,
+          public_id: randomPublicId12(),
+          full_name: cardProfile.full_name ?? `${app.first_name} ${app.last_name}`,
+          email: cardProfile.email ?? app.email,
+          phone: cardProfile.phone ?? app.phone,
+          avatar_url: cardProfile.avatar_url,
+          title: null,
+          company: null,
+          linkedin_url: null,
+          website_url: null,
+        });
+      }
     }
 
     // Update application status

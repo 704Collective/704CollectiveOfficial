@@ -18,6 +18,7 @@ export type AdminSection =
   | 'prospects'
   | 'sponsors'
   | 'financials'
+  | 'feed-moderation'
   | 'applications'
   | 'non-members'
   | 'suggestions';

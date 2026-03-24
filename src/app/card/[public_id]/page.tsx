@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import Link from 'next/link';
+import { createClient } from '@/lib/supabase/server';
 import { CardDisplay, type BusinessCardData } from '@/components/portal/BusinessCard';
 
 interface Props {
@@ -8,17 +9,28 @@ interface Props {
 }
 
 async function getCard(publicId: string): Promise<BusinessCardData | null> {
-  const adminClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  );
-  const { data } = await adminClient
+  const supabase = await createClient();
+  const { data } = await supabase
     .from('business_cards')
     .select('*')
     .eq('public_id', publicId)
     .maybeSingle();
-  return (data as BusinessCardData) ?? null;
+  if (!data) return null;
+  const row = data as Record<string, unknown>;
+  return {
+    id: String(row.id),
+    user_id: String(row.user_id),
+    public_id: String(row.public_id),
+    full_name: (row.full_name as string) || 'Member',
+    title: (row.title as string) ?? null,
+    company: (row.company as string) ?? null,
+    phone: (row.phone as string) ?? null,
+    email: (row.email as string) ?? null,
+    linkedin_url: (row.linkedin_url as string) ?? null,
+    website_url: (row.website_url as string) ?? null,
+    avatar_url: (row.avatar_url as string) ?? null,
+    custom_fields: (row.custom_fields as Record<string, string>) ?? null,
+  };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -44,32 +56,29 @@ export default async function PublicCardPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-[#1A1A1A] flex flex-col items-center justify-center px-4 py-16">
-      {/* Logo */}
       <div className="mb-8 text-center">
-        <p className="text-[#D4A853]/60 text-xs tracking-[0.3em] uppercase font-semibold mb-1">
+        <p className="text-[#D4A853]/70 text-xs tracking-[0.35em] uppercase font-semibold mb-1">
           704 Collective
         </p>
-        <p className="text-white/30 text-xs">Digital Business Card</p>
+        <p className="text-white/35 text-xs">Digital business card</p>
       </div>
 
-      {/* Card */}
       <div className="w-full max-w-md">
         <CardDisplay card={card} />
       </div>
 
-      {/* CTA */}
       <div className="mt-12 text-center max-w-sm">
-        <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-8" />
-        <p className="text-white/40 text-sm mb-3">
-          Connect with Charlotte&apos;s premier business community.
+        <div className="h-px bg-gradient-to-r from-transparent via-[#D4A853]/25 to-transparent mb-8" />
+        <p className="text-white/45 text-sm mb-5 leading-relaxed">
+          Connect with Charlotte&apos;s premier young professional and business community.
         </p>
-        <a
+        <Link
           href="https://704collective.com"
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#D4A853] hover:bg-[#B8923F] text-[#1A1A1A] text-sm font-semibold rounded-lg transition-colors"
+          className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#D4A853] hover:bg-[#C6A664] text-[#1A1A1A] text-sm font-semibold rounded-lg transition-colors shadow-lg shadow-black/20"
         >
           Join 704 Collective
-        </a>
-        <p className="text-white/20 text-xs mt-4">© 704 Collective · Charlotte, NC</p>
+        </Link>
+        <p className="text-white/25 text-xs mt-6">© 704 Collective · Charlotte, NC</p>
       </div>
     </div>
   );

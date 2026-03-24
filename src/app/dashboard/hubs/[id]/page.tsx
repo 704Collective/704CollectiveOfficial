@@ -18,6 +18,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { notifyAfterHubPostCreated } from '@/app/actions/portalFeedNotifications';
 import {
   ChevronLeft, Users, FileText, MessageSquare, Pencil, Trash2, Download,
   Upload, Heart, Send, Loader2, X, Paperclip, Plus,
@@ -308,7 +309,10 @@ function HubFeedTab({ hubId, currentUserId, isAdmin }: { hubId: string; currentU
       .insert({ hub_id: hubId, author_id: currentUserId, content: draft.trim() })
       .select('*, author:profiles(id, full_name, avatar_url)')
       .single();
-    if (data) setPosts((prev) => [{ ...data, author: data.author as HubPost['author'], like_count: 0, comment_count: 0, user_has_liked: false }, ...prev]);
+    if (data) {
+      void notifyAfterHubPostCreated(data.id, hubId);
+      setPosts((prev) => [{ ...data, author: data.author as HubPost['author'], like_count: 0, comment_count: 0, user_has_liked: false }, ...prev]);
+    }
     setDraft('');
     setPosting(false);
   };
@@ -332,7 +336,10 @@ function HubFeedTab({ hubId, currentUserId, isAdmin }: { hubId: string; currentU
         .insert({ hub_id: hubId, author_id: currentUserId, image_urls: urls })
         .select('*, author:profiles(id, full_name, avatar_url)')
         .single();
-      if (data) setPosts((prev) => [{ ...data, author: data.author as HubPost['author'], like_count: 0, comment_count: 0, user_has_liked: false }, ...prev]);
+      if (data) {
+        void notifyAfterHubPostCreated(data.id, hubId);
+        setPosts((prev) => [{ ...data, author: data.author as HubPost['author'], like_count: 0, comment_count: 0, user_has_liked: false }, ...prev]);
+      }
     }
     setUploadingImages(false);
     if (imageInputRef.current) imageInputRef.current.value = '';

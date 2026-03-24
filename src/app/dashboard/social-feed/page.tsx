@@ -15,7 +15,10 @@ export default function SocialFeedPage() {
   const router = useRouter();
   usePageTitle('Social Feed');
 
-  const canAccess = isActiveMember || isAdmin || isSuperAdmin;
+  const memberType = profile?.member_type;
+  const isSocialOrBusinessMember = memberType === 'social' || memberType === 'business';
+  const canAccess =
+    (isActiveMember && isSocialOrBusinessMember) || isAdmin || isSuperAdmin;
 
   useEffect(() => {
     if (loading) return;

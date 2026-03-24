@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Calendar, Users, QrCode, ClipboardList, Settings, BarChart2,
   Contact, Mail, Workflow, PieChart, GitPullRequest, FileText, Share2, Megaphone,
   ClipboardCheck, LayoutGrid, Inbox, ClipboardSignature, UserX, Lightbulb,
-  FolderOpen, Network, Shield,
+  FolderOpen, Network, Shield, Rss,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminSection } from '@/components/AdminLayout';
@@ -111,6 +111,7 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
 
           {/* Admin + super admin only */}
           {isAdminOrSuper && (<>
+            {navBtn({ icon: Rss,                label: 'Feed moderation', section: 'feed-moderation' })}
             {navBtn({ icon: ClipboardSignature, label: 'Applications', section: 'applications' })}
             {navBtn({ icon: UserX,              label: 'Non-Members',  section: 'non-members'  })}
             {navBtn({ icon: Lightbulb,          label: 'Suggestions',  section: 'suggestions'  })}

@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { notifyAfterFeedCommentCreated } from '@/app/actions/portalFeedNotifications';
 import { cn } from '@/lib/utils';
 import type { User } from '@supabase/supabase-js';
 
@@ -263,6 +264,7 @@ export function FeedPost({ post, currentUser, onDelete, onEdit }: FeedPostProps)
     if (error) { toast.error('Failed to post comment'); return; }
     setComments(c => [...c, data as unknown as CommentData]);
     setCommentCount(c => c + 1);
+    void notifyAfterFeedCommentCreated((data as { id: string }).id);
   };
 
   const deleteComment = async (commentId: string) => {

@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { Header } from '@/components/Header';
 import { DashboardNav } from '@/components/DashboardNav';
 import { FeedView } from '@/components/portal/FeedView';
@@ -14,17 +15,24 @@ export default function BusinessFeedPage() {
   const { user, profile, loading, isActiveMember, isAdmin, isSuperAdmin, isBusinessMember } = useAuth();
   const router = useRouter();
   usePageTitle('Business Feed');
+  const redirectToastShown = useRef(false);
 
   const canAccess = isBusinessMember || isAdmin || isSuperAdmin;
 
   useEffect(() => {
     if (loading) return;
     if (!user) { router.replace('/login'); return; }
-    // Active social-only members redirect to social feed
-    if (isActiveMember && !canAccess) { router.replace('/dashboard/social-feed'); return; }
-    // Non-members redirect to dashboard
-    if (!isActiveMember && !canAccess) { router.replace('/dashboard'); }
-  }, [loading, user, isActiveMember, canAccess, router]);
+    if (canAccess) return;
+    if (isActiveMember && profile?.member_type === 'social') {
+      if (!redirectToastShown.current) {
+        redirectToastShown.current = true;
+        toast.info('The Business feed is for Business members only.');
+      }
+      router.replace('/dashboard/social-feed');
+      return;
+    }
+    router.replace('/dashboard');
+  }, [loading, user, isActiveMember, canAccess, profile?.member_type, router]);
 
   if (loading) {
     return (

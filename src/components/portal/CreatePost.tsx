@@ -2,12 +2,21 @@
 
 import { useState, useRef, useCallback } from 'react';
 import Image from 'next/image';
-import { Image as ImageIcon, Paperclip, X, Send, Loader2 } from 'lucide-react';
+import { Image as ImageIcon, Paperclip, X, Send, Loader2, Library } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
+import { notifyAfterFeedPostCreated } from '@/app/actions/portalFeedNotifications';
 import type { User } from '@supabase/supabase-js';
 import type { FeedPostData, PostAuthor } from './FeedPost';
 
@@ -67,10 +76,22 @@ interface CreatePostProps {
   onPostCreated: (post: FeedPostData) => void;
 }
 
+interface AdminResourceRow {
+  id: string;
+  file_url: string;
+  file_name: string;
+  file_size: number | null;
+}
+
 export function CreatePost({ feedType, currentUser, currentProfile, onPostCreated }: CreatePostProps) {
+  const { isAdmin } = useAuth();
   const [content, setContent] = useState('');
   const [pendingImages, setPendingImages] = useState<PendingFile[]>([]);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+  const [libraryAttachments, setLibraryAttachments] = useState<{ url: string; name: string }[]>([]);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libraryLoading, setLibraryLoading] = useState(false);
+  const [libraryRows, setLibraryRows] = useState<AdminResourceRow[]>([]);
   const [uploading, setUploading] = useState(false);
   const [suggestions, setSuggestions] = useState<MentionSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -143,9 +164,37 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
   };
 
   const removeFile = (id: string) => setPendingFiles(p => p.filter(f => f.id !== id));
+  const removeLibraryAttachment = (url: string) =>
+    setLibraryAttachments((p) => p.filter((x) => x.url !== url));
+
+  const openResourceLibrary = async () => {
+    setLibraryOpen(true);
+    setLibraryLoading(true);
+    const { data, error } = await supabase
+      .from('admin_resources')
+      .select('id, file_url, file_name, file_size')
+      .order('created_at', { ascending: false });
+    setLibraryLoading(false);
+    if (error) {
+      toast.error('Could not load resource library');
+      setLibraryRows([]);
+      return;
+    }
+    setLibraryRows((data as AdminResourceRow[]) ?? []);
+  };
+
+  const attachFromLibrary = (row: AdminResourceRow) => {
+    if (libraryAttachments.some((a) => a.url === row.file_url)) {
+      toast.message('Already attached');
+      return;
+    }
+    setLibraryAttachments((p) => [...p, { url: row.file_url, name: row.file_name }]);
+    setLibraryOpen(false);
+    toast.success('File attached from library');
+  };
 
   const handleSubmit = async () => {
-    if (!content.trim() && pendingImages.length === 0 && pendingFiles.length === 0) return;
+    if (!content.trim() && pendingImages.length === 0 && pendingFiles.length === 0 && libraryAttachments.length === 0) return;
     if (uploading) return;
     setUploading(true);
 
@@ -164,7 +213,7 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
         uploadedImageUrls.push(publicUrl);
       }
 
-      // Upload files (business feed only)
+      // Upload files (business feed only) + library attachments
       if (feedType === 'business') {
         for (const f of pendingFiles) {
           const path = `posts/${currentUser.id}/${Date.now()}-${f.file.name}`;
@@ -173,6 +222,10 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
           const { data: { publicUrl } } = supabase.storage.from('portal-files').getPublicUrl(path);
           uploadedFileUrls.push(publicUrl);
           uploadedFileNames.push(f.file.name);
+        }
+        for (const lib of libraryAttachments) {
+          uploadedFileUrls.push(lib.url);
+          uploadedFileNames.push(lib.name);
         }
       }
 
@@ -192,6 +245,8 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
 
       if (error) throw new Error(error.message);
 
+      void notifyAfterFeedPostCreated(data.id);
+
       // Build a full FeedPostData for optimistic UI
       const newPost: FeedPostData = {
         ...(data as any),
@@ -205,6 +260,7 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
       setContent('');
       setPendingImages([]);
       setPendingFiles([]);
+      setLibraryAttachments([]);
       toast.success('Post published');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to publish post');
@@ -213,7 +269,14 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
     }
   };
 
-  const canPost = !uploading && (content.trim().length > 0 || pendingImages.length > 0 || pendingFiles.length > 0);
+  const canPost =
+    !uploading &&
+    (content.trim().length > 0 ||
+      pendingImages.length > 0 ||
+      pendingFiles.length > 0 ||
+      libraryAttachments.length > 0);
+
+  const showResourceLibrary = isAdmin && feedType === 'business';
 
   return (
     <div className="card-elevated p-4 space-y-3">
@@ -284,8 +347,24 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
       )}
 
       {/* File previews */}
-      {pendingFiles.length > 0 && (
+      {(pendingFiles.length > 0 || libraryAttachments.length > 0) && (
         <div className="space-y-1 pl-12">
+          {libraryAttachments.map((lib) => (
+            <div
+              key={lib.url}
+              className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg text-sm border border-[#D4A853]/20"
+            >
+              <span className="flex-1 truncate">{lib.name}</span>
+              <span className="text-xs text-muted-foreground shrink-0">Library</span>
+              <button
+                type="button"
+                onClick={() => removeLibraryAttachment(lib.url)}
+                className="text-muted-foreground hover:text-destructive"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
           {pendingFiles.map(f => (
             <div key={f.id} className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg text-sm">
               <span className="flex-1 truncate">{f.file.name}</span>
@@ -331,6 +410,18 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
               >
                 <Paperclip className="w-4 h-4" />
               </Button>
+              {showResourceLibrary && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  type="button"
+                  onClick={() => void openResourceLibrary()}
+                  title="Resource Library"
+                >
+                  <Library className="w-4 h-4" />
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -348,6 +439,43 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
           )}
         </Button>
       </div>
+
+      <Dialog open={libraryOpen} onOpenChange={setLibraryOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Resource Library</DialogTitle>
+          </DialogHeader>
+          {libraryLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : libraryRows.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">No files in the library yet.</p>
+          ) : (
+            <ScrollArea className="max-h-[min(60vh,320px)] pr-3">
+              <ul className="space-y-1">
+                {libraryRows.map((row) => (
+                  <li key={row.id}>
+                    <button
+                      type="button"
+                      onClick={() => attachFromLibrary(row)}
+                      className="w-full text-left flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted/60 transition-colors"
+                    >
+                      <Paperclip className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                      <span className="flex-1 truncate">{row.file_name}</span>
+                      {row.file_size != null && (
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {formatBytes(Number(row.file_size))}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </ScrollArea>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
