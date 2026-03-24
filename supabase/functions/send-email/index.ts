@@ -339,6 +339,21 @@ ${ctaButton("View Event Details", data.eventUrl)}
   };
 }
 
+function newMessageTemplate(data: { name: string; senderName: string; messagesUrl: string }): { subject: string; html: string } {
+  return {
+    subject: `New message from ${data.senderName}`,
+    html: baseLayout(`
+<h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${BRAND.text};">You have a new message</h2>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Hi ${data.name},</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">
+  <strong style="color:${BRAND.accent};">${data.senderName}</strong> sent you a message on the 704 Collective member portal.
+</p>
+${ctaButton("View Message", data.messagesUrl)}
+<p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">You'll only receive this notification once per new conversation.</p>
+`),
+  };
+}
+
 // ── template router ──────────────────────────────────────────────────────
 
 function getTemplate(template: string, data: Record<string, unknown>): { subject: string; html: string } {
@@ -380,6 +395,8 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
         eventDate?: string | null; eventTime?: string | null; eventLocation?: string | null;
         passCode: string; expiresDate: string;
       });
+    case "new-message":
+      return newMessageTemplate(data as { name: string; senderName: string; messagesUrl: string });
     default:
       throw new Error(`Unknown email template: ${template}`);
   }
