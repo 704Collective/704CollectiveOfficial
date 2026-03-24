@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -9,6 +9,7 @@ import { LogOut, User, Settings, LayoutDashboard, Menu, X, Users, Bell, Calendar
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { NotificationDropdown } from '@/components/portal/NotificationDropdown';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,40 +33,6 @@ export function Header() {
   const pathname = usePathname();
   const { user, profile, isAdmin } = useAuth();
   const supabaseRef = useRef(createClient());
-  const [unreadCount, setUnreadCount] = useState(0);
-  const channelRef = useRef<ReturnType<typeof supabaseRef.current.channel> | null>(null);
-
-  useEffect(() => {
-    if (!user) { setUnreadCount(0); return; }
-
-    const supabase = supabaseRef.current;
-
-    const fetchCount = async () => {
-      const { count } = await supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false);
-      setUnreadCount(count ?? 0);
-    };
-
-    fetchCount();
-
-    // Real-time subscription so the badge updates without polling
-    channelRef.current = supabase
-      .channel(`notifications:${user.id}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'notifications',
-        filter: `user_id=eq.${user.id}`,
-      }, () => fetchCount())
-      .subscribe();
-
-    return () => {
-      channelRef.current?.unsubscribe();
-    };
-  }, [user]);
 
   if (MARKETING_ROUTES.includes(pathname)) {
     return null;
@@ -251,20 +218,9 @@ export function Header() {
 
           {/* Desktop notification bell */}
           {user && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative hidden md:flex"
-              onClick={goToNotifications}
-              aria-label="Notifications"
-            >
-              <Bell className="h-5 w-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              )}
-            </Button>
+            <div className="hidden md:flex">
+              <NotificationDropdown user={user} />
+            </div>
           )}
 
           {/* Desktop auth */}
