@@ -31,6 +31,7 @@ export default function AdminUpstashPage() {
 
   const [data, setData] = useState<Metrics | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [fetching, setFetching] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAdmin) router.replace('/admin');
@@ -38,19 +39,29 @@ export default function AdminUpstashPage() {
 
   useEffect(() => {
     if (!isAdmin) return;
+    let cancelled = false;
+    setFetching(true);
     (async () => {
       try {
         const res = await fetch('/api/admin/upstash-metrics');
         if (!res.ok) {
-          setErr('Could not load metrics');
+          if (!cancelled) setErr('Could not load status');
           return;
         }
         const j = (await res.json()) as Metrics;
-        setData(j);
+        if (!cancelled) {
+          setData(j);
+          setErr(null);
+        }
       } catch {
-        setErr('Could not load metrics');
+        if (!cancelled) setErr('Could not load status');
+      } finally {
+        if (!cancelled) setFetching(false);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [isAdmin]);
 
   if (loading || !isAdmin) {
@@ -63,6 +74,8 @@ export default function AdminUpstashPage() {
     );
   }
 
+  const notConfigured = data && !data.configured;
+
   return (
     <AdminLayout title="Upstash">
       <div className="space-y-6">
@@ -73,79 +86,100 @@ export default function AdminUpstashPage() {
           </p>
         </div>
 
+        {fetching && !data && !err ? (
+          <div className="flex justify-center py-12 text-muted-foreground">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        ) : null}
+
         {err && <p className="text-sm text-destructive">{err}</p>}
 
-        {data && !data.configured && (
-          <p className="text-sm text-muted-foreground rounded-lg border border-border bg-card p-4">
-            Redis is not configured in this environment (missing Upstash credentials). Stats will show zeros until{' '}
-            <code className="text-xs bg-muted px-1 rounded">REDIS_URL</code> / Upstash env is set.
-          </p>
+        {notConfigured && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-6 py-8 text-center space-y-2">
+            <h2 className="text-lg font-semibold text-foreground">Upstash not configured</h2>
+            <p className="text-sm text-muted-foreground max-w-lg mx-auto">
+              Set valid <code className="text-xs bg-muted px-1 rounded">UPSTASH_REDIS_REST_URL</code> (must start with{' '}
+              <code className="text-xs bg-muted px-1 rounded">https://</code>) and{' '}
+              <code className="text-xs bg-muted px-1 rounded">UPSTASH_REDIS_REST_TOKEN</code> in your environment. Until
+              then, feed caching and Upstash rate limiting are skipped and the app runs without Redis.
+            </p>
+          </div>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            label="Cache hit rate"
-            value={data?.cacheHitRate != null ? `${data.cacheHitRate}%` : '—'}
-            hint="Feed requests served from cache vs database"
-          />
-          <StatCard label="Total cached keys" value={data ? String(data.totalCachedKeys) : '—'} hint="Active feed:* keys in Redis" />
-          <StatCard
-            label="Rate limit hits today"
-            value={data ? String(data.rateLimitHitsToday) : '—'}
-            hint="429 responses recorded today"
-          />
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Top rate limited IPs</p>
-            <p className="text-xs text-muted-foreground mt-1 mb-3">Today (from recent event log)</p>
-            <ul className="space-y-1.5 text-sm">
-              {(data?.topIps ?? []).length === 0 ? (
-                <li className="text-muted-foreground">No data</li>
-              ) : (
-                data!.topIps.map((r) => (
-                  <li key={r.ip} className="flex justify-between gap-2 font-mono text-xs">
-                    <span className="truncate">{r.ip}</span>
-                    <span className="shrink-0 text-muted-foreground">{r.count}</span>
-                  </li>
-                ))
-              )}
-            </ul>
-          </div>
-        </div>
+        {data?.configured === true && (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <StatCard
+                label="Cache hit rate"
+                value={data.cacheHitRate != null ? `${data.cacheHitRate}%` : '—'}
+                hint="Feed requests served from cache vs database"
+              />
+              <StatCard
+                label="Total cached keys"
+                value={String(data.totalCachedKeys)}
+                hint="Active feed:* keys in Redis"
+              />
+              <StatCard
+                label="Rate limit hits today"
+                value={String(data.rateLimitHitsToday)}
+                hint="429 responses recorded today"
+              />
+              <div className="rounded-xl border border-border bg-card p-4">
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Top rate limited IPs</p>
+                <p className="text-xs text-muted-foreground mt-1 mb-3">Today (from recent event log)</p>
+                <ul className="space-y-1.5 text-sm">
+                  {data.topIps.length === 0 ? (
+                    <li className="text-muted-foreground">No data</li>
+                  ) : (
+                    data.topIps.map((r) => (
+                      <li key={r.ip} className="flex justify-between gap-2 font-mono text-xs">
+                        <span className="truncate">{r.ip}</span>
+                        <span className="shrink-0 text-muted-foreground">{r.count}</span>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </div>
+            </div>
 
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <div className="px-4 py-3 border-b border-border">
-            <h2 className="font-semibold text-sm">Recent rate limit events</h2>
-            <p className="text-xs text-muted-foreground">Aggregated by IP and route</p>
-          </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>IP</TableHead>
-                <TableHead>Route</TableHead>
-                <TableHead>Last seen</TableHead>
-                <TableHead className="text-right">Count</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(data?.recentRateLimitEvents ?? []).length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                    No events recorded yet.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                data!.recentRateLimitEvents.map((r, i) => (
-                  <TableRow key={`${r.ip}-${r.route}-${i}`}>
-                    <TableCell className="font-mono text-xs">{r.ip}</TableCell>
-                    <TableCell className="text-xs max-w-[200px] truncate">{r.route || '—'}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{r.timestamp || '—'}</TableCell>
-                    <TableCell className="text-right tabular-nums">{r.count}</TableCell>
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="px-4 py-3 border-b border-border">
+                <h2 className="font-semibold text-sm">Recent rate limit events</h2>
+                <p className="text-xs text-muted-foreground">Aggregated by IP and route</p>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>IP</TableHead>
+                    <TableHead>Route</TableHead>
+                    <TableHead>Last seen</TableHead>
+                    <TableHead className="text-right">Count</TableHead>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                </TableHeader>
+                <TableBody>
+                  {data.recentRateLimitEvents.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                        No events recorded yet.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    data.recentRateLimitEvents.map((r, i) => (
+                      <TableRow key={`${r.ip}-${r.route}-${i}`}>
+                        <TableCell className="font-mono text-xs">{r.ip}</TableCell>
+                        <TableCell className="text-xs max-w-[200px] truncate">{r.route || '—'}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          {r.timestamp || '—'}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{r.count}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+        )}
       </div>
     </AdminLayout>
   );

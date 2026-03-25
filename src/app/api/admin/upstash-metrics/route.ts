@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { redis } from '@/lib/upstash';
+import { getRedisClient } from '@/lib/upstash';
 
 function dayKey(d = new Date()) {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
@@ -18,6 +18,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  const redis = getRedisClient();
   if (!redis) {
     return NextResponse.json({
       configured: false,

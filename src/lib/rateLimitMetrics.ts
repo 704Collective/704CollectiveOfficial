@@ -1,4 +1,4 @@
-import { redis } from '@/lib/upstash';
+import { getRedisClient } from '@/lib/upstash';
 import { getRequestIp } from '@/lib/getRequestIp';
 import type { NextRequest } from 'next/server';
 
@@ -9,6 +9,7 @@ const DAY_KEY = () => {
 
 /** Increment when returning HTTP 429 from API routes (Upstash-backed). */
 export async function recordRateLimit429(request: NextRequest, route: string): Promise<void> {
+  const redis = getRedisClient();
   if (!redis) return;
   const ip = getRequestIp(request);
   const day = DAY_KEY();

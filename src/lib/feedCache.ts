@@ -1,4 +1,4 @@
-import { redis } from '@/lib/upstash';
+import { getRedisClient } from '@/lib/upstash';
 
 const TTL_SECONDS = 60;
 
@@ -10,6 +10,7 @@ function cacheKey(feedType: string, page: number): string {
  * Returns cached feed page JSON (array of posts) or null if missing/invalid.
  */
 export async function getCachedFeed(feedType: string, page: number): Promise<unknown[] | null> {
+  const redis = getRedisClient();
   if (!redis) return null;
 
   const raw = await redis.get<string>(cacheKey(feedType, page));
@@ -36,6 +37,7 @@ export async function getCachedFeed(feedType: string, page: number): Promise<unk
  * Stores a feed page in Redis with a 60s TTL.
  */
 export async function setCachedFeed(feedType: string, page: number, posts: unknown[]): Promise<void> {
+  const redis = getRedisClient();
   if (!redis) return;
 
   await redis.set(cacheKey(feedType, page), JSON.stringify(posts), { ex: TTL_SECONDS });
