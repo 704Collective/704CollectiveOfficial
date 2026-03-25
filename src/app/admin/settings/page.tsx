@@ -9,6 +9,7 @@ import { usePageTitle } from '@/hooks/usePageTitle';
 import { supabase } from '@/integrations/supabase/client';
 import { Apple, AlertCircle, Users, Check, X, Trash2, Loader2, Shield, UserPlus, ExternalLink, CalendarDays } from 'lucide-react';
 import { GeneralSettings } from '@/components/admin/GeneralSettings';
+import { AdamUniversalInboxToggle } from '@/components/admin/AdamUniversalInboxToggle';
 import { MembershipSettings } from '@/components/admin/MembershipSettings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -797,6 +798,8 @@ function AdminSettings() {
                   </div>
                 </div>
               </div>
+
+              <AdamUniversalInboxToggle email={profile?.email} />
 
             </div>
           )}

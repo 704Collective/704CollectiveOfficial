@@ -199,6 +199,14 @@ export default function Dashboard() {
     }
   }, []);
 
+  useEffect(() => {
+    if (loading || !profile) return;
+    const p = profile as { member_type?: string | null };
+    if (p.member_type === 'partner') {
+      router.replace('/partner-portal');
+    }
+  }, [loading, profile, router]);
+
   // Track last_seen_at for re-engagement cron
   useEffect(() => {
     if (!user) return;

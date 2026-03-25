@@ -419,6 +419,22 @@ function partnerNewApplicationAdminTemplate(data: { companyName: string; applica
   };
 }
 
+function partnerApplicationDeniedTemplate(data: { name: string; reason: string; origin?: string }): { subject: string; html: string } {
+  const base = data.origin ?? "https://704collective.com";
+  return {
+    subject: "Update on your 704 Collective partner application",
+    html: baseLayout(`
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hi ${data.name},</p>
+<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">
+  Thank you for your interest in partnering with 704 Collective. After review, we&apos;re not able to move forward with this application at this time.
+</p>
+<p style="margin:0 0 24px;padding:16px;border-radius:8px;background:${BRAND.color};border:1px solid ${BRAND.border};font-size:14px;color:${BRAND.textSecondary};white-space:pre-wrap;">${data.reason}</p>
+<p style="margin:0;font-size:14px;line-height:1.6;color:${BRAND.textMuted};">If you have questions, you can reach us at hello@704collective.com.</p>
+${ctaButton("Visit 704 Collective", base)}
+`, base),
+  };
+}
+
 function partnerWelcomeInviteTemplate(data: { name: string; dashboardUrl: string; origin?: string }): { subject: string; html: string } {
   const base = data.origin ?? "https://704collective.com";
   return {
@@ -585,6 +601,8 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
       return partnerNewApplicationAdminTemplate(data as { companyName: string; applicantEmail: string });
     case "partner-welcome-invite":
       return partnerWelcomeInviteTemplate(data as { name: string; dashboardUrl: string; origin?: string });
+    case "partner-application-denied":
+      return partnerApplicationDeniedTemplate(data as { name: string; reason: string; origin?: string });
     case "partner-event-inquiry-admin":
       return partnerEventInquiryAdminTemplate(data as {
         partnerEmail: string;
@@ -649,7 +667,7 @@ serve(async (req) => {
     const isServiceRole = token === serviceRoleKey;
 
     // Templates that require service role (internal/admin only)
-    const restrictedTemplates = ["admin-invite", "welcome-setup", "welcome", "password-setup", "event-change", "guest-followup", "ticket-followup", "guest-pass", "feed-mention", "partner-application-submitted", "partner-new-application-admin", "partner-welcome-invite", "partner-event-inquiry-admin", "partner-inquiry-admin-reply-partner", "partner-team-first-superadmin", "partner-team-reply-partner", "partner-account-deletion-request"];
+    const restrictedTemplates = ["admin-invite", "welcome-setup", "welcome", "password-setup", "event-change", "guest-followup", "ticket-followup", "guest-pass", "feed-mention", "partner-application-submitted", "partner-new-application-admin", "partner-welcome-invite", "partner-application-denied", "partner-event-inquiry-admin", "partner-inquiry-admin-reply-partner", "partner-team-first-superadmin", "partner-team-reply-partner", "partner-account-deletion-request"];
 
     // ── Parse body first so we can check template ──
     const { to, template, data, skipCc } = await req.json();

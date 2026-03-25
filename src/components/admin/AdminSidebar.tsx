@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Calendar, Users, QrCode, ClipboardList, Settings, BarChart2,
   Contact, Mail, Workflow, PieChart, GitPullRequest, FileText, Share2, Megaphone,
   ClipboardCheck, LayoutGrid, Inbox, ClipboardSignature, UserX, Lightbulb,
-  FolderOpen, Network, Shield, Rss,
+  FolderOpen, Network, Shield, Rss, Handshake, Receipt, MessagesSquare, Database, Bug,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminSection } from '@/components/AdminLayout';
@@ -115,7 +115,48 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
             {navBtn({ icon: ClipboardSignature, label: 'Applications', section: 'applications' })}
             {navBtn({ icon: UserX,              label: 'Non-Members',  section: 'non-members'  })}
             {navBtn({ icon: Lightbulb,          label: 'Suggestions',  section: 'suggestions'  })}
+            <Link
+              href="/admin/partners"
+              onClick={onMobileClose}
+              className={cn(
+                'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                pathname.startsWith('/admin/partners')
+                  ? 'bg-accent text-foreground border-l-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+              )}
+            >
+              <Handshake className={cn('w-4 h-4 shrink-0', pathname.startsWith('/admin/partners') && 'text-primary')} />
+              Partners
+            </Link>
+            <Link
+              href="/admin/invoices"
+              onClick={onMobileClose}
+              className={cn(
+                'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                pathname.startsWith('/admin/invoices')
+                  ? 'bg-accent text-foreground border-l-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+              )}
+            >
+              <Receipt className={cn('w-4 h-4 shrink-0', pathname.startsWith('/admin/invoices') && 'text-primary')} />
+              Invoices
+            </Link>
           </>)}
+          {isAdminOrSuper && (
+            <Link
+              href="/admin/inbox"
+              onClick={onMobileClose}
+              className={cn(
+                'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                pathname.startsWith('/admin/inbox')
+                  ? 'bg-accent text-foreground border-l-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+              )}
+            >
+              <MessagesSquare className={cn('w-4 h-4 shrink-0', pathname.startsWith('/admin/inbox') && 'text-primary')} />
+              Team Inbox
+            </Link>
+          )}
         </div>
 
         {/* OPERATIONS */}
@@ -201,6 +242,41 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
                   User Security
                 </Link>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* MONITORING — admin + super admin */}
+        {isAdminOrSuper && (
+          <div className="mt-5 border-t border-border pt-3">
+            <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground px-3 mb-1.5">Monitoring</p>
+            <div className="space-y-0.5">
+              <Link
+                href="/admin/upstash"
+                onClick={onMobileClose}
+                className={cn(
+                  'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  pathname.startsWith('/admin/upstash')
+                    ? 'bg-accent text-foreground border-l-2 border-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                )}
+              >
+                <Database className={cn('w-4 h-4 shrink-0', pathname.startsWith('/admin/upstash') && 'text-primary')} />
+                Upstash
+              </Link>
+              <Link
+                href="/admin/sentry"
+                onClick={onMobileClose}
+                className={cn(
+                  'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  pathname.startsWith('/admin/sentry')
+                    ? 'bg-accent text-foreground border-l-2 border-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                )}
+              >
+                <Bug className={cn('w-4 h-4 shrink-0', pathname.startsWith('/admin/sentry') && 'text-primary')} />
+                Sentry
+              </Link>
             </div>
           </div>
         )}

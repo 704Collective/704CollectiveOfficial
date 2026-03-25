@@ -13,12 +13,21 @@ export async function getCachedFeed(feedType: string, page: number): Promise<unk
   if (!redis) return null;
 
   const raw = await redis.get<string>(cacheKey(feedType, page));
-  if (raw == null) return null;
+  if (raw == null) {
+    await redis.incr('metrics:feed_cache:miss').catch(() => {});
+    return null;
+  }
 
   try {
     const parsed: unknown = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    return Array.isArray(parsed) ? parsed : null;
+    if (!Array.isArray(parsed)) {
+      await redis.incr('metrics:feed_cache:miss').catch(() => {});
+      return null;
+    }
+    await redis.incr('metrics:feed_cache:hit').catch(() => {});
+    return parsed;
   } catch {
+    await redis.incr('metrics:feed_cache:miss').catch(() => {});
     return null;
   }
 }

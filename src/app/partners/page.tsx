@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Nav from '@/components/Nav';
 import { Footer } from '@/components/Footer';
-import { createClient } from '@/lib/supabase/server';
-import { FeaturedPartnersCarousel, type FeaturedLogo } from '@/components/partners/FeaturedPartnersCarousel';
+import { getFeaturedPartnerLogos, type FeaturedPartnerLogo } from '@/lib/partnerFeatured';
+import { FeaturedPartnersCarousel } from '@/components/partners/FeaturedPartnersCarousel';
 import { Store, Building2, Sparkles, Handshake } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -16,18 +16,8 @@ export const metadata: Metadata = {
   },
 };
 
-async function getFeaturedPartners(): Promise<FeaturedLogo[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from('partner_listings')
-    .select('id, company_name, logo_url')
-    .eq('is_featured', true)
-    .order('featured_order', { ascending: true, nullsFirst: false });
-  return (data as FeaturedLogo[]) ?? [];
-}
-
 export default async function PartnersPage() {
-  const featured = await getFeaturedPartners();
+  const featured: FeaturedPartnerLogo[] = await getFeaturedPartnerLogos();
 
   return (
     <>

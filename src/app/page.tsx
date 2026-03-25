@@ -3,6 +3,8 @@ import Nav from "@/components/Nav";
 import { Footer } from "@/components/Footer"
 ;
 import Link from "next/link";
+import { getFeaturedPartnerLogos } from "@/lib/partnerFeatured";
+import { FeaturedPartnersCarousel } from "@/components/partners/FeaturedPartnersCarousel";
 import {
   FadeUp,
   FadeIn,
@@ -62,7 +64,9 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 /* ─── Page ─── */
 
-export default function Home() {
+export default async function Home() {
+  const featuredPartners = await getFeaturedPartnerLogos();
+
   return (
     <>
       <Nav />
@@ -545,6 +549,46 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* ════════════════════════════════════════════
+            FEATURED PARTNERS (between How It Works & Membership)
+        ════════════════════════════════════════════ */}
+        {featuredPartners.length > 0 && (
+          <section
+            id="partners"
+            style={{
+              backgroundColor: "#F5F0E8",
+              padding: "72px 24px",
+            }}
+          >
+            <div style={{ maxWidth: "1000px", margin: "0 auto", textAlign: "center" }}>
+              <FadeUp>
+                <h2
+                  style={{
+                    fontSize: "clamp(1.5rem, 3.5vw, 2.25rem)",
+                    fontWeight: 700,
+                    letterSpacing: "-0.02em",
+                    color: "#1A1A1A",
+                    marginBottom: "12px",
+                  }}
+                >
+                  Our Partners
+                </h2>
+                <div
+                  style={{
+                    width: "56px",
+                    height: "3px",
+                    backgroundColor: "#C6A664",
+                    borderRadius: "2px",
+                    margin: "0 auto 32px",
+                  }}
+                  aria-hidden
+                />
+              </FadeUp>
+              <FeaturedPartnersCarousel partners={featuredPartners} />
+            </div>
+          </section>
+        )}
 
         {/* ════════════════════════════════════════════
             SECTION 4: TWO MEMBERSHIP TIERS

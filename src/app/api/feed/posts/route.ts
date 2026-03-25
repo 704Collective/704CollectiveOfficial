@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createRateLimiter } from '@/lib/upstash';
 import { getRequestIp } from '@/lib/getRequestIp';
+import { recordRateLimit429 } from '@/lib/rateLimitMetrics';
 
 const limiter = createRateLimiter('feed-post-create', 30);
 
@@ -37,6 +38,7 @@ export async function POST(request: NextRequest) {
   const { success } = await limiter.limit(identifier);
 
   if (!success) {
+    await recordRateLimit429(request, '/api/feed/posts');
     return NextResponse.json(
       { error: 'Too many requests' },
       { status: 429, headers: { 'Retry-After': '60' } }
