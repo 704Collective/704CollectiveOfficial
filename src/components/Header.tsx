@@ -105,7 +105,7 @@ export function Header() {
           {user ? (
             <Link href="/dashboard" className={navLinkClass('/dashboard')}>Dashboard</Link>
           ) : (
-            <Link href="/login" className={navLinkClass('/login')}>Member Login</Link>
+            <Link href="/login" className={navLinkClass('/login')}>Login</Link>
           )}
         </nav>
 
@@ -196,7 +196,7 @@ export function Header() {
                     </>
                   ) : (
                     <SheetClose asChild>
-                      <Link href="/login" className={mobileLinkClass('/login')}>Member Login</Link>
+                      <Link href="/login" className={mobileLinkClass('/login')}>Login</Link>
                     </SheetClose>
                   )}
                 </nav>

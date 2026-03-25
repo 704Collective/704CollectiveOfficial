@@ -1,924 +1,252 @@
-import type { Metadata } from "next";
-import Nav from "@/components/Nav";
-import { Footer } from "@/components/Footer"
-;
-import Link from "next/link";
-import {
-  FadeUp,
-  FadeIn,
-  SlideIn,
-  StaggerContainer,
-  StaggerItem,
-  ScaleUp,
-  DrawLine,
-  WordReveal,
-} from "@/components/Animations";
-import HeroDots from "@/components/HeroDots";
-import GradientShift from "@/components/GradientShift";
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import Nav from '@/components/Nav';
+import { Footer } from '@/components/Footer';
+import { createClient } from '@/lib/supabase/server';
+import { FeaturedPartnersCarousel, type FeaturedLogo } from '@/components/partners/FeaturedPartnersCarousel';
+import { Store, Building2, Sparkles, Handshake } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: "Become a Partner | 704 Collective",
+  title: 'Partners | 704 Collective',
   description:
-    "Partner with Charlotte's premier community. Whether you're a vendor, venue, or sponsor — connect with 704 Collective's engaged audience of ambitious professionals.",
+    'Partner with 704 Collective — Charlotte’s curated social and business events, engaged local audiences, and meaningful brand growth.',
   openGraph: {
-    title: "Become a Partner | 704 Collective",
-    description:
-      "Partner with Charlotte's premier community as a vendor, venue, or sponsor.",
-    url: "https://704collective.com/partners",
-    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+    title: 'Partners | 704 Collective',
+    url: 'https://704collective.com/partners',
   },
 };
 
-const partnerTypes = [
-  {
-    type: "Vendor",
-    tagline: "Offer your product or service to our members",
-    description:
-      "You have a product, service, or experience that would resonate with Charlotte's most active community. As a vendor partner, you get direct access to our member base through events, features, and exclusive offers.",
-    includes: [
-      "Featured placement at 704 events",
-      "Exposure to 704 Social and Business members",
-      "Co-branded promotional opportunities",
-      "Inclusion in member perks and offers",
-      "CLTBucketlist cross-promotion",
-      "Dedicated partner profile on our platform",
-    ],
-    idealFor:
-      "Local businesses, service providers, food & beverage brands, wellness companies, and experience-based businesses.",
-    accent: "rgba(255, 255, 255, 0.08)",
-    borderAccent: "rgba(255, 255, 255, 0.06)",
-  },
-  {
-    type: "Venue",
-    tagline: "Host our events at your space",
-    description:
-      "You have a space that brings people together. As a venue partner, you host 704 Collective events — putting your location in front of Charlotte's most connected professionals and social community.",
-    includes: [
-      "Regular event bookings at your space",
-      "Exposure to 20-40 engaged attendees per event",
-      "Social media features and event coverage",
-      "Member-exclusive offers for your venue",
-      "CLTBucketlist listing and promotion",
-      "Dedicated partner profile on our platform",
-    ],
-    idealFor:
-      "Restaurants, bars, rooftops, coworking spaces, private event spaces, wellness studios, and unique Charlotte locations.",
-    accent: "rgba(198, 166, 100, 0.06)",
-    borderAccent: "rgba(198, 166, 100, 0.1)",
-  },
-  {
-    type: "Sponsor",
-    tagline: "Align your brand with Charlotte's top community",
-    description:
-      "You want meaningful brand visibility with a highly engaged, curated audience. As a sponsor partner, your brand is woven into 704 Collective events, content, and member experiences at a strategic level.",
-    includes: [
-      "Logo placement at sponsored events",
-      "Brand integration in event marketing",
-      "Social media features and mentions",
-      "Access to member demographics and insights",
-      "Custom partnership activations",
-      "Premium placement across 704 + CLTBucketlist",
-    ],
-    idealFor:
-      "Brands, agencies, financial services, real estate companies, tech companies, and any business looking to reach Charlotte's ambitious professionals.",
-    accent: "rgba(198, 166, 100, 0.08)",
-    borderAccent: "rgba(198, 166, 100, 0.15)",
-  },
-];
-
-const howItWorks = [
-  {
-    step: "01",
-    title: "Apply",
-    desc: "Tell us about your business and select which partner type(s) you're interested in. Takes about 5 minutes.",
-  },
-  {
-    step: "02",
-    title: "Review",
-    desc: "Our team reviews every application personally. We look for alignment with our community and members. Expect to hear back within 48 hours.",
-  },
-  {
-    step: "03",
-    title: "Onboard",
-    desc: "Once approved, you get access to your partner dashboard, event calendar, and a dedicated point of contact on our team.",
-  },
-  {
-    step: "04",
-    title: "Activate",
-    desc: "Start showing up in front of our members — through events, promotions, features, and direct access to Charlotte's most connected community.",
-  },
-];
-
-const faqs = [
-  {
-    q: "What is a 704 Collective partner?",
-    a: "A partner is a local business, venue, or brand that works with 704 Collective to create value for our members. Partners get direct access to our engaged community of professionals through events, features, promotions, and exclusive offers.",
-  },
-  {
-    q: "Can I be more than one partner type?",
-    a: "Absolutely. Many partners are both a vendor and a venue, or a venue and a sponsor. You can select multiple types during your application and we'll build a partnership that fits.",
-  },
-  {
-    q: "Is there a cost to become a partner?",
-    a: "Partnership structures vary by type and scope. Some partnerships are value-exchange (you provide a space or product, we provide exposure). Sponsorships typically involve a financial commitment. We'll discuss specifics after reviewing your application.",
-  },
-  {
-    q: "How many partners do you work with?",
-    a: "We keep our partner roster intentionally curated. We'd rather have 20 great partners than 200 generic ones. Every partner should feel like they're getting real value, not competing for attention.",
-  },
-  {
-    q: "What is CLTBucketlist?",
-    a: "CLTBucketlist.com is Charlotte's go-to local guide — reaching 50,000+ Charlotte residents monthly. It's the platform 704 Collective was built on. As a partner, you get cross-promotion across both brands.",
-  },
-  {
-    q: "How do I get started?",
-    a: "Fill out the application below. It takes about 5 minutes. Our team reviews every application personally and responds within 48 hours.",
-  },
-];
-
-function SectionLabel({ text }: { text: string }) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "16px",
-        marginBottom: "16px",
-      }}
-    >
-      <div
-        style={{
-          height: "1px",
-          width: "40px",
-          backgroundColor: "rgba(198,166,100,0.4)",
-        }}
-      />
-      <span
-        style={{
-          color: "#C6A664",
-          fontSize: "11px",
-          fontWeight: 600,
-          textTransform: "uppercase",
-          letterSpacing: "0.25em",
-        }}
-      >
-        {text}
-      </span>
-      <div
-        style={{
-          height: "1px",
-          width: "40px",
-          backgroundColor: "rgba(198,166,100,0.4)",
-        }}
-      />
-    </div>
-  );
+async function getFeaturedPartners(): Promise<FeaturedLogo[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('partner_listings')
+    .select('id, company_name, logo_url')
+    .eq('is_featured', true)
+    .order('featured_order', { ascending: true, nullsFirst: false });
+  return (data as FeaturedLogo[]) ?? [];
 }
 
-function TooltipIcon({ text }: { text: string }) {
-  return (
-    <span
-      title={text}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: "16px",
-        height: "16px",
-        borderRadius: "50%",
-        border: "1px solid rgba(255, 255, 255, 0.15)",
-        fontSize: "10px",
-        color: "rgba(255, 255, 255, 0.35)",
-        cursor: "help",
-        marginLeft: "6px",
-        flexShrink: 0,
-      }}
-    >
-      ?
-    </span>
-  );
-}
+export default async function PartnersPage() {
+  const featured = await getFeaturedPartners();
 
-export default function PartnersPage() {
   return (
     <>
       <Nav />
-      <main style={{ paddingTop: "64px" }}>
-        {/* ════════════════════════════════════════════
-            HERO
-        ════════════════════════════════════════════ */}
-        <section
-          style={{
-            position: "relative",
-            minHeight: "88vh",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "#111111",
-            overflow: "hidden",
-          }}
-        >
+      <main className="bg-[#0a0a0a] text-white">
+        {/* Hero */}
+        <section className="relative min-h-[100dvh] flex flex-col justify-end pb-20 pt-28 px-4 sm:px-6">
           <div
+            className="absolute inset-0 bg-cover bg-center"
             style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "radial-gradient(ellipse at center top, rgba(198,166,100,0.05) 0%, transparent 50%)",
+              backgroundImage: "url('/og-image.png')",
             }}
+            aria-hidden
           />
-          <HeroDots />
-          <div
-            style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: "1px",
-              background:
-                "linear-gradient(to right, transparent, rgba(198,166,100,0.25), transparent)",
-            }}
-          />
-          <div
-            style={{
-              position: "relative",
-              width: "100%",
-              maxWidth: "720px",
-              margin: "0 auto",
-              padding: "0 24px",
-              textAlign: "center",
-            }}
-          >
-            <FadeIn delay={0.2} duration={0.8}>
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  border: "1px solid rgba(198,166,100,0.25)",
-                  borderRadius: "9999px",
-                  padding: "8px 20px",
-                  marginBottom: "36px",
-                }}
-              >
-                <div
-                  style={{
-                    width: "6px",
-                    height: "6px",
-                    borderRadius: "50%",
-                    backgroundColor: "#C6A664",
-                  }}
-                />
-                <span
-                  style={{
-                    color: "#C6A664",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.2em",
-                  }}
-                >
-                  Partner With Us
-                </span>
-              </div>
-            </FadeIn>
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/85 to-black/55" aria-hidden />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#D4A853]/10 via-transparent to-transparent pointer-events-none" aria-hidden />
 
-            <h1
-              style={{
-                fontSize: "clamp(2.5rem, 6vw, 4.25rem)",
-                fontWeight: 700,
-                lineHeight: 1.05,
-                letterSpacing: "-0.03em",
-                marginBottom: "24px",
-                color: "#FAF6F0",
-              }}
-            >
-              <WordReveal text="Grow With Charlotte's" />
-              <br />
-              <WordReveal text="Most Connected Community" />
+          <div className="relative z-10 max-w-4xl mx-auto text-center">
+            <p className="text-[#D4A853] text-xs sm:text-sm tracking-[0.35em] uppercase font-semibold mb-4">
+              Partnerships
+            </p>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white mb-6">
+              Become a 704 Collective Partner
             </h1>
-
-            <FadeUp delay={0.6} duration={0.8}>
-              <p
-                style={{
-                  color: "#A0A0A0",
-                  fontSize: "clamp(1rem, 2vw, 1.15rem)",
-                  maxWidth: "520px",
-                  margin: "0 auto 40px auto",
-                  lineHeight: 1.7,
-                }}
+            <p className="text-lg sm:text-xl text-white/75 max-w-2xl mx-auto leading-relaxed mb-10">
+              Partners get access to Charlotte&apos;s most curated social and business community events, exposure to an
+              engaged local audience, and the ability to grow their brand through meaningful event partnerships—not
+              generic sponsorship decks, but real presence where the city&apos;s most motivated professionals gather.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Link
+                href="/partners/apply"
+                className="inline-flex items-center justify-center px-8 py-3.5 rounded-lg bg-[#D4A853] hover:bg-[#C6A664] text-[#1A1A1A] font-semibold text-sm sm:text-base transition-colors shadow-lg shadow-black/40 min-w-[200px]"
               >
-                Whether you{"'"}re a vendor, venue, or sponsor — 704 Collective
-                puts your brand in front of Charlotte{"'"}s most engaged
-                professionals and social community.
-              </p>
-            </FadeUp>
-
-            <FadeUp delay={0.9} duration={0.7}>
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "16px",
-                  justifyContent: "center",
-                }}
+                Become a Partner
+              </Link>
+              <a
+                href="#types"
+                className="inline-flex items-center justify-center px-8 py-3.5 rounded-lg border border-white/25 text-white/90 hover:bg-white/5 font-medium text-sm sm:text-base transition-colors min-w-[200px]"
               >
-                <a
-                  href="#apply"
-                  className="btn-gold"
-                  style={{ padding: "16px 36px", fontSize: "0.875rem" }}
-                >
-                  Become a Partner
-                </a>
-                <a
-                  href="#types"
-                  className="btn-ghost-gold"
-                  style={{ padding: "16px 36px", fontSize: "0.875rem" }}
-                >
-                  See Partner Types
-                </a>
-              </div>
-            </FadeUp>
-          </div>
-        </section>
-
-        {/* ════════════════════════════════════════════
-            WHAT IS A 704 PARTNER?
-        ════════════════════════════════════════════ */}
-        <section style={{ backgroundColor: "#1A1A1A", padding: "80px 24px" }}>
-          <div
-            style={{
-              maxWidth: "600px",
-              margin: "0 auto",
-              textAlign: "center",
-            }}
-          >
-            <FadeUp>
-              <SectionLabel text="Why Partner" />
-            </FadeUp>
-
-            <FadeUp delay={0.1}>
-              <h2
-                style={{
-                  fontSize: "clamp(1.75rem, 4vw, 2.25rem)",
-                  fontWeight: 700,
-                  letterSpacing: "-0.025em",
-                  marginBottom: "32px",
-                  color: "#FAF6F0",
-                }}
-              >
-                Not an ad. A relationship.
-              </h2>
-            </FadeUp>
-
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "16px",
-                color: "#A0A0A0",
-                fontSize: "1rem",
-                lineHeight: 1.8,
-                textAlign: "center",
-              }}
-            >
-              <FadeUp delay={0.2}>
-                <p>
-                  704 Collective is built on real connections. That philosophy
-                  extends to how we work with partners. No banner ads. No
-                  generic directories. No pay-to-play that nobody notices.
-                </p>
-              </FadeUp>
-
-              <FadeUp delay={0.3}>
-                <p>
-                  Our partners are woven into the experience — hosting events,
-                  providing products, and aligning their brands with a curated
-                  audience that actually pays attention.
-                </p>
-              </FadeUp>
-
-              <FadeUp delay={0.4}>
-                <p>
-                  Backed by{" "}
-                  <a
-                    href="https://cltbucketlist.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: "#C6A664", textDecoration: "none" }}
-                  >
-                    CLTBucketlist.com
-                  </a>{" "}
-                  — Charlotte{"'"}s largest local guide reaching 50,000+ residents
-                  monthly — your partnership has reach that extends far beyond
-                  our membership.
-                </p>
-              </FadeUp>
+                Learn More
+              </a>
             </div>
           </div>
         </section>
 
-        {/* ════════════════════════════════════════════
-            THREE PARTNER TYPES
-        ════════════════════════════════════════════ */}
-        <section
-          id="types"
-          style={{ backgroundColor: "#2E2E2E", padding: "80px 24px" }}
-        >
-          <div style={{ maxWidth: "1000px", margin: "0 auto" }}>
-            <div style={{ textAlign: "center", marginBottom: "56px" }}>
-              <FadeUp>
-                <SectionLabel text="Partner Types" />
-              </FadeUp>
+        {/* Partner types */}
+        <section id="types" className="py-20 sm:py-28 px-4 sm:px-6 scroll-mt-24">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-3xl sm:text-4xl font-bold text-center mb-4">Partner types</h2>
+            <p className="text-white/55 text-center max-w-2xl mx-auto mb-14">
+              Four ways to plug into the 704 ecosystem—each role is designed for how you show up in Charlotte&apos;s
+              event landscape.
+            </p>
 
-              <FadeUp delay={0.1}>
-                <h2
-                  style={{
-                    fontSize: "clamp(1.75rem, 4vw, 2.25rem)",
-                    fontWeight: 700,
-                    letterSpacing: "-0.025em",
-                    marginBottom: "16px",
-                    color: "#FAF6F0",
-                  }}
-                >
-                  Three ways to partner
-                </h2>
-              </FadeUp>
-
-              <FadeUp delay={0.15}>
-                <p
-                  style={{
-                    color: "#A0A0A0",
-                    maxWidth: "500px",
-                    margin: "0 auto",
-                    fontSize: "0.95rem",
-                    lineHeight: 1.7,
-                  }}
-                >
-                  Pick one, two, or all three. Many partners fit more than one
-                  category. We{"'"}ll build something that works for you.
-                </p>
-              </FadeUp>
-            </div>
-
-            <StaggerContainer
-              staggerDelay={0.15}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3, 1fr)",
-                gap: "20px",
-              }}
-              className="partner-types-grid"
-            >
-              {partnerTypes.map((p, i) => (
-                <StaggerItem
-                  key={i}
-                  className="card-hover"
-                  style={{
-                    backgroundColor: "#1A1A1A",
-                    border: `1px solid ${p.borderAccent}`,
-                    borderRadius: "16px",
-                    padding: "36px 28px",
-                    textAlign: "left",
-                    display: "flex",
-                    flexDirection: "column",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      marginBottom: "8px",
-                    }}
-                  >
-                    <h3
-                      style={{
-                        fontSize: "1.25rem",
-                        fontWeight: 700,
-                        color: "#FAF6F0",
-                      }}
-                    >
-                      {p.type}
-                    </h3>
-                    <TooltipIcon text={p.idealFor} />
-                  </div>
-
-                  <p
-                    style={{
-                      fontSize: "0.8125rem",
-                      color: "#C6A664",
-                      fontWeight: 600,
-                      marginBottom: "16px",
-                    }}
-                  >
-                    {p.tagline}
-                  </p>
-
-                  <p
-                    style={{
-                      fontSize: "0.85rem",
-                      color: "#A0A0A0",
-                      lineHeight: 1.7,
-                      marginBottom: "24px",
-                    }}
-                  >
-                    {p.description}
-                  </p>
-
-                  <div style={{ marginTop: "auto" }}>
-                    <p
-                      style={{
-                        fontSize: "0.6875rem",
-                        fontWeight: 700,
-                        letterSpacing: "0.1em",
-                        textTransform: "uppercase",
-                        color: "rgba(255, 255, 255, 0.3)",
-                        marginBottom: "12px",
-                      }}
-                    >
-                      What{"'"}s Included
-                    </p>
-                    {p.includes.map((item, j) => (
-                      <div
-                        key={j}
-                        style={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          gap: "8px",
-                          marginBottom: "8px",
-                        }}
-                      >
-                        <span
-                          style={{
-                            color: "#C6A664",
-                            fontSize: "10px",
-                            marginTop: "4px",
-                            flexShrink: 0,
-                          }}
-                        >
-                          {"—"}
-                        </span>
-                        <span
-                          style={{
-                            color: "rgba(255, 255, 255, 0.55)",
-                            fontSize: "0.8rem",
-                            lineHeight: 1.5,
-                          }}
-                        >
-                          {item}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </StaggerItem>
-              ))}
-            </StaggerContainer>
-          </div>
-        </section>
-
-        {/* ════════════════════════════════════════════
-            HOW IT WORKS
-        ════════════════════════════════════════════ */}
-        <section style={{ backgroundColor: "#1A1A1A", padding: "80px 24px" }}>
-          <div style={{ maxWidth: "700px", margin: "0 auto" }}>
-            <div style={{ textAlign: "center", marginBottom: "48px" }}>
-              <FadeUp>
-                <SectionLabel text="Process" />
-              </FadeUp>
-
-              <FadeUp delay={0.1}>
-                <h2
-                  style={{
-                    fontSize: "clamp(1.75rem, 4vw, 2.25rem)",
-                    fontWeight: 700,
-                    letterSpacing: "-0.025em",
-                    marginBottom: "16px",
-                    color: "#FAF6F0",
-                  }}
-                >
-                  How it works
-                </h2>
-              </FadeUp>
-
-              <FadeUp delay={0.15}>
-                <p
-                  style={{
-                    color: "#A0A0A0",
-                    maxWidth: "460px",
-                    margin: "0 auto",
-                    fontSize: "0.95rem",
-                    lineHeight: 1.7,
-                  }}
-                >
-                  From application to activation — here{"'"}s what to expect.
-                </p>
-              </FadeUp>
-            </div>
-
-            <StaggerContainer staggerDelay={0.12}>
-              {howItWorks.map((item, i) => (
-                <StaggerItem key={i}>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "20px",
-                      padding: "24px 0",
-                      borderBottom:
-                        i < howItWorks.length - 1
-                          ? "1px solid rgba(255, 255, 255, 0.06)"
-                          : "none",
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: "0.75rem",
-                        fontWeight: 700,
-                        color: "#C6A664",
-                        minWidth: "28px",
-                        paddingTop: "3px",
-                      }}
-                    >
-                      {item.step}
-                    </span>
-                    <div>
-                      <h3
-                        style={{
-                          fontSize: "1rem",
-                          fontWeight: 700,
-                          color: "#FAF6F0",
-                          marginBottom: "6px",
-                        }}
-                      >
-                        {item.title}
-                      </h3>
-                      <p
-                        style={{
-                          fontSize: "0.875rem",
-                          color: "#A0A0A0",
-                          lineHeight: 1.65,
-                        }}
-                      >
-                        {item.desc}
-                      </p>
-                    </div>
-                  </div>
-                </StaggerItem>
-              ))}
-            </StaggerContainer>
-          </div>
-        </section>
-
-        {/* ════════════════════════════════════════════
-            APPLICATION
-        ════════════════════════════════════════════ */}
-        <section
-          id="apply"
-          style={{ backgroundColor: "#2E2E2E", padding: "80px 24px" }}
-        >
-          <div style={{ maxWidth: "600px", margin: "0 auto" }}>
-            <div style={{ textAlign: "center", marginBottom: "40px" }}>
-              <FadeUp>
-                <SectionLabel text="Apply" />
-              </FadeUp>
-
-              <FadeUp delay={0.1}>
-                <h2
-                  style={{
-                    fontSize: "clamp(1.75rem, 4vw, 2.25rem)",
-                    fontWeight: 700,
-                    letterSpacing: "-0.025em",
-                    marginBottom: "12px",
-                    color: "#FAF6F0",
-                  }}
-                >
-                  Become a 704 Partner
-                </h2>
-              </FadeUp>
-
-              <FadeUp delay={0.15}>
-                <p
-                  style={{
-                    color: "#A0A0A0",
-                    maxWidth: "420px",
-                    margin: "0 auto",
-                    fontSize: "0.95rem",
-                  }}
-                >
-                  Tell us about your business. Select which partner type(s)
-                  you{"'"}re interested in. We{"'"}ll be in touch within 48 hours.
-                </p>
-              </FadeUp>
-            </div>
-
-            <ScaleUp delay={0.2}>
-              <div
-                style={{
-                  backgroundColor: "#1A1A1A",
-                  border: "1px solid rgba(255, 255, 255, 0.06)",
-                  borderRadius: "16px",
-                  padding: "56px 32px",
-                  textAlign: "center",
-                  minHeight: "300px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <div>
-                  <p
-                    style={{
-                      color: "rgba(250,246,240,0.2)",
-                      fontSize: "0.85rem",
-                      marginBottom: "8px",
-                    }}
-                  >
-                    [Partner application form will be built here]
-                  </p>
-                  <p
-                    style={{
-                      color: "rgba(250,246,240,0.12)",
-                      fontSize: "0.75rem",
-                      marginBottom: "24px",
-                    }}
-                  >
-                    Supabase-powered form with multi-select partner types
-                  </p>
-                  <Link
-                    href="/partners/login"
-                    style={{
-                      color: "#C6A664",
-                      fontSize: "0.8125rem",
-                      textDecoration: "none",
-                      borderBottom: "1px solid rgba(198, 166, 100, 0.3)",
-                      paddingBottom: "2px",
-                    }}
-                  >
-                    Already a partner? Log in →
-                  </Link>
+            <div className="grid md:grid-cols-2 gap-8">
+              <article className="rounded-2xl border border-white/10 bg-[#141414] p-8 hover:border-[#D4A853]/35 transition-colors">
+                <div className="w-12 h-12 rounded-xl bg-[#D4A853]/15 flex items-center justify-center mb-6">
+                  <Store className="w-6 h-6 text-[#D4A853]" aria-hidden />
                 </div>
-              </div>
-            </ScaleUp>
-          </div>
-        </section>
+                <h3 className="text-xl font-semibold text-[#D4A853] mb-4">Vendor</h3>
+                <div className="space-y-4 text-white/70 text-sm sm:text-base leading-relaxed">
+                  <p>
+                    Vendors are the heartbeat of our floor experience—pop-up makers, mobile service providers, artisan
+                    producers, food and beverage artisans, and teams who turn a corner of the room into a moment people
+                    remember. At 704 Collective events, we curate density so every vendor gets real foot traffic and
+                    conversation, not a lonely table at the back of a ballroom.
+                  </p>
+                  <p>
+                    You might pour specialty coffee for a sunrise social, plate small bites beside a DJ set, offer
+                    flash wellness services between panels, or run experiential demos that let guests touch, taste, and
+                    try what you build. Charlotte&apos;s scene rewards operators who show up with craft and story—and we
+                    design layouts so your brand isn&apos;t competing with chaos.
+                  </p>
+                  <p>
+                    In return, you gain access to repeat touchpoints with our social and business members, organic
+                    content moments captured for recap reels, and introductions to venues and sponsors who need reliable
+                    partners for future activations across the city.
+                  </p>
+                </div>
+              </article>
 
-        {/* ════════════════════════════════════════════
-            FAQ
-        ════════════════════════════════════════════ */}
-        <section style={{ backgroundColor: "#1A1A1A", padding: "80px 24px" }}>
-          <div style={{ maxWidth: "640px", margin: "0 auto" }}>
-            <div style={{ textAlign: "center", marginBottom: "48px" }}>
-              <FadeUp>
-                <SectionLabel text="FAQ" />
-              </FadeUp>
+              <article className="rounded-2xl border border-white/10 bg-[#141414] p-8 hover:border-[#D4A853]/35 transition-colors">
+                <div className="w-12 h-12 rounded-xl bg-[#D4A853]/15 flex items-center justify-center mb-6">
+                  <Building2 className="w-6 h-6 text-[#D4A853]" aria-hidden />
+                </div>
+                <h3 className="text-xl font-semibold text-[#D4A853] mb-4">Venue</h3>
+                <div className="space-y-4 text-white/70 text-sm sm:text-base leading-relaxed">
+                  <p>
+                    Venues are where the story of the night is written—coffee shops that flip into intimate mixers,
+                    breweries with room for both dance floors and breakout conversations, gyms and studios that host
+                    wellness-forward gatherings, rooftops with skyline drama, and private rooms built for curated groups
+                    of fifty to two hundred.
+                  </p>
+                  <p>
+                    We partner with spaces that want more than a rental invoice: you&apos;re looking for community
+                    exposure, polished media coverage, and repeat bookings with audiences who actually show up and post
+                    about the experience. 704 Collective brings production discipline, respectful load-in, and guests who
+                    align with Charlotte&apos;s creative and professional energy.
+                  </p>
+                  <p>
+                    Expect co-marketing on event pages, highlight features when the room shines, and long-term
+                    introductions to sponsors and vendors who need a home for their next activation—so one great night
+                    turns into a pipeline of aligned bookings.
+                  </p>
+                </div>
+              </article>
 
-              <FadeUp delay={0.1}>
-                <h2
-                  style={{
-                    fontSize: "clamp(1.75rem, 4vw, 2.25rem)",
-                    fontWeight: 700,
-                    letterSpacing: "-0.025em",
-                    color: "#FAF6F0",
-                  }}
-                >
-                  Common Questions
-                </h2>
-              </FadeUp>
+              <article className="rounded-2xl border border-white/10 bg-[#141414] p-8 hover:border-[#D4A853]/35 transition-colors">
+                <div className="w-12 h-12 rounded-xl bg-[#D4A853]/15 flex items-center justify-center mb-6">
+                  <Sparkles className="w-6 h-6 text-[#D4A853]" aria-hidden />
+                </div>
+                <h3 className="text-xl font-semibold text-[#D4A853] mb-4">Sponsor</h3>
+                <div className="space-y-4 text-white/70 text-sm sm:text-base leading-relaxed">
+                  <p>
+                    Sponsorship with 704 Collective is built for mid-market and enterprise teams that want brand
+                    visibility where it matters—on-site at events sized roughly fifty to three hundred attendees, where
+                    logos aren&apos;t wallpaper but part of a narrative guests actually engage with.
+                  </p>
+                  <p>
+                    Packages can include social coverage across 704 Collective and CLTBucketlist channels, booth or
+                    lounge presence, banner placements in high-traffic moments, speaking or hosting credits, and
+                    storytelling that connects your brand to Charlotte&apos;s most active social and business circles—not
+                    a spray-and-pray impressions chart.
+                  </p>
+                  <p>
+                    We work with marketing leads who care about creative alignment, measurable reach, and relationships
+                    with organizers who will pick up the phone for the next campaign. If you want to own a vertical
+                    night, launch a product with a built-in crowd, or anchor a season of programming, we&apos;ll shape a
+                    package that fits how Charlotte shows up.
+                  </p>
+                </div>
+              </article>
+
+              <article className="rounded-2xl border border-white/10 bg-[#141414] p-8 hover:border-[#D4A853]/35 transition-colors">
+                <div className="w-12 h-12 rounded-xl bg-[#D4A853]/15 flex items-center justify-center mb-6">
+                  <Handshake className="w-6 h-6 text-[#D4A853]" aria-hidden />
+                </div>
+                <h3 className="text-xl font-semibold text-[#D4A853] mb-4">Partner</h3>
+                <div className="space-y-4 text-white/70 text-sm sm:text-base leading-relaxed">
+                  <p>
+                    The Partner track is for organizations that don&apos;t fit a single box—other social clubs, business
+                    networks, lifestyle labels, and mission-driven community groups that want to co-create experiences
+                    rather than buy a logo slot. You bring an audience, a point of view, or a format we can braid into
+                    704&apos;s calendar.
+                  </p>
+                  <p>
+                    Think cross-promoted guest lists, shared content series, joint off-sites, and collaborative events
+                    that feel bigger than any one brand could pull alone. We&apos;re interested in partners who want
+                    synergy in the Charlotte market: introductions that compound, audiences that overlap in productive
+                    ways, and programming that raises the bar for what a &quot;local event&quot; can mean.
+                  </p>
+                  <p>
+                    This path is the most bespoke—we&apos;ll workshop concepts, align on values, and build a roadmap
+                    that respects both communities. If you&apos;re here to experiment, elevate, and grow together, the
+                    Partner relationship is where we go deepest.
+                  </p>
+                </div>
+              </article>
             </div>
-
-            <StaggerContainer staggerDelay={0.08}>
-              {faqs.map((faq, i) => (
-                <StaggerItem key={i}>
-                  <details
-                    className="faq-item"
-                    style={{
-                      borderBottom: "1px solid rgba(255,255,255,0.06)",
-                      padding: "18px 0",
-                    }}
-                  >
-                    <summary
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        cursor: "pointer",
-                      }}
-                    >
-                      <span
-                        style={{
-                          color: "#FAF6F0",
-                          fontWeight: 600,
-                          fontSize: "0.95rem",
-                          paddingRight: "24px",
-                          lineHeight: 1.4,
-                        }}
-                      >
-                        {faq.q}
-                      </span>
-                      <span
-                        style={{
-                          color: "#C6A664",
-                          fontSize: "1.25rem",
-                          flexShrink: 0,
-                          transition: "transform 200ms ease",
-                        }}
-                      >
-                        +
-                      </span>
-                    </summary>
-                    <p
-                      style={{
-                        color: "#A0A0A0",
-                        fontSize: "0.85rem",
-                        marginTop: "14px",
-                        lineHeight: 1.7,
-                        paddingRight: "32px",
-                      }}
-                    >
-                      {faq.a}
-                    </p>
-                  </details>
-                </StaggerItem>
-              ))}
-            </StaggerContainer>
           </div>
         </section>
 
-        {/* ════════════════════════════════════════════
-            FINAL CTA
-        ════════════════════════════════════════════ */}
-        <GradientShift
-          style={{
-            backgroundColor: "#2E2E2E",
-            borderTop: "1px solid rgba(255,255,255,0.04)",
-            padding: "80px 24px",
-          }}
-        >
-          <div
-            style={{
-              maxWidth: "600px",
-              margin: "0 auto",
-              textAlign: "center",
-            }}
-          >
-            <FadeUp>
-              <h2
-                style={{
-                  fontSize: "clamp(1.75rem, 4vw, 2.25rem)",
-                  fontWeight: 700,
-                  letterSpacing: "-0.025em",
-                  marginBottom: "16px",
-                  color: "#FAF6F0",
-                }}
-              >
-                Let{"'"}s build something{" "}
-                <span style={{ color: "#C6A664", fontStyle: "italic" }}>
-                  together
-                </span>
-              </h2>
-            </FadeUp>
-
-            <FadeUp delay={0.1}>
-              <p
-                style={{
-                  color: "#A0A0A0",
-                  fontSize: "0.95rem",
-                  maxWidth: "420px",
-                  margin: "0 auto 32px auto",
-                }}
-              >
-                Charlotte{"'"}s most engaged community is looking for partners who
-                care as much as they do. That{"'"}s you.
-              </p>
-            </FadeUp>
-
-            <ScaleUp delay={0.2}>
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "16px",
-                  justifyContent: "center",
-                }}
-              >
-                <a
-                  href="#apply"
-                  className="btn-gold"
-                  style={{ padding: "16px 36px", fontSize: "0.875rem" }}
-                >
-                  Become a Partner
-                </a>
-                <a
-                  href="mailto:partners@704collective.com"
-                  className="btn-ghost-gold"
-                  style={{ padding: "16px 36px", fontSize: "0.875rem" }}
-                >
-                  Questions? Email Us
-                </a>
-              </div>
-            </ScaleUp>
+        {/* Featured partners */}
+        <section className="py-16 sm:py-24 px-4 sm:px-6" style={{ backgroundColor: '#F5F0E8' }}>
+          <div className="max-w-5xl mx-auto">
+            <h2 className="text-2xl sm:text-3xl font-bold text-center text-[#1A1A1A] mb-10">Proud Partners</h2>
+            <FeaturedPartnersCarousel partners={featured} />
           </div>
-        </GradientShift>
+        </section>
+
+        {/* How it works */}
+        <section className="py-20 sm:py-28 px-4 sm:px-6 border-t border-white/10">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-3xl sm:text-4xl font-bold text-center mb-14">How it works</h2>
+            <ol className="grid md:grid-cols-3 gap-10 md:gap-8">
+              {[
+                {
+                  n: '01',
+                  title: 'Apply',
+                  body: 'Tell us who you are, what you offer, and how you want to show up in the 704 ecosystem. Upload your visuals so we can see your brand the way guests will.',
+                },
+                {
+                  n: '02',
+                  title: 'Get approved',
+                  body: 'Our team reviews fit, capacity, and alignment with upcoming programming. We may follow up with a quick call to design the right partnership lane for you.',
+                },
+                {
+                  n: '03',
+                  title: 'Start partnering',
+                  body: 'Once approved, you&apos;ll plug into events, co-marketing, and introductions across Charlotte. We operate as an extension of your team—not a one-off transaction.',
+                },
+              ].map((step) => (
+                <li key={step.n} className="text-center md:text-left">
+                  <span className="inline-flex items-center justify-center w-11 h-11 rounded-full border border-[#D4A853]/50 text-[#D4A853] font-bold text-sm mb-4">
+                    {step.n}
+                  </span>
+                  <h3 className="text-lg font-semibold text-white mb-3">{step.title}</h3>
+                  <p className="text-white/65 text-sm leading-relaxed">{step.body}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        {/* Final CTA */}
+        <section className="py-20 px-4 sm:px-6 bg-gradient-to-br from-[#2a2419] via-[#1a1510] to-[#0a0a0a] border-t border-[#D4A853]/20">
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="text-2xl sm:text-4xl font-bold text-white mb-8 leading-tight">
+              Ready to Partner with Charlotte&apos;s Premier Community?
+            </h2>
+            <Link
+              href="/partners/apply"
+              className="inline-flex items-center justify-center px-10 py-4 rounded-lg bg-[#D4A853] hover:bg-[#E4C878] text-[#1A1A1A] font-semibold transition-colors"
+            >
+              Become a Partner
+            </Link>
+          </div>
+        </section>
       </main>
       <Footer />
     </>

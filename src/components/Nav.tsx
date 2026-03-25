@@ -117,6 +117,7 @@ export default function Nav() {
           </div>
 
           <Link href="/events" className="nav-link">Events</Link>
+          <Link href="/partners" className="nav-link">Partners</Link>
           <Link href="/blog" className="nav-link">Blog</Link>
 
           {/* Social Icons */}
@@ -154,7 +155,7 @@ export default function Nav() {
                 style={{ backgroundColor: "transparent", color: "#FFFFFF", fontWeight: 600, fontSize: "0.8125rem", padding: "10px 24px", borderRadius: "8px", textDecoration: "none", letterSpacing: "0.02em", transition: "all 200ms ease", border: "1px solid rgba(255, 255, 255, 0.25)" }}
                 onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.5)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(255, 255, 255, 0.1)"; }}
                 onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.25)"; e.currentTarget.style.boxShadow = "none"; }}>
-                Member Login
+                Login
               </Link>
             </>
           )}
@@ -222,6 +223,10 @@ export default function Nav() {
               style={{ color: "rgba(255, 255, 255, 0.7)", textDecoration: "none", padding: "16px 0", fontSize: "1rem", borderBottom: "1px solid rgba(255, 255, 255, 0.06)", display: "flex", alignItems: "center", minHeight: "56px" }}>
               Events
             </Link>
+            <Link href="/partners" role="menuitem" onClick={() => setMobileOpen(false)}
+              style={{ color: "rgba(255, 255, 255, 0.7)", textDecoration: "none", padding: "16px 0", fontSize: "1rem", borderBottom: "1px solid rgba(255, 255, 255, 0.06)", display: "flex", alignItems: "center", minHeight: "56px" }}>
+              Partners
+            </Link>
             <Link href="/blog" role="menuitem" onClick={() => setMobileOpen(false)}
               style={{ color: "rgba(255, 255, 255, 0.7)", textDecoration: "none", padding: "16px 0", fontSize: "1rem", borderBottom: "1px solid rgba(255, 255, 255, 0.06)", display: "flex", alignItems: "center", minHeight: "56px" }}>
               Blog
@@ -253,7 +258,7 @@ export default function Nav() {
                   </Link>
                   <Link href="/login" onClick={() => setMobileOpen(false)}
                     style={{ backgroundColor: "transparent", color: "#FFFFFF", fontWeight: 600, fontSize: "0.9375rem", padding: "14px 24px", borderRadius: "8px", textDecoration: "none", textAlign: "center", display: "block", border: "1px solid rgba(255, 255, 255, 0.25)" }}>
-                    Member Login
+                    Login
                   </Link>
                 </div>
               )}

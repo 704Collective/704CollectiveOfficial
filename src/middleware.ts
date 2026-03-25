@@ -21,5 +21,7 @@ export const config = {
     '/admin/:path*',
     '/api/:path*',
     '/auth/callback',
+    '/partners',
+    '/partners/:path*',
   ],
 };

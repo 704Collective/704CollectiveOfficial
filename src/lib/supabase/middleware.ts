@@ -43,13 +43,13 @@ export async function updateSession(request: NextRequest) {
 
   // ── Route categories ────────────────────────────────────────────────────────
   const protectedPaths = ['/dashboard', '/admin', '/events/manage', '/business-portal'];
-  const openAuthPaths    = ['/join/checkout', '/welcome', '/apply/business', '/signup'];  // exempt from subscription gate
+  const openAuthPaths    = ['/join/checkout', '/welcome', '/apply/business', '/signup', '/partners'];  // exempt from subscription gate
   const authPaths        = ['/login'];
   const signupPaths: string[] = [];                               // folded into openAuthPaths
 
   const isProtectedRoute = protectedPaths.some((p) => path.startsWith(p));
   const isAuthRoute      = authPaths.some((p) => path.startsWith(p));
-  const isOpenAuthRoute  = openAuthPaths.some((p) => path.startsWith(p));
+  const isOpenAuthRoute = openAuthPaths.some((p) => path.startsWith(p));
   const isSignupRoute    = signupPaths.some((p) => path.startsWith(p));
 
   // ── 0. Banned user check — applies to all authenticated users ─────────────
@@ -115,6 +115,7 @@ export async function updateSession(request: NextRequest) {
       profile?.member_type === 'non_member';
     const isBanned        = profile?.banned === true;
     const isPending       = profile?.application_status === 'pending';
+    const isPartner       = profile?.member_type === 'partner';
 
     // ── Banned users → login with error (fallback check) ─────────────────────
     if (isBanned) {
@@ -148,7 +149,7 @@ export async function updateSession(request: NextRequest) {
 
     // ── Subscription gate for dashboard ──────────────────────────────────────
     // Non-members (social/business applicants) land on NonMemberDashboard — let them through
-    if (path.startsWith('/dashboard') && !isActive && !isAdmin && !isNonMember) {
+    if (path.startsWith('/dashboard') && !isActive && !isAdmin && !isNonMember && !isPartner) {
       const url = request.nextUrl.clone();
       url.pathname = '/signup';
       return NextResponse.redirect(url);

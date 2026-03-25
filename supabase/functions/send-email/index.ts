@@ -385,6 +385,55 @@ ${ctaButton("Open your dashboard", data.dashboardUrl)}
   };
 }
 
+function partnerApplicationSubmittedTemplate(data: { name: string; companyName: string; origin?: string }): { subject: string; html: string } {
+  const base = data.origin ?? "https://704collective.com";
+  return {
+    subject: "We received your 704 Collective partner application",
+    html: baseLayout(`
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hi ${data.name},</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">
+  Thank you for applying to partner with 704 Collective as <strong style="color:${BRAND.text};">${data.companyName}</strong>.
+  Our team is reviewing your application and will follow up soon.
+</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">
+  If you have questions in the meantime, reply to this email or write to hello@704collective.com.
+</p>
+${ctaButton("Visit 704 Collective", base)}
+`, base),
+  };
+}
+
+function partnerNewApplicationAdminTemplate(data: { companyName: string; applicantEmail: string }): { subject: string; html: string } {
+  return {
+    subject: `New partner application: ${data.companyName}`,
+    html: baseLayout(`
+<h2 style="margin:0 0 8px;font-size:20px;font-weight:700;color:${BRAND.text};">New partner application</h2>
+<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">
+  <strong style="color:${BRAND.text};">Company:</strong> ${data.companyName}
+</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">
+  <strong style="color:${BRAND.text};">Applicant email:</strong> ${data.applicantEmail}
+</p>
+<p style="margin:0;font-size:14px;color:${BRAND.textMuted};">Review applications in the admin dashboard when partner tooling is enabled.</p>
+`),
+  };
+}
+
+function partnerWelcomeInviteTemplate(data: { name: string; dashboardUrl: string; origin?: string }): { subject: string; html: string } {
+  const base = data.origin ?? "https://704collective.com";
+  return {
+    subject: "You're approved — welcome to 704 Collective partners",
+    html: baseLayout(`
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hi ${data.name},</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">
+  Your partner invitation has been accepted. You're approved to collaborate with 704 Collective — we're excited to build with you in Charlotte.
+</p>
+${ctaButton("Go to your dashboard", data.dashboardUrl)}
+<p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">Log in with the email and password you used to apply.</p>
+`, base),
+  };
+}
+
 // ── template router ──────────────────────────────────────────────────────
 
 function getTemplate(template: string, data: Record<string, unknown>): { subject: string; html: string } {
@@ -432,6 +481,12 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
       return hubAddedTemplate(data as { name: string; hubTitle: string; addedByName: string; hubUrl: string });
     case "feed-mention":
       return feedMentionTemplate(data as { name: string; mentionerName: string; dashboardUrl: string });
+    case "partner-application-submitted":
+      return partnerApplicationSubmittedTemplate(data as { name: string; companyName: string; origin?: string });
+    case "partner-new-application-admin":
+      return partnerNewApplicationAdminTemplate(data as { companyName: string; applicantEmail: string });
+    case "partner-welcome-invite":
+      return partnerWelcomeInviteTemplate(data as { name: string; dashboardUrl: string; origin?: string });
     default:
       throw new Error(`Unknown email template: ${template}`);
   }
@@ -457,7 +512,7 @@ serve(async (req) => {
     const isServiceRole = token === serviceRoleKey;
 
     // Templates that require service role (internal/admin only)
-    const restrictedTemplates = ["admin-invite", "welcome-setup", "welcome", "password-setup", "event-change", "guest-followup", "ticket-followup", "guest-pass", "feed-mention"];
+    const restrictedTemplates = ["admin-invite", "welcome-setup", "welcome", "password-setup", "event-change", "guest-followup", "ticket-followup", "guest-pass", "feed-mention", "partner-application-submitted", "partner-new-application-admin", "partner-welcome-invite"];
 
     // ── Parse body first so we can check template ──
     const { to, template, data, skipCc } = await req.json();

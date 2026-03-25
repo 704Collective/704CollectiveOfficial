@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Nav from '@/components/Nav';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -9,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, Crown, Ticket } from 'lucide-react';
+import { Loader2, Crown, Ticket, X } from 'lucide-react';
 
 type Step = 'form' | 'verify' | 'choice';
 
@@ -25,6 +26,7 @@ export default function SignupPage() {
   const [email, setEmail]         = useState('');
   const [phone, setPhone]         = useState('');
   const [password, setPassword]   = useState('');
+  const [showPartnerBanner, setShowPartnerBanner] = useState(true);
 
   // ── Step 1: Create account ──────────────────────────────────────
   const handleCreateAccount = async (e: React.FormEvent) => {
@@ -247,6 +249,24 @@ export default function SignupPage() {
   // ── Step 1: Signup form ─────────────────────────────────────────
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {showPartnerBanner && (
+        <div className="relative z-[60] border-b border-amber-200/50 bg-[#F3E9D2] text-[#3d3426] px-4 py-3 pr-12 text-center text-sm leading-snug">
+          <p>
+            Trying to join as a partner instead of a member? You&apos;re on the wrong page!{' '}
+            <Link href="/partners" className="font-semibold text-[#8B6914] underline underline-offset-2 hover:text-[#6b5010]">
+              Click here to join as a partner
+            </Link>
+          </p>
+          <button
+            type="button"
+            aria-label="Dismiss banner"
+            onClick={() => setShowPartnerBanner(false)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-black/5 text-[#5c4f3a] transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
       <Nav />
       <div className="flex-1 flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-md space-y-8">

@@ -39,7 +39,7 @@ function Login() {
   const { user, loading: authLoading } = useAuth();
   const isDeactivated = searchParams.get('deactivated') === 'true';
   const isBanned = searchParams.get('error') === 'banned';
-  usePageTitle('Sign In');
+  usePageTitle('Login');
 
   useEffect(() => {
     const error = searchParams.get('error');
