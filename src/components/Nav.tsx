@@ -111,6 +111,13 @@ export default function Nav() {
                     <span style={{ fontWeight: 600 }}>704 Business</span>
                     <span style={{ display: "block", fontSize: "0.75rem", color: "rgba(255, 255, 255, 0.4)", marginTop: "2px" }}>Strategic networking &amp; growth</span>
                   </Link>
+                  <Link href="/partners" role="menuitem"
+                    style={{ display: "block", padding: "10px 16px", borderRadius: "8px", fontSize: "0.875rem", color: "rgba(255, 255, 255, 0.7)", textDecoration: "none", transition: "all 200ms ease" }}
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.06)"; e.currentTarget.style.color = "#FFFFFF"; }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "rgba(255, 255, 255, 0.7)"; }}>
+                    <span style={{ fontWeight: 600 }}>Partners</span>
+                    <span style={{ display: "block", fontSize: "0.75rem", color: "rgba(255, 255, 255, 0.4)", marginTop: "2px" }}>Directory, tiers &amp; collaborations</span>
+                  </Link>
                 </div>
               </div>
             )}
@@ -217,15 +224,15 @@ export default function Nav() {
                 style={{ display: "flex", alignItems: "center", color: "rgba(255, 255, 255, 0.7)", textDecoration: "none", padding: "4px 0 4px 12px", fontSize: "1rem", minHeight: "48px" }}>
                 704 Business
               </Link>
+              <Link href="/partners" role="menuitem" onClick={() => setMobileOpen(false)}
+                style={{ display: "flex", alignItems: "center", color: "rgba(255, 255, 255, 0.7)", textDecoration: "none", padding: "4px 0 4px 12px", fontSize: "1rem", minHeight: "48px" }}>
+                Partners
+              </Link>
             </div>
 
             <Link href="/events" role="menuitem" onClick={() => setMobileOpen(false)}
               style={{ color: "rgba(255, 255, 255, 0.7)", textDecoration: "none", padding: "16px 0", fontSize: "1rem", borderBottom: "1px solid rgba(255, 255, 255, 0.06)", display: "flex", alignItems: "center", minHeight: "56px" }}>
               Events
-            </Link>
-            <Link href="/partners" role="menuitem" onClick={() => setMobileOpen(false)}
-              style={{ color: "rgba(255, 255, 255, 0.7)", textDecoration: "none", padding: "16px 0", fontSize: "1rem", borderBottom: "1px solid rgba(255, 255, 255, 0.06)", display: "flex", alignItems: "center", minHeight: "56px" }}>
-              Partners
             </Link>
             <Link href="/blog" role="menuitem" onClick={() => setMobileOpen(false)}
               style={{ color: "rgba(255, 255, 255, 0.7)", textDecoration: "none", padding: "16px 0", fontSize: "1rem", borderBottom: "1px solid rgba(255, 255, 255, 0.06)", display: "flex", alignItems: "center", minHeight: "56px" }}>

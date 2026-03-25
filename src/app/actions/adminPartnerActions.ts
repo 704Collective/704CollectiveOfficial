@@ -165,10 +165,58 @@ export async function togglePartnerFeatured(
 
   const { error: e2 } = await gate.admin
     .from('partner_listings')
-    .update({ is_featured: featured })
+    .update(
+      featured ? { is_featured: true } : { is_featured: false, featured_order: null }
+    )
     .eq('user_id', partnerUserId);
   if (e2) return { ok: false, error: e2.message };
 
+  return { ok: true };
+}
+
+export async function setPartnerFeaturedSettings(
+  partnerUserId: string,
+  featured: boolean,
+  featuredOrder: number
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const gate = await assertAdmin();
+  if (!gate.ok) return gate;
+  if (featuredOrder < 0 || !Number.isFinite(featuredOrder)) {
+    return { ok: false, error: 'Invalid order' };
+  }
+
+  const { error: e1 } = await gate.admin
+    .from('profiles')
+    .update({ is_featured_partner: featured })
+    .eq('id', partnerUserId);
+  if (e1) return { ok: false, error: e1.message };
+
+  const { error: e2 } = await gate.admin
+    .from('partner_listings')
+    .update({
+      is_featured: featured,
+      featured_order: featured ? Math.floor(featuredOrder) : null,
+    })
+    .eq('user_id', partnerUserId);
+  if (e2) return { ok: false, error: e2.message };
+
+  return { ok: true };
+}
+
+export async function saveFeaturedPartnersDisplayOrder(
+  orderedPartnerUserIds: string[]
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const gate = await assertAdmin();
+  if (!gate.ok) return gate;
+  const ids = [...new Set(orderedPartnerUserIds.filter(Boolean))];
+  for (let i = 0; i < ids.length; i++) {
+    const { error } = await gate.admin
+      .from('partner_listings')
+      .update({ featured_order: i })
+      .eq('user_id', ids[i])
+      .eq('is_featured', true);
+    if (error) return { ok: false, error: error.message };
+  }
   return { ok: true };
 }
 

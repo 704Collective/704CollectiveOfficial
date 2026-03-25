@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { AdminLayout } from '@/components/AdminLayout';
 import { useAuth } from '@/hooks/useAuth';
@@ -123,8 +123,10 @@ function allowedRecipient(p: SearchHit) {
 
 export default function AdminInboxPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, profile, isAdmin, loading } = useAuth();
   usePageTitle('Team Inbox');
+  const openConvId = searchParams.get('c');
 
   const [convs, setConvs] = useState<EnrichedConv[]>([]);
   const [loadingList, setLoadingList] = useState(true);
@@ -242,6 +244,12 @@ export default function AdminInboxPage() {
   useEffect(() => {
     if (!loading && !isAdmin) router.replace('/admin');
   }, [loading, isAdmin, router]);
+
+  useEffect(() => {
+    if (!openConvId || !user) return;
+    setUnivActive(null);
+    setActiveId(openConvId);
+  }, [openConvId, user]);
 
   useEffect(() => {
     if (isAdam) {

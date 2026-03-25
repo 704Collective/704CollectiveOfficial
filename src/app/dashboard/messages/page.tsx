@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { DashboardNav } from '@/components/DashboardNav';
-import { MessagingView } from '@/components/portal/MessagingView';
+import { MessagesPageClient } from '@/app/dashboard/messages/MessagesPageClient';
 import { useAuth } from '@/hooks/useAuth';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { Loader2 } from 'lucide-react';
@@ -38,7 +38,15 @@ export default function MessagesPage() {
       <Header />
       <DashboardNav />
       <main className="max-w-7xl mx-auto px-4 py-6">
-        <MessagingView />
+        <Suspense
+          fallback={
+            <div className="flex justify-center py-24">
+              <Loader2 className="h-8 w-8 animate-spin text-[#D4A853]" />
+            </div>
+          }
+        >
+          <MessagesPageClient />
+        </Suspense>
       </main>
     </div>
   );

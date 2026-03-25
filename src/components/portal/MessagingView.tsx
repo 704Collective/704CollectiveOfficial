@@ -305,7 +305,7 @@ function MessageBubble({
 
 // ── Main component ─────────────────────────────────────────────────────────
 
-export function MessagingView() {
+export function MessagingView({ initialDirectPeerId }: { initialDirectPeerId?: string | null }) {
   const { user, profile } = useAuth();
 
   // Conversations
@@ -393,6 +393,64 @@ export function MessagingView() {
   }, [user]);
 
   useEffect(() => { fetchConversations(); }, [fetchConversations]);
+
+  const dmOpenedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const peer = initialDirectPeerId?.trim();
+    if (!peer || !user || peer === user.id || convLoading) return;
+    if (dmOpenedRef.current === peer) return;
+
+    (async () => {
+      try {
+        const { data: existing } = await supabase
+          .from('conversations')
+          .select(`id, participants:conversation_participants(user_id)`)
+          .eq('type', 'direct');
+
+        const match = (existing ?? []).find((c) => {
+          const ids = (c.participants as { user_id: string }[]).map((p) => p.user_id);
+          return ids.includes(user.id) && ids.includes(peer) && ids.length === 2;
+        });
+
+        if (match) {
+          dmOpenedRef.current = peer;
+          setSelectedConvId(match.id);
+          setShowSidebar(false);
+          return;
+        }
+
+        const { data: conv, error } = await supabase
+          .from('conversations')
+          .insert({ type: 'direct', created_by: user.id })
+          .select()
+          .single();
+
+        if (error || !conv) throw error;
+
+        await supabase.from('conversation_participants').insert([
+          { conversation_id: conv.id, user_id: user.id },
+          { conversation_id: conv.id, user_id: peer },
+        ]);
+
+        if (profile) {
+          notifyNewConversation({
+            conversationId: conv.id,
+            senderName: profile.full_name,
+            senderUserId: user.id,
+            recipientUserIds: [peer],
+          }).catch(() => {});
+        }
+
+        dmOpenedRef.current = peer;
+        await fetchConversations();
+        setSelectedConvId(conv.id);
+        setShowSidebar(false);
+      } catch {
+        dmOpenedRef.current = null;
+      }
+    })();
+  }, [initialDirectPeerId, user, convLoading, profile, fetchConversations]);
 
   // ── Fetch messages for selected conversation ─────────────────────────────
 

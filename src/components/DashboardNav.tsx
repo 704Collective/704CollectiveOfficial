@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Calendar, User, Settings, Bell,
-  Rss, Briefcase, MessageCircle, BookUser, Network,
+  Rss, Briefcase, MessageCircle, BookUser, Network, Handshake,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -77,7 +77,7 @@ function useUnreadMessageCount(userId: string | undefined): number {
 // ---------------------------------------------------------------------------
 export function DashboardNav() {
   const pathname = usePathname();
-  const { user, profile, isAdmin, isActiveMember, isBusinessMember } = useAuth();
+  const { user, profile, isAdmin, isSuperAdmin, isActiveMember, isBusinessMember } = useAuth();
   const unreadMessages = useUnreadMessageCount(user?.id);
 
   const isActive = (href: string, exact?: boolean) =>
@@ -89,6 +89,8 @@ export function DashboardNav() {
   const canSeeMessages      = isBusinessMember || isAdmin;
   const canSeeDirectory     = isBusinessMember || isAdmin;
   const canSeeHubs          = isBusinessMember || isAdmin;
+  const canSeePartnerDirectory =
+    (isBusinessMember && isActiveMember) || isAdmin || isSuperAdmin;
 
   const navItems: NavItem[] = [
     { href: '/dashboard',                   label: 'Overview',        icon: LayoutDashboard, exact: true },
@@ -96,6 +98,7 @@ export function DashboardNav() {
     ...(canSeeBusinessFeed ? [{ href: '/dashboard/business-feed', label: 'Business Feed', icon: Briefcase }]       : []),
     ...(canSeeMessages     ? [{ href: '/dashboard/messages',       label: 'Messages',      icon: MessageCircle, badge: unreadMessages }] : []),
     ...(canSeeDirectory    ? [{ href: '/dashboard/directory',      label: 'Directory',     icon: BookUser }]        : []),
+    ...(canSeePartnerDirectory ? [{ href: '/dashboard/partners',   label: 'Partners',      icon: Handshake }]       : []),
     ...(canSeeHubs         ? [{ href: '/dashboard/hubs',           label: 'Hubs',          icon: Network }]         : []),
     { href: '/dashboard/events',             label: 'My Events',       icon: Calendar },
     { href: '/dashboard/profile',            label: 'Profile',         icon: User },

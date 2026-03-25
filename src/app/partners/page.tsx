@@ -182,12 +182,14 @@ export default async function PartnersPage() {
         </section>
 
         {/* Featured partners */}
-        <section className="py-16 sm:py-24 px-4 sm:px-6" style={{ backgroundColor: '#F5F0E8' }}>
-          <div className="max-w-5xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl font-bold text-center text-[#1A1A1A] mb-10">Proud Partners</h2>
-            <FeaturedPartnersCarousel partners={featured} />
-          </div>
-        </section>
+        {featured.length > 0 && (
+          <section className="py-16 sm:py-24 px-4 sm:px-6" style={{ backgroundColor: '#F5F0E8' }}>
+            <div className="max-w-5xl mx-auto">
+              <h2 className="text-2xl sm:text-3xl font-bold text-center text-[#1A1A1A] mb-10">Proud Partners</h2>
+              <FeaturedPartnersCarousel partners={featured} />
+            </div>
+          </section>
+        )}
 
         {/* How it works */}
         <section className="py-20 sm:py-28 px-4 sm:px-6 border-t border-white/10">

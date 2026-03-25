@@ -29,6 +29,8 @@ import {
   denyPartnerApplication,
   markPartnerApplicationReviewing,
   togglePartnerFeatured,
+  setPartnerFeaturedSettings,
+  saveFeaturedPartnersDisplayOrder,
   removePartner,
   revokePartnerInvite,
   createPartnerInvite,
@@ -36,7 +38,8 @@ import {
   postAdminInboxMessage,
   postAdminInquiryReply,
 } from '@/app/actions/adminPartnerActions';
-import { Loader2, Mail, Star } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Loader2, Mail, Star, GripVertical } from 'lucide-react';
 
 type AppRow = {
   id: string;
@@ -60,7 +63,12 @@ type PartnerRow = {
   full_name: string | null;
   partner_types: string[] | null;
   is_featured_partner: boolean;
-  partner_listings: { company_name: string; id: string; is_featured: boolean } | null;
+  partner_listings: {
+    company_name: string;
+    id: string;
+    is_featured: boolean;
+    featured_order: number | null;
+  } | null;
 };
 
 type InviteRow = {
@@ -115,6 +123,16 @@ export default function AdminPartnersPage() {
   const [listingView, setListingView] = useState<PartnerRow | null>(null);
   const [listingDetail, setListingDetail] = useState<Record<string, unknown> | null>(null);
 
+  const [featPartner, setFeatPartner] = useState<PartnerRow | null>(null);
+  const [featOn, setFeatOn] = useState(false);
+  const [featOrder, setFeatOrder] = useState(0);
+  const [featSaving, setFeatSaving] = useState(false);
+
+  const [reorderOpen, setReorderOpen] = useState(false);
+  const [reorderList, setReorderList] = useState<{ user_id: string; company_name: string }[]>([]);
+  const [reorderDrag, setReorderDrag] = useState<number | null>(null);
+  const [reorderSaving, setReorderSaving] = useState(false);
+
   const load = useCallback(async () => {
     setLoadingData(true);
     const [a, p, i, qRes] = await Promise.all([
@@ -126,7 +144,9 @@ export default function AdminPartnersPage() {
         .order('applied_at', { ascending: false }),
       supabase
         .from('profiles')
-        .select('id, email, full_name, partner_types, is_featured_partner, partner_listings(company_name, id, is_featured)')
+        .select(
+          'id, email, full_name, partner_types, is_featured_partner, partner_listings(company_name, id, is_featured, featured_order)'
+        )
         .eq('member_type', 'partner')
         .eq('partner_status', 'approved')
         .is('deleted_at', null),
@@ -153,7 +173,10 @@ export default function AdminPartnersPage() {
       full_name: string | null;
       partner_types: string[] | null;
       is_featured_partner: boolean;
-      partner_listings: { company_name: string; id: string; is_featured: boolean } | { company_name: string; id: string; is_featured: boolean }[] | null;
+      partner_listings:
+        | { company_name: string; id: string; is_featured: boolean; featured_order: number | null }
+        | { company_name: string; id: string; is_featured: boolean; featured_order: number | null }[]
+        | null;
     }[];
     setPartners(
       rawPartners.map((row) => ({
@@ -228,6 +251,32 @@ export default function AdminPartnersPage() {
       .order('created_at', { ascending: true });
     setInqMsgs(data ?? []);
     setInqReply('');
+  }
+
+  function openFeaturedModal(r: PartnerRow) {
+    setFeatPartner(r);
+    setFeatOn(r.is_featured_partner);
+    setFeatOrder(r.partner_listings?.featured_order ?? 0);
+  }
+
+  async function openReorderModal() {
+    const { data, error } = await supabase
+      .from('partner_listings')
+      .select('user_id, company_name, featured_order')
+      .eq('is_featured', true)
+      .order('featured_order', { ascending: true, nullsFirst: false });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    const rows = [...(data ?? [])].sort((a, b) => {
+      const ao = a.featured_order ?? 9999;
+      const bo = b.featured_order ?? 9999;
+      if (ao !== bo) return ao - bo;
+      return a.company_name.localeCompare(b.company_name);
+    });
+    setReorderList(rows.map((r) => ({ user_id: r.user_id, company_name: r.company_name })));
+    setReorderOpen(true);
   }
 
   async function sendInqReply() {
@@ -318,7 +367,12 @@ export default function AdminPartnersPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="active" className="mt-6">
+        <TabsContent value="active" className="mt-6 space-y-4">
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => void openReorderModal()}>
+              Reorder featured
+            </Button>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -334,39 +388,44 @@ export default function AdminPartnersPage() {
                   <TableCell>{r.partner_listings?.company_name ?? r.full_name ?? r.email}</TableCell>
                   <TableCell>{(r.partner_types ?? []).join(', ')}</TableCell>
                   <TableCell>{r.is_featured_partner ? <Star className="w-4 h-4 text-amber-500 fill-amber-500" /> : '—'}</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button size="sm" variant="outline" onClick={() => openListing(r)}>
-                      View listing
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={async () => {
-                        const res = await togglePartnerFeatured(r.id, !r.is_featured_partner);
-                        if (!res.ok) toast.error(res.error);
-                        else {
-                          toast.success('Updated');
-                          load();
-                        }
-                      }}
-                    >
-                      Toggle featured
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={async () => {
-                        if (!confirm('Remove partner access?')) return;
-                        const res = await removePartner(r.id);
-                        if (!res.ok) toast.error(res.error);
-                        else {
-                          toast.success('Partner removed');
-                          load();
-                        }
-                      }}
-                    >
-                      Remove
-                    </Button>
+                  <TableCell className="text-right">
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <Button size="sm" variant="outline" onClick={() => openListing(r)}>
+                        View listing
+                      </Button>
+                      <Button size="sm" variant="secondary" onClick={() => openFeaturedModal(r)}>
+                        Manage featured
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          const res = await togglePartnerFeatured(r.id, !r.is_featured_partner);
+                          if (!res.ok) toast.error(res.error);
+                          else {
+                            toast.success('Updated');
+                            load();
+                          }
+                        }}
+                      >
+                        Toggle featured
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={async () => {
+                          if (!confirm('Remove partner access?')) return;
+                          const res = await removePartner(r.id);
+                          if (!res.ok) toast.error(res.error);
+                          else {
+                            toast.success('Partner removed');
+                            load();
+                          }
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -634,6 +693,121 @@ export default function AdminPartnersPage() {
           </pre>
         </SheetContent>
       </Sheet>
+
+      <Dialog open={!!featPartner} onOpenChange={(o) => !o && setFeatPartner(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Featured on homepage</DialogTitle>
+          </DialogHeader>
+          {featPartner && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {featPartner.partner_listings?.company_name ?? featPartner.full_name ?? featPartner.email}
+              </p>
+              <div className="flex items-center justify-between gap-4">
+                <Label htmlFor="feat-switch">Featured partner</Label>
+                <Switch id="feat-switch" checked={featOn} onCheckedChange={setFeatOn} />
+              </div>
+              <div>
+                <Label htmlFor="feat-order">Display order (carousel)</Label>
+                <Input
+                  id="feat-order"
+                  type="number"
+                  min={0}
+                  className="mt-1"
+                  value={featOrder}
+                  onChange={(e) => setFeatOrder(Number(e.target.value))}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Lower numbers appear first.</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFeatPartner(null)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={featSaving || !featPartner}
+              onClick={async () => {
+                if (!featPartner) return;
+                setFeatSaving(true);
+                const res = await setPartnerFeaturedSettings(featPartner.id, featOn, featOrder);
+                setFeatSaving(false);
+                if (!res.ok) toast.error(res.error);
+                else {
+                  toast.success('Saved');
+                  setFeatPartner(null);
+                  load();
+                }
+              }}
+            >
+              {featSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={reorderOpen} onOpenChange={setReorderOpen}>
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Reorder featured partners</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Drag rows to set carousel order. Save applies <code className="text-xs">featured_order</code> on each listing.
+          </p>
+          <div className="flex-1 overflow-y-auto space-y-2 min-h-[120px] py-2">
+            {reorderList.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No featured partners yet.</p>
+            ) : (
+              reorderList.map((row, i) => (
+                <div
+                  key={row.user_id}
+                  draggable
+                  onDragStart={() => setReorderDrag(i)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => {
+                    if (reorderDrag === null || reorderDrag === i) return;
+                    setReorderList((prev) => {
+                      const n = [...prev];
+                      const [x] = n.splice(reorderDrag, 1);
+                      n.splice(i, 0, x);
+                      return n;
+                    });
+                    setReorderDrag(null);
+                  }}
+                  onDragEnd={() => setReorderDrag(null)}
+                  className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5 cursor-grab active:cursor-grabbing"
+                >
+                  <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm font-medium truncate flex-1">{row.company_name}</span>
+                  <span className="text-xs text-muted-foreground tabular-nums">{i + 1}</span>
+                </div>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReorderOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={reorderSaving || reorderList.length === 0}
+              onClick={async () => {
+                setReorderSaving(true);
+                const res = await saveFeaturedPartnersDisplayOrder(reorderList.map((r) => r.user_id));
+                setReorderSaving(false);
+                if (!res.ok) toast.error(res.error);
+                else {
+                  toast.success('Order saved');
+                  setReorderOpen(false);
+                  load();
+                }
+              }}
+            >
+              {reorderSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save order'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }
