@@ -23,5 +23,7 @@ export const config = {
     '/auth/callback',
     '/partners',
     '/partners/:path*',
+    '/partner-portal',
+    '/partner-portal/:path*',
   ],
 };

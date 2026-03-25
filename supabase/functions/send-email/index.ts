@@ -434,6 +434,104 @@ ${ctaButton("Go to your dashboard", data.dashboardUrl)}
   };
 }
 
+function partnerEventInquiryAdminTemplate(data: {
+  partnerEmail: string;
+  partnerName: string;
+  companyName: string;
+  inquiryType: string;
+  eventLabel: string;
+  bodyHtml: string;
+}): { subject: string; html: string } {
+  return {
+    subject: `Partner inquiry (${data.inquiryType}): ${data.companyName}`,
+    html: baseLayout(`
+<h2 style="margin:0 0 12px;font-size:20px;font-weight:700;color:${BRAND.text};">New partner event inquiry</h2>
+<p style="margin:0 0 8px;font-size:14px;color:${BRAND.textSecondary};"><strong style="color:${BRAND.text};">Company:</strong> ${data.companyName}</p>
+<p style="margin:0 0 8px;font-size:14px;color:${BRAND.textSecondary};"><strong style="color:${BRAND.text};">Contact:</strong> ${data.partnerName} &lt;${data.partnerEmail}&gt;</p>
+<p style="margin:0 0 8px;font-size:14px;color:${BRAND.textSecondary};"><strong style="color:${BRAND.text};">Type:</strong> ${data.inquiryType}</p>
+<p style="margin:0 0 20px;font-size:14px;color:${BRAND.textSecondary};"><strong style="color:${BRAND.text};">Event:</strong> ${data.eventLabel}</p>
+<div style="font-size:14px;line-height:1.6;color:${BRAND.textSecondary};">${data.bodyHtml}</div>
+`),
+  };
+}
+
+function partnerInquiryAdminReplyPartnerTemplate(data: {
+  name: string;
+  inquiriesUrl: string;
+  preview: string;
+  origin?: string;
+}): { subject: string; html: string } {
+  const base = data.origin ?? "https://704collective.com";
+  return {
+    subject: "704 Collective replied to your inquiry",
+    html: baseLayout(`
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hi ${data.name},</p>
+<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">The team sent a new message on your event inquiry thread.</p>
+<p style="margin:0 0 24px;padding:16px;border-radius:8px;background:${BRAND.color};border:1px solid ${BRAND.border};font-size:14px;color:${BRAND.textSecondary};white-space:pre-wrap;">${data.preview}</p>
+${ctaButton("View thread", data.inquiriesUrl)}
+`, base),
+  };
+}
+
+function partnerTeamFirstSuperadminTemplate(data: {
+  superAdminName: string;
+  partnerCompany: string;
+  partnerName: string;
+  partnerEmail: string;
+  preview: string;
+  adminUrl: string;
+}): { subject: string; html: string } {
+  return {
+    subject: `Partner message: ${data.partnerCompany}`,
+    html: baseLayout(`
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hi ${data.superAdminName},</p>
+<p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">
+  <strong style="color:${BRAND.text};">${data.partnerCompany}</strong> (${data.partnerName}, ${data.partnerEmail}) started a conversation with the 704 Collective team.
+</p>
+<p style="margin:0 0 24px;padding:16px;border-radius:8px;background:${BRAND.color};border:1px solid ${BRAND.border};font-size:14px;color:${BRAND.textSecondary};white-space:pre-wrap;">${data.preview}</p>
+${ctaButton("Open admin portal", data.adminUrl)}
+<p style="margin:24px 0 0;font-size:12px;color:${BRAND.textMuted};">This is a one-time email for the first message in this thread. Further replies appear only in the portal.</p>
+`),
+  };
+}
+
+function partnerTeamReplyPartnerTemplate(data: {
+  name: string;
+  preview: string;
+  messagesUrl: string;
+  origin?: string;
+}): { subject: string; html: string } {
+  const base = data.origin ?? "https://704collective.com";
+  return {
+    subject: "704 Collective replied to your message",
+    html: baseLayout(`
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hi ${data.name},</p>
+<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">The team sent a new message.</p>
+<p style="margin:0 0 24px;padding:16px;border-radius:8px;background:${BRAND.color};border:1px solid ${BRAND.border};font-size:14px;color:${BRAND.textSecondary};white-space:pre-wrap;">${data.preview}</p>
+${ctaButton("Open messages", data.messagesUrl)}
+`, base),
+  };
+}
+
+function partnerAccountDeletionRequestTemplate(data: {
+  userId: string;
+  email: string;
+  companyName: string;
+  fullName: string;
+}): { subject: string; html: string } {
+  return {
+    subject: `Partner account deletion request: ${data.companyName}`,
+    html: baseLayout(`
+<h2 style="margin:0 0 12px;font-size:20px;font-weight:700;color:${BRAND.text};">Account deletion requested</h2>
+<p style="margin:0 0 8px;font-size:14px;color:${BRAND.textSecondary};">A partner requested account deletion from the partner portal (confirmation matched company name).</p>
+<p style="margin:0 0 8px;font-size:14px;color:${BRAND.textSecondary};"><strong style="color:${BRAND.text};">User ID:</strong> ${data.userId}</p>
+<p style="margin:0 0 8px;font-size:14px;color:${BRAND.textSecondary};"><strong style="color:${BRAND.text};">Email:</strong> ${data.email}</p>
+<p style="margin:0 0 8px;font-size:14px;color:${BRAND.textSecondary};"><strong style="color:${BRAND.text};">Name:</strong> ${data.fullName}</p>
+<p style="margin:0 0 0;font-size:14px;color:${BRAND.textSecondary};"><strong style="color:${BRAND.text};">Company:</strong> ${data.companyName}</p>
+`),
+  };
+}
+
 // ── template router ──────────────────────────────────────────────────────
 
 function getTemplate(template: string, data: Record<string, unknown>): { subject: string; html: string } {
@@ -487,6 +585,45 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
       return partnerNewApplicationAdminTemplate(data as { companyName: string; applicantEmail: string });
     case "partner-welcome-invite":
       return partnerWelcomeInviteTemplate(data as { name: string; dashboardUrl: string; origin?: string });
+    case "partner-event-inquiry-admin":
+      return partnerEventInquiryAdminTemplate(data as {
+        partnerEmail: string;
+        partnerName: string;
+        companyName: string;
+        inquiryType: string;
+        eventLabel: string;
+        bodyHtml: string;
+      });
+    case "partner-inquiry-admin-reply-partner":
+      return partnerInquiryAdminReplyPartnerTemplate(data as {
+        name: string;
+        inquiriesUrl: string;
+        preview: string;
+        origin?: string;
+      });
+    case "partner-team-first-superadmin":
+      return partnerTeamFirstSuperadminTemplate(data as {
+        superAdminName: string;
+        partnerCompany: string;
+        partnerName: string;
+        partnerEmail: string;
+        preview: string;
+        adminUrl: string;
+      });
+    case "partner-team-reply-partner":
+      return partnerTeamReplyPartnerTemplate(data as {
+        name: string;
+        preview: string;
+        messagesUrl: string;
+        origin?: string;
+      });
+    case "partner-account-deletion-request":
+      return partnerAccountDeletionRequestTemplate(data as {
+        userId: string;
+        email: string;
+        companyName: string;
+        fullName: string;
+      });
     default:
       throw new Error(`Unknown email template: ${template}`);
   }
@@ -512,7 +649,7 @@ serve(async (req) => {
     const isServiceRole = token === serviceRoleKey;
 
     // Templates that require service role (internal/admin only)
-    const restrictedTemplates = ["admin-invite", "welcome-setup", "welcome", "password-setup", "event-change", "guest-followup", "ticket-followup", "guest-pass", "feed-mention", "partner-application-submitted", "partner-new-application-admin", "partner-welcome-invite"];
+    const restrictedTemplates = ["admin-invite", "welcome-setup", "welcome", "password-setup", "event-change", "guest-followup", "ticket-followup", "guest-pass", "feed-mention", "partner-application-submitted", "partner-new-application-admin", "partner-welcome-invite", "partner-event-inquiry-admin", "partner-inquiry-admin-reply-partner", "partner-team-first-superadmin", "partner-team-reply-partner", "partner-account-deletion-request"];
 
     // ── Parse body first so we can check template ──
     const { to, template, data, skipCc } = await req.json();

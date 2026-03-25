@@ -188,6 +188,8 @@ export type Database = {
           location_address: string | null
           location_name: string | null
           occurrence_index: number | null
+          open_for_sponsor_inquiry: boolean | null
+          open_for_venue_partner: boolean | null
           parent_event_id: string | null
           recurrence_end_date: string | null
           recurrence_rule: string | null
@@ -196,6 +198,7 @@ export type Database = {
           ticket_price: number | null
           title: string
           updated_at: string | null
+          vendor_booth_spots_available: number | null
         }
         Insert: {
           allows_guest_passes?: boolean
@@ -210,6 +213,8 @@ export type Database = {
           location_address?: string | null
           location_name?: string | null
           occurrence_index?: number | null
+          open_for_sponsor_inquiry?: boolean | null
+          open_for_venue_partner?: boolean | null
           parent_event_id?: string | null
           recurrence_end_date?: string | null
           recurrence_rule?: string | null
@@ -218,6 +223,7 @@ export type Database = {
           ticket_price?: number | null
           title: string
           updated_at?: string | null
+          vendor_booth_spots_available?: number | null
         }
         Update: {
           allows_guest_passes?: boolean
@@ -232,6 +238,8 @@ export type Database = {
           location_address?: string | null
           location_name?: string | null
           occurrence_index?: number | null
+          open_for_sponsor_inquiry?: boolean | null
+          open_for_venue_partner?: boolean | null
           parent_event_id?: string | null
           recurrence_end_date?: string | null
           recurrence_rule?: string | null
@@ -240,6 +248,7 @@ export type Database = {
           ticket_price?: number | null
           title?: string
           updated_at?: string | null
+          vendor_booth_spots_available?: number | null
         }
         Relationships: [
           {

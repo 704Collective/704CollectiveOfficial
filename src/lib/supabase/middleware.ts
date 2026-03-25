@@ -42,7 +42,7 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   // ── Route categories ────────────────────────────────────────────────────────
-  const protectedPaths = ['/dashboard', '/admin', '/events/manage', '/business-portal'];
+  const protectedPaths = ['/dashboard', '/admin', '/events/manage', '/business-portal', '/partner-portal'];
   const openAuthPaths    = ['/join/checkout', '/welcome', '/apply/business', '/signup', '/partners'];  // exempt from subscription gate
   const authPaths        = ['/login'];
   const signupPaths: string[] = [];                               // folded into openAuthPaths
@@ -97,7 +97,7 @@ export async function updateSession(request: NextRequest) {
   if (user && isProtectedRoute) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, member_type, subscription_status, membership_override, banned, application_status')
+      .select('role, member_type, subscription_status, membership_override, banned, application_status, partner_status')
       .eq('id', user.id)
       .is('deleted_at', null)
       .maybeSingle();
@@ -147,9 +147,22 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
+    // ── Partner portal — partner accounts only ────────────────────────────────
+    if (path.startsWith('/partner-portal') && !isPartner) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/dashboard';
+      return NextResponse.redirect(url);
+    }
+
     // ── Subscription gate for dashboard ──────────────────────────────────────
     // Non-members (social/business applicants) land on NonMemberDashboard — let them through
-    if (path.startsWith('/dashboard') && !isActive && !isAdmin && !isNonMember && !isPartner) {
+    if (
+      (path.startsWith('/dashboard') || path.startsWith('/partner-portal')) &&
+      !isActive &&
+      !isAdmin &&
+      !isNonMember &&
+      !isPartner
+    ) {
       const url = request.nextUrl.clone();
       url.pathname = '/signup';
       return NextResponse.redirect(url);
