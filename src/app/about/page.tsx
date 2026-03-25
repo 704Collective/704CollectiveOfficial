@@ -2,7 +2,6 @@
 
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
 import Nav from '@/components/Nav';
 import { Footer } from '@/components/Footer';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -27,8 +26,8 @@ const values = [
     desc: 'We don\'t do surface-level. Every event, every interaction is designed to build friendships that last beyond the venue.',
   },
   {
-    title: 'Intentionally Small',
-    desc: 'Events are capped at 20–40 people so you actually meet everyone. Quality over quantity, always.',
+    title: 'Any Size. Same Standard.',
+    desc: 'We host events for 10 people and events for 500. What stays the same is the intention behind every single one: bring the right people together and make it worth their time.',
   },
   {
     title: 'Charlotte First',
@@ -57,7 +56,7 @@ export default function About() {
                 color: 'rgba(255,255,255,0.35)',
                 marginBottom: '20px',
               }}>
-                Charlotte, NC — Est. 2025
+                Charlotte, NC - Est. 2025
               </p>
             </FadeIn>
 
@@ -82,9 +81,9 @@ export default function About() {
                 maxWidth: '600px',
                 margin: '0 auto',
               }}>
-                704 Collective is Charlotte{"'"}s community for young professionals. We create spaces
-                for people in their 20s and 30s to build real friendships, grow their networks,
-                and get more out of life in the Queen City.
+                704 Collective is Charlotte{"'"}s community for people who want more out of this city.
+                We create spaces for anyone 21+ to build real friendships, grow their network, and
+                experience everything the Queen City has to offer.
               </p>
             </FadeUp>
           </div>
@@ -125,9 +124,11 @@ export default function About() {
                 color: 'rgba(255,255,255,0.5)',
                 lineHeight: 1.75,
               }}>
-                Through curated events, shared experiences, and a tight-knit membership community,
-                we help you build the connections that matter. Whether you just moved here or you{"'"}ve
-                been here for years, 704 Collective is where your social life levels up.
+                We believe the best version of Charlotte is the one you experience together. 704
+                Collective brings the city{"'"}s most driven, community-minded people into one place,
+                whether you{"'"}re here to find your people and explore everything Charlotte has to
+                offer, or you{"'"}re ready to build relationships that move your business forward. This
+                is where your city becomes your people.
               </p>
             </FadeUp>
           </div>
@@ -230,7 +231,7 @@ export default function About() {
                 color: '#FFFFFF',
                 marginBottom: '48px',
               }}>
-                Four friends who wanted more from Charlotte
+                Four friends who knew what Charlotte needed - so they created it
               </h2>
             </FadeUp>
 
@@ -324,15 +325,15 @@ export default function About() {
                     maxWidth: '420px',
                     margin: '0 auto 32px',
                   }}>
-                    Get unlimited access to all events and become part of Charlotte{"'"}s
-                    most active professional community.
+                    Get unlimited access to all events and become part of Charlotte{"'"}s fastest
+                    growing community.
                   </p>
                   <Link
                     href="/signup"
                     className="btn-primary"
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '14px 32px' }}
                   >
-                    Join 704 Collective <ArrowRight style={{ width: '16px', height: '16px' }} />
+                    Join 704 Collective
                   </Link>
                 </div>
               </ScaleUp>

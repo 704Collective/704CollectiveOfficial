@@ -20,13 +20,13 @@ import TiltCard from "@/components/TiltCard";
 import GradientShift from "@/components/GradientShift";
 
 export const metadata: Metadata = {
-  title: "704 Collective | Charlotte's Premier Community",
+  title: "704 Collective | Where Charlotte Connects",
   description:
-    "Charlotte's two-tier social club and business membership association. Curated events, real connections, and a community built for people who are building something.",
+    "Charlotte's two-track social club and business membership association. Curated events, real connections, and a community built for people who are building something.",
   openGraph: {
-    title: "704 Collective | Charlotte's Premier Community",
+    title: "704 Collective | Where Charlotte Connects",
     description:
-      "Charlotte's two-tier social club and business membership association. Curated events, real connections, and a community built for people who are building something.",
+      "Charlotte's two-track social club and business membership association. Curated events, real connections, and a community built for people who are building something.",
     url: "https://704collective.com",
     siteName: "704 Collective",
     images: [
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "704 Collective - Your City. Your People.",
+        alt: "704 Collective",
       },
     ],
     locale: "en_US",
@@ -100,7 +100,7 @@ export default async function Home() {
             }}
           />
 
-          {/* Dark overlay — bottom heavy so text pops */}
+          {/* Dark overlay - bottom heavy so text pops */}
           <div
             style={{
               position: "absolute",
@@ -141,7 +141,7 @@ export default async function Home() {
                   marginBottom: "24px",
                 }}
               >
-                Charlotte{"'"}s Premier Community
+                Where Charlotte Connects
               </p>
             </FadeIn>
 
@@ -155,9 +155,7 @@ export default async function Home() {
                 marginBottom: "24px",
               }}
             >
-              <WordReveal text="Your City." />
-              <br />
-              <WordReveal text="Your People." />
+              <WordReveal text="704 Collective" />
             </h1>
 
             <FadeUp delay={0.6} duration={0.8}>
@@ -170,7 +168,7 @@ export default async function Home() {
                   margin: "0 auto 40px auto",
                 }}
               >
-                A two-tier social club and business membership association for
+                A two-track social club and business membership association for
                 the people building, creating, and leading in Charlotte.
               </p>
             </FadeUp>
@@ -223,7 +221,7 @@ export default async function Home() {
                   marginBottom: "16px",
                 }}
               >
-                Two communities. One mission.
+                Your City. Your People.
               </h2>
             </FadeUp>
 
@@ -243,30 +241,42 @@ export default async function Home() {
             >
               <FadeUp delay={0.2}>
                 <p style={{ marginBottom: "20px" }}>
-                  704 Collective is Charlotte{"'"}s two-tier social club and
-                  business membership association. We connect ambitious
-                  professionals, creatives, and business owners through
-                  intentional events, real relationships, and a community that
-                  actually feels like community.
+                  704 Collective is Charlotte{"'"}s membership community with two
+                  distinct sides: one built around living a great life in the
+                  city, and one built around growing within it.
                 </p>
               </FadeUp>
 
               <FadeUp delay={0.3}>
                 <p style={{ marginBottom: "20px" }}>
-                  <strong style={{ color: "#FFFFFF" }}>704 Social</strong> is
-                  the activity and social side — curated events, wellness
-                  experiences, and a built-in friend group in Charlotte. No
-                  awkward mixers. Just real people showing up.
+                  704 Social is for people who want to get more out of Charlotte.
+                  Think curated events, group experiences, and a community where
+                  showing up once actually leads to showing up again. No awkward
+                  mixers. Just real people doing real things together.
+                </p>
+              </FadeUp>
+
+              <FadeUp delay={0.35}>
+                <p style={{ marginBottom: "20px" }}>
+                  704 Business is for professionals, creatives, and founders who
+                  are serious about growth. Monthly member meetings, keynote
+                  speakers, closed-door networking, and direct access to the
+                  people shaping Charlotte{"'"}s business landscape. The kind of
+                  room that{"'"}s hard to get into on your own.
                 </p>
               </FadeUp>
 
               <FadeUp delay={0.4}>
                 <p>
-                  <strong style={{ color: "#FFFFFF" }}>704 Business</strong> is
-                  the professional side — monthly member meetings, keynote
-                  speakers, closed-door networking, and access to Charlotte{"'"}s
-                  inner business circles. Strategic connections that help you
-                  grow.
+                  The social clubs that exist throw a happy hour and call it
+                  community. The business groups charge you a small fortune just
+                  to put you in a room full of people who are also just there to
+                  sell you something. 704 Collective was built because we were
+                  tired of both. We threw out the forced mixers, the hollow
+                  handshakes, and the groups that look good on paper but deliver
+                  nothing. What we built instead is the community Charlotte
+                  actually deserves, and the one people keep telling us they{"'"}ve
+                  been looking for their whole time in this city.
                 </p>
               </FadeUp>
             </div>
@@ -320,7 +330,7 @@ export default async function Home() {
                 }}
               >
                 Whether you{"'"}re looking for your people or looking to level up
-                your business — getting started is simple.
+                your business - getting started is simple.
               </p>
             </FadeUp>
 
@@ -637,7 +647,7 @@ export default async function Home() {
                 }}
               >
                 Both tiers give you access to a curated community. Business
-                members get everything in Social — plus a +1 to every social
+                members get everything in Social - plus a +1 to every social
                 event.
               </p>
             </FadeUp>
@@ -947,7 +957,7 @@ export default async function Home() {
                   margin: "0 auto",
                 }}
               >
-                From wellness experiences to business strategy sessions —
+                From wellness experiences to business strategy sessions -
                 here{"'"}s what{"'"}s waiting inside.
               </p>
             </FadeUp>
@@ -1292,7 +1302,7 @@ export default async function Home() {
                       marginBottom: "24px",
                     }}
                   >
-                    Included with 704 Business ($300/mo) — plus all Social
+                    Included with 704 Business ($300/mo) - plus all Social
                     events
                   </p>
 
@@ -1337,106 +1347,108 @@ export default async function Home() {
         {/* ════════════════════════════════════════════
             SECTION 7: TESTIMONIALS (PLACEHOLDER)
         ════════════════════════════════════════════ */}
-        <section
-          style={{
-            backgroundColor: "#000000",
-            padding: "96px 24px",
-          }}
-        >
-          <div
-            style={{ maxWidth: "800px", margin: "0 auto", textAlign: "center" }}
+        <div style={{ display: "none" }}>
+          <section
+            style={{
+              backgroundColor: "#000000",
+              padding: "96px 24px",
+            }}
           >
-            <FadeUp>
-              <SectionLabel>What Members Say</SectionLabel>
-            </FadeUp>
-
-            <FadeUp delay={0.1}>
-              <h2
-                style={{
-                  fontSize: "clamp(1.75rem, 4vw, 2.75rem)",
-                  fontWeight: 700,
-                  letterSpacing: "-0.02em",
-                  lineHeight: 1.15,
-                  color: "#FFFFFF",
-                  marginBottom: "16px",
-                }}
-              >
-                Real people. Real words.
-              </h2>
-            </FadeUp>
-
-            <StaggerContainer
-              staggerDelay={0.15}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3, 1fr)",
-                gap: "20px",
-                marginTop: "48px",
-              }}
-              className="testimonial-grid"
+            <div
+              style={{ maxWidth: "800px", margin: "0 auto", textAlign: "center" }}
             >
-              {[1, 2, 3].map((i) => (
-                <StaggerItem
-                  key={i}
+              <FadeUp>
+                <SectionLabel>What Members Say</SectionLabel>
+              </FadeUp>
+
+              <FadeUp delay={0.1}>
+                <h2
                   style={{
-                    backgroundColor: "#1A1A1A",
-                    border: "1px solid rgba(255, 255, 255, 0.06)",
-                    borderRadius: "12px",
-                    padding: "28px 24px",
-                    textAlign: "left",
+                    fontSize: "clamp(1.75rem, 4vw, 2.75rem)",
+                    fontWeight: 700,
+                    letterSpacing: "-0.02em",
+                    lineHeight: 1.15,
+                    color: "#FFFFFF",
+                    marginBottom: "16px",
                   }}
                 >
-                  <p
+                  Real people. Real words.
+                </h2>
+              </FadeUp>
+
+              <StaggerContainer
+                staggerDelay={0.15}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                  gap: "20px",
+                  marginTop: "48px",
+                }}
+                className="testimonial-grid"
+              >
+                {[1, 2, 3].map((i) => (
+                  <StaggerItem
+                    key={i}
                     style={{
-                      fontSize: "0.875rem",
-                      color: "rgba(255, 255, 255, 0.5)",
-                      lineHeight: 1.6,
-                      fontStyle: "italic",
-                      marginBottom: "20px",
+                      backgroundColor: "#1A1A1A",
+                      border: "1px solid rgba(255, 255, 255, 0.06)",
+                      borderRadius: "12px",
+                      padding: "28px 24px",
+                      textAlign: "left",
                     }}
                   >
-                    {'"'}Member testimonial coming soon.{'"'}
-                  </p>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                    }}
-                  >
+                    <p
+                      style={{
+                        fontSize: "0.875rem",
+                        color: "rgba(255, 255, 255, 0.5)",
+                        lineHeight: 1.6,
+                        fontStyle: "italic",
+                        marginBottom: "20px",
+                      }}
+                    >
+                      {'"'}Member testimonial coming soon.{'"'}
+                    </p>
                     <div
                       style={{
-                        width: "36px",
-                        height: "36px",
-                        borderRadius: "50%",
-                        backgroundColor: "#2E2E2E",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
                       }}
-                    />
-                    <div>
-                      <p
+                    >
+                      <div
                         style={{
-                          fontSize: "0.8125rem",
-                          fontWeight: 600,
-                          color: "rgba(255, 255, 255, 0.6)",
+                          width: "36px",
+                          height: "36px",
+                          borderRadius: "50%",
+                          backgroundColor: "#2E2E2E",
                         }}
-                      >
-                        Member Name
-                      </p>
-                      <p
-                        style={{
-                          fontSize: "0.75rem",
-                          color: "rgba(255, 255, 255, 0.3)",
-                        }}
-                      >
-                        Title / Company
-                      </p>
+                      />
+                      <div>
+                        <p
+                          style={{
+                            fontSize: "0.8125rem",
+                            fontWeight: 600,
+                            color: "rgba(255, 255, 255, 0.6)",
+                          }}
+                        >
+                          Member Name
+                        </p>
+                        <p
+                          style={{
+                            fontSize: "0.75rem",
+                            color: "rgba(255, 255, 255, 0.3)",
+                          }}
+                        >
+                          Title / Company
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </StaggerItem>
-              ))}
-            </StaggerContainer>
-          </div>
-        </section>
+                  </StaggerItem>
+                ))}
+              </StaggerContainer>
+            </div>
+          </section>
+        </div>
 
         {/* ════════════════════════════════════════════
             SECTION 8: APPLY CTAs
@@ -1476,7 +1488,7 @@ export default async function Home() {
                 }}
               >
                 Whether you{"'"}re here for the community or the business
-                connections — your people are already inside.
+                connections - your people are already inside.
               </p>
             </FadeUp>
 
@@ -1495,7 +1507,7 @@ export default async function Home() {
                   className="btn-primary"
                   style={{ padding: "16px 36px", fontSize: "0.9375rem" }}
                 >
-                  Join 704 Social — $30/mo
+                  Join 704 Social - $30/mo
                 </Link>
                 <Link
                   href="/business#apply"
@@ -1552,23 +1564,31 @@ export default async function Home() {
               {[
                 {
                   q: "What is 704 Collective?",
-                  a: "704 Collective is Charlotte's two-tier social club and business membership association. 704 Social is the activity and community side — curated events, wellness experiences, and a real social circle. 704 Business is the professional side — monthly meetings, keynote speakers, exclusive networking, and access to Charlotte's inner business circles.",
+                  a: "704 Collective is Charlotte's two-track social club and business membership community. 704 Social is the activity and community side - curated events, wellness experiences, and a real social circle in the city. 704 Business is the professional side - monthly meetings, keynote speakers, exclusive networking, and access to Charlotte's inner business circles.",
+                },
+                {
+                  q: "What kind of events do you host?",
+                  a: "On the social side: happy hours at Charlotte's best spots, rooftop hangouts, group dinners, brunch outings, trivia nights, paint nights, lake days, hiking trips, concert and sporting event groups, cold plunge and sauna nights, fitness classes, volunteer days, holiday parties, and member-only experiences you won't find anywhere else. On the business side: monthly member meetings, keynote speaker sessions, mastermind roundtables, closed-door networking dinners, lucrative city connections, business spotlights, and more.",
                 },
                 {
                   q: "What's the difference between Social and Business?",
-                  a: "704 Social ($30/month) gives you access to 8+ curated events per month — mixers, wellness days, adventure outings, and community. 704 Business ($300/month) includes everything in Social, plus monthly business meetings, keynote speakers, closed-door networking, referral opportunities, and a +1 to every social event.",
+                  a: "704 Social gives you access to 8+ curated events per month, a built-in social circle, and everything you need to actually get the most out of Charlotte. 704 Business includes everything in Social, plus monthly business meetings, keynote speakers, closed-door networking, referral opportunities, a +1 to every social event, and other high-value business membership benefits.",
                 },
                 {
                   q: "Do I need to apply?",
-                  a: "For 704 Social, no — just join and start showing up. For 704 Business, yes — we review every application personally to keep the community high-quality and intentional. It takes about 5 minutes and we respond within 24-48 hours.",
+                  a: "For 704 Social, no. Just join and start showing up. For 704 Business, yes. We review every application personally to keep the community high-quality and intentional. It takes about 5 minutes and we respond within 24-48 hours.",
                 },
                 {
-                  q: "Can I cancel anytime?",
-                  a: "Yes. Monthly members can cancel before their next billing date with no fees. Annual Business members commit for the year but lock in their rate and save $600.",
+                  q: "I'm new to Charlotte. Is this for me?",
+                  a: "This is literally built for you. Whether you just moved here or have lived here for years and never found your people, 704 Collective is the fastest way to build a real life in this city.",
                 },
                 {
-                  q: "Who runs 704 Collective?",
-                  a: "704 Collective is built by the team behind CLTBucketlist.com — Charlotte's go-to local guide platform. Years of producing high-impact events and working with hundreds of local businesses gave us the foundation to build something deeper.",
+                  q: "Can I bring guests?",
+                  a: "Occasionally, depending on the event. Check each event for guest policy details. We keep it exclusive because that's what makes the community worth being part of.",
+                },
+                {
+                  q: "Is there a contract or cancellation fee?",
+                  a: "No contract, no fees. Monthly members can cancel anytime before their next billing date. Annual Business members commit for the year but lock in their rate. No hard feelings, no hoops to jump through.",
                 },
               ].map((item, i) => (
                 <StaggerItem key={i}>
