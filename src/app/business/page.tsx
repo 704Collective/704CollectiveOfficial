@@ -5,15 +5,12 @@ import { Footer } from "@/components/Footer"
 import {
   FadeUp,
   FadeIn,
-  SlideIn,
   StaggerContainer,
   StaggerItem,
   ScaleUp,
-  DrawLine,
   WordReveal,
 } from "@/components/Animations";
 import TiltCard from "@/components/TiltCard";
-import GradientShift from "@/components/GradientShift";
 
 export const metadata: Metadata = {
   title: "704 Business | Charlotte's Premier Business Community",
@@ -27,23 +24,16 @@ export const metadata: Metadata = {
   },
 };
 
-const stats = [
-  { value: "150+", label: "Active Members" },
-  { value: "40+", label: "Events Hosted" },
-  { value: "50K+", label: "CLTBucketlist Reach" },
-  { value: "20–40", label: "Per Event" },
-];
-
 const pillars = [
   {
     num: "01",
-    title: "Curated, Not Crowded",
-    body: "20-40 people per event. You will actually talk to everyone in the room. No wallflowers, no cliques, no awkward standing around.",
+    title: "Scaling with Purpose",
+    body: "704 Collective is growing fast, but never at the expense of what makes it worth being part of. Every new member, event, and partnership is added with intention, because the moment we sacrifice quality for size is the moment we become everything we set out to replace.",
   },
   {
     num: "02",
-    title: "Built on Local Credibility",
-    body: "CLTBucketlist connects 50,000+ Charlotte residents to local businesses every month. That is the foundation 704 Collective was built on.",
+    title: "Powered by Credibility",
+    body: "CLTBucketlist connects millions of locals with business and experiences every month. That is the foundation 704 Collective was built on and how we've been able to power strong events and connections.",
   },
   {
     num: "03",
@@ -59,19 +49,11 @@ const benefits = [
   },
   {
     title: "Exclusive Workshops",
-    body: "Deep-dive sessions on growth, leadership, marketing, and finance — led by people who have done it.",
-  },
-  {
-    title: "Private Dinners",
-    body: "Intimate gatherings at Charlotte's best restaurants. The conversations here change trajectories.",
-  },
-  {
-    title: "Private Business Network",
-    body: "Direct access to a vetted community of founders, executives, and professionals in Charlotte.",
+    body: "Deep-dive sessions on growth, leadership, marketing, and finance - led by people who have done it.",
   },
   {
     title: "Strategic Introductions",
-    body: "We connect members with the right people — investors, partners, clients, mentors.",
+    body: "We connect members with the right people - investors, partners, clients, mentors.",
   },
   {
     title: "Business Resources",
@@ -79,7 +61,7 @@ const benefits = [
   },
   {
     title: "Full 704 Social Access",
-    body: "Complete Social pass included — all social events, wellness days, and community perks.",
+    body: "Complete Social pass included - all social events, wellness days, and community perks.",
   },
   {
     title: "Priority Everything",
@@ -87,11 +69,7 @@ const benefits = [
   },
   {
     title: "Charlotte Insider Access",
-    body: "Powered by CLTBucketlist — exclusive deals, early access, and connections to the city's best.",
-  },
-  {
-    title: "Wellness & Recovery",
-    body: "Cold plunge, sauna sessions, run clubs, and wellness events included with your membership.",
+    body: "Powered by CLTBucketlist - exclusive deals, early access, and connections to the city's best.",
   },
   {
     title: "Guest Speaker Series",
@@ -99,7 +77,7 @@ const benefits = [
   },
   {
     title: "Cross-Community Exposure",
-    body: "Visibility across the 704 Collective ecosystem — social members, partners, and local businesses.",
+    body: "Visibility across the 704 Collective ecosystem - social members, partners, and local businesses.",
   },
 ];
 
@@ -121,41 +99,6 @@ const pricingFeatures = [
   "Priority to all events",
   "Business resource library",
   "Cancel anytime",
-];
-
-const faqs = [
-  {
-    q: "What is 704 Business?",
-    a: "704 Business is the professional tier of 704 Collective. It is a curated community of ambitious Charlotte professionals who meet monthly for strategic networking, exclusive workshops, private dinners, and real business conversations. Every business member also gets full access to all 704 Social events and perks.",
-  },
-  {
-    q: "How is this different from 704 Social?",
-    a: "704 Social is about finding your people through curated social events, wellness days, and community. 704 Business adds a strategic layer: monthly business meetings, workshops, private dinners with industry leaders, strategic introductions, and a vetted professional network. Think of Social as your friend group and Business as your personal board of advisors.",
-  },
-  {
-    q: "Why is there an application?",
-    a: "Because the quality of the room matters. We keep 704 Business intentionally small so every member gets real value. The application helps us ensure every member is serious about building relationships and contributing to the community.",
-  },
-  {
-    q: "What does $300/month actually cover?",
-    a: "Monthly business meetings with structured agendas, exclusive workshops and guest speakers, private dinners at Charlotte's best restaurants, strategic introductions, access to the private business network, the full business resource library, and complete 704 Social access including 8+ social events, wellness days, and community perks. The annual option at $3,600/year saves you $600.",
-  },
-  {
-    q: "What kind of professionals are in the group?",
-    a: "Founders, startup operators, real estate professionals, tech leaders, creative agency owners, finance professionals, consultants, and executives across industries. What they have in common: they are building something in Charlotte and want to be around others doing the same.",
-  },
-  {
-    q: "How big are the meetings?",
-    a: "Every event is kept between 20 and 40 people. Big enough to meet new faces, small enough to have real conversations. No 600-person mixers.",
-  },
-  {
-    q: "Can I try before I commit?",
-    a: 'We occasionally host open events for prospective members. Follow @704collective on Instagram or email hello@704collective.com to learn about upcoming opportunities.',
-  },
-  {
-    q: "Is there a contract?",
-    a: "No. Monthly members can cancel anytime before their renewal date. Annual members commit for the year but save $600. No cancellation fees, no hoops.",
-  },
 ];
 
 function SectionLabel({ text }: { text: string }) {
@@ -229,7 +172,7 @@ export default function BusinessPage() {
             }}
           />
 
-          {/* Dark overlay — heavier than homepage, befitting the business tone */}
+          {/* Dark overlay - heavier than homepage, befitting the business tone */}
           <div
             style={{
               position: "absolute",
@@ -368,62 +311,6 @@ export default function BusinessPage() {
         </section>
 
         {/* ════════════════════════════════════════════
-            STATS
-        ════════════════════════════════════════════ */}
-        <section
-          style={{
-            backgroundColor: "#1A1A1A",
-            borderTop: "1px solid rgba(255,255,255,0.04)",
-            borderBottom: "1px solid rgba(255,255,255,0.04)",
-          }}
-        >
-          <div
-            style={{
-              maxWidth: "860px",
-              margin: "0 auto",
-              padding: "48px 24px",
-            }}
-          >
-            <StaggerContainer
-              staggerDelay={0.1}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(4, 1fr)",
-                gap: "32px",
-                textAlign: "center",
-              }}
-              className="stats-grid"
-            >
-              {stats.map((s, i) => (
-                <StaggerItem key={i}>
-                  <div
-                    style={{
-                      fontSize: "clamp(1.5rem, 3vw, 2rem)",
-                      fontWeight: 700,
-                      color: "#C6A664",
-                      letterSpacing: "-0.02em",
-                    }}
-                  >
-                    {s.value}
-                  </div>
-                  <div
-                    style={{
-                      color: "#A0A0A0",
-                      fontSize: "11px",
-                      marginTop: "6px",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.15em",
-                    }}
-                  >
-                    {s.label}
-                  </div>
-                </StaggerItem>
-              ))}
-            </StaggerContainer>
-          </div>
-        </section>
-
-        {/* ════════════════════════════════════════════
             WHO WE ARE
         ════════════════════════════════════════════ */}
         <section style={{ backgroundColor: "#1A1A1A", padding: "80px 24px" }}>
@@ -448,7 +335,7 @@ export default function BusinessPage() {
                   color: "#FAF6F0",
                 }}
               >
-                Built for builders.
+                Built for the people building Charlotte.
               </h2>
             </FadeUp>
 
@@ -465,37 +352,36 @@ export default function BusinessPage() {
             >
               <FadeUp delay={0.2}>
                 <p>
-                  704 Collective started with a simple idea: Charlotte is full of
-                  ambitious, talented people who don{"'"}t have a real place to
-                  connect.
+                  Charlotte is full of ambitious, talented people. The problem has
+                  never been finding them. It{"'"}s been finding a real way to
+                  connect with them.
                 </p>
               </FadeUp>
 
               <FadeUp delay={0.3}>
                 <p>
-                  Not at a 600-person mixer. Not at a transactional networking
-                  lunch. Not through a LinkedIn message that goes nowhere.
+                  Not at a 600-person mixer where you leave with a stack of cards
+                  you{"'"}ll never use. Not at a networking lunch that{"'"}s really
+                  just a sales pitch with a salad. Not through a cold LinkedIn
+                  message that gets ignored.
                 </p>
               </FadeUp>
 
               <FadeUp delay={0.4}>
                 <p>
-                  We built 704 Business for professionals who want more than
-                  small talk — people building companies, leading teams, and
-                  making moves.
+                  704 Business was built for professionals who are serious about
+                  growth. The ones building companies, leading teams, creating real
+                  relationships, and looking for a room that{"'"}s actually worth
+                  being in. Monthly member meetings, mastermind sessions,
+                  relevant local speakers, closed-door networking, and direct
+                  introductions to the people who can move the needle for you.
                 </p>
               </FadeUp>
 
               <FadeUp delay={0.5}>
-                <p
-                  style={{
-                    color: "#C6A664",
-                    fontWeight: 600,
-                    fontSize: "1.1rem",
-                  }}
-                >
-                  Charlotte{"'"}s business community — built by people who live
-                  here, for people who are building here.
+                <p>
+                  This isn{"'"}t another business group. It{"'"}s the business
+                  community Charlotte has always needed and never had.
                 </p>
               </FadeUp>
             </div>
@@ -536,7 +422,7 @@ export default function BusinessPage() {
                     lineHeight: 1.7,
                   }}
                 >
-                  We built{" "}
+                  Our leadership team includes the founders who built{" "}
                   <a
                     href="https://cltbucketlist.com"
                     target="_blank"
@@ -545,8 +431,9 @@ export default function BusinessPage() {
                   >
                     CLTBucketlist.com
                   </a>{" "}
-                  — Charlotte{"'"}s go-to local guide — and spent years learning
-                  what this city actually needs.
+                  - Charlotte{"'"}s #1 official city guide platform and spent years
+                  learning what this city actually needs, and who runs what in
+                  Charlotte.
                 </p>
               </FadeUp>
             </div>
@@ -970,7 +857,7 @@ export default function BusinessPage() {
                       marginBottom: "32px",
                     }}
                   >
-                    Annual saves $600 — Both include full Social access
+                    Annual saves $600 - Both include full Social access
                   </p>
 
                   <div
@@ -997,7 +884,7 @@ export default function BusinessPage() {
                         <span
                           style={{ color: "#C6A664", fontSize: "11px" }}
                         >
-                          {"—"}
+                          {"-"}
                         </span>
                         <span
                           style={{ color: "#A0A0A0", fontSize: "0.8rem" }}
@@ -1151,164 +1038,6 @@ export default function BusinessPage() {
           </div>
         </section>
 
-        {/* ════════════════════════════════════════════
-            FAQ
-        ════════════════════════════════════════════ */}
-        <section style={{ backgroundColor: "#1A1A1A", padding: "80px 24px" }}>
-          <div style={{ maxWidth: "640px", margin: "0 auto" }}>
-            <div style={{ textAlign: "center", marginBottom: "48px" }}>
-              <FadeUp>
-                <SectionLabel text="FAQ" />
-              </FadeUp>
-
-              <FadeUp delay={0.1}>
-                <h2
-                  style={{
-                    fontSize: "clamp(1.75rem, 4vw, 2.25rem)",
-                    fontWeight: 700,
-                    letterSpacing: "-0.025em",
-                    color: "#FAF6F0",
-                  }}
-                >
-                  Common Questions
-                </h2>
-              </FadeUp>
-            </div>
-
-            <StaggerContainer staggerDelay={0.08}>
-              {faqs.map((faq, i) => (
-                <StaggerItem key={i}>
-                  <details
-                    className="faq-item"
-                    style={{
-                      borderBottom: "1px solid rgba(255,255,255,0.06)",
-                      padding: "18px 0",
-                    }}
-                  >
-                    <summary
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        cursor: "pointer",
-                      }}
-                    >
-                      <span
-                        style={{
-                          color: "#FAF6F0",
-                          fontWeight: 600,
-                          fontSize: "0.95rem",
-                          paddingRight: "24px",
-                          lineHeight: 1.4,
-                        }}
-                      >
-                        {faq.q}
-                      </span>
-                      <span
-                        style={{
-                          color: "#C6A664",
-                          fontSize: "1.25rem",
-                          flexShrink: 0,
-                          transition: "transform 200ms ease",
-                        }}
-                      >
-                        +
-                      </span>
-                    </summary>
-                    <p
-                      style={{
-                        color: "#A0A0A0",
-                        fontSize: "0.85rem",
-                        marginTop: "14px",
-                        lineHeight: 1.7,
-                        paddingRight: "32px",
-                      }}
-                    >
-                      {faq.a}
-                    </p>
-                  </details>
-                </StaggerItem>
-              ))}
-            </StaggerContainer>
-          </div>
-        </section>
-
-        {/* ════════════════════════════════════════════
-            FINAL CTA
-        ════════════════════════════════════════════ */}
-        <GradientShift
-          style={{
-            backgroundColor: "#2E2E2E",
-            borderTop: "1px solid rgba(255,255,255,0.04)",
-            padding: "80px 24px",
-          }}
-        >
-          <div
-            style={{
-              maxWidth: "600px",
-              margin: "0 auto",
-              textAlign: "center",
-            }}
-          >
-            <FadeUp>
-              <h2
-                style={{
-                  fontSize: "clamp(1.75rem, 4vw, 2.25rem)",
-                  fontWeight: 700,
-                  letterSpacing: "-0.025em",
-                  marginBottom: "16px",
-                  color: "#FAF6F0",
-                }}
-              >
-                Ready to build something{" "}
-                <span style={{ color: "#C6A664", fontStyle: "italic" }}>
-                  bigger
-                </span>
-                ?
-              </h2>
-            </FadeUp>
-
-            <FadeUp delay={0.1}>
-              <p
-                style={{
-                  color: "#A0A0A0",
-                  fontSize: "0.95rem",
-                  maxWidth: "400px",
-                  margin: "0 auto 32px auto",
-                }}
-              >
-                Your network is your net worth. Start building it with the right
-                people.
-              </p>
-            </FadeUp>
-
-            <ScaleUp delay={0.2}>
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "16px",
-                  justifyContent: "center",
-                }}
-              >
-                <a
-                  href="/apply/business"
-                  className="btn-gold"
-                  style={{ padding: "16px 36px", fontSize: "0.875rem" }}
-                >
-                  Apply for 704 Business
-                </a>
-                <a
-                  href="mailto:hello@704collective.com"
-                  className="btn-ghost-gold"
-                  style={{ padding: "16px 36px", fontSize: "0.875rem" }}
-                >
-                  Questions? Email Us
-                </a>
-              </div>
-            </ScaleUp>
-          </div>
-        </GradientShift>
       </main>
       <Footer />
     </>

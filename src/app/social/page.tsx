@@ -11,7 +11,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { format, addDays } from 'date-fns';
 import {
   FadeUp,
-  FadeIn,
   SlideIn,
   StaggerContainer,
   StaggerItem,
@@ -58,7 +57,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 const socialPerks = [
   { title: 'Curated Social Events', desc: 'Mixers, happy hours, game nights, and themed socials every single week.' },
   { title: 'Wellness & Adventure', desc: 'Cold plunge, sauna sessions, run clubs, cycling, and outdoor adventures.' },
-  { title: 'Priority Access', desc: 'RSVP before the public. Limited spots — members always come first.' },
+  { title: 'Priority Access', desc: 'RSVP before the public. Limited spots - members always come first.' },
   { title: 'Real Community', desc: 'An exclusive co-ed group of people you actually want to spend time with.' },
   { title: 'Charlotte Perks', desc: 'Special access and experiences across Charlotte, powered by CLTBucketlist.' },
   { title: 'No Commitment', desc: 'Cancel anytime. No contracts, no cancellation fees, no questions asked.' },
@@ -67,16 +66,16 @@ const socialPerks = [
 const rightForYou = [
   "You just moved to Charlotte and want to find your people fast",
   "You're tired of surface-level apps and want real friendships",
-  "You love trying new things — happy hours, wellness, adventures",
+  "You love trying new things - happy hours, wellness, adventures",
   "You want a built-in social circle without the awkward networking",
-  "You're a young professional looking for community, not LinkedIn connections",
+  "You're anyone in the Charlotte region looking for friends to do things with, not LinkedIn connections",
   "You want to actually enjoy your weekends and weeknights in Charlotte",
 ];
 
 const valueItems = [
   { category: 'Wellness', example: 'Sauna & Cold Plunge Social', publicPrice: '$45', memberPrice: 'Free' },
   { category: 'Social', example: 'Tap-In Social Happy Hour', publicPrice: '$30', memberPrice: 'Free' },
-  { category: 'Community', example: 'Coffee & Connect', publicPrice: '$5', memberPrice: 'Free' },
+  { category: 'Pickle Ball', example: 'Court time & play', publicPrice: '$25/hr', memberPrice: 'Free' },
 ];
 
 const memberFeatures = [
@@ -87,38 +86,7 @@ const memberFeatures = [
   'Exclusive co-ed community',
   'Digital membership card',
   'Charlotte perks via CLTBucketlist',
-  'Cancel anytime — no contracts',
-];
-
-const faqs = [
-  {
-    q: 'What is 704 Social?',
-    a: "704 Social is the activity club and social community side of 704 Collective. For $30/month, you get access to 8+ curated events every month — happy hours, wellness experiences, adventure days, game nights, and more. It's your built-in social life in Charlotte.",
-  },
-  {
-    q: 'What kinds of events do you host?',
-    a: 'Everything from Coffee & Connect mornings and happy hours to cold plunge & sauna sessions, bowling nights, cooking experiences, run clubs, and themed socials. We host 8+ events per month and are always adding new experiences.',
-  },
-  {
-    q: 'Do I need to apply?',
-    a: 'No. 704 Social is open to everyone — just sign up and start attending events. No application, no interview, no waitlist.',
-  },
-  {
-    q: 'How is this different from other social groups?',
-    a: "Most social groups in Charlotte are either too big (hundreds of people), too niche, or too transactional. 704 Social events are intentionally kept small (20-40 people), designed for real connection, and span a range of interests. You're not just attending events — you're building a genuine friend group.",
-  },
-  {
-    q: 'Can I bring a friend?',
-    a: 'Some events allow guests at a non-member ticket price. Business members automatically get a +1 to every social event. Check each event for guest availability.',
-  },
-  {
-    q: 'What if I want the business side too?',
-    a: '704 Business ($300/month) includes everything in Social plus monthly business meetings, keynote speakers, closed-door networking, and strategic introductions. Business members also get a +1 to all social events.',
-  },
-  {
-    q: 'Can I cancel anytime?',
-    a: 'Yes. Cancel before your next billing date — no fees, no contracts, no questions.',
-  },
+  'Cancel anytime - no contracts',
 ];
 
 /* ─── Page ─── */
@@ -184,7 +152,7 @@ export default function SocialPage() {
             }}
           />
 
-          {/* Dark overlay — slightly lighter than business, social is warmer */}
+          {/* Dark overlay - slightly lighter than business, social is warmer */}
           <div
             style={{
               position: 'absolute',
@@ -214,21 +182,6 @@ export default function SocialPage() {
               textAlign: 'center',
             }}
           >
-            <FadeIn delay={0.2} duration={0.8}>
-              <p
-                style={{
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.2em',
-                  textTransform: 'uppercase',
-                  color: 'rgba(255, 255, 255, 0.4)',
-                  marginBottom: '24px',
-                }}
-              >
-                Charlotte, NC
-              </p>
-            </FadeIn>
-
             <h1
               style={{
                 fontSize: 'clamp(2.5rem, 7vw, 4.5rem)',
@@ -239,9 +192,7 @@ export default function SocialPage() {
                 marginBottom: '24px',
               }}
             >
-              <WordReveal text="Charlotte's Premier" />
-              <br />
-              <WordReveal text="Community" />
+              <WordReveal text="704 Collective Social" />
             </h1>
 
             <FadeUp delay={0.6} duration={0.8}>
@@ -342,12 +293,12 @@ export default function SocialPage() {
                 {
                   num: '2',
                   title: 'Show Up',
-                  desc: '8+ events per month. Happy hours, dinners, adventures — we plan everything so you just walk in.',
+                  desc: '8+ events per month. Social mixers, coffee and connects, group trips to White Water Center, pickle ball adventures - we plan everything so you just walk in.',
                 },
                 {
                   num: '3',
-                  title: 'Build Your Circle',
-                  desc: 'The people you meet become the friends you text and the network that opens doors.',
+                  title: 'Feel at home',
+                  desc: 'The people you meet become the friends you text and the groups you want to go out with.',
                 },
               ].map((item, i) => (
                 <StaggerItem
@@ -643,6 +594,7 @@ export default function SocialPage() {
         {/* ════════════════════════════════════════════
             TESTIMONIALS
         ════════════════════════════════════════════ */}
+        <div style={{ display: 'none' }}>
         <section
           style={{ backgroundColor: '#000000', padding: '96px 24px' }}
         >
@@ -721,6 +673,7 @@ export default function SocialPage() {
             </StaggerContainer>
           </div>
         </section>
+        </div>
 
         {/* ════════════════════════════════════════════
             MEMBERSHIP PRICING
@@ -970,66 +923,6 @@ export default function SocialPage() {
                 </Link>
               </div>
             </FadeUp>
-          </div>
-        </section>
-
-        {/* ════════════════════════════════════════════
-            FAQ
-        ════════════════════════════════════════════ */}
-        <section
-          style={{ backgroundColor: '#000000', padding: '96px 24px' }}
-        >
-          <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'center' }}>
-            <FadeUp>
-              <SectionLabel>FAQ</SectionLabel>
-            </FadeUp>
-
-            <FadeUp delay={0.1}>
-              <h2
-                style={{
-                  fontSize: 'clamp(1.75rem, 4vw, 2.75rem)',
-                  fontWeight: 700,
-                  letterSpacing: '-0.02em',
-                  lineHeight: 1.15,
-                  color: '#FFFFFF',
-                  marginBottom: '16px',
-                }}
-              >
-                Quick answers
-              </h2>
-            </FadeUp>
-
-            <StaggerContainer staggerDelay={0.1} style={{ marginTop: '40px', textAlign: 'left' }}>
-              {faqs.map((item, i) => (
-                <StaggerItem key={i}>
-                  <details
-                    className="faq-item"
-                    style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)', padding: '20px 0' }}
-                  >
-                    <summary
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        cursor: 'pointer',
-                        listStyle: 'none',
-                        fontSize: '1rem',
-                        fontWeight: 600,
-                        color: '#FFFFFF',
-                      }}
-                    >
-                      {item.q}
-                      <span style={{ color: '#C6A664', fontSize: '1.25rem', fontWeight: 300, flexShrink: 0, marginLeft: '16px', transition: 'transform 200ms ease' }}>
-                        +
-                      </span>
-                    </summary>
-                    <p style={{ fontSize: '0.875rem', color: 'rgba(255, 255, 255, 0.55)', lineHeight: 1.65, marginTop: '12px', paddingRight: '32px' }}>
-                      {item.a}
-                    </p>
-                  </details>
-                </StaggerItem>
-              ))}
-            </StaggerContainer>
           </div>
         </section>
 

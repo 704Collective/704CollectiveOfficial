@@ -9,7 +9,7 @@ import { Store, Building2, Sparkles, Handshake } from 'lucide-react';
 export const metadata: Metadata = {
   title: 'Partners | 704 Collective',
   description:
-    'Partner with 704 Collective — Charlotte’s curated social and business events, engaged local audiences, and meaningful brand growth.',
+    "Partner with 704 Collective - Charlotte's curated social and business events, engaged local audiences, and meaningful brand growth.",
   openGraph: {
     title: 'Partners | 704 Collective',
     url: 'https://704collective.com/partners',
@@ -28,7 +28,7 @@ export default async function PartnersPage() {
           <div
             className="absolute inset-0 bg-cover bg-center"
             style={{
-              backgroundImage: "url('/og-image.png')",
+              backgroundImage: "url('/hero-partners.png')",
             }}
             aria-hidden
           />
@@ -42,10 +42,13 @@ export default async function PartnersPage() {
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white mb-6">
               Become a 704 Collective Partner
             </h1>
-            <p className="text-lg sm:text-xl text-white/75 max-w-2xl mx-auto leading-relaxed mb-10">
-              Partners get access to Charlotte&apos;s most curated social and business community events, exposure to an
-              engaged local audience, and the ability to grow their brand through meaningful event partnerships—not
-              generic sponsorship decks, but real presence where the city&apos;s most motivated professionals gather.
+            <p className="text-lg sm:text-xl text-white/75 max-w-3xl mx-auto leading-relaxed mb-10">
+              Our community is one of the most active and engaged in Charlotte, and the businesses that show up here
+              don&apos;t just get exposure, they get results. 704 Collective works with vendors who bring products and
+              services directly to our events, venues who host our social and business experiences across Charlotte,
+              sponsors who invest in long-term brand presence across our community and platforms, and partners who
+              collaborate with us to grow alongside one of the city&apos;s most engaged networks. However you fit in,
+              you&apos;re putting your brand in front of the exact people you want to reach, at scale.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link
@@ -69,7 +72,7 @@ export default async function PartnersPage() {
           <div className="max-w-6xl mx-auto">
             <h2 className="text-3xl sm:text-4xl font-bold text-center mb-4">Partner types</h2>
             <p className="text-white/55 text-center max-w-2xl mx-auto mb-14">
-              Four ways to plug into the 704 ecosystem—each role is designed for how you show up in Charlotte&apos;s
+              Four ways to plug into the 704 ecosystem - each role is designed for how you show up in Charlotte&apos;s
               event landscape.
             </p>
 
@@ -81,7 +84,7 @@ export default async function PartnersPage() {
                 <h3 className="text-xl font-semibold text-[#D4A853] mb-4">Vendor</h3>
                 <div className="space-y-4 text-white/70 text-sm sm:text-base leading-relaxed">
                   <p>
-                    Vendors are the heartbeat of our floor experience—pop-up makers, mobile service providers, artisan
+                    Vendors are the heartbeat of our floor experience - pop-up makers, mobile service providers, artisan
                     producers, food and beverage artisans, and teams who turn a corner of the room into a moment people
                     remember. At 704 Collective events, we curate density so every vendor gets real foot traffic and
                     conversation, not a lonely table at the back of a ballroom.
@@ -89,7 +92,7 @@ export default async function PartnersPage() {
                   <p>
                     You might pour specialty coffee for a sunrise social, plate small bites beside a DJ set, offer
                     flash wellness services between panels, or run experiential demos that let guests touch, taste, and
-                    try what you build. Charlotte&apos;s scene rewards operators who show up with craft and story—and we
+                    try what you build. Charlotte&apos;s scene rewards operators who show up with craft and story - and we
                     design layouts so your brand isn&apos;t competing with chaos.
                   </p>
                   <p>
@@ -107,7 +110,7 @@ export default async function PartnersPage() {
                 <h3 className="text-xl font-semibold text-[#D4A853] mb-4">Venue</h3>
                 <div className="space-y-4 text-white/70 text-sm sm:text-base leading-relaxed">
                   <p>
-                    Venues are where the story of the night is written—coffee shops that flip into intimate mixers,
+                    Venues are where the story of the night is written - coffee shops that flip into intimate mixers,
                     breweries with room for both dance floors and breakout conversations, gyms and studios that host
                     wellness-forward gatherings, rooftops with skyline drama, and private rooms built for curated groups
                     of fifty to two hundred.
@@ -120,7 +123,7 @@ export default async function PartnersPage() {
                   </p>
                   <p>
                     Expect co-marketing on event pages, highlight features when the room shines, and long-term
-                    introductions to sponsors and vendors who need a home for their next activation—so one great night
+                    introductions to sponsors and vendors who need a home for their next activation - so one great night
                     turns into a pipeline of aligned bookings.
                   </p>
                 </div>
@@ -134,13 +137,13 @@ export default async function PartnersPage() {
                 <div className="space-y-4 text-white/70 text-sm sm:text-base leading-relaxed">
                   <p>
                     Sponsorship with 704 Collective is built for mid-market and enterprise teams that want brand
-                    visibility where it matters—on-site at events sized roughly fifty to three hundred attendees, where
+                    visibility where it matters - on-site at events sized roughly fifty to three hundred attendees, where
                     logos aren&apos;t wallpaper but part of a narrative guests actually engage with.
                   </p>
                   <p>
                     Packages can include social coverage across 704 Collective and CLTBucketlist channels, booth or
                     lounge presence, banner placements in high-traffic moments, speaking or hosting credits, and
-                    storytelling that connects your brand to Charlotte&apos;s most active social and business circles—not
+                    storytelling that connects your brand to Charlotte&apos;s most active social and business circles - not
                     a spray-and-pray impressions chart.
                   </p>
                   <p>
@@ -159,7 +162,7 @@ export default async function PartnersPage() {
                 <h3 className="text-xl font-semibold text-[#D4A853] mb-4">Partner</h3>
                 <div className="space-y-4 text-white/70 text-sm sm:text-base leading-relaxed">
                   <p>
-                    The Partner track is for organizations that don&apos;t fit a single box—other social clubs, business
+                    The Partner track is for organizations that don&apos;t fit a single box - other social clubs, business
                     networks, lifestyle labels, and mission-driven community groups that want to co-create experiences
                     rather than buy a logo slot. You bring an audience, a point of view, or a format we can braid into
                     704&apos;s calendar.
@@ -171,7 +174,7 @@ export default async function PartnersPage() {
                     ways, and programming that raises the bar for what a &quot;local event&quot; can mean.
                   </p>
                   <p>
-                    This path is the most bespoke—we&apos;ll workshop concepts, align on values, and build a roadmap
+                    This path is the most bespoke - we&apos;ll workshop concepts, align on values, and build a roadmap
                     that respects both communities. If you&apos;re here to experiment, elevate, and grow together, the
                     Partner relationship is where we go deepest.
                   </p>
@@ -210,15 +213,15 @@ export default async function PartnersPage() {
                 {
                   n: '03',
                   title: 'Start partnering',
-                  body: 'Once approved, you&apos;ll plug into events, co-marketing, and introductions across Charlotte. We operate as an extension of your team—not a one-off transaction.',
+                  body: 'Once approved, you&apos;ll plug into events, co-marketing, and introductions across Charlotte. We operate as an extension of your team - not a one-off transaction.',
                 },
               ].map((step) => (
-                <li key={step.n} className="text-center md:text-left">
+                <li key={step.n} className="text-center flex flex-col items-center">
                   <span className="inline-flex items-center justify-center w-11 h-11 rounded-full border border-[#D4A853]/50 text-[#D4A853] font-bold text-sm mb-4">
                     {step.n}
                   </span>
                   <h3 className="text-lg font-semibold text-white mb-3">{step.title}</h3>
-                  <p className="text-white/65 text-sm leading-relaxed">{step.body}</p>
+                  <p className="text-white/65 text-sm leading-relaxed max-w-sm mx-auto">{step.body}</p>
                 </li>
               ))}
             </ol>

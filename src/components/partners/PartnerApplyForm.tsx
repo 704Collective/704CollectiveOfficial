@@ -13,7 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { submitPartnerApplication } from '@/app/actions/partnerApplication';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Upload } from 'lucide-react';
 
 type Props = {
   inviteToken?: string;
@@ -110,7 +110,7 @@ export function PartnerApplyForm({
         password,
       });
       if (signErr) {
-        toast.message('Application submitted — sign in with your new password.');
+        toast.message('Application submitted - sign in with your new password.');
       }
 
       router.push('/partners/apply/submitted');
@@ -130,15 +130,15 @@ export function PartnerApplyForm({
             </Link>
             <h1 className="mt-4 text-2xl font-semibold text-white">Partner application</h1>
             {superAdminInvite && (
-              <p className="mt-2 text-sm text-[#D4A853]">
-                You&apos;re joining through an invitation — your application will be approved immediately.
+              <p className="mt-2 text-sm text-[#C6A664]">
+                You&apos;re joining through an invitation - your application will be approved immediately.
               </p>
             )}
           </div>
 
           <form
             onSubmit={(e) => void handleSubmit(e)}
-            className="space-y-5 rounded-2xl border border-white/10 bg-[#141414] p-6 sm:p-8"
+            className="space-y-6 rounded-2xl border border-white/[0.08] bg-[#141414] p-6 sm:p-8 shadow-xl shadow-black/20"
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -270,35 +270,65 @@ export function PartnerApplyForm({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-white/80">
-                Logo or profile photo <span className="text-[#D4A853]">*</span>
-              </Label>
-              <Input
+              <div className="text-sm font-medium leading-none text-white/80">
+                Logo or profile photo <span className="text-[#C6A664]">*</span>
+              </div>
+              <input
+                id="pf-logo-file"
                 type="file"
                 accept="image/*"
                 required
+                className="sr-only"
                 onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)}
-                className="text-white/70 file:mr-3 file:rounded-md file:border-0 file:bg-[#D4A853] file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-[#1A1A1A]"
               />
+              <label
+                htmlFor="pf-logo-file"
+                className="group flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#C6A664]/80 bg-black/40 px-6 py-10 text-center transition-colors hover:border-[#C6A664] hover:bg-[#C6A664]/[0.04] focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#C6A664]"
+              >
+                <Upload className="h-8 w-8 text-[#C6A664] transition-transform group-hover:scale-105" strokeWidth={1.5} aria-hidden />
+                <span className="text-sm font-medium text-white/90">Upload logo or profile photo</span>
+                {logoFile ? (
+                  <span className="max-w-full truncate text-xs text-[#C6A664]/90">{logoFile.name}</span>
+                ) : (
+                  <span className="text-xs text-white/40">PNG, JPG, or WebP</span>
+                )}
+              </label>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-white/80">
+              <div className="text-sm font-medium leading-none text-white/80">
                 Additional photos <span className="text-white/40 font-normal">(optional, up to 9)</span>
-              </Label>
-              <Input
+              </div>
+              <input
+                id="pf-photos-file"
                 type="file"
                 accept="image/*"
                 multiple
+                className="sr-only"
                 onChange={handleExtraChange}
-                className="text-white/70 file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-sm file:text-white"
               />
+              <label
+                htmlFor="pf-photos-file"
+                className="group flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#C6A664]/50 bg-black/40 px-6 py-10 text-center transition-colors hover:border-[#C6A664]/80 hover:bg-[#C6A664]/[0.04] focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#C6A664]"
+              >
+                <Upload className="h-7 w-7 text-[#C6A664]/90 transition-transform group-hover:scale-105" strokeWidth={1.5} aria-hidden />
+                <span className="text-sm font-medium text-white/90">Upload additional photos (optional, up to 9)</span>
+                {extraPhotos.length > 0 ? (
+                  <span className="text-xs text-[#C6A664]/90">{extraPhotos.length} file{extraPhotos.length !== 1 ? 's' : ''} selected</span>
+                ) : (
+                  <span className="text-xs text-white/40">Add up to 9 images</span>
+                )}
+              </label>
               {extraPhotos.length > 0 && (
-                <ul className="text-xs text-white/50 space-y-1">
+                <ul className="mt-2 space-y-1.5 rounded-lg border border-white/[0.06] bg-black/30 px-3 py-2 text-xs text-white/55">
                   {extraPhotos.map((f, i) => (
-                    <li key={i} className="flex justify-between gap-2">
-                      <span className="truncate">{f.name}</span>
-                      <button type="button" onClick={() => removeExtra(i)} className="text-[#D4A853] shrink-0">
+                    <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate">{f.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeExtra(i)}
+                        className="shrink-0 text-[#C6A664] hover:text-[#C6A664]/80"
+                      >
                         Remove
                       </button>
                     </li>
@@ -307,29 +337,49 @@ export function PartnerApplyForm({
               )}
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-black/30 p-4 space-y-3">
-              <p className="text-sm font-medium text-white">Partner types</p>
-              <div className="flex items-center gap-2 opacity-70">
-                <Checkbox id="pt-partner" checked disabled />
+            <div className="rounded-xl border border-[#C6A664]/20 bg-black/30 p-5 space-y-3.5">
+              <p className="text-sm font-semibold tracking-wide text-white">Partner types</p>
+              <div className="flex items-center gap-2.5 opacity-80">
+                <Checkbox
+                  id="pt-partner"
+                  checked
+                  disabled
+                  className="border-[#C6A664]/60 data-[state=checked]:bg-[#C6A664] data-[state=checked]:border-[#C6A664]"
+                />
                 <Label htmlFor="pt-partner" className="text-white/80 cursor-default">
                   Partner <span className="text-white/40">(required)</span>
                 </Label>
               </div>
-              <div className="flex items-center gap-2">
-                <Checkbox id="pt-vendor" checked={vendor} onCheckedChange={(v) => setVendor(v === true)} />
-                <Label htmlFor="pt-vendor" className="text-white/80">
+              <div className="flex items-center gap-2.5">
+                <Checkbox
+                  id="pt-vendor"
+                  checked={vendor}
+                  onCheckedChange={(v) => setVendor(v === true)}
+                  className="border-[#C6A664]/50 data-[state=checked]:bg-[#C6A664] data-[state=checked]:border-[#C6A664]"
+                />
+                <Label htmlFor="pt-vendor" className="text-white/80 cursor-pointer">
                   Vendor
                 </Label>
               </div>
-              <div className="flex items-center gap-2">
-                <Checkbox id="pt-venue" checked={venue} onCheckedChange={(v) => setVenue(v === true)} />
-                <Label htmlFor="pt-venue" className="text-white/80">
+              <div className="flex items-center gap-2.5">
+                <Checkbox
+                  id="pt-venue"
+                  checked={venue}
+                  onCheckedChange={(v) => setVenue(v === true)}
+                  className="border-[#C6A664]/50 data-[state=checked]:bg-[#C6A664] data-[state=checked]:border-[#C6A664]"
+                />
+                <Label htmlFor="pt-venue" className="text-white/80 cursor-pointer">
                   Venue
                 </Label>
               </div>
-              <div className="flex items-center gap-2">
-                <Checkbox id="pt-sponsor" checked={sponsor} onCheckedChange={(v) => setSponsor(v === true)} />
-                <Label htmlFor="pt-sponsor" className="text-white/80">
+              <div className="flex items-center gap-2.5">
+                <Checkbox
+                  id="pt-sponsor"
+                  checked={sponsor}
+                  onCheckedChange={(v) => setSponsor(v === true)}
+                  className="border-[#C6A664]/50 data-[state=checked]:bg-[#C6A664] data-[state=checked]:border-[#C6A664]"
+                />
+                <Label htmlFor="pt-sponsor" className="text-white/80 cursor-pointer">
                   Sponsor
                 </Label>
               </div>
@@ -350,7 +400,7 @@ export function PartnerApplyForm({
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#D4A853] hover:bg-[#C6A664] text-[#1A1A1A] font-semibold h-11"
+              className="w-full bg-[#C6A664] hover:bg-[#C6A664]/90 text-[#1A1A1A] font-semibold h-12 rounded-lg shadow-md shadow-black/30"
             >
               {loading ? (
                 <>
