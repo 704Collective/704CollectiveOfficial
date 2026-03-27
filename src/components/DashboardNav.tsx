@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -281,6 +281,34 @@ function resolveActiveLabel(
   return hit?.label ?? entries[0]?.label ?? 'Dashboard';
 }
 
+function DashboardNavSuspenseFallback() {
+  return (
+    <div className="relative z-30 w-full">
+      <div
+        className={cn(
+          'flex items-center justify-between gap-3 border-b border-border/80 py-2.5 sm:hidden',
+          '-mx-4 px-4'
+        )}
+      >
+        <div className="h-5 w-32 max-w-[55%] animate-pulse rounded-md bg-muted" />
+        <div className="h-10 w-10 shrink-0 animate-pulse rounded-lg bg-muted" />
+      </div>
+      <div
+        className={cn(
+          'hidden min-h-[48px] items-center border-b border-border sm:flex',
+          '-mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8'
+        )}
+      >
+        <div className="flex w-full gap-5 py-3 lg:gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="h-4 w-20 shrink-0 animate-pulse rounded bg-muted" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // DashboardNav
 // ---------------------------------------------------------------------------
@@ -291,7 +319,7 @@ export interface DashboardNavProps {
   onSuggestClick?: () => void;
 }
 
-export function DashboardNav({ suggestOpen = false, onSuggestClick }: DashboardNavProps = {}) {
+function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNavProps = {}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user, profile, isAdmin, isSuperAdmin, isActiveMember, isBusinessMember } = useAuth();
@@ -323,10 +351,6 @@ export function DashboardNav({ suggestOpen = false, onSuggestClick }: DashboardN
     ro.observe(el);
     return () => ro.disconnect();
   }, [updateScrollFade]);
-
-  if (profile?.member_type === 'partner') {
-    return null;
-  }
 
   const canSeeSocialFeed = isActiveMember || isAdmin;
   const canSeeBusinessFeed = isBusinessMember || isAdmin;
@@ -570,5 +594,18 @@ export function DashboardNav({ suggestOpen = false, onSuggestClick }: DashboardN
         )}
       </div>
     </div>
+  );
+}
+
+export function DashboardNav(props: DashboardNavProps = {}) {
+  const { profile } = useAuth();
+  if (profile?.member_type === 'partner') {
+    return null;
+  }
+
+  return (
+    <Suspense fallback={<DashboardNavSuspenseFallback />}>
+      <DashboardNavInner {...props} />
+    </Suspense>
   );
 }

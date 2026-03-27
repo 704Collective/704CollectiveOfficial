@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { Header } from '@/components/Header';
@@ -163,15 +163,32 @@ function FeedPreviewWidget({ feedType, href }: { feedType: 'social' | 'business'
   );
 }
 
+/** Reads `?suggest=1` in a Suspense-isolated subtree (Next.js useSearchParams CSR bailout). */
+function DashboardSuggestFromQuery({ onOpen }: { onOpen: () => void }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('suggest') !== '1') return;
+    onOpen();
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete('suggest');
+    const q = next.toString();
+    router.replace(q ? `/dashboard?${q}` : '/dashboard', { scroll: false });
+  }, [searchParams, router, onOpen]);
+
+  return null;
+}
+
 export default function Dashboard() {
   const { user, profile, isActiveMember, isAdmin, loading, refreshProfile } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
   usePageTitle('Member Portal');
   const [isPortalLoading, setIsPortalLoading] = useState(false);
   const [heroEventId, setHeroEventId] = useState<string | null>(null);
   const [application, setApplication] = useState<any>(null);
   const [suggestModalOpen, setSuggestModalOpen] = useState(false);
+  const openSuggestFromQuery = useCallback(() => setSuggestModalOpen(true), []);
 
   // Self-healing fallback: wait 800 ms then check whether a session exists but
   // the profile never loaded. This catches the case where SIGNED_IN was
@@ -207,15 +224,6 @@ export default function Dashboard() {
       router.replace('/partner-portal');
     }
   }, [loading, profile, router]);
-
-  useEffect(() => {
-    if (searchParams.get('suggest') !== '1') return;
-    setSuggestModalOpen(true);
-    const next = new URLSearchParams(searchParams.toString());
-    next.delete('suggest');
-    const q = next.toString();
-    router.replace(q ? `/dashboard?${q}` : '/dashboard', { scroll: false });
-  }, [searchParams, router]);
 
   // Track last_seen_at for re-engagement cron
   useEffect(() => {
@@ -331,6 +339,10 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+
+      <Suspense fallback={null}>
+        <DashboardSuggestFromQuery onOpen={openSuggestFromQuery} />
+      </Suspense>
 
       <main className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
 
