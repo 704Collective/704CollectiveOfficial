@@ -46,16 +46,16 @@ export function Header() {
   const pathname = usePathname();
   const { user, profile, isAdmin } = useAuth();
   const supabaseRef = useRef(createClient());
-
-  if (MARKETING_ROUTES.includes(pathname)) {
-    return null;
-  }
-
   const [windowDashboard, setWindowDashboard] = useState(false);
+
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return;
     setWindowDashboard(isMemberDashboardRoute(window.location.pathname));
   }, [pathname]);
+
+  if (MARKETING_ROUTES.includes(pathname)) {
+    return null;
+  }
 
   /** Member dashboard shell: hide public center nav (usePathname + window sync if hook lags). */
   const dashboardMemberHeader =

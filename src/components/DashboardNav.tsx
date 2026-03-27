@@ -427,29 +427,40 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
           <button
             key={entry.key}
             type="button"
+            tabIndex={-1}
+            className={cn(desktopTabClass(isActive), 'cursor-pointer border-0 bg-transparent p-0 text-left [font-family:inherit]')}
+            onMouseDown={(e) => e.preventDefault()}
             onClick={onSuggestClick}
-            className={desktopTabClass(isActive)}
           >
             {inner}
           </button>
         );
       }
       return (
-        <Link
+        <button
           key={entry.key}
-          href="/dashboard?suggest=1"
-          className={desktopTabClass(isActive)}
+          type="button"
           tabIndex={-1}
+          className={cn(desktopTabClass(isActive), 'cursor-pointer border-0 bg-transparent p-0 text-left [font-family:inherit]')}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => router.push('/dashboard?suggest=1')}
         >
           {inner}
-        </Link>
+        </button>
       );
     }
 
     return (
-      <Link key={entry.key} href={entry.href} className={desktopTabClass(isActive)} tabIndex={-1}>
+      <button
+        key={entry.key}
+        type="button"
+        tabIndex={-1}
+        className={cn(desktopTabClass(isActive), 'cursor-pointer border-0 bg-transparent p-0 text-left [font-family:inherit]')}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => router.push(entry.href)}
+      >
         {inner}
-      </Link>
+      </button>
     );
   };
 
@@ -596,7 +607,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
         <div style={{ position: 'relative', minWidth: 0, width: '100%' }}>
           <div
             ref={scrollRef}
-            className="dashboard-nav-desktop-scroll border-b border-border -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+            className="dashboard-nav-desktop-scroll w-full border-b border-border"
             style={{
               display: 'flex',
               flexDirection: 'row',
