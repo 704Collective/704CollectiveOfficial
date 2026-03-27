@@ -13,6 +13,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Search, Handshake } from 'lucide-react';
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
+import { DASHBOARD_MAIN_WIDE } from '@/lib/dashboard-layout';
+import { cn } from '@/lib/utils';
 
 type Listing = {
   id: string;
@@ -55,7 +57,7 @@ function PartnersGridBody({
 
   if (filtered.length === 0) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-6 py-16 text-center">
+      <div className="mx-auto max-w-2xl rounded-xl border border-white/10 bg-white/[0.03] px-6 py-16 text-center">
         <Handshake className="h-12 w-12 mx-auto text-[#D4A853]/60 mb-4" />
         <p className="text-white/80 font-medium">
           {listings.length === 0 ? 'No approved partners in the directory yet.' : 'No partners match your search.'}
@@ -184,15 +186,15 @@ export default function DashboardPartnersDirectoryPage() {
     <div className="min-h-screen bg-[#1A1A1A]">
       <Header />
       <DashboardNav />
-      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white tracking-tight">Partner directory</h1>
-          <p className="text-sm text-white/50 mt-1">
+      <main className={cn(DASHBOARD_MAIN_WIDE)}>
+        <div className="mb-8 text-center sm:text-left">
+          <h1 className="text-2xl font-bold tracking-tight text-white">Partner directory</h1>
+          <p className="mt-1 text-sm text-white/50">
             Browse approved 704 Collective partners. Message a partner from their profile.
           </p>
         </div>
 
-        <div className="relative mb-8 max-w-md">
+        <div className="relative mx-auto mb-8 max-w-md sm:mx-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/35" />
           <Input
             value={search}

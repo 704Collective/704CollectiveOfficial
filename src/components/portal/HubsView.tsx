@@ -57,14 +57,14 @@ export function HubsView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-center sm:text-left">
           <h1 className="text-2xl font-bold text-white">Hubs</h1>
-          <p className="text-sm text-white/50 mt-1">
+          <p className="mt-1 text-sm text-white/50">
             {loading ? '…' : `${filtered.length} hub${filtered.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <div className="relative w-full sm:w-64">
+        <div className="relative mx-auto w-full max-w-md sm:mx-0 sm:max-w-none sm:w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
           <Input
             value={search}

@@ -23,6 +23,8 @@ import {
   ChevronLeft, Users, FileText, MessageSquare, Pencil, Trash2, Download,
   Upload, Heart, Send, Loader2, X, Paperclip, Plus,
 } from 'lucide-react';
+import { DASHBOARD_MAIN } from '@/lib/dashboard-layout';
+import { cn } from '@/lib/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -685,7 +687,7 @@ export default function HubDetailPage() {
       <div className="min-h-screen bg-[#1A1A1A]">
         <Header />
         <DashboardNav />
-        <main className="max-w-4xl mx-auto px-4 py-8 text-center">
+        <main className={cn(DASHBOARD_MAIN, 'text-center')}>
           <p className="text-white/40">Hub not found.</p>
           <Button variant="link" className="text-[#D4A853]" onClick={() => router.push('/dashboard/hubs')}>Back to Hubs</Button>
         </main>
@@ -703,10 +705,10 @@ export default function HubDetailPage() {
     <div className="min-h-screen bg-[#1A1A1A]">
       <Header />
       <DashboardNav />
-      <main className="max-w-4xl mx-auto px-4 py-6">
+      <main className={cn(DASHBOARD_MAIN)}>
         {/* Back */}
         <button onClick={() => router.push('/dashboard/hubs')}
-          className="flex items-center gap-1.5 text-sm text-white/50 hover:text-white mb-5 transition-colors">
+          className="mb-5 flex w-full items-center justify-center gap-1.5 text-sm text-white/50 transition-colors hover:text-white sm:w-auto sm:justify-start">
           <ChevronLeft className="h-4 w-4" /> All Hubs
         </button>
 

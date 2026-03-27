@@ -14,6 +14,8 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, ExternalLink, MessageCircle, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { ensureAdminDirectConversation } from '@/app/actions/adminPartnerActions';
+import { DASHBOARD_MAIN } from '@/lib/dashboard-layout';
+import { cn } from '@/lib/utils';
 
 type Listing = {
   id: string;
@@ -155,7 +157,7 @@ export default function PartnerListingDetailPage() {
       <div className="min-h-screen bg-[#1A1A1A]">
         <Header />
         <DashboardNav />
-        <main className="max-w-xl mx-auto px-4 py-16 text-center text-white/70">
+        <main className={cn(DASHBOARD_MAIN, 'py-16 text-center text-white/70')}>
           <p className="text-lg font-medium text-white mb-2">Partner not found</p>
           <p className="text-sm text-white/45 mb-6">This listing may be unavailable or not approved.</p>
           <Button variant="secondary" asChild>
@@ -177,10 +179,10 @@ export default function PartnerListingDetailPage() {
     <div className="min-h-screen bg-[#1A1A1A]">
       <Header />
       <DashboardNav />
-      <main className="max-w-3xl mx-auto px-4 py-8">
+      <main className={cn(DASHBOARD_MAIN)}>
         <Link
           href="/dashboard/partners"
-          className="inline-flex items-center text-sm text-white/45 hover:text-white mb-6 transition-colors"
+          className="mb-6 flex w-full items-center justify-center gap-1 text-sm text-white/45 transition-colors hover:text-white sm:inline-flex sm:w-auto sm:justify-start"
         >
           <ArrowLeft className="h-4 w-4 mr-1" />
           All partners

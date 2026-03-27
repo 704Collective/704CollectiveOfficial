@@ -8,6 +8,8 @@ import { MemberDirectory } from '@/components/portal/MemberDirectory';
 import { useAuth } from '@/hooks/useAuth';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { Loader2 } from 'lucide-react';
+import { DASHBOARD_MAIN_WIDE } from '@/lib/dashboard-layout';
+import { cn } from '@/lib/utils';
 
 export default function DirectoryPage() {
   const { user, profile, loading, isAdmin, isSuperAdmin } = useAuth();
@@ -37,7 +39,7 @@ export default function DirectoryPage() {
     <div className="min-h-screen bg-[#1A1A1A]">
       <Header />
       <DashboardNav />
-      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      <main className={cn(DASHBOARD_MAIN_WIDE)}>
         <MemberDirectory />
       </main>
     </div>

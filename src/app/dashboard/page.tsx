@@ -25,6 +25,8 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
+import { DASHBOARD_MAIN } from '@/lib/dashboard-layout';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
 
@@ -77,12 +79,12 @@ function FeedPreviewWidget({ feedType, href }: { feedType: 'social' | 'business'
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
         <div className="flex items-center gap-2">
           <Icon className="w-4 h-4 text-primary" />
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</p>
         </div>
-        <Button variant="ghost" size="sm" asChild className="h-7 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground">
+        <Button variant="ghost" size="sm" asChild className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground">
           <Link href={href}>
             View All <ArrowRight className="w-3 h-3" />
           </Link>
@@ -344,14 +346,12 @@ export default function Dashboard() {
         <DashboardSuggestFromQuery onOpen={openSuggestFromQuery} />
       </Suspense>
 
-      <main className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <DashboardNav
+        suggestOpen={suggestModalOpen}
+        onSuggestClick={() => setSuggestModalOpen(true)}
+      />
 
-        <div className="min-w-0 w-full">
-          <DashboardNav
-            suggestOpen={suggestModalOpen}
-            onSuggestClick={() => setSuggestModalOpen(true)}
-          />
-        </div>
+      <main className={cn(DASHBOARD_MAIN, 'space-y-6')}>
 
         {/* Past due warning */}
         {isPastDue && (
@@ -392,7 +392,7 @@ export default function Dashboard() {
         )}
 
         {/* Welcome heading */}
-        <h1 className="text-2xl sm:text-3xl font-semibold text-foreground">
+        <h1 className="text-center text-2xl font-semibold text-foreground sm:text-left sm:text-3xl">
           Welcome back, {firstName}
         </h1>
 
@@ -410,8 +410,8 @@ export default function Dashboard() {
 
         {/* Membership card + wallet buttons inline */}
         {isActiveMember && (
-          <div className="flex flex-col items-center sm:flex-row sm:items-start gap-4 w-full">
-            <div className="w-full max-w-xs mx-auto sm:mx-0 shrink-0">
+          <div className="flex w-full flex-col items-center justify-center gap-6 lg:flex-row lg:items-start lg:justify-center">
+            <div className="w-full max-w-md shrink-0 lg:max-w-xs">
               <MembershipCard
                 name={p.full_name || 'Member'}
                 memberId={user.id}
@@ -419,8 +419,8 @@ export default function Dashboard() {
                 memberSince={memberSince}
               />
             </div>
-            <div className="flex flex-col items-center sm:items-start gap-2 w-full sm:w-auto sm:pt-2">
-              <div className="flex flex-row flex-wrap justify-center sm:justify-start gap-2 w-full sm:w-auto">
+            <div className="flex w-full max-w-md flex-col items-center gap-2 lg:w-auto lg:max-w-none lg:items-start lg:pt-2">
+              <div className="flex w-full flex-row flex-wrap justify-center gap-2 lg:justify-start">
                 <WalletButtons compact />
               </div>
             </div>

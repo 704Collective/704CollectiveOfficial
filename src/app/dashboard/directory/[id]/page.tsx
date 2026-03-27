@@ -15,6 +15,8 @@ import { usePageTitle } from '@/hooks/usePageTitle';
 import { supabase } from '@/integrations/supabase/client';
 import { notifyNewConversation } from '@/app/actions/notifyNewConversation';
 import { toast } from 'sonner';
+import { DASHBOARD_MAIN } from '@/lib/dashboard-layout';
+import { cn } from '@/lib/utils';
 import {
   MessageSquare,
   Share2,
@@ -183,7 +185,7 @@ export default function MemberProfilePage() {
       <div className="min-h-screen bg-[#1A1A1A]">
         <Header />
         <DashboardNav />
-        <main className="max-w-4xl mx-auto px-4 py-8">
+        <main className={cn(DASHBOARD_MAIN)}>
           <Skeleton className="h-8 w-32 bg-[#2E2E2E] mb-8" />
           <div className="flex gap-6">
             <Skeleton className="h-24 w-24 rounded-full bg-[#2E2E2E]" />
@@ -235,11 +237,11 @@ export default function MemberProfilePage() {
     <div className="min-h-screen bg-[#1A1A1A]">
       <Header />
       <DashboardNav />
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className={cn(DASHBOARD_MAIN)}>
         {/* Back */}
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-1.5 text-sm text-white/50 hover:text-white mb-6 transition-colors"
+          className="mb-6 flex w-full items-center justify-center gap-1.5 text-sm text-white/50 transition-colors hover:text-white sm:w-auto sm:justify-start"
         >
           <ChevronLeft className="h-4 w-4" /> Back to Directory
         </button>

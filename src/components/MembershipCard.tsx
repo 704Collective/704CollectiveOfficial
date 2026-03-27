@@ -97,23 +97,23 @@ export function MembershipCard({ name, memberId, avatarUrl, memberSince }: Membe
         </div>
 
         {/* Bottom row: location + QR */}
-        <div className="flex items-end justify-between gap-2">
+        <div className="flex items-end justify-between gap-3">
           <p className="text-white/35" style={{ fontSize: 'clamp(9px, 2vw, 11px)' }}>
             Charlotte, NC
           </p>
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white sm:hidden">
+          <div className="flex h-[8.5rem] w-[8.5rem] shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1.5 sm:hidden">
             <QRCodeSVG
               value={memberId}
-              size={80}
+              size={124}
               level="M"
               bgColor="#FFFFFF"
               fgColor="#000000"
             />
           </div>
-          <div className="hidden shrink-0 rounded-lg bg-white p-1 sm:block sm:p-1.5">
+          <div className="hidden shrink-0 rounded-xl bg-white p-2 sm:block">
             <QRCodeSVG
               value={memberId}
-              size={36}
+              size={80}
               level="M"
               bgColor="#FFFFFF"
               fgColor="#000000"

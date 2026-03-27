@@ -8,6 +8,8 @@ import { MessagesPageClient } from '@/app/dashboard/messages/MessagesPageClient'
 import { useAuth } from '@/hooks/useAuth';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { Loader2 } from 'lucide-react';
+import { DASHBOARD_MAIN_WIDE } from '@/lib/dashboard-layout';
+import { cn } from '@/lib/utils';
 
 export default function MessagesPage() {
   const { user, profile, loading, isAdmin, isSuperAdmin } = useAuth();
@@ -37,7 +39,7 @@ export default function MessagesPage() {
     <div className="min-h-screen bg-[#1A1A1A]">
       <Header />
       <DashboardNav />
-      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-6">
+      <main className={cn(DASHBOARD_MAIN_WIDE)}>
         <Suspense
           fallback={
             <div className="flex justify-center py-24">

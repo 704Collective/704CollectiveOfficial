@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -20,6 +20,7 @@ import {
   Lightbulb,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DASHBOARD_NAV_SHELL } from '@/lib/dashboard-layout';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -284,21 +285,11 @@ function resolveActiveLabel(
 function DashboardNavSuspenseFallback() {
   return (
     <div className="relative z-30 w-full">
-      <div
-        className={cn(
-          'flex items-center justify-between gap-3 border-b border-border/80 py-2.5 sm:hidden',
-          '-mx-4 px-4'
-        )}
-      >
+      <div className="flex w-full items-center justify-between gap-3 border-b border-border/80 py-2.5 sm:hidden">
         <div className="h-5 w-32 max-w-[55%] animate-pulse rounded-md bg-muted" />
         <div className="h-10 w-10 shrink-0 animate-pulse rounded-lg bg-muted" />
       </div>
-      <div
-        className={cn(
-          'hidden min-h-[48px] items-center border-b border-border sm:flex',
-          '-mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8'
-        )}
-      >
+      <div className="hidden min-h-[48px] items-center border-b border-border px-2 sm:flex sm:px-3">
         <div className="flex w-full gap-5 py-3 lg:gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="h-4 w-20 shrink-0 animate-pulse rounded bg-muted" />
@@ -331,6 +322,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollFade, setShowScrollFade] = useState(false);
   const [atScrollEnd, setAtScrollEnd] = useState(true);
+  const [atScrollStart, setAtScrollStart] = useState(true);
 
   const suggestFromQuery = searchParams.get('suggest') === '1';
   const suggestActive = suggestOpen || suggestFromQuery;
@@ -342,6 +334,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
     const overflow = scrollWidth > clientWidth + 1;
     setShowScrollFade(overflow);
     setAtScrollEnd(!overflow || scrollLeft + clientWidth >= scrollWidth - 2);
+    setAtScrollStart(!overflow || scrollLeft <= 2);
   }, []);
 
   useEffect(() => {
@@ -351,20 +344,6 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
     ro.observe(el);
     return () => ro.disconnect();
   }, [updateScrollFade]);
-
-  useLayoutEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollLeft = 0;
-    updateScrollFade();
-    const id = requestAnimationFrame(() => {
-      if (scrollRef.current) {
-        scrollRef.current.scrollLeft = 0;
-        updateScrollFade();
-      }
-    });
-    return () => cancelAnimationFrame(id);
-  }, [pathname, updateScrollFade]);
 
   const canSeeSocialFeed = isActiveMember || isAdmin;
   const canSeeBusinessFeed = isBusinessMember || isAdmin;
@@ -540,13 +519,9 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
 
   return (
     <div className="relative z-30 min-w-0 w-full">
+      <div className={DASHBOARD_NAV_SHELL}>
       {/* Mobile header row */}
-      <div
-        className={cn(
-          'flex items-center justify-between gap-3 border-b border-border/80 py-2.5 sm:hidden',
-          '-mx-4 px-4'
-        )}
-      >
+      <div className="flex w-full items-center justify-between gap-3 border-b border-border/80 py-2.5 sm:hidden">
         <p
           className="min-w-0 truncate text-sm font-semibold tracking-tight"
           style={{ color: GOLD }}
@@ -563,6 +538,55 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
         >
           <LayoutGrid className="h-5 w-5" aria-hidden />
         </button>
+      </div>
+
+      {/* Desktop horizontal tabs only — mobile uses hamburger above */}
+      <div className="hidden min-w-0 w-full sm:block">
+        <div className="relative min-w-0 w-full">
+          <div
+            ref={scrollRef}
+            className="dashboard-nav-desktop-scroll box-border w-full border-b border-border px-0"
+            style={{
+              display: 'flex',
+              flexDirection: 'row',
+              flexWrap: 'nowrap',
+              overflowX: 'auto',
+              overflowAnchor: 'none',
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              minHeight: 48,
+              minWidth: 0,
+              width: '100%',
+              alignItems: 'stretch',
+              scrollPaddingLeft: 0,
+              scrollPaddingRight: 0,
+            }}
+            onScroll={updateScrollFade}
+            aria-label="Dashboard navigation"
+          >
+            {navEntries.map(renderDesktopTab)}
+          </div>
+          {showScrollFade && !atScrollStart && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-12 sm:w-14"
+              style={{
+                background: 'linear-gradient(to left, transparent, var(--background))',
+              }}
+            />
+          )}
+          {showScrollFade && !atScrollEnd && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-12 sm:w-14"
+              style={{
+                background: 'linear-gradient(to right, transparent, var(--background))',
+              }}
+            />
+          )}
+        </div>
+      </div>
       </div>
 
       <AnimatePresence mode="sync">
@@ -601,49 +625,6 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
           </>
         )}
       </AnimatePresence>
-
-      {/* Desktop horizontal tabs only — mobile uses hamburger above */}
-      <div className="hidden min-w-0 w-full sm:block">
-        <div style={{ position: 'relative', minWidth: 0, width: '100%' }}>
-          <div
-            ref={scrollRef}
-            className="dashboard-nav-desktop-scroll w-full border-b border-border"
-            style={{
-              display: 'flex',
-              flexDirection: 'row',
-              flexWrap: 'nowrap',
-              overflowX: 'auto',
-              overflowAnchor: 'none',
-              WebkitOverflowScrolling: 'touch',
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-              minHeight: 48,
-              minWidth: 0,
-              width: '100%',
-              alignItems: 'stretch',
-            }}
-            onScroll={updateScrollFade}
-            aria-label="Dashboard navigation"
-          >
-            {navEntries.map(renderDesktopTab)}
-          </div>
-          {showScrollFade && !atScrollEnd && (
-            <div
-              aria-hidden
-              style={{
-                position: 'absolute',
-                top: 0,
-                right: 0,
-                bottom: 0,
-                width: 60,
-                background: 'linear-gradient(to right, transparent, #1A1A1A)',
-                pointerEvents: 'none',
-                zIndex: 10,
-              }}
-            />
-          )}
-        </div>
-      </div>
     </div>
   );
 }
