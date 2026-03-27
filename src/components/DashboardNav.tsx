@@ -4,12 +4,33 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard, Calendar, User, Settings, Bell,
-  Rss, Briefcase, MessageCircle, BookUser, Network, Handshake,
+  LayoutDashboard,
+  Calendar,
+  User,
+  Settings,
+  Bell,
+  Rss,
+  Briefcase,
+  MessageCircle,
+  BookUser,
+  Network,
+  Handshake,
+  Menu,
+  ChevronRight,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 
 // ---------------------------------------------------------------------------
 // Nav items — built dynamically based on role/membership
@@ -106,39 +127,141 @@ export function DashboardNav() {
     { href: '/dashboard/settings',           label: 'Settings',        icon: Settings },
   ];
 
+  const activeItem =
+    navItems.find((item) => isActive(item.href, item.exact)) ?? navItems[0];
+
   return (
-    <nav
-      className="flex items-center border-b border-border overflow-x-auto scrollbar-hide whitespace-nowrap -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
-      style={{ WebkitOverflowScrolling: 'touch' }}
-      aria-label="Dashboard navigation"
-    >
-      {navItems.map((item) => {
-        const active = isActive(item.href, item.exact);
-        const Icon = item.icon;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              'relative flex items-center justify-center gap-0 sm:gap-2 px-0.5 py-2.5 mr-2 sm:px-1 sm:py-3 sm:mr-6 text-sm font-medium whitespace-nowrap transition-colors shrink-0 last:mr-0 sm:justify-start',
-              active
-                ? 'text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
+    <div className="w-full">
+      {/* Mobile: current page + opens full labeled menu */}
+      <div className="flex items-stretch gap-2 border-b border-border -mx-4 px-4 sm:hidden">
+        <div className="min-w-0 flex-1 py-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            You are here
+          </p>
+          <p className="truncate text-sm font-semibold text-foreground">{activeItem.label}</p>
+        </div>
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="my-2 shrink-0 gap-2 border-primary/25 bg-primary/5 px-3 font-semibold text-foreground hover:bg-primary/10"
+            >
+              <Menu className="h-4 w-4" aria-hidden />
+              All sections
+            </Button>
+          </SheetTrigger>
+          <SheetContent
+            side="bottom"
+            className="flex max-h-[min(88dvh,32rem)] flex-col rounded-t-2xl border-t p-0 shadow-2xl [&>button]:hidden"
           >
-            <span className="relative inline-flex">
-              <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-              {/* Badge for message count */}
-              {item.badge != null && item.badge > 0 && (
-                <span className="absolute -top-1 -right-1.5 sm:-top-1.5 sm:-right-2 min-w-[14px] h-3.5 px-0.5 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center leading-none pointer-events-none">
-                  {item.badge > 99 ? '99+' : item.badge}
-                </span>
+            <SheetHeader className="space-y-0 border-b border-border px-4 pb-3 pt-4 text-left">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <SheetTitle className="text-left text-base font-semibold">
+                    Dashboard menu
+                  </SheetTitle>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Jump to any section of your member portal.
+                  </p>
+                </div>
+                <SheetClose asChild>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full">
+                    <X className="h-4 w-4" />
+                    <span className="sr-only">Close menu</span>
+                  </Button>
+                </SheetClose>
+              </div>
+            </SheetHeader>
+
+            <nav
+              className="flex-1 overflow-y-auto overscroll-contain px-3 py-3"
+              aria-label="Dashboard navigation"
+            >
+              <ul className="flex flex-col gap-1">
+                {navItems.map((item) => {
+                  const itemActive = isActive(item.href, item.exact);
+                  const Icon = item.icon;
+                  return (
+                    <li key={item.href}>
+                      <SheetClose asChild>
+                        <Link
+                          href={item.href}
+                          className={cn(
+                            'flex items-center gap-3 rounded-xl px-3 py-3.5 text-sm font-medium transition-colors',
+                            itemActive
+                              ? 'bg-primary/12 text-foreground shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.2)]'
+                              : 'text-foreground hover:bg-muted/80'
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+                              itemActive
+                                ? 'bg-primary/15 text-primary'
+                                : 'bg-muted text-muted-foreground'
+                            )}
+                          >
+                            <Icon className="h-5 w-5" aria-hidden />
+                            {item.badge != null && item.badge > 0 && (
+                              <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-destructive-foreground">
+                                {item.badge > 99 ? '99+' : item.badge}
+                              </span>
+                            )}
+                          </span>
+                          <span className="min-w-0 flex-1 text-left leading-snug">{item.label}</span>
+                          <ChevronRight
+                            className={cn(
+                              'h-4 w-4 shrink-0 opacity-40',
+                              itemActive && 'text-primary opacity-70'
+                            )}
+                            aria-hidden
+                          />
+                        </Link>
+                      </SheetClose>
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
+          </SheetContent>
+        </Sheet>
+      </div>
+
+      {/* Tablet/desktop: horizontal tabs with icons + labels */}
+      <nav
+        className="hidden sm:flex items-center border-b border-border overflow-x-auto scrollbar-hide whitespace-nowrap -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+        aria-label="Dashboard navigation"
+      >
+        {navItems.map((item) => {
+          const active = isActive(item.href, item.exact);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                'relative flex items-center gap-2 px-1 py-3 mr-5 lg:mr-6 text-sm font-medium whitespace-nowrap transition-colors shrink-0 last:mr-0',
+                active
+                  ? 'text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
-            </span>
-            <span className="hidden sm:inline">{item.label}</span>
-          </Link>
-        );
-      })}
-    </nav>
+            >
+              <span className="relative inline-flex">
+                <Icon className="w-4 h-4 shrink-0" />
+                {item.badge != null && item.badge > 0 && (
+                  <span className="absolute -top-1.5 -right-2 min-w-[14px] h-3.5 px-0.5 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center leading-none pointer-events-none">
+                    {item.badge > 99 ? '99+' : item.badge}
+                  </span>
+                )}
+              </span>
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
   );
 }

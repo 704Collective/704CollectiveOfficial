@@ -325,15 +325,15 @@ export default function Dashboard() {
       <main className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
 
         {/* Sub-nav + suggest event */}
-        <div className="flex items-center gap-2">
-          <div className="flex-1 min-w-0">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+          <div className="min-w-0 w-full sm:flex-1">
             <DashboardNav />
           </div>
           {isActiveMember && (
             <Button
               variant="ghost"
               size="sm"
-              className="shrink-0 gap-1.5 text-muted-foreground hover:text-foreground whitespace-nowrap"
+              className="shrink-0 gap-1.5 self-end text-muted-foreground hover:text-foreground whitespace-nowrap sm:self-auto"
               onClick={() => setSuggestModalOpen(true)}
             >
               <Lightbulb className="w-4 h-4" />
