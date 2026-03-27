@@ -15,7 +15,7 @@ import { Search, MessageSquare, User, Loader2 } from 'lucide-react';
 
 interface DirectoryMember {
   id: string;
-  full_name: string;
+  full_name: string | null;
   avatar_url: string | null;
   role: string;
   member_type: string | null;
@@ -24,13 +24,22 @@ interface DirectoryMember {
   member_since: string | null;
 }
 
-function initials(name: string): string {
-  return name
-    .split(' ')
+function memberDisplayName(fullName: string | null | undefined): string {
+  const t = fullName?.trim();
+  return t && t.length > 0 ? t : 'Member';
+}
+
+function initialsFromFullName(fullName: string | null | undefined): string {
+  const t = fullName?.trim();
+  if (!t) return 'M';
+  const parts = t.split(/\s+/).filter((p) => p.length > 0);
+  if (parts.length === 0) return 'M';
+  return parts
     .slice(0, 2)
-    .map((n) => n[0])
+    .map((p) => p[0])
+    .filter(Boolean)
     .join('')
-    .toUpperCase();
+    .toUpperCase() || 'M';
 }
 
 function MemberCard({
@@ -66,13 +75,13 @@ function MemberCard({
         onClick={() => router.push(`/dashboard/directory/${member.id}`)}
       >
         <Avatar className="h-14 w-14 shrink-0 ring-2 ring-white/10">
-          <AvatarImage src={member.avatar_url ?? undefined} />
+          <AvatarImage src={member.avatar_url ?? undefined} alt={memberDisplayName(member.full_name)} />
           <AvatarFallback className="bg-[#1A1A1A] text-[#D4A853] text-lg">
-            {initials(member.full_name)}
+            {initialsFromFullName(member.full_name)}
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
-          <p className="font-semibold text-white leading-tight truncate">{member.full_name}</p>
+          <p className="font-semibold text-white leading-tight truncate">{memberDisplayName(member.full_name)}</p>
           {member.title && (
             <p className="text-sm text-white/60 truncate mt-0.5">{member.title}</p>
           )}
@@ -151,7 +160,7 @@ export function MemberDirectory() {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
-      m.full_name.toLowerCase().includes(q) ||
+      (m.full_name?.toLowerCase() ?? '').includes(q) ||
       (m.company?.toLowerCase() ?? '').includes(q) ||
       (m.title?.toLowerCase() ?? '').includes(q)
     );
@@ -193,7 +202,7 @@ export function MemberDirectory() {
 
       notifyNewConversation({
         conversationId: conv.id,
-        senderName: profile.full_name,
+        senderName: memberDisplayName(profile.full_name),
         senderUserId: user.id,
         recipientUserIds: [member.id],
       }).catch(() => {});

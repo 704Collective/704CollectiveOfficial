@@ -32,7 +32,7 @@ export interface BusinessCardData {
   id: string;
   user_id: string;
   public_id: string;
-  full_name: string;
+  full_name: string | null;
   title: string | null;
   company: string | null;
   phone: string | null;
@@ -50,13 +50,22 @@ interface Props {
   onCardUpdated: () => void;
 }
 
-function initials(name: string): string {
-  return name
-    .split(' ')
+function memberDisplayName(fullName: string | null | undefined): string {
+  const t = fullName?.trim();
+  return t && t.length > 0 ? t : 'Member';
+}
+
+function initialsFromFullName(fullName: string | null | undefined): string {
+  const t = fullName?.trim();
+  if (!t) return 'M';
+  const parts = t.split(/\s+/).filter((p) => p.length > 0);
+  if (parts.length === 0) return 'M';
+  return parts
     .slice(0, 2)
-    .map((n) => n[0])
+    .map((p) => p[0])
+    .filter(Boolean)
     .join('')
-    .toUpperCase();
+    .toUpperCase() || 'M';
 }
 
 // ── The visual card ────────────────────────────────────────────────────────
@@ -79,13 +88,13 @@ function CardDisplay({ card, className = '' }: { card: BusinessCardData; classNa
 
       <div className="flex items-start gap-4 relative">
         <Avatar className="h-16 w-16 ring-2 ring-[#D4A853]/30 shrink-0">
-          <AvatarImage src={card.avatar_url ?? undefined} />
+          <AvatarImage src={card.avatar_url ?? undefined} alt={memberDisplayName(card.full_name)} />
           <AvatarFallback className="bg-[#2E2E2E] text-[#D4A853] text-xl">
-            {initials(card.full_name)}
+            {initialsFromFullName(card.full_name)}
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1 pt-1">
-          <h3 className="text-lg font-bold text-white leading-tight">{card.full_name}</h3>
+          <h3 className="text-lg font-bold text-white leading-tight">{memberDisplayName(card.full_name)}</h3>
           {card.title && (
             <p className="text-sm text-[#D4A853] font-medium mt-0.5 leading-tight">{card.title}</p>
           )}

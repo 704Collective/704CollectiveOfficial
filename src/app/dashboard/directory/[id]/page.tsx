@@ -31,7 +31,7 @@ import {
 
 interface MemberProfile {
   id: string;
-  full_name: string;
+  full_name: string | null;
   avatar_url: string | null;
   role: string;
   member_type: string | null;
@@ -39,7 +39,7 @@ interface MemberProfile {
   company: string | null;
   industry: string | null;
   phone: string | null;
-  email: string;
+  email: string | null;
   linkedin_url: string | null;
   website_url: string | null;
   member_since: string | null;
@@ -51,7 +51,7 @@ interface BusinessCardData {
   id: string;
   user_id: string;
   public_id: string;
-  full_name: string;
+  full_name: string | null;
   title: string | null;
   company: string | null;
   phone: string | null;
@@ -62,13 +62,22 @@ interface BusinessCardData {
   custom_fields: Record<string, string> | null;
 }
 
-function initials(name: string): string {
-  return name
-    .split(' ')
+function memberDisplayName(fullName: string | null | undefined): string {
+  const t = fullName?.trim();
+  return t && t.length > 0 ? t : 'Member';
+}
+
+function initialsFromFullName(fullName: string | null | undefined): string {
+  const t = fullName?.trim();
+  if (!t) return 'M';
+  const parts = t.split(/\s+/).filter((p) => p.length > 0);
+  if (parts.length === 0) return 'M';
+  return parts
     .slice(0, 2)
-    .map((n) => n[0])
+    .map((p) => p[0])
+    .filter(Boolean)
     .join('')
-    .toUpperCase();
+    .toUpperCase() || 'M';
 }
 
 export default function MemberProfilePage() {
@@ -148,7 +157,7 @@ export default function MemberProfilePage() {
 
       notifyNewConversation({
         conversationId: conv.id,
-        senderName: currentProfile.full_name,
+        senderName: memberDisplayName(currentProfile.full_name),
         senderUserId: user.id,
         recipientUserIds: [member.id],
       }).catch(() => {});
@@ -240,9 +249,9 @@ export default function MemberProfilePage() {
           <div className="flex flex-col sm:flex-row gap-6 items-start">
             {/* Avatar */}
             <Avatar className="h-24 w-24 ring-4 ring-[#D4A853]/20 shrink-0">
-              <AvatarImage src={member.avatar_url ?? undefined} />
+              <AvatarImage src={member.avatar_url ?? undefined} alt={memberDisplayName(member.full_name)} />
               <AvatarFallback className="bg-[#1A1A1A] text-[#D4A853] text-3xl">
-                {initials(member.full_name)}
+                {initialsFromFullName(member.full_name)}
               </AvatarFallback>
             </Avatar>
 
@@ -250,7 +259,7 @@ export default function MemberProfilePage() {
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <h1 className="text-2xl font-bold text-white">{member.full_name}</h1>
+                  <h1 className="text-2xl font-bold text-white">{memberDisplayName(member.full_name)}</h1>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {roleBadge && (
                       <Badge className={`border ${roleBadge.color}`}>{roleBadge.label}</Badge>
@@ -328,7 +337,7 @@ export default function MemberProfilePage() {
               <InfoRow
                 icon={<Globe className="h-4 w-4" />}
                 label="Website"
-                value={member.website_url.replace(/^https?:\/\//, '')}
+                value={(member.website_url ?? '').replace(/^https?:\/\//, '')}
                 href={member.website_url}
                 external
               />
