@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useLayoutEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/sheet";
 import logo from '@/assets/704-logo.png';
 import { cn } from '@/lib/utils';
+import { isMemberDashboardRoute } from '@/lib/member-dashboard-route';
 
 const MARKETING_ROUTES = ['/'];
 
@@ -50,9 +51,15 @@ export function Header() {
     return null;
   }
 
-  const isDashboardRoute = pathname.startsWith('/dashboard');
-  /** Logged-in member on dashboard: logo + bell + avatar only (no public Events/Dashboard nav). */
-  const dashboardMemberHeader = Boolean(isDashboardRoute);
+  const [windowDashboard, setWindowDashboard] = useState(false);
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') return;
+    setWindowDashboard(isMemberDashboardRoute(window.location.pathname));
+  }, [pathname]);
+
+  /** Member dashboard shell: hide public center nav (usePathname + window sync if hook lags). */
+  const dashboardMemberHeader =
+    isMemberDashboardRoute(pathname) || windowDashboard;
 
   const isActive = (path: string) => pathname === path || pathname.startsWith(path + '/');
 

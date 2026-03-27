@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -321,6 +321,7 @@ export interface DashboardNavProps {
 
 function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNavProps = {}) {
   const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { user, profile, isAdmin, isSuperAdmin, isActiveMember, isBusinessMember } = useAuth();
   const unreadMessages = useUnreadMessageCount(user?.id);
@@ -351,18 +352,18 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
     return () => ro.disconnect();
   }, [updateScrollFade]);
 
-  // After paint: keep strip at left; second reset runs after focus to beat scroll-into-view.
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollLeft = 0;
     updateScrollFade();
-    setTimeout(() => {
+    const id = requestAnimationFrame(() => {
       if (scrollRef.current) {
         scrollRef.current.scrollLeft = 0;
         updateScrollFade();
       }
-    }, 0);
+    });
+    return () => cancelAnimationFrame(id);
   }, [pathname, updateScrollFade]);
 
   const canSeeSocialFeed = isActiveMember || isAdmin;
@@ -601,6 +602,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
               flexDirection: 'row',
               flexWrap: 'nowrap',
               overflowX: 'auto',
+              overflowAnchor: 'none',
               WebkitOverflowScrolling: 'touch',
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',

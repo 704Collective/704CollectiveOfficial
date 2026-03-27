@@ -1,14 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { isMemberDashboardRoute } from "@/lib/member-dashboard-route";
 
 export default function Nav() {
+  const pathname = usePathname();
+  const [windowDash, setWindowDash] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [membershipOpen, setMembershipOpen] = useState(false);
   const { user, loading, isActiveMember, isAdmin } = useAuth();
+
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+    setWindowDash(isMemberDashboardRoute(window.location.pathname));
+  }, [pathname]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -26,6 +35,10 @@ export default function Nav() {
     }
     return () => { document.body.style.overflow = ""; };
   }, [mobileOpen]);
+
+  if (isMemberDashboardRoute(pathname) || windowDash) {
+    return null;
+  }
 
   return (
     <nav
