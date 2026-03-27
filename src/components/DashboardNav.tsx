@@ -333,8 +333,10 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
     const { scrollLeft, scrollWidth, clientWidth } = el;
     const overflow = scrollWidth > clientWidth + 1;
     setShowScrollFade(overflow);
-    setAtScrollEnd(!overflow || scrollLeft + clientWidth >= scrollWidth - 2);
-    setAtScrollStart(!overflow || scrollLeft <= 2);
+    // Generous slack avoids subpixel gaps that leave the right fade on and cover the last label.
+    const slack = 12;
+    setAtScrollEnd(!overflow || scrollLeft + clientWidth >= scrollWidth - slack);
+    setAtScrollStart(!overflow || scrollLeft <= slack);
   }, []);
 
   useEffect(() => {
@@ -344,6 +346,10 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
     ro.observe(el);
     return () => ro.disconnect();
   }, [updateScrollFade]);
+
+  useLayoutEffect(() => {
+    updateScrollFade();
+  }, [pathname, updateScrollFade]);
 
   const canSeeSocialFeed = isActiveMember || isAdmin;
   const canSeeBusinessFeed = isBusinessMember || isAdmin;
