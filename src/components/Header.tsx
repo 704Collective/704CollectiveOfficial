@@ -52,7 +52,7 @@ export function Header() {
 
   const isDashboardRoute = pathname.startsWith('/dashboard');
   /** Logged-in member on dashboard: logo + bell + avatar only (no public Events/Dashboard nav). */
-  const dashboardMemberHeader = Boolean(user && isDashboardRoute);
+  const dashboardMemberHeader = Boolean(isDashboardRoute);
 
   const isActive = (path: string) => pathname === path || pathname.startsWith(path + '/');
 

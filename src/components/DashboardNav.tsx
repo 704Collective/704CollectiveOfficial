@@ -351,12 +351,18 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
     return () => ro.disconnect();
   }, [updateScrollFade]);
 
-  // After paint: keep strip at left (browser/Next may scroll focused tab into view).
+  // After paint: keep strip at left; second reset runs after focus to beat scroll-into-view.
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollLeft = 0;
     updateScrollFade();
+    setTimeout(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollLeft = 0;
+        updateScrollFade();
+      }
+    }, 0);
   }, [pathname, updateScrollFade]);
 
   const canSeeSocialFeed = isActiveMember || isAdmin;
@@ -428,14 +434,19 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
         );
       }
       return (
-        <Link key={entry.key} href="/dashboard?suggest=1" className={desktopTabClass(isActive)}>
+        <Link
+          key={entry.key}
+          href="/dashboard?suggest=1"
+          className={desktopTabClass(isActive)}
+          tabIndex={-1}
+        >
           {inner}
         </Link>
       );
     }
 
     return (
-      <Link key={entry.key} href={entry.href} className={desktopTabClass(isActive)}>
+      <Link key={entry.key} href={entry.href} className={desktopTabClass(isActive)} tabIndex={-1}>
         {inner}
       </Link>
     );
