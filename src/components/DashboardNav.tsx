@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -238,7 +238,7 @@ function buildNavEntries(opts: {
   });
 
   if (opts.canSeeSuggest) {
-    items.push({ kind: 'suggest', key: 'suggest', label: 'Suggest', icon: Lightbulb });
+    items.push({ kind: 'suggest', key: 'suggest', label: 'Suggestions', icon: Lightbulb });
   }
 
   items.push({
@@ -545,7 +545,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
         <div className="relative min-w-0 w-full">
           <div
             ref={scrollRef}
-            className="dashboard-nav-desktop-scroll box-border w-full border-b border-border px-0"
+            className="dashboard-nav-desktop-scroll box-border w-full border-b border-border pl-0 pr-14 sm:pr-16"
             style={{
               display: 'flex',
               flexDirection: 'row',
@@ -560,7 +560,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
               width: '100%',
               alignItems: 'stretch',
               scrollPaddingLeft: 0,
-              scrollPaddingRight: 0,
+              scrollPaddingRight: 56,
             }}
             onScroll={updateScrollFade}
             aria-label="Dashboard navigation"
@@ -579,9 +579,9 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
           {showScrollFade && !atScrollEnd && (
             <div
               aria-hidden
-              className="pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-12 sm:w-14"
+              className="pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-10 sm:w-12"
               style={{
-                background: 'linear-gradient(to right, transparent, var(--background))',
+                background: 'linear-gradient(to right, transparent 0%, var(--background) 85%)',
               }}
             />
           )}
