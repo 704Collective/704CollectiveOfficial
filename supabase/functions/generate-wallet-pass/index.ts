@@ -98,20 +98,21 @@ Deno.serve(async (req) => {
     );
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    // Use getUser(jwt) for broad @supabase/supabase-js compatibility (getClaims is newer).
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !userData?.user?.id) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const userId = claimsData.claims.sub as string;
+    const userId = userData.user.id;
 
     // ── Fetch profile ──
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("id, full_name, member_since, subscription_status, created_at")
+      .select("id, full_name, member_since, subscription_status, created_at, member_type")
       .eq("id", userId)
       .is("deleted_at", null)
       .single();
@@ -165,7 +166,10 @@ Deno.serve(async (req) => {
         defaultValue: { language: "en", value: "704 Collective" },
       },
       subheader: {
-        defaultValue: { language: "en", value: "Social Member" },
+        defaultValue: {
+          language: "en",
+          value: profile.member_type === "business" ? "Business Member" : "Social Member",
+        },
       },
       header: {
         defaultValue: { language: "en", value: profile.full_name || "Member" },
@@ -257,11 +261,18 @@ Deno.serve(async (req) => {
     }
 
     // ── Build save URL ──
-    // Create a JWT for the "Add to Google Wallet" button
+    // JWT `origins` must include the exact page origin that opens the save link, or Google rejects it.
+    // Set GOOGLE_WALLET_JWT_ORIGINS in Supabase secrets (comma-separated), e.g.:
+    //   https://704collective.com,https://www.704collective.com,http://localhost:3000
+    const originsRaw = Deno.env.get("GOOGLE_WALLET_JWT_ORIGINS");
+    const origins = originsRaw
+      ? originsRaw.split(",").map((s) => s.trim()).filter(Boolean)
+      : ["https://704collective.com", "http://localhost:3000", "http://127.0.0.1:3000"];
+
     const claims = {
       iss: serviceAccountEmail,
       aud: "google",
-      origins: ["https://704collective.com"],
+      origins,
       typ: "savetowallet",
       payload: {
         genericObjects: [{ id: objectId }],

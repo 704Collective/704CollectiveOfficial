@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -340,6 +340,14 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
   const unreadNotifications = useUnreadNotificationCount(user?.id);
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const mobileBarRef = useRef<HTMLDivElement>(null);
+  const [mobilePanelTop, setMobilePanelTop] = useState(0);
+
+  const updateMobilePanelTop = useCallback(() => {
+    const el = mobileBarRef.current;
+    if (!el) return;
+    setMobilePanelTop(Math.round(el.getBoundingClientRect().bottom));
+  }, []);
 
   const suggestFromQuery = searchParams.get('suggest') === '1';
   const suggestActive = suggestOpen || suggestFromQuery;
@@ -452,15 +460,22 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
     const Icon = entry.icon;
 
     const cellClass = cn(
-      'flex flex-col items-center justify-center gap-2 rounded-xl border border-transparent px-3 py-4 text-center transition-colors',
-      active ? 'border-gold/40 bg-gold text-[#1A1A1A]' : 'bg-[#2E2E2E]/80 hover:bg-[#2E2E2E]'
+      'flex min-h-[5.25rem] flex-col items-center justify-center gap-1.5 rounded-xl border px-2.5 py-3 text-center transition-colors sm:min-h-[5.5rem] sm:gap-2 sm:px-3 sm:py-3.5',
+      active
+        ? 'border-charcoal/20 bg-gold text-charcoal shadow-md shadow-black/25 ring-1 ring-black/10'
+        : 'border-white/[0.08] bg-[#2E2E2E] hover:bg-[#353535]'
     );
 
     const iconWrap = (
-      <span className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-black/25">
+      <span
+        className={cn(
+          'relative flex h-10 w-10 items-center justify-center rounded-xl sm:h-11 sm:w-11',
+          active ? 'bg-black/15' : 'bg-black/30'
+        )}
+      >
         <Icon
           className="h-5 w-5"
-          style={{ color: active ? '#1A1A1A' : GOLD }}
+          style={{ color: active ? '#141414' : GOLD }}
           aria-hidden
         />
         {entry.kind === 'link' && entry.badge != null && entry.badge > 0 && (
@@ -479,7 +494,10 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
 
     const labelEl = (
       <span
-        className={cn('text-xs font-semibold leading-tight', active ? 'text-[#1A1A1A]' : 'text-white')}
+        className={cn(
+          'text-[11px] font-semibold leading-tight sm:text-xs',
+          active ? 'text-charcoal' : 'text-white'
+        )}
       >
         {entry.label}
       </span>
@@ -526,7 +544,10 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
       <div className={DASHBOARD_NAV_SHELL}>
         {/* Mobile: bar + menu anchored flush under bar (no gap above grid). */}
         <div className="relative sm:hidden">
-          <div className="flex w-full items-center justify-between gap-3 border-b border-border/80 py-2.5">
+          <div
+            ref={mobileBarRef}
+            className="flex w-full items-center justify-between gap-3 border-b border-border/80 py-2 sm:py-2.5"
+          >
             <p
               className="min-w-0 truncate text-sm font-semibold tracking-tight"
               style={{ color: GOLD }}
@@ -539,7 +560,13 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
               style={{ color: GOLD }}
               aria-expanded={mobileOpen}
               aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
-              onClick={() => setMobileOpen((o) => !o)}
+              onClick={() => {
+                setMobileOpen((o) => {
+                  const next = !o;
+                  if (next) queueMicrotask(() => updateMobilePanelTop());
+                  return next;
+                });
+              }}
             >
               <LayoutGrid className="h-5 w-5" aria-hidden />
             </button>
@@ -552,7 +579,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
                   key="dash-nav-backdrop"
                   type="button"
                   aria-label="Close menu"
-                  className="fixed inset-0 z-40 cursor-default bg-black/55 sm:hidden"
+                  className="fixed inset-0 z-[44] cursor-default bg-black/55 sm:hidden"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -561,29 +588,29 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
                 />
                 <motion.div
                   key="dash-nav-panel"
-                  className="absolute left-1/2 z-50 w-screen max-w-[100vw] -translate-x-1/2"
+                  className="fixed left-0 right-0 z-[45] w-full overflow-y-auto shadow-2xl sm:hidden"
                   style={{
-                    top: '100%',
-                    marginTop: -1,
+                    top: mobilePanelTop > 0 ? mobilePanelTop : 104,
+                    maxHeight:
+                      mobilePanelTop > 0
+                        ? `calc(100dvh - ${mobilePanelTop}px - env(safe-area-inset-bottom, 0px) - 8px)`
+                        : 'min(70dvh, calc(100dvh - env(safe-area-inset-bottom, 0px) - 8px))',
                     background: `linear-gradient(180deg, ${PANEL_BG} 0%, ${PANEL_BG_ALT} 100%)`,
                     borderTop: `1px solid rgba(198, 166, 100, 0.45)`,
                     boxShadow: '0 24px 48px rgba(0,0,0,0.45)',
                   }}
-                  initial={{ opacity: 0, y: -6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.18 }}
                 >
-                  <nav className="px-3 pb-4 pt-2" aria-label="Dashboard navigation">
+                  <nav className="px-3 pb-3 pt-1.5" aria-label="Dashboard navigation">
                     <div className="grid grid-cols-2 gap-2">
-                      {navEntries.map((entry, i) => {
-                        const oddLast = i === navEntries.length - 1 && navEntries.length % 2 === 1;
-                        return (
-                          <div key={entry.key} className={cn(oddLast && 'col-span-2')}>
-                            {renderMobileCell(entry)}
-                          </div>
-                        );
-                      })}
+                      {navEntries.map((entry) => (
+                        <div key={entry.key} className="min-w-0">
+                          {renderMobileCell(entry)}
+                        </div>
+                      ))}
                     </div>
                   </nav>
                 </motion.div>

@@ -174,6 +174,7 @@ export default function ProfilePage() {
                   name={fullName || 'Member'}
                   memberId={user.id}
                   memberSince={memberSince}
+                  memberType={p.member_type === 'business' ? 'business' : 'social'}
                   memberLabel={
                     p.member_type === 'business' ? 'Business Member' : 'Social Member'
                   }

@@ -37,9 +37,11 @@ export function WalletButtons({ compact = false }: { compact?: boolean }) {
   const platform = useDevicePlatform();
 
   const handleGoogleWallet = async () => {
+    // Open a tab synchronously on the click event so the browser does not block it as a popup
+    // after the async edge-function call completes.
+    const walletTab = window.open('', '_blank', 'noopener,noreferrer');
     setGoogleLoading(true);
     try {
-      // Create a fresh client so it has the active session cookie
       const supabase = createClient();
 
       const { data, error } = await supabase.functions.invoke('generate-wallet-pass', {
@@ -47,25 +49,39 @@ export function WalletButtons({ compact = false }: { compact?: boolean }) {
       });
 
       if (error) {
+        walletTab?.close();
         console.error('[WalletButtons] Edge function error:', error);
         toast.error('Could not connect to wallet service. Please try again.');
         return;
       }
 
       if (data?.error === 'Google Wallet not configured') {
+        walletTab?.close();
         toast.error('Google Wallet is not configured yet. Check back soon!');
         return;
       }
 
       if (data?.error) {
-        toast.error(data.error);
+        walletTab?.close();
+        toast.error(typeof data.error === 'string' ? data.error : 'Wallet request failed.');
         return;
       }
 
       if (data?.walletUrl) {
-        window.open(data.walletUrl, '_blank');
+        if (walletTab) {
+          walletTab.opener = null;
+          walletTab.location.href = data.walletUrl as string;
+        } else {
+          toast.info('Opening Google Wallet…', { duration: 2000 });
+          window.location.assign(data.walletUrl as string);
+        }
+        return;
       }
+
+      walletTab?.close();
+      toast.error('No wallet link was returned. Try again or contact support.');
     } catch (err) {
+      walletTab?.close();
       console.error('[WalletButtons] Unexpected error:', err);
       toast.error('Something went wrong. Please try again.');
     } finally {
@@ -86,7 +102,7 @@ export function WalletButtons({ compact = false }: { compact?: boolean }) {
 
   if (compact) {
     return (
-      <div className="flex flex-row gap-2">
+      <div className="flex flex-row flex-wrap items-center justify-center gap-2">
         <Button variant="outline" size="sm" className="text-xs px-3" onClick={handleGoogleWallet} disabled={googleLoading}>
           {googleLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <GoogleWalletIcon className="w-3.5 h-3.5" />}
           Google

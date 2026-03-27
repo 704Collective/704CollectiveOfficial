@@ -408,25 +408,22 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Membership card + wallet buttons inline */}
+        {/* Membership card + wallet — stacked and centered on all breakpoints (desktop included) */}
         {isActiveMember && (
-          <div className="flex w-full flex-col items-center justify-center gap-6 lg:flex-row lg:items-start lg:justify-center">
-            <div className="w-full max-w-md shrink-0 lg:max-w-xs">
+          <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-5">
+            <div className="w-full">
               <MembershipCard
                 name={p.full_name || 'Member'}
                 memberId={user.id}
                 memberSince={memberSince}
+                memberType={p.member_type === 'business' ? 'business' : 'social'}
                 memberLabel={
                   p.member_type === 'business' ? 'Business Member' : 'Social Member'
                 }
                 brandSubtitle={p.member_type === 'business' ? 'Business' : 'Social'}
               />
             </div>
-            <div className="flex w-full max-w-md flex-col items-center gap-2 lg:w-auto lg:max-w-none lg:items-start lg:pt-2">
-              <div className="flex w-full flex-row flex-wrap justify-center gap-2 lg:justify-start">
-                <WalletButtons compact />
-              </div>
-            </div>
+            <WalletButtons compact />
           </div>
         )}
 
