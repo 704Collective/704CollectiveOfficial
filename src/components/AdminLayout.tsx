@@ -94,7 +94,7 @@ export function AdminLayout({
 
         {/* Page content */}
         <main className="flex-1 pb-20 lg:pb-0">
-          <div className="px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-5xl mx-auto">
+          <div className="w-full max-w-3xl mx-auto px-4 py-6 sm:px-6 md:max-w-5xl lg:px-8 lg:py-8">
             {title && (
               <h1 className="hidden lg:block text-2xl font-semibold text-foreground mb-6">
                 {title}

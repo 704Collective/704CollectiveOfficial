@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, Smartphone } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { GENERATE_WALLET_PASS_FUNCTION } from '@/lib/walletPass';
 import { toast } from 'sonner';
 
 function AppleIcon({ className }: { className?: string }) {
@@ -44,7 +45,7 @@ export function WalletButtons({ compact = false }: { compact?: boolean }) {
     try {
       const supabase = createClient();
 
-      const { data, error } = await supabase.functions.invoke('generate-wallet-pass', {
+      const { data, error } = await supabase.functions.invoke(GENERATE_WALLET_PASS_FUNCTION, {
         body: { platform: 'google' },
       });
 

@@ -84,7 +84,7 @@ export default function PartnerPortalLayout({ children }: { children: React.Reac
       <Header />
       <PartnerHeader companyName={companyName || 'Partner'} logoUrl={logoUrl} />
       <PartnerNav partnerApproved={partnerApproved} />
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">{children}</main>
+      <main className="w-full max-w-3xl mx-auto px-4 py-8 sm:px-6 md:max-w-6xl">{children}</main>
     </div>
   );
 }

@@ -29,14 +29,15 @@ export default function AdminLayout({
 
       setUser(session.user);
 
-      const { data: adminData } = await supabase
-        .from("admin_users")
-        .select("*")
-        .eq("user_id", session.user.id)
-        .single();
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .maybeSingle();
 
-      if (!adminData) {
-        router.push("/partners/dashboard");
+      const role = profile?.role as string | undefined;
+      if (role !== "admin" && role !== "super_admin") {
+        router.push("/login");
         return;
       }
 
@@ -247,8 +248,7 @@ export default function AdminLayout({
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main style={{ flex: 1, padding: "32px 40px", overflowY: "auto" }}>
+      <main className="flex-1 overflow-y-auto w-full max-w-3xl mx-auto px-4 py-8 md:max-w-none md:mx-0 md:px-10 lg:py-10">
         {children}
       </main>
     </div>

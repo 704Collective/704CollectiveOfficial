@@ -94,8 +94,13 @@ export async function updateSession(request: NextRequest) {
   // ── 1. Not logged in → redirect to login ───────────────────────────────────
   if (isProtectedRoute && !user) {
     const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    url.searchParams.set('redirect', path);
+    if (path.startsWith('/partners/dashboard')) {
+      url.pathname = '/partners/login';
+      url.searchParams.set('redirect', path);
+    } else {
+      url.pathname = '/login';
+      url.searchParams.set('redirect', path);
+    }
     return NextResponse.redirect(url);
   }
 
@@ -160,10 +165,18 @@ export async function updateSession(request: NextRequest) {
       return supabaseResponse;
     }
 
-    // ── Admin-only routes ─────────────────────────────────────────────────────
+    // ── Admin-only routes (/admin includes /admin/crm/*) ─────────────────────
     if (path.startsWith('/admin') && !isAdmin) {
       const url = request.nextUrl.clone();
       url.pathname = '/dashboard';
+      return NextResponse.redirect(url);
+    }
+
+    // ── Partner program /partners/admin — 704 admin or super_admin only ────────
+    if (path.startsWith('/partners/admin') && !isAdmin) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      url.searchParams.set('redirect', path);
       return NextResponse.redirect(url);
     }
 

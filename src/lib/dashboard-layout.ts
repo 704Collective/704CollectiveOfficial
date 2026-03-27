@@ -1,10 +1,10 @@
-/** Shared dashboard content width — aligns with Header (`max-w-5xl`). */
+/** Shared dashboard content — mobile: max-w-3xl centered + px-4; md+: original max widths. */
 export const DASHBOARD_MAIN =
-  'w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8';
+  'w-full max-w-3xl mx-auto px-4 py-4 sm:px-6 md:max-w-5xl lg:px-8 sm:py-8';
 
 /** Wider shell for multi-column grids (directory, partners, hubs). */
 export const DASHBOARD_MAIN_WIDE =
-  'w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8';
+  'w-full max-w-3xl mx-auto px-4 py-4 sm:px-6 md:max-w-6xl lg:px-8 sm:py-8';
 
 /**
  * Matches Header inner width so tab bar lines up with main content.

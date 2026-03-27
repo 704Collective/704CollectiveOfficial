@@ -41,7 +41,9 @@ export default function BusinessPortalLayout({
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0a0a0a' }}>
       <Header />
-      {children}
+      <div className="w-full max-w-3xl mx-auto px-4 py-6 sm:px-6 md:max-w-5xl lg:px-8 lg:py-8">
+        {children}
+      </div>
     </div>
   );
 }

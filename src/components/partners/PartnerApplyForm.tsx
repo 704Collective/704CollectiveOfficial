@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
-import { submitPartnerApplication } from '@/app/actions/partnerApplication';
 import { toast } from 'sonner';
 import { Loader2, Upload } from 'lucide-react';
 
@@ -99,9 +98,13 @@ export function PartnerApplyForm({
       fd.set('logo', logoFile);
       extraPhotos.forEach((f) => fd.append('photos', f));
 
-      const result = await submitPartnerApplication(fd);
-      if (!result.ok) {
-        toast.error(result.error);
+      const res = await fetch('/api/partners/signup', {
+        method: 'POST',
+        body: fd,
+      });
+      const result = (await res.json()) as { ok: boolean; error?: string };
+      if (!res.ok || !result.ok) {
+        toast.error(result.error ?? 'Something went wrong');
         return;
       }
 
