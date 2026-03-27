@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Production build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SITE_URL: https://example.com
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: anon-test-key-for-ci-build-only
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_ci
+          STRIPE_SECRET_KEY: sk_test_ci
+          STRIPE_SOCIAL_PRODUCT_ID: prod_test_ci
+          SUPABASE_SERVICE_ROLE_KEY: service-role-test-ci-only

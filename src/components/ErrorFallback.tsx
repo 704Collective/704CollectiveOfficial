@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -21,7 +22,7 @@ export function ErrorFallback() {
             Reload Page
           </Button>
           <Button variant="outline" asChild>
-            <a href="/">Go Home</a>
+            <Link href="/">Go Home</Link>
           </Button>
         </div>
       </div>

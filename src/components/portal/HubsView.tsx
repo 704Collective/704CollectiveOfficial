@@ -29,7 +29,7 @@ export function HubsView() {
     if (!user) return;
     setLoading(true);
     try {
-      let query = supabase
+      const query = supabase
         .from('hubs')
         .select('id, title, description, header_image_url, created_at, hub_members(user_id)')
         .order('title', { ascending: true });

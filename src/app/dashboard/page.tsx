@@ -204,7 +204,8 @@ export default function Dashboard() {
       }
     }, 800);
     return () => clearTimeout(timer);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps — intentionally runs once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally once on mount
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

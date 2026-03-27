@@ -2,14 +2,9 @@
 
 import { Suspense, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { partnerRedirectTarget } from "@/lib/partnerLoginRedirect";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-
-function partnerRedirectTarget(raw: string | null): string {
-  if (!raw || !raw.startsWith("/partners/")) return "/partners/dashboard";
-  if (raw.includes("//") || raw.includes("\\")) return "/partners/dashboard";
-  return raw;
-}
 
 function PartnerLoginForm() {
   const router = useRouter();

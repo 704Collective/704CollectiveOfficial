@@ -131,7 +131,7 @@ export function ImageCropDialog({ imageUrl, open, onSave, onClose, saving }: Ima
         setCrop(clampCrop({ ...orig, x: orig.x + dx, y: orig.y + dy }));
       } else {
         const preset = activePreset !== null ? ASPECT_PRESETS[activePreset] : null;
-        let newW = Math.max(20, orig.width + dx);
+        const newW = Math.max(20, orig.width + dx);
         let newH = Math.max(20, orig.height + dy);
         if (preset?.ratio) {
           newH = newW / preset.ratio;

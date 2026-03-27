@@ -105,8 +105,8 @@ async function fetchEventsData(page: number, filter: 'all' | 'upcoming' | 'past'
 
   const events = (data || []) as Event[];
   const ids = events.map(e => e.id);
-  let rsvpCounts: Record<string, number> = {};
-  let followupCounts: Record<string, number> = {};
+  const rsvpCounts: Record<string, number> = {};
+  const followupCounts: Record<string, number> = {};
 
   if (ids.length > 0) {
     const [ticketsRes, followupsRes] = await Promise.all([

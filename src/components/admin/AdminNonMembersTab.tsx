@@ -33,7 +33,7 @@ async function fetchNonMembers(page: number, search: string) {
   const start = (page - 1) * PAGE_SIZE;
   const end = start + PAGE_SIZE - 1;
 
-  let query = supabase
+  const query = supabase
     .from('profiles')
     .select('id, email, full_name, company, title, phone, created_at, member_type, subscription_status', { count: 'exact' })
     .in('member_type', ['non_member', 'lead'])

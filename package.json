@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify": "npm run typecheck && npm run test && npm run build",
+    "lint:strict": "eslint ."
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -78,6 +83,7 @@
     "eslint-config-next": "16.1.6",
     "supabase": "^2.76.15",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.4"
   }
 }

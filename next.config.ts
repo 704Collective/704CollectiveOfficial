@@ -25,6 +25,9 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: false,
+  experimental: {
+    optimizePackageImports: ["lucide-react"],
+  },
   images: {
     remotePatterns: [
       {

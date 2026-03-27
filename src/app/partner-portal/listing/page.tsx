@@ -85,7 +85,7 @@ export default function PartnerListingPage() {
     setLogoFile(null);
     setNewPhotoFiles([]);
     setLoading(false);
-  }, [profile?.id]);
+  }, [profile]);
 
   useEffect(() => {
     load();

@@ -53,6 +53,26 @@ export function Header() {
     setWindowDashboard(isMemberDashboardRoute(window.location.pathname));
   }, [pathname]);
 
+  const handleSignOut = useCallback(async () => {
+    const { error } = await supabaseRef.current.auth.signOut();
+    if (error) {
+      toast.error('Failed to sign out');
+    } else {
+      toast.success('Signed out successfully');
+      router.push('/');
+    }
+  }, [router]);
+
+  // Stable navigation callbacks — avoids recreating inline arrow functions on
+  // every render, which can cause DropdownMenuItems to lose their handlers
+  // briefly during re-renders triggered by auth state changes.
+  const goToDashboard = useCallback(() => router.push('/dashboard'), [router]);
+  const goToBrowseEvents = useCallback(() => router.push('/dashboard/browse-events'), [router]);
+  const goToProfile = useCallback(() => router.push('/dashboard/profile'), [router]);
+  const goToSettings = useCallback(() => router.push('/dashboard/settings'), [router]);
+  const goToNotifications = useCallback(() => router.push('/dashboard/notifications'), [router]);
+  const goToAdmin = useCallback(() => router.push('/admin'), [router]);
+
   if (MARKETING_ROUTES.includes(pathname)) {
     return null;
   }
@@ -74,26 +94,6 @@ export function Header() {
   const displayName = (profile as any)?.full_name || user?.user_metadata?.full_name || 'Member';
   const displayEmail = user?.email || '';
   const avatarUrl = (profile as any)?.avatar_url || user?.user_metadata?.avatar_url || null;
-
-  const handleSignOut = useCallback(async () => {
-    const { error } = await supabaseRef.current.auth.signOut();
-    if (error) {
-      toast.error('Failed to sign out');
-    } else {
-      toast.success('Signed out successfully');
-      router.push('/');
-    }
-  }, [router]);
-
-  // Stable navigation callbacks — avoids recreating inline arrow functions on
-  // every render, which can cause DropdownMenuItems to lose their handlers
-  // briefly during re-renders triggered by auth state changes.
-  const goToDashboard = useCallback(() => router.push('/dashboard'), [router]);
-  const goToBrowseEvents = useCallback(() => router.push('/dashboard/browse-events'), [router]);
-  const goToProfile = useCallback(() => router.push('/dashboard/profile'), [router]);
-  const goToSettings = useCallback(() => router.push('/dashboard/settings'), [router]);
-  const goToNotifications = useCallback(() => router.push('/dashboard/notifications'), [router]);
-  const goToAdmin = useCallback(() => router.push('/admin'), [router]);
 
   return (
     <header className="sticky top-0 z-50 w-full min-w-0 border-b border-border bg-background/80 backdrop-blur-lg">

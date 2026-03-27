@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Nav from '@/components/Nav';
 import { PartnerApplyForm } from '@/components/partners/PartnerApplyForm';
-import { validatePartnerInviteToken } from '@/app/actions/partnerApplication';
+import { validatePartnerInviteToken } from '@/lib/partnerInviteToken';
 
 export const metadata: Metadata = {
   title: 'Partner Invite | 704 Collective',
