@@ -42,15 +42,33 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   // ── Route categories ────────────────────────────────────────────────────────
-  const protectedPaths = ['/dashboard', '/admin', '/events/manage', '/business-portal', '/partner-portal'];
-  const openAuthPaths    = ['/join/checkout', '/welcome', '/apply/business', '/signup', '/partners'];  // exempt from subscription gate
-  const authPaths        = ['/login'];
-  const signupPaths: string[] = [];                               // folded into openAuthPaths
+  const protectedPaths = [
+    '/dashboard',
+    '/admin',
+    '/events/manage',
+    '/business-portal',
+    '/partner-portal',
+    '/partners/dashboard',
+    '/partners/admin',
+    '/settings',
+  ];
+  /** Public partner marketing + auth flows only (not /partners/dashboard). */
+  const isPartnerPublicPath = (p: string) =>
+    p === '/partners' ||
+    p === '/partners/' ||
+    p.startsWith('/partners/apply') ||
+    p.startsWith('/partners/login') ||
+    p.startsWith('/partners/signup');
+
+  const openAuthPrefixes = ['/join/checkout', '/welcome', '/apply/business', '/signup'];
+  const authPaths = ['/login'];
+  const signupPaths: string[] = [];
 
   const isProtectedRoute = protectedPaths.some((p) => path.startsWith(p));
-  const isAuthRoute      = authPaths.some((p) => path.startsWith(p));
-  const isOpenAuthRoute = openAuthPaths.some((p) => path.startsWith(p));
-  const isSignupRoute    = signupPaths.some((p) => path.startsWith(p));
+  const isAuthRoute = authPaths.some((p) => path.startsWith(p));
+  const isOpenAuthRoute =
+    openAuthPrefixes.some((p) => path.startsWith(p)) || isPartnerPublicPath(path);
+  const isSignupRoute = signupPaths.some((p) => path.startsWith(p));
 
   // ── 0. Banned user check — applies to all authenticated users ─────────────
   if (user && !isAuthRoute) {
@@ -97,23 +115,25 @@ export async function updateSession(request: NextRequest) {
   if (user && isProtectedRoute) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, member_type, subscription_status, membership_override, banned, application_status, partner_status')
+      .select(
+        'role, member_type, subscription_status, membership_override, is_banned, application_status, partner_status'
+      )
       .eq('id', user.id)
       .is('deleted_at', null)
       .maybeSingle();
 
-    const role            = profile?.role ?? 'lead';
-    const isSuperAdmin    = role === 'super_admin';
-    const isAdmin         = role === 'admin' || isSuperAdmin;
-    const isActive        =
+    const role = profile?.role ?? 'lead';
+    const isSuperAdmin = role === 'super_admin';
+    const isAdmin = role === 'admin' || isSuperAdmin;
+    const isActive =
       profile?.subscription_status === 'active' ||
       profile?.subscription_status === 'trialing' ||
       profile?.membership_override === true;
-    const isNonMember     =
+    const isNonMember =
       profile?.member_type === 'social_non_member' ||
       profile?.member_type === 'business_non_member' ||
       profile?.member_type === 'non_member';
-    const isBanned        = profile?.banned === true;
+    const isBanned = profile?.is_banned === true;
     const isPending       = profile?.application_status === 'pending';
     const isPartner       = profile?.member_type === 'partner';
 

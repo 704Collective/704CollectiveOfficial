@@ -1,12 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
-export default function PartnerLogin() {
+function partnerRedirectTarget(raw: string | null): string {
+  if (!raw || !raw.startsWith("/partners/")) return "/partners/dashboard";
+  if (raw.includes("//") || raw.includes("\\")) return "/partners/dashboard";
+  return raw;
+}
+
+function PartnerLoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -26,7 +33,7 @@ export default function PartnerLogin() {
       setError(error.message);
       setLoading(false);
     } else {
-      router.push("/partners/dashboard");
+      router.push(partnerRedirectTarget(searchParams.get("redirect")));
     }
   }
 
@@ -245,5 +252,25 @@ export default function PartnerLogin() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PartnerLogin() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          style={{
+            minHeight: "100vh",
+            backgroundColor: "#000000",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        />
+      }
+    >
+      <PartnerLoginForm />
+    </Suspense>
   );
 }

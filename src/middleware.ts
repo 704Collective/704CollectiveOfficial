@@ -25,5 +25,9 @@ export const config = {
     '/partners/:path*',
     '/partner-portal',
     '/partner-portal/:path*',
+    '/business-portal/:path*',
+    '/settings',
+    '/settings/:path*',
+    '/pending-review',
   ],
 };
