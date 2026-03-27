@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -20,7 +20,7 @@ import {
   Lightbulb,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DASHBOARD_NAV_SHELL } from '@/lib/dashboard-layout';
+import { DASHBOARD_NAV_DESKTOP, DASHBOARD_NAV_SHELL } from '@/lib/dashboard-layout';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -284,14 +284,16 @@ function resolveActiveLabel(
 
 function DashboardNavSuspenseFallback() {
   return (
-    <div className="relative z-30 w-full">
-      <div className="flex w-full items-center justify-between gap-3 border-b border-border/80 py-2.5 sm:hidden">
-        <div className="h-5 w-32 max-w-[55%] animate-pulse rounded-md bg-muted" />
-        <div className="h-10 w-10 shrink-0 animate-pulse rounded-lg bg-muted" />
+    <div className="relative z-30 w-full min-w-0">
+      <div className={DASHBOARD_NAV_SHELL}>
+        <div className="flex w-full items-center justify-between gap-3 border-b border-border/80 py-2.5 sm:hidden">
+          <div className="h-5 w-32 max-w-[55%] animate-pulse rounded-md bg-muted" />
+          <div className="h-10 w-10 shrink-0 animate-pulse rounded-lg bg-muted" />
+        </div>
       </div>
-      <div className="hidden min-h-[48px] items-center border-b border-border px-2 sm:flex sm:px-3">
-        <div className="flex w-full gap-5 py-3 lg:gap-6">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
+      <div className={cn(DASHBOARD_NAV_DESKTOP, 'hidden border-b border-border sm:block')}>
+        <div className="flex min-h-[48px] w-full gap-4 py-3 lg:gap-5">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
             <div key={i} className="h-4 w-20 shrink-0 animate-pulse rounded bg-muted" />
           ))}
         </div>
@@ -320,36 +322,9 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [showScrollFade, setShowScrollFade] = useState(false);
-  const [atScrollEnd, setAtScrollEnd] = useState(true);
-  const [atScrollStart, setAtScrollStart] = useState(true);
 
   const suggestFromQuery = searchParams.get('suggest') === '1';
   const suggestActive = suggestOpen || suggestFromQuery;
-
-  const updateScrollFade = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const { scrollLeft, scrollWidth, clientWidth } = el;
-    const overflow = scrollWidth > clientWidth + 1;
-    setShowScrollFade(overflow);
-    // Generous slack avoids subpixel gaps that leave the right fade on and cover the last label.
-    const slack = 12;
-    setAtScrollEnd(!overflow || scrollLeft + clientWidth >= scrollWidth - slack);
-    setAtScrollStart(!overflow || scrollLeft <= slack);
-  }, []);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => updateScrollFade());
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [updateScrollFade]);
-
-  useLayoutEffect(() => {
-    updateScrollFade();
-  }, [pathname, updateScrollFade]);
 
   const canSeeSocialFeed = isActiveMember || isAdmin;
   const canSeeBusinessFeed = isBusinessMember || isAdmin;
@@ -376,14 +351,29 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
 
   const activeLabel = resolveActiveLabel(navEntries, pathname, suggestActive);
 
+  /** Keep the active tab in view — no gradient overlays (they made labels look truncated). */
+  useLayoutEffect(() => {
+    const root = scrollRef.current;
+    if (!root) return;
+    const id = requestAnimationFrame(() => {
+      root
+        .querySelector<HTMLElement>('[data-dash-nav-active="true"]')
+        ?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [pathname, suggestOpen, suggestFromQuery, navEntries.length]);
+
   const desktopTabClass = (isActive: boolean) =>
     cn(
-      'relative flex shrink-0 items-center gap-2 whitespace-nowrap px-1 py-3 text-sm font-medium transition-colors',
-      'mr-5 last:mr-0 lg:mr-6 lg:last:mr-0',
+      'relative flex shrink-0 items-center gap-1.5 whitespace-nowrap px-0.5 py-3 text-sm font-medium transition-colors sm:gap-2 sm:px-1',
+      'mr-3 last:mr-0 lg:mr-4 lg:last:mr-0',
       isActive
         ? 'text-gold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:rounded-full after:bg-gold'
         : 'text-muted-foreground hover:text-foreground'
     );
+
+  const desktopTabProps = (isActive: boolean) =>
+    isActive ? ({ 'data-dash-nav-active': 'true' as const } as const) : {};
 
   const renderDesktopTab = (entry: NavEntry) => {
     const isActive = entryIsActive(entry, pathname, suggestActive);
@@ -413,6 +403,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
             key={entry.key}
             type="button"
             tabIndex={-1}
+            {...desktopTabProps(isActive)}
             className={cn(desktopTabClass(isActive), 'cursor-pointer border-0 bg-transparent p-0 text-left [font-family:inherit]')}
             onMouseDown={(e) => e.preventDefault()}
             onClick={onSuggestClick}
@@ -426,6 +417,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
           key={entry.key}
           type="button"
           tabIndex={-1}
+          {...desktopTabProps(isActive)}
           className={cn(desktopTabClass(isActive), 'cursor-pointer border-0 bg-transparent p-0 text-left [font-family:inherit]')}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => router.push('/dashboard?suggest=1')}
@@ -440,6 +432,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
         key={entry.key}
         type="button"
         tabIndex={-1}
+        {...desktopTabProps(isActive)}
         className={cn(desktopTabClass(isActive), 'cursor-pointer border-0 bg-transparent p-0 text-left [font-family:inherit]')}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => router.push(entry.href)}
@@ -526,37 +519,39 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
   return (
     <div className="relative z-30 min-w-0 w-full">
       <div className={DASHBOARD_NAV_SHELL}>
-      {/* Mobile header row */}
-      <div className="flex w-full items-center justify-between gap-3 border-b border-border/80 py-2.5 sm:hidden">
-        <p
-          className="min-w-0 truncate text-sm font-semibold tracking-tight"
-          style={{ color: GOLD }}
-        >
-          {activeLabel}
-        </p>
-        <button
-          type="button"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gold/25 bg-gold/5 transition-colors hover:bg-gold/10"
-          style={{ color: GOLD }}
-          aria-expanded={mobileOpen}
-          aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
-          onClick={() => setMobileOpen((o) => !o)}
-        >
-          <LayoutGrid className="h-5 w-5" aria-hidden />
-        </button>
+        {/* Mobile header row */}
+        <div className="flex w-full items-center justify-between gap-3 border-b border-border/80 py-2.5 sm:hidden">
+          <p
+            className="min-w-0 truncate text-sm font-semibold tracking-tight"
+            style={{ color: GOLD }}
+          >
+            {activeLabel}
+          </p>
+          <button
+            type="button"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gold/25 bg-gold/5 transition-colors hover:bg-gold/10"
+            style={{ color: GOLD }}
+            aria-expanded={mobileOpen}
+            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+            onClick={() => setMobileOpen((o) => !o)}
+          >
+            <LayoutGrid className="h-5 w-5" aria-hidden />
+          </button>
+        </div>
       </div>
 
-      {/* Desktop horizontal tabs only — mobile uses hamburger above */}
-      <div className="hidden min-w-0 w-full sm:block">
+      {/* Desktop: wider than header so full labels fit; horizontal scroll if still needed (no fade overlays). */}
+      <div className={cn(DASHBOARD_NAV_DESKTOP, 'hidden border-b border-border sm:block')}>
         <div className="relative min-w-0 w-full">
           <div
             ref={scrollRef}
-            className="dashboard-nav-desktop-scroll box-border w-full border-b border-border pl-0 pr-14 sm:pr-16"
+            className="dashboard-nav-desktop-scroll box-border w-full"
             style={{
               display: 'flex',
               flexDirection: 'row',
               flexWrap: 'nowrap',
               overflowX: 'auto',
+              overflowY: 'hidden',
               overflowAnchor: 'none',
               WebkitOverflowScrolling: 'touch',
               scrollbarWidth: 'none',
@@ -565,34 +560,13 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
               minWidth: 0,
               width: '100%',
               alignItems: 'stretch',
-              scrollPaddingLeft: 0,
-              scrollPaddingRight: 56,
             }}
-            onScroll={updateScrollFade}
             aria-label="Dashboard navigation"
           >
             {navEntries.map(renderDesktopTab)}
+            <div className="w-2 shrink-0 sm:w-3" aria-hidden />
           </div>
-          {showScrollFade && !atScrollStart && (
-            <div
-              aria-hidden
-              className="pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-12 sm:w-14"
-              style={{
-                background: 'linear-gradient(to left, transparent, var(--background))',
-              }}
-            />
-          )}
-          {showScrollFade && !atScrollEnd && (
-            <div
-              aria-hidden
-              className="pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-10 sm:w-12"
-              style={{
-                background: 'linear-gradient(to right, transparent 0%, var(--background) 85%)',
-              }}
-            />
-          )}
         </div>
-      </div>
       </div>
 
       <AnimatePresence mode="sync">
