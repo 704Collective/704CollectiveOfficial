@@ -173,8 +173,11 @@ export default function ProfilePage() {
                 <MembershipCard
                   name={fullName || 'Member'}
                   memberId={user.id}
-                  avatarUrl={avatarUrl}
                   memberSince={memberSince}
+                  memberLabel={
+                    p.member_type === 'business' ? 'Business Member' : 'Social Member'
+                  }
+                  brandSubtitle={p.member_type === 'business' ? 'Business' : 'Social'}
                 />
               ) : (
                 <div className="card-elevated p-6 text-center">

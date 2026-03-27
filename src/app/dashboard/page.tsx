@@ -415,8 +415,11 @@ export default function Dashboard() {
               <MembershipCard
                 name={p.full_name || 'Member'}
                 memberId={user.id}
-                avatarUrl={p.avatar_url}
                 memberSince={memberSince}
+                memberLabel={
+                  p.member_type === 'business' ? 'Business Member' : 'Social Member'
+                }
+                brandSubtitle={p.member_type === 'business' ? 'Business' : 'Social'}
               />
             </div>
             <div className="flex w-full max-w-md flex-col items-center gap-2 lg:w-auto lg:max-w-none lg:items-start lg:pt-2">

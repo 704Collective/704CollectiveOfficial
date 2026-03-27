@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -292,9 +292,9 @@ function DashboardNavSuspenseFallback() {
         </div>
       </div>
       <div className={cn(DASHBOARD_NAV_DESKTOP, 'hidden border-b border-border sm:block')}>
-        <div className="flex min-h-[48px] w-full gap-4 py-3 lg:gap-5">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-            <div key={i} className="h-4 w-20 shrink-0 animate-pulse rounded bg-muted" />
+        <div className="dashboard-nav-desktop-scroll flex min-h-[44px] w-full flex-nowrap items-center gap-3 overflow-x-auto py-2">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
+            <div key={i} className="h-4 w-16 shrink-0 animate-pulse rounded bg-muted" />
           ))}
         </div>
       </div>
@@ -321,6 +321,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
   const unreadNotifications = useUnreadNotificationCount(user?.id);
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const suggestFromQuery = searchParams.get('suggest') === '1';
   const suggestActive = suggestOpen || suggestFromQuery;
@@ -350,13 +351,27 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
 
   const activeLabel = resolveActiveLabel(navEntries, pathname, suggestActive);
 
+  useLayoutEffect(() => {
+    const root = scrollRef.current;
+    if (!root) return;
+    const id = requestAnimationFrame(() => {
+      root
+        .querySelector<HTMLElement>('[data-dash-nav-active="true"]')
+        ?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [pathname, suggestOpen, suggestFromQuery, navEntries.length]);
+
   const desktopTabClass = (isActive: boolean) =>
     cn(
-      'relative flex shrink-0 items-center gap-1.5 whitespace-nowrap px-0.5 pb-2.5 pt-1 text-sm font-medium transition-colors sm:gap-2 sm:px-1',
+      'relative flex shrink-0 items-center gap-1.5 whitespace-nowrap px-0.5 pb-2 pt-0.5 text-[13px] font-medium transition-colors sm:gap-2 sm:px-1 sm:text-sm',
       isActive
         ? 'text-gold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:rounded-full after:bg-gold'
         : 'text-muted-foreground hover:text-foreground'
     );
+
+  const desktopTabActiveAttr = (isActive: boolean) =>
+    isActive ? ({ 'data-dash-nav-active': 'true' as const } as const) : {};
 
   const renderDesktopTab = (entry: NavEntry) => {
     const isActive = entryIsActive(entry, pathname, suggestActive);
@@ -386,6 +401,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
             key={entry.key}
             type="button"
             tabIndex={-1}
+            {...desktopTabActiveAttr(isActive)}
             className={cn(desktopTabClass(isActive), 'cursor-pointer border-0 bg-transparent p-0 text-left [font-family:inherit]')}
             onMouseDown={(e) => e.preventDefault()}
             onClick={onSuggestClick}
@@ -399,6 +415,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
           key={entry.key}
           type="button"
           tabIndex={-1}
+          {...desktopTabActiveAttr(isActive)}
           className={cn(desktopTabClass(isActive), 'cursor-pointer border-0 bg-transparent p-0 text-left [font-family:inherit]')}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => router.push('/dashboard?suggest=1')}
@@ -413,6 +430,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
         key={entry.key}
         type="button"
         tabIndex={-1}
+        {...desktopTabActiveAttr(isActive)}
         className={cn(desktopTabClass(isActive), 'cursor-pointer border-0 bg-transparent p-0 text-left [font-family:inherit]')}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => router.push(entry.href)}
@@ -520,13 +538,15 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
         </div>
       </div>
 
-      {/* Desktop: flex-wrap so every label stays visible (no horizontal scroll / clipping). */}
+      {/* Desktop: single row; horizontal scroll + thin gold scrollbar when needed (max-w-7xl fits more tabs). */}
       <div className={cn(DASHBOARD_NAV_DESKTOP, 'hidden border-b border-border sm:block')}>
         <nav
-          className="flex w-full min-w-0 flex-wrap items-center gap-x-3 gap-y-2 py-2 lg:gap-x-4"
+          ref={scrollRef}
+          className="dashboard-nav-desktop-scroll flex w-full min-w-0 flex-nowrap items-stretch gap-x-2 overflow-x-auto py-2 sm:gap-x-3 lg:gap-x-3.5"
           aria-label="Dashboard navigation"
         >
           {navEntries.map(renderDesktopTab)}
+          <div className="w-1 shrink-0 sm:w-2" aria-hidden />
         </nav>
       </div>
 
