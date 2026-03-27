@@ -572,36 +572,46 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
         )}
       </AnimatePresence>
 
-      {/* Desktop: horizontal scroll + edge fade (mobile unchanged above) */}
-      <div className="relative hidden min-w-0 w-full sm:block">
-        <div
-          ref={scrollRef}
-          onScroll={updateScrollFade}
-          className={cn(
-            'min-w-0 max-w-full overflow-x-auto scrollbar-hide',
-            'border-b border-border -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8'
-          )}
-          style={{
-            WebkitOverflowScrolling: 'touch',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-          }}
-          aria-label="Dashboard navigation"
-        >
-          <nav className="flex min-h-[48px] w-max min-w-0 flex-nowrap items-stretch whitespace-nowrap">
-            {navEntries.map(renderDesktopTab)}
-          </nav>
-        </div>
-        {showScrollFade && !atScrollEnd && (
+      {/* Desktop horizontal tabs only — mobile uses hamburger above */}
+      <div className="hidden min-w-0 w-full sm:block">
+        <div style={{ position: 'relative', minWidth: 0, width: '100%' }}>
           <div
-            className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-[60px]"
+            ref={scrollRef}
+            className="dashboard-nav-desktop-scroll border-b border-border -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
             style={{
-              background:
-                'linear-gradient(to right, transparent 0%, var(--background) 100%)',
+              display: 'flex',
+              flexDirection: 'row',
+              flexWrap: 'nowrap',
+              overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              minHeight: 48,
+              minWidth: 0,
+              width: '100%',
+              alignItems: 'stretch',
             }}
-            aria-hidden
-          />
-        )}
+            onScroll={updateScrollFade}
+            aria-label="Dashboard navigation"
+          >
+            {navEntries.map(renderDesktopTab)}
+          </div>
+          {showScrollFade && !atScrollEnd && (
+            <div
+              aria-hidden
+              style={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                bottom: 0,
+                width: 60,
+                background: 'linear-gradient(to right, transparent, #1A1A1A)',
+                pointerEvents: 'none',
+                zIndex: 10,
+              }}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

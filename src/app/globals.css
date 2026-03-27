@@ -275,6 +275,11 @@
   display: none;
 }
 
+/* Dashboard desktop tab strip — WebKit scrollbar (used with inline overflow styles) */
+.dashboard-nav-desktop-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 /* ——— NAV (marketing pages) ——— */
 
 .nav-link {
