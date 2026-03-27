@@ -3,7 +3,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { Header } from '@/components/Header';
 import { DashboardNav } from '@/components/DashboardNav';
@@ -166,6 +166,7 @@ function FeedPreviewWidget({ feedType, href }: { feedType: 'social' | 'business'
 export default function Dashboard() {
   const { user, profile, isActiveMember, isAdmin, loading, refreshProfile } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   usePageTitle('Member Portal');
   const [isPortalLoading, setIsPortalLoading] = useState(false);
   const [heroEventId, setHeroEventId] = useState<string | null>(null);
@@ -206,6 +207,15 @@ export default function Dashboard() {
       router.replace('/partner-portal');
     }
   }, [loading, profile, router]);
+
+  useEffect(() => {
+    if (searchParams.get('suggest') !== '1') return;
+    setSuggestModalOpen(true);
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete('suggest');
+    const q = next.toString();
+    router.replace(q ? `/dashboard?${q}` : '/dashboard', { scroll: false });
+  }, [searchParams, router]);
 
   // Track last_seen_at for re-engagement cron
   useEffect(() => {
@@ -324,22 +334,11 @@ export default function Dashboard() {
 
       <main className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
 
-        {/* Sub-nav + suggest event */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
-          <div className="min-w-0 w-full sm:flex-1">
-            <DashboardNav />
-          </div>
-          {isActiveMember && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="shrink-0 gap-1.5 self-end text-muted-foreground hover:text-foreground whitespace-nowrap sm:self-auto"
-              onClick={() => setSuggestModalOpen(true)}
-            >
-              <Lightbulb className="w-4 h-4" />
-              <span className="hidden sm:inline text-xs">Suggest</span>
-            </Button>
-          )}
+        <div className="min-w-0 w-full">
+          <DashboardNav
+            suggestOpen={suggestModalOpen}
+            onSuggestClick={() => setSuggestModalOpen(true)}
+          />
         </div>
 
         {/* Past due warning */}

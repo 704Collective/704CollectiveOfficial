@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
+import type { LucideIcon } from 'lucide-react';
 import {
   LayoutDashboard,
   Calendar,
-  User,
   Settings,
   Bell,
   Rss,
@@ -15,50 +16,40 @@ import {
   BookUser,
   Network,
   Handshake,
-  Menu,
-  ChevronRight,
-  X,
+  LayoutGrid,
+  Lightbulb,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
+
+const GOLD = '#C6A664';
+const PANEL_BG = '#1A1A1A';
+const PANEL_BG_ALT = '#2E2E2E';
 
 // ---------------------------------------------------------------------------
-// Nav items — built dynamically based on role/membership
+// Unread counts (Supabase realtime)
 // ---------------------------------------------------------------------------
-interface NavItem {
-  href: string;
-  label: string;
-  icon: React.ElementType;
-  exact?: boolean;
-  badge?: number;
-}
-
 function useUnreadMessageCount(userId: string | undefined): number {
   const [count, setCount] = useState(0);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
-    if (!userId) { setCount(0); return; }
+    if (!userId) {
+      setCount(0);
+      return;
+    }
 
     const fetchCount = async () => {
-      // Count messages in conversations the user participates in
-      // that arrived after last_read_at (or any if last_read_at is null)
       const { data: participantRows } = await supabase
         .from('conversation_participants')
         .select('conversation_id, last_read_at')
         .eq('user_id', userId);
 
-      if (!participantRows?.length) { setCount(0); return; }
+      if (!participantRows?.length) {
+        setCount(0);
+        return;
+      }
 
       let total = 0;
       await Promise.all(
@@ -72,8 +63,8 @@ function useUnreadMessageCount(userId: string | undefined): number {
 
           if (last_read_at) q = q.gt('created_at', last_read_at);
 
-          const { count } = await q;
-          total += count ?? 0;
+          const { count: c } = await q;
+          total += c ?? 0;
         })
       );
       setCount(total);
@@ -84,184 +75,500 @@ function useUnreadMessageCount(userId: string | undefined): number {
     channelRef.current = supabase
       .channel(`unread-messages:${userId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, fetchCount)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'conversation_participants', filter: `user_id=eq.${userId}` }, fetchCount)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'conversation_participants', filter: `user_id=eq.${userId}` },
+        fetchCount
+      )
       .subscribe();
 
-    return () => { channelRef.current?.unsubscribe(); };
+    return () => {
+      channelRef.current?.unsubscribe();
+    };
+  }, [userId]);
+
+  return count;
+}
+
+function useUnreadNotificationCount(userId: string | undefined): number {
+  const [count, setCount] = useState(0);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  useEffect(() => {
+    if (!userId) {
+      setCount(0);
+      return;
+    }
+
+    const fetchCount = async () => {
+      const { count: c } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('is_dismissed', false);
+      setCount(c ?? 0);
+    };
+
+    fetchCount();
+
+    channelRef.current = supabase
+      .channel(`dashboard-nav-notifications:${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        () => fetchCount()
+      )
+      .subscribe();
+
+    return () => {
+      channelRef.current?.unsubscribe();
+    };
   }, [userId]);
 
   return count;
 }
 
 // ---------------------------------------------------------------------------
+// Nav model
+// ---------------------------------------------------------------------------
+type NavEntry =
+  | {
+      kind: 'link';
+      key: string;
+      href: string;
+      label: string;
+      icon: LucideIcon;
+      exact?: boolean;
+      badge?: number;
+    }
+  | {
+      kind: 'suggest';
+      key: 'suggest';
+      label: string;
+      icon: LucideIcon;
+    };
+
+function buildNavEntries(opts: {
+  canSeeSocialFeed: boolean;
+  canSeeBusinessFeed: boolean;
+  canSeeMessages: boolean;
+  canSeeDirectory: boolean;
+  canSeeHubs: boolean;
+  canSeePartnerDirectory: boolean;
+  canSeeSuggest: boolean;
+  canSeeSettings: boolean;
+  unreadMessages: number;
+  unreadNotifications: number;
+}): NavEntry[] {
+  const items: NavEntry[] = [];
+
+  items.push({
+    kind: 'link',
+    key: 'overview',
+    href: '/dashboard',
+    label: 'Overview',
+    icon: LayoutDashboard,
+    exact: true,
+  });
+
+  if (opts.canSeeSocialFeed) {
+    items.push({
+      kind: 'link',
+      key: 'social-feed',
+      href: '/dashboard/social-feed',
+      label: 'Social Feed',
+      icon: Rss,
+    });
+  }
+
+  if (opts.canSeeBusinessFeed) {
+    items.push({
+      kind: 'link',
+      key: 'business-feed',
+      href: '/dashboard/business-feed',
+      label: 'Business Feed',
+      icon: Briefcase,
+    });
+    items.push({
+      kind: 'link',
+      key: 'messages',
+      href: '/dashboard/messages',
+      label: 'Messages',
+      icon: MessageCircle,
+      badge: opts.unreadMessages,
+    });
+    items.push({
+      kind: 'link',
+      key: 'directory',
+      href: '/dashboard/directory',
+      label: 'Directory',
+      icon: BookUser,
+    });
+    items.push({
+      kind: 'link',
+      key: 'hubs',
+      href: '/dashboard/hubs',
+      label: 'Hubs',
+      icon: Network,
+    });
+  }
+
+  if (opts.canSeePartnerDirectory) {
+    items.push({
+      kind: 'link',
+      key: 'partners',
+      href: '/dashboard/partners',
+      label: 'Partners',
+      icon: Handshake,
+    });
+  }
+
+  items.push({
+    kind: 'link',
+    key: 'events',
+    href: '/dashboard/events',
+    label: 'Events',
+    icon: Calendar,
+  });
+
+  if (opts.canSeeSuggest) {
+    items.push({ kind: 'suggest', key: 'suggest', label: 'Suggest', icon: Lightbulb });
+  }
+
+  items.push({
+    kind: 'link',
+    key: 'notifications',
+    href: '/dashboard/notifications',
+    label: 'Notifications',
+    icon: Bell,
+    badge: opts.unreadNotifications,
+  });
+
+  if (opts.canSeeSettings) {
+    items.push({
+      kind: 'link',
+      key: 'settings',
+      href: '/dashboard/settings',
+      label: 'Settings',
+      icon: Settings,
+    });
+  }
+
+  return items;
+}
+
+function entryIsActive(
+  entry: NavEntry,
+  pathname: string,
+  suggestActive: boolean
+): boolean {
+  if (entry.kind === 'suggest') return suggestActive;
+  if (entry.exact) return pathname === entry.href;
+  return pathname === entry.href || pathname.startsWith(`${entry.href}/`);
+}
+
+function resolveActiveLabel(
+  entries: NavEntry[],
+  pathname: string,
+  suggestActive: boolean
+): string {
+  const hit = entries.find((e) => entryIsActive(e, pathname, suggestActive));
+  return hit?.label ?? entries[0]?.label ?? 'Dashboard';
+}
+
+// ---------------------------------------------------------------------------
 // DashboardNav
 // ---------------------------------------------------------------------------
-export function DashboardNav() {
+export interface DashboardNavProps {
+  /** When true, highlights the Suggest tab (e.g. modal open on overview). */
+  suggestOpen?: boolean;
+  /** On overview, opens suggest modal instead of navigating with query param. */
+  onSuggestClick?: () => void;
+}
+
+export function DashboardNav({ suggestOpen = false, onSuggestClick }: DashboardNavProps = {}) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { user, profile, isAdmin, isSuperAdmin, isActiveMember, isBusinessMember } = useAuth();
   const unreadMessages = useUnreadMessageCount(user?.id);
+  const unreadNotifications = useUnreadNotificationCount(user?.id);
 
-  const isActive = (href: string, exact?: boolean) =>
-    exact ? pathname === href : pathname === href || pathname.startsWith(href + '/');
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showScrollFade, setShowScrollFade] = useState(false);
+  const [atScrollEnd, setAtScrollEnd] = useState(true);
 
-  // Determine which feed/portal features are visible
-  const canSeeSocialFeed    = isActiveMember || isAdmin;
-  const canSeeBusinessFeed  = isBusinessMember || isAdmin;
-  const canSeeMessages      = isBusinessMember || isAdmin;
-  const canSeeDirectory     = isBusinessMember || isAdmin;
-  const canSeeHubs          = isBusinessMember || isAdmin;
+  const suggestFromQuery = searchParams.get('suggest') === '1';
+  const suggestActive = suggestOpen || suggestFromQuery;
+
+  const updateScrollFade = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    const overflow = scrollWidth > clientWidth + 1;
+    setShowScrollFade(overflow);
+    setAtScrollEnd(!overflow || scrollLeft + clientWidth >= scrollWidth - 2);
+  }, []);
+
+  useEffect(() => {
+    updateScrollFade();
+    const el = scrollRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => updateScrollFade());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [updateScrollFade]);
+
+  if (profile?.member_type === 'partner') {
+    return null;
+  }
+
+  const canSeeSocialFeed = isActiveMember || isAdmin;
+  const canSeeBusinessFeed = isBusinessMember || isAdmin;
+  const canSeeMessages = isBusinessMember || isAdmin;
+  const canSeeDirectory = isBusinessMember || isAdmin;
+  const canSeeHubs = isBusinessMember || isAdmin;
   const canSeePartnerDirectory =
     (isBusinessMember && isActiveMember) || isAdmin || isSuperAdmin;
+  const canSeeSettings = isAdmin || isSuperAdmin;
+  const canSeeSuggest = isActiveMember || isAdmin;
 
-  const navItems: NavItem[] = [
-    { href: '/dashboard',                   label: 'Overview',        icon: LayoutDashboard, exact: true },
-    ...(canSeeSocialFeed   ? [{ href: '/dashboard/social-feed',   label: 'Social Feed',   icon: Rss }]            : []),
-    ...(canSeeBusinessFeed ? [{ href: '/dashboard/business-feed', label: 'Business Feed', icon: Briefcase }]       : []),
-    ...(canSeeMessages     ? [{ href: '/dashboard/messages',       label: 'Messages',      icon: MessageCircle, badge: unreadMessages }] : []),
-    ...(canSeeDirectory    ? [{ href: '/dashboard/directory',      label: 'Directory',     icon: BookUser }]        : []),
-    ...(canSeePartnerDirectory ? [{ href: '/dashboard/partners',   label: 'Partners',      icon: Handshake }]       : []),
-    ...(canSeeHubs         ? [{ href: '/dashboard/hubs',           label: 'Hubs',          icon: Network }]         : []),
-    { href: '/dashboard/events',             label: 'My Events',       icon: Calendar },
-    { href: '/dashboard/profile',            label: 'Profile',         icon: User },
-    { href: '/dashboard/notifications',      label: 'Notifications',   icon: Bell },
-    { href: '/dashboard/settings',           label: 'Settings',        icon: Settings },
-  ];
+  const navEntries = buildNavEntries({
+    canSeeSocialFeed,
+    canSeeBusinessFeed,
+    canSeeMessages,
+    canSeeDirectory,
+    canSeeHubs,
+    canSeePartnerDirectory,
+    canSeeSuggest,
+    canSeeSettings,
+    unreadMessages,
+    unreadNotifications,
+  });
 
-  const activeItem =
-    navItems.find((item) => isActive(item.href, item.exact)) ?? navItems[0];
+  const activeLabel = resolveActiveLabel(navEntries, pathname, suggestActive);
+
+  const desktopTabClass = (isActive: boolean) =>
+    cn(
+      'relative flex shrink-0 items-center gap-2 whitespace-nowrap px-1 py-3 text-sm font-medium transition-colors',
+      'mr-5 last:mr-0 lg:mr-6 lg:last:mr-0',
+      isActive
+        ? 'text-gold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:rounded-full after:bg-gold'
+        : 'text-muted-foreground hover:text-foreground'
+    );
+
+  const renderDesktopTab = (entry: NavEntry) => {
+    const isActive = entryIsActive(entry, pathname, suggestActive);
+    const Icon = entry.icon;
+
+    const inner = (
+      <>
+        <span className="relative inline-flex text-current">
+          <Icon className="h-4 w-4 shrink-0" aria-hidden />
+          {entry.kind === 'link' && entry.badge != null && entry.badge > 0 && (
+            <span
+              className="pointer-events-none absolute -right-2 -top-1.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-gold px-0.5 text-[9px] font-bold leading-none text-charcoal"
+            >
+              {entry.badge > 99 ? '99+' : entry.badge}
+            </span>
+          )}
+        </span>
+        <span>{entry.label}</span>
+      </>
+    );
+
+    if (entry.kind === 'suggest') {
+      const onDashboard = pathname === '/dashboard';
+      if (onDashboard && onSuggestClick) {
+        return (
+          <button
+            key={entry.key}
+            type="button"
+            onClick={onSuggestClick}
+            className={desktopTabClass(isActive)}
+          >
+            {inner}
+          </button>
+        );
+      }
+      return (
+        <Link key={entry.key} href="/dashboard?suggest=1" className={desktopTabClass(isActive)}>
+          {inner}
+        </Link>
+      );
+    }
+
+    return (
+      <Link key={entry.key} href={entry.href} className={desktopTabClass(isActive)}>
+        {inner}
+      </Link>
+    );
+  };
+
+  const renderMobileCell = (entry: NavEntry) => {
+    const active = entryIsActive(entry, pathname, suggestActive);
+    const Icon = entry.icon;
+
+    const cellClass = cn(
+      'flex flex-col items-center justify-center gap-2 rounded-xl border border-transparent px-3 py-4 text-center transition-colors',
+      active ? 'border-gold/40 bg-gold text-[#1A1A1A]' : 'bg-[#2E2E2E]/80 hover:bg-[#2E2E2E]'
+    );
+
+    const iconWrap = (
+      <span className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-black/25">
+        <Icon
+          className="h-5 w-5"
+          style={{ color: active ? '#1A1A1A' : GOLD }}
+          aria-hidden
+        />
+        {entry.kind === 'link' && entry.badge != null && entry.badge > 0 && (
+          <span
+            className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none"
+            style={{
+              backgroundColor: active ? '#1A1A1A' : GOLD,
+              color: active ? GOLD : '#1A1A1A',
+            }}
+          >
+            {entry.badge > 99 ? '99+' : entry.badge}
+          </span>
+        )}
+      </span>
+    );
+
+    const labelEl = (
+      <span
+        className={cn('text-xs font-semibold leading-tight', active ? 'text-[#1A1A1A]' : 'text-white')}
+      >
+        {entry.label}
+      </span>
+    );
+
+    const close = () => setMobileOpen(false);
+
+    if (entry.kind === 'suggest') {
+      const onDashboard = pathname === '/dashboard';
+      if (onDashboard && onSuggestClick) {
+        return (
+          <button
+            key={entry.key}
+            type="button"
+            className={cellClass}
+            onClick={() => {
+              close();
+              onSuggestClick();
+            }}
+          >
+            {iconWrap}
+            {labelEl}
+          </button>
+        );
+      }
+      return (
+        <Link key={entry.key} href="/dashboard?suggest=1" className={cellClass} onClick={close}>
+          {iconWrap}
+          {labelEl}
+        </Link>
+      );
+    }
+
+    return (
+      <Link key={entry.key} href={entry.href} className={cellClass} onClick={close}>
+        {iconWrap}
+        {labelEl}
+      </Link>
+    );
+  };
 
   return (
-    <div className="w-full">
-      {/* Mobile: current page + opens full labeled menu */}
-      <div className="flex items-stretch gap-2 border-b border-border -mx-4 px-4 sm:hidden">
-        <div className="min-w-0 flex-1 py-2.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            You are here
-          </p>
-          <p className="truncate text-sm font-semibold text-foreground">{activeItem.label}</p>
-        </div>
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="my-2 shrink-0 gap-2 border-primary/25 bg-primary/5 px-3 font-semibold text-foreground hover:bg-primary/10"
-            >
-              <Menu className="h-4 w-4" aria-hidden />
-              All sections
-            </Button>
-          </SheetTrigger>
-          <SheetContent
-            side="bottom"
-            className="flex max-h-[min(88dvh,32rem)] flex-col rounded-t-2xl border-t p-0 shadow-2xl [&>button]:hidden"
-          >
-            <SheetHeader className="space-y-0 border-b border-border px-4 pb-3 pt-4 text-left">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <SheetTitle className="text-left text-base font-semibold">
-                    Dashboard menu
-                  </SheetTitle>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Jump to any section of your member portal.
-                  </p>
-                </div>
-                <SheetClose asChild>
-                  <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full">
-                    <X className="h-4 w-4" />
-                    <span className="sr-only">Close menu</span>
-                  </Button>
-                </SheetClose>
-              </div>
-            </SheetHeader>
-
-            <nav
-              className="flex-1 overflow-y-auto overscroll-contain px-3 py-3"
-              aria-label="Dashboard navigation"
-            >
-              <ul className="flex flex-col gap-1">
-                {navItems.map((item) => {
-                  const itemActive = isActive(item.href, item.exact);
-                  const Icon = item.icon;
-                  return (
-                    <li key={item.href}>
-                      <SheetClose asChild>
-                        <Link
-                          href={item.href}
-                          className={cn(
-                            'flex items-center gap-3 rounded-xl px-3 py-3.5 text-sm font-medium transition-colors',
-                            itemActive
-                              ? 'bg-primary/12 text-foreground shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.2)]'
-                              : 'text-foreground hover:bg-muted/80'
-                          )}
-                        >
-                          <span
-                            className={cn(
-                              'relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
-                              itemActive
-                                ? 'bg-primary/15 text-primary'
-                                : 'bg-muted text-muted-foreground'
-                            )}
-                          >
-                            <Icon className="h-5 w-5" aria-hidden />
-                            {item.badge != null && item.badge > 0 && (
-                              <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-destructive-foreground">
-                                {item.badge > 99 ? '99+' : item.badge}
-                              </span>
-                            )}
-                          </span>
-                          <span className="min-w-0 flex-1 text-left leading-snug">{item.label}</span>
-                          <ChevronRight
-                            className={cn(
-                              'h-4 w-4 shrink-0 opacity-40',
-                              itemActive && 'text-primary opacity-70'
-                            )}
-                            aria-hidden
-                          />
-                        </Link>
-                      </SheetClose>
-                    </li>
-                  );
-                })}
-              </ul>
-            </nav>
-          </SheetContent>
-        </Sheet>
+    <div className="relative z-30 w-full">
+      {/* Mobile header row */}
+      <div
+        className={cn(
+          'flex items-center justify-between gap-3 border-b border-border/80 py-2.5 sm:hidden',
+          '-mx-4 px-4'
+        )}
+      >
+        <p
+          className="min-w-0 truncate text-sm font-semibold tracking-tight"
+          style={{ color: GOLD }}
+        >
+          {activeLabel}
+        </p>
+        <button
+          type="button"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gold/25 bg-gold/5 transition-colors hover:bg-gold/10"
+          style={{ color: GOLD }}
+          aria-expanded={mobileOpen}
+          aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+          onClick={() => setMobileOpen((o) => !o)}
+        >
+          <LayoutGrid className="h-5 w-5" aria-hidden />
+        </button>
       </div>
 
-      {/* Tablet/desktop: horizontal tabs with icons + labels */}
-      <nav
-        className="hidden sm:flex items-center border-b border-border overflow-x-auto scrollbar-hide whitespace-nowrap -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
-        style={{ WebkitOverflowScrolling: 'touch' }}
-        aria-label="Dashboard navigation"
-      >
-        {navItems.map((item) => {
-          const active = isActive(item.href, item.exact);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'relative flex items-center gap-2 px-1 py-3 mr-5 lg:mr-6 text-sm font-medium whitespace-nowrap transition-colors shrink-0 last:mr-0',
-                active
-                  ? 'text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
+      <AnimatePresence mode="sync">
+        {mobileOpen && (
+          <>
+            <motion.button
+              key="dash-nav-backdrop"
+              type="button"
+              aria-label="Close menu"
+              className="fixed inset-0 z-40 cursor-default bg-black/55 sm:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setMobileOpen(false)}
+            />
+            <motion.div
+              key="dash-nav-panel"
+              className="absolute left-1/2 z-50 w-screen max-w-[100vw] -translate-x-1/2 sm:hidden"
+              style={{
+                top: '100%',
+                marginTop: 0,
+                background: `linear-gradient(180deg, ${PANEL_BG} 0%, ${PANEL_BG_ALT} 100%)`,
+                borderTop: `1px solid rgba(198, 166, 100, 0.45)`,
+                boxShadow: '0 24px 48px rgba(0,0,0,0.45)',
+              }}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
             >
-              <span className="relative inline-flex">
-                <Icon className="w-4 h-4 shrink-0" />
-                {item.badge != null && item.badge > 0 && (
-                  <span className="absolute -top-1.5 -right-2 min-w-[14px] h-3.5 px-0.5 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center leading-none pointer-events-none">
-                    {item.badge > 99 ? '99+' : item.badge}
-                  </span>
-                )}
-              </span>
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
+              <nav className="px-3 pb-5 pt-4" aria-label="Dashboard navigation">
+                <div className="grid grid-cols-2 gap-2">{navEntries.map(renderMobileCell)}</div>
+              </nav>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Desktop: horizontal scroll + gold fade */}
+      <div className="relative hidden sm:block">
+        <div
+          ref={scrollRef}
+          onScroll={updateScrollFade}
+          className={cn(
+            'flex items-stretch overflow-x-auto scrollbar-hide whitespace-nowrap',
+            'border-b border-border -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8'
+          )}
+          style={{ WebkitOverflowScrolling: 'touch' }}
+          aria-label="Dashboard navigation"
+        >
+          <nav className="flex min-h-[48px] items-stretch">{navEntries.map(renderDesktopTab)}</nav>
+        </div>
+        {showScrollFade && !atScrollEnd && (
+          <div
+            className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-14 bg-gradient-to-l from-gold/35 via-gold/12 to-transparent"
+            aria-hidden
+          />
+        )}
+      </div>
     </div>
   );
 }
