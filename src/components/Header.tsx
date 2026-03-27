@@ -50,6 +50,10 @@ export function Header() {
     return null;
   }
 
+  const isDashboardRoute = pathname.startsWith('/dashboard');
+  /** Logged-in member on dashboard: logo + bell + avatar only (no public Events/Dashboard nav). */
+  const dashboardMemberHeader = Boolean(user && isDashboardRoute);
+
   const isActive = (path: string) => pathname === path || pathname.startsWith(path + '/');
 
   const navLinkClass = (path: string) =>
@@ -86,37 +90,45 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full min-w-0 border-b border-border bg-background/80 backdrop-blur-lg">
-      <div className="w-full max-w-5xl mx-auto flex h-14 sm:h-16 items-center justify-between md:justify-start gap-2 px-4 sm:px-6 lg:px-8 box-border">
+      <div
+        className={cn(
+          'mx-auto box-border flex h-14 w-full max-w-5xl items-center gap-2 px-4 sm:h-16 sm:px-6 lg:px-8',
+          dashboardMemberHeader ? 'justify-between' : 'justify-between md:justify-start'
+        )}
+      >
 
         {/* Left — logo */}
-        <div className="flex items-center shrink-0 min-w-0">
+        <div className="flex min-w-0 shrink-0 items-center">
           <Link href="/" className="flex items-center gap-2">
             <Image src={logo} alt="704 Collective" className="h-8 w-auto sm:h-9" height={36} width={36} />
           </Link>
         </div>
 
-        {/* Center — nav */}
-        <nav className="hidden md:flex flex-1 items-center justify-center gap-6 min-w-0">
-          {!user && (
-            <Link href="/social" className={navLinkClass('/social')}>Social</Link>
-          )}
-          <Link
-            href={user ? '/dashboard/browse-events' : '/events'}
-            className={navLinkClass(user ? '/dashboard/browse-events' : '/events')}
-          >
-            Events
-          </Link>
-          {user ? (
-            <Link href="/dashboard" className={navLinkClass('/dashboard')}>Dashboard</Link>
-          ) : (
-            <Link href="/login" className={navLinkClass('/login')}>Login</Link>
-          )}
-        </nav>
+        {/* Center — public / marketing nav (hidden on member dashboard) */}
+        {!dashboardMemberHeader && (
+          <nav className="hidden min-w-0 flex-1 items-center justify-center gap-6 md:flex">
+            {!user && (
+              <Link href="/social" className={navLinkClass('/social')}>Social</Link>
+            )}
+            <Link
+              href={user ? '/dashboard/browse-events' : '/events'}
+              className={navLinkClass(user ? '/dashboard/browse-events' : '/events')}
+            >
+              Events
+            </Link>
+            {user ? (
+              <Link href="/dashboard" className={navLinkClass('/dashboard')}>Dashboard</Link>
+            ) : (
+              <Link href="/login" className={navLinkClass('/login')}>Login</Link>
+            )}
+          </nav>
+        )}
 
         {/* Right — avatar / mobile menu */}
-        <div className="flex items-center gap-2 shrink-0 md:ml-auto">
-          {/* Mobile hamburger */}
-          <Sheet>
+        <div className={cn('flex shrink-0 items-center gap-2', !dashboardMemberHeader && 'md:ml-auto')}>
+          {/* Mobile hamburger (not used on member dashboard — bell + avatar shown instead) */}
+          {!dashboardMemberHeader && (
+            <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden">
                 <Menu className="h-5 w-5" />
@@ -457,20 +469,25 @@ export function Header() {
                 </div>
               </div>
             </SheetContent>
-          </Sheet>
+            </Sheet>
+          )}
 
-          {/* Desktop notification bell */}
+          {/* Notification bell — always visible for logged-in dashboard pages; desktop-only elsewhere */}
           {user && (
-            <div className="hidden md:flex">
+            <div className={cn(dashboardMemberHeader ? 'flex' : 'hidden md:flex')}>
               <NotificationDropdown user={user} />
             </div>
           )}
 
-          {/* Desktop auth */}
+          {/* Desktop auth (and mobile avatar when on member dashboard) */}
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative hidden md:flex">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn('relative', dashboardMemberHeader ? 'flex' : 'hidden md:flex')}
+                >
                   {avatarUrl ? (
                     <Image src={avatarUrl} alt={displayName} width={32} height={32} className="rounded-full object-cover" unoptimized />
                   ) : (

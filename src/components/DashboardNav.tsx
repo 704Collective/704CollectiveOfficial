@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -344,13 +344,20 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
   }, []);
 
   useEffect(() => {
-    updateScrollFade();
     const el = scrollRef.current;
     if (!el) return;
     const ro = new ResizeObserver(() => updateScrollFade());
     ro.observe(el);
     return () => ro.disconnect();
   }, [updateScrollFade]);
+
+  // After paint: keep strip at left (browser/Next may scroll focused tab into view).
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollLeft = 0;
+    updateScrollFade();
+  }, [pathname, updateScrollFade]);
 
   const canSeeSocialFeed = isActiveMember || isAdmin;
   const canSeeBusinessFeed = isBusinessMember || isAdmin;
