@@ -10,6 +10,6 @@ export const DASHBOARD_MAIN_WIDE =
 export const DASHBOARD_NAV_SHELL =
   'relative mx-auto w-full min-w-0 max-w-5xl px-4 sm:px-6 lg:px-8';
 
-/** Desktop tab strip: wider than header so long nav rows fit without clipping (main stays max-w-5xl). */
+/** Desktop tab row — same width as header/main; tabs use flex-wrap so labels are never clipped. */
 export const DASHBOARD_NAV_DESKTOP =
-  'mx-auto w-full min-w-0 max-w-7xl px-4 sm:px-6 lg:px-8';
+  'mx-auto w-full min-w-0 max-w-5xl px-4 sm:px-6 lg:px-8';

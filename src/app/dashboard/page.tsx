@@ -392,7 +392,7 @@ export default function Dashboard() {
         )}
 
         {/* Welcome heading */}
-        <h1 className="text-center text-2xl font-semibold text-foreground sm:text-left sm:text-3xl">
+        <h1 className="text-center text-2xl font-semibold text-foreground sm:text-3xl">
           Welcome back, {firstName}
         </h1>
 

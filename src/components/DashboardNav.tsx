@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -321,7 +321,6 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
   const unreadNotifications = useUnreadNotificationCount(user?.id);
 
   const [mobileOpen, setMobileOpen] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   const suggestFromQuery = searchParams.get('suggest') === '1';
   const suggestActive = suggestOpen || suggestFromQuery;
@@ -351,29 +350,13 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
 
   const activeLabel = resolveActiveLabel(navEntries, pathname, suggestActive);
 
-  /** Keep the active tab in view — no gradient overlays (they made labels look truncated). */
-  useLayoutEffect(() => {
-    const root = scrollRef.current;
-    if (!root) return;
-    const id = requestAnimationFrame(() => {
-      root
-        .querySelector<HTMLElement>('[data-dash-nav-active="true"]')
-        ?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
-    });
-    return () => cancelAnimationFrame(id);
-  }, [pathname, suggestOpen, suggestFromQuery, navEntries.length]);
-
   const desktopTabClass = (isActive: boolean) =>
     cn(
-      'relative flex shrink-0 items-center gap-1.5 whitespace-nowrap px-0.5 py-3 text-sm font-medium transition-colors sm:gap-2 sm:px-1',
-      'mr-3 last:mr-0 lg:mr-4 lg:last:mr-0',
+      'relative flex shrink-0 items-center gap-1.5 whitespace-nowrap px-0.5 pb-2.5 pt-1 text-sm font-medium transition-colors sm:gap-2 sm:px-1',
       isActive
         ? 'text-gold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:rounded-full after:bg-gold'
         : 'text-muted-foreground hover:text-foreground'
     );
-
-  const desktopTabProps = (isActive: boolean) =>
-    isActive ? ({ 'data-dash-nav-active': 'true' as const } as const) : {};
 
   const renderDesktopTab = (entry: NavEntry) => {
     const isActive = entryIsActive(entry, pathname, suggestActive);
@@ -403,7 +386,6 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
             key={entry.key}
             type="button"
             tabIndex={-1}
-            {...desktopTabProps(isActive)}
             className={cn(desktopTabClass(isActive), 'cursor-pointer border-0 bg-transparent p-0 text-left [font-family:inherit]')}
             onMouseDown={(e) => e.preventDefault()}
             onClick={onSuggestClick}
@@ -417,7 +399,6 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
           key={entry.key}
           type="button"
           tabIndex={-1}
-          {...desktopTabProps(isActive)}
           className={cn(desktopTabClass(isActive), 'cursor-pointer border-0 bg-transparent p-0 text-left [font-family:inherit]')}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => router.push('/dashboard?suggest=1')}
@@ -432,7 +413,6 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
         key={entry.key}
         type="button"
         tabIndex={-1}
-        {...desktopTabProps(isActive)}
         className={cn(desktopTabClass(isActive), 'cursor-pointer border-0 bg-transparent p-0 text-left [font-family:inherit]')}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => router.push(entry.href)}
@@ -540,33 +520,14 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
         </div>
       </div>
 
-      {/* Desktop: wider than header so full labels fit; horizontal scroll if still needed (no fade overlays). */}
+      {/* Desktop: flex-wrap so every label stays visible (no horizontal scroll / clipping). */}
       <div className={cn(DASHBOARD_NAV_DESKTOP, 'hidden border-b border-border sm:block')}>
-        <div className="relative min-w-0 w-full">
-          <div
-            ref={scrollRef}
-            className="dashboard-nav-desktop-scroll box-border w-full"
-            style={{
-              display: 'flex',
-              flexDirection: 'row',
-              flexWrap: 'nowrap',
-              overflowX: 'auto',
-              overflowY: 'hidden',
-              overflowAnchor: 'none',
-              WebkitOverflowScrolling: 'touch',
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-              minHeight: 48,
-              minWidth: 0,
-              width: '100%',
-              alignItems: 'stretch',
-            }}
-            aria-label="Dashboard navigation"
-          >
-            {navEntries.map(renderDesktopTab)}
-            <div className="w-2 shrink-0 sm:w-3" aria-hidden />
-          </div>
-        </div>
+        <nav
+          className="flex w-full min-w-0 flex-wrap items-center gap-x-3 gap-y-2 py-2 lg:gap-x-4"
+          aria-label="Dashboard navigation"
+        >
+          {navEntries.map(renderDesktopTab)}
+        </nav>
       </div>
 
       <AnimatePresence mode="sync">

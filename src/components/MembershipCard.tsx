@@ -101,10 +101,10 @@ export function MembershipCard({ name, memberId, avatarUrl, memberSince }: Membe
           <p className="text-white/35" style={{ fontSize: 'clamp(9px, 2vw, 11px)' }}>
             Charlotte, NC
           </p>
-          <div className="flex h-[8.5rem] w-[8.5rem] shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1.5 sm:hidden">
+          <div className="flex h-[9.5rem] w-[9.5rem] shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1.5 sm:hidden">
             <QRCodeSVG
               value={memberId}
-              size={124}
+              size={136}
               level="M"
               bgColor="#FFFFFF"
               fgColor="#000000"
@@ -113,7 +113,7 @@ export function MembershipCard({ name, memberId, avatarUrl, memberSince }: Membe
           <div className="hidden shrink-0 rounded-xl bg-white p-2 sm:block">
             <QRCodeSVG
               value={memberId}
-              size={80}
+              size={96}
               level="M"
               bgColor="#FFFFFF"
               fgColor="#000000"
