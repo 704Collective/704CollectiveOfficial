@@ -509,7 +509,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
   };
 
   return (
-    <div className="relative z-30 w-full">
+    <div className="relative z-30 min-w-0 w-full">
       {/* Mobile header row */}
       <div
         className={cn(
@@ -572,23 +572,33 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
         )}
       </AnimatePresence>
 
-      {/* Desktop: horizontal scroll + gold fade */}
-      <div className="relative hidden sm:block">
+      {/* Desktop: horizontal scroll + edge fade (mobile unchanged above) */}
+      <div className="relative hidden min-w-0 w-full sm:block">
         <div
           ref={scrollRef}
           onScroll={updateScrollFade}
           className={cn(
-            'flex items-stretch overflow-x-auto scrollbar-hide whitespace-nowrap',
+            'min-w-0 max-w-full overflow-x-auto scrollbar-hide',
             'border-b border-border -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8'
           )}
-          style={{ WebkitOverflowScrolling: 'touch' }}
+          style={{
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}
           aria-label="Dashboard navigation"
         >
-          <nav className="flex min-h-[48px] items-stretch">{navEntries.map(renderDesktopTab)}</nav>
+          <nav className="flex min-h-[48px] w-max min-w-0 flex-nowrap items-stretch whitespace-nowrap">
+            {navEntries.map(renderDesktopTab)}
+          </nav>
         </div>
         {showScrollFade && !atScrollEnd && (
           <div
-            className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-14 bg-gradient-to-l from-gold/35 via-gold/12 to-transparent"
+            className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-[60px]"
+            style={{
+              background:
+                'linear-gradient(to right, transparent 0%, var(--background) 100%)',
+            }}
             aria-hidden
           />
         )}
