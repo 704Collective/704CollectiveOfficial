@@ -322,11 +322,11 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <main className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
 
         {/* Sub-nav + suggest event */}
         <div className="flex items-center gap-2">
-          <div className="flex-1 min-w-0 overflow-hidden">
+          <div className="flex-1 min-w-0">
             <DashboardNav />
           </div>
           {isActiveMember && (
@@ -399,8 +399,8 @@ export default function Dashboard() {
 
         {/* Membership card + wallet buttons inline */}
         {isActiveMember && (
-          <div className="flex flex-col sm:flex-row gap-4 items-start">
-            <div className="w-full max-w-xs">
+          <div className="flex flex-col items-center sm:flex-row sm:items-start gap-4 w-full">
+            <div className="w-full max-w-xs mx-auto sm:mx-0 shrink-0">
               <MembershipCard
                 name={p.full_name || 'Member'}
                 memberId={user.id}
@@ -408,8 +408,10 @@ export default function Dashboard() {
                 memberSince={memberSince}
               />
             </div>
-            <div className="flex flex-col gap-2 sm:pt-2">
-              <WalletButtons compact />
+            <div className="flex flex-col items-center sm:items-start gap-2 w-full sm:w-auto sm:pt-2">
+              <div className="flex flex-row flex-wrap justify-center sm:justify-start gap-2 w-full sm:w-auto">
+                <WalletButtons compact />
+              </div>
             </div>
           </div>
         )}

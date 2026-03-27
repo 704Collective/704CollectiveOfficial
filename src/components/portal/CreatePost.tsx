@@ -279,14 +279,14 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
   const showResourceLibrary = isAdmin && feedType === 'business';
 
   return (
-    <div className="card-elevated p-4 space-y-3">
-      <div className="flex gap-3">
-        <Avatar className="w-9 h-9 shrink-0 mt-0.5">
+    <div className="card-elevated w-full p-3 sm:p-4 space-y-3 box-border">
+      <div className="flex gap-2 sm:gap-3 items-start w-full min-w-0">
+        <Avatar className="w-8 h-8 sm:w-9 sm:h-9 shrink-0 mt-0.5">
           <AvatarImage src={currentProfile?.avatar_url ?? undefined} />
           <AvatarFallback>{initials(currentProfile?.full_name)}</AvatarFallback>
         </Avatar>
 
-        <div className="flex-1 relative">
+        <div className="flex-1 min-w-0 relative">
           <Textarea
             ref={textareaRef}
             value={content}
@@ -301,7 +301,7 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
                 ? "Share something with the community…"
                 : "Share a business update, insight, or resource…"
             }
-            className="resize-none min-h-[80px] text-sm"
+            className="resize-none min-h-[80px] text-sm w-full min-w-0"
             rows={3}
           />
 
@@ -329,7 +329,7 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
 
       {/* Image previews */}
       {pendingImages.length > 0 && (
-        <div className="flex gap-2 flex-wrap pl-12">
+        <div className="flex gap-2 flex-wrap pl-10 sm:pl-12">
           {pendingImages.map(img => (
             <div key={img.id} className="relative w-20 h-20 rounded-lg overflow-hidden bg-muted">
               {img.previewUrl && (
@@ -378,8 +378,8 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
       )}
 
       {/* Toolbar */}
-      <div className="flex items-center justify-between pl-12">
-        <div className="flex items-center gap-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pl-10 sm:pl-12 w-full min-w-0">
+        <div className="flex items-center gap-1 flex-wrap">
           <input ref={imageInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => addImages(e.target.files)} />
           <Button
             variant="ghost"
@@ -430,7 +430,7 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
           size="sm"
           onClick={handleSubmit}
           disabled={!canPost}
-          className="gap-1.5"
+          className="gap-1.5 w-full sm:w-auto shrink-0"
         >
           {uploading ? (
             <><Loader2 className="w-3.5 h-3.5 animate-spin" />Posting…</>

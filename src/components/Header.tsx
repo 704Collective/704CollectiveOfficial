@@ -81,18 +81,18 @@ export function Header() {
   const goToAdmin = useCallback(() => router.push('/admin'), [router]);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-lg">
-      <div className="max-w-5xl mx-auto w-full flex h-16 items-center px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 w-full min-w-0 border-b border-border bg-background/80 backdrop-blur-lg">
+      <div className="w-full max-w-5xl mx-auto flex h-14 sm:h-16 items-center justify-between md:justify-start gap-2 px-4 sm:px-6 lg:px-8 box-border">
 
         {/* Left — logo */}
-        <div className="flex items-center">
+        <div className="flex items-center shrink-0 min-w-0">
           <Link href="/" className="flex items-center gap-2">
-            <Image src={logo} alt="704 Collective" className="h-9 w-auto" height={36} width={36} />
+            <Image src={logo} alt="704 Collective" className="h-8 w-auto sm:h-9" height={36} width={36} />
           </Link>
         </div>
 
         {/* Center — nav */}
-        <nav className="hidden md:flex flex-1 items-center justify-center gap-6">
+        <nav className="hidden md:flex flex-1 items-center justify-center gap-6 min-w-0">
           {!user && (
             <Link href="/social" className={navLinkClass('/social')}>Social</Link>
           )}
@@ -109,8 +109,8 @@ export function Header() {
           )}
         </nav>
 
-        {/* Right — avatar */}
-        <div className="flex items-center gap-2 justify-end ml-auto">
+        {/* Right — avatar / mobile menu */}
+        <div className="flex items-center gap-2 shrink-0 md:ml-auto">
           {/* Mobile hamburger */}
           <Sheet>
             <SheetTrigger asChild>

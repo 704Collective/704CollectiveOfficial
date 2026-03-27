@@ -184,7 +184,7 @@ export default function DashboardPartnersDirectoryPage() {
     <div className="min-h-screen bg-[#1A1A1A]">
       <Header />
       <DashboardNav />
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-white tracking-tight">Partner directory</h1>
           <p className="text-sm text-white/50 mt-1">

@@ -108,7 +108,8 @@ export function DashboardNav() {
 
   return (
     <nav
-      className="flex items-center border-b border-border overflow-x-auto scrollbar-hide -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+      className="flex items-center border-b border-border overflow-x-auto scrollbar-hide whitespace-nowrap -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+      style={{ WebkitOverflowScrolling: 'touch' }}
       aria-label="Dashboard navigation"
     >
       {navItems.map((item) => {
@@ -119,23 +120,22 @@ export function DashboardNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              'relative flex items-center gap-1.5 sm:gap-2 px-1 py-3.5 sm:py-3 mr-4 sm:mr-6 text-sm font-medium whitespace-nowrap transition-colors shrink-0 last:mr-0',
+              'relative flex items-center justify-center gap-0 sm:gap-2 px-0.5 py-2.5 mr-2 sm:px-1 sm:py-3 sm:mr-6 text-sm font-medium whitespace-nowrap transition-colors shrink-0 last:mr-0 sm:justify-start',
               active
                 ? 'text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            <span className="relative">
-              <Icon className="w-4 h-4 shrink-0" />
+            <span className="relative inline-flex">
+              <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
               {/* Badge for message count */}
               {item.badge != null && item.badge > 0 && (
-                <span className="absolute -top-1.5 -right-2 min-w-[14px] h-3.5 px-0.5 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center leading-none pointer-events-none">
+                <span className="absolute -top-1 -right-1.5 sm:-top-1.5 sm:-right-2 min-w-[14px] h-3.5 px-0.5 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center leading-none pointer-events-none">
                   {item.badge > 99 ? '99+' : item.badge}
                 </span>
               )}
             </span>
-            {/* Label: hidden on very small screens */}
-            <span className="hidden xs:inline sm:inline">{item.label}</span>
+            <span className="hidden sm:inline">{item.label}</span>
           </Link>
         );
       })}

@@ -47,9 +47,9 @@ export default function BusinessFeedPage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="flex-1 min-w-0 overflow-hidden">
+      <main className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+        <div className="flex items-center gap-2 w-full min-w-0">
+          <div className="flex-1 min-w-0">
             <DashboardNav />
           </div>
         </div>

@@ -37,7 +37,7 @@ export default function DirectoryPage() {
     <div className="min-h-screen bg-[#1A1A1A]">
       <Header />
       <DashboardNav />
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <MemberDirectory />
       </main>
     </div>

@@ -156,7 +156,7 @@ export function FeedView({ feedType, currentUser, currentProfile }: FeedViewProp
   const allPosts = data?.pages.flat() ?? [];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full min-w-0">
       <CreatePost
         feedType={feedType}
         currentUser={currentUser}

@@ -37,7 +37,7 @@ export default function MessagesPage() {
     <div className="min-h-screen bg-[#1A1A1A]">
       <Header />
       <DashboardNav />
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-6">
         <Suspense
           fallback={
             <div className="flex justify-center py-24">
