@@ -275,25 +275,6 @@
   display: none;
 }
 
-/* Dashboard desktop tab strip — thin visible scrollbar (one row; scroll when needed) */
-.dashboard-nav-desktop-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(198, 166, 100, 0.45) transparent;
-}
-.dashboard-nav-desktop-scroll::-webkit-scrollbar {
-  height: 5px;
-}
-.dashboard-nav-desktop-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-.dashboard-nav-desktop-scroll::-webkit-scrollbar-thumb {
-  background: rgba(198, 166, 100, 0.35);
-  border-radius: 9999px;
-}
-.dashboard-nav-desktop-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(198, 166, 100, 0.55);
-}
-
 /* ——— NAV (marketing pages) ——— */
 
 .nav-link {

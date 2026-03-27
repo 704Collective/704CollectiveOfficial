@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -143,6 +143,8 @@ type NavEntry =
       key: string;
       href: string;
       label: string;
+      /** Shorter label on desktop tab row only (mobile menu keeps `label`). */
+      shortLabel?: string;
       icon: LucideIcon;
       exact?: boolean;
       badge?: number;
@@ -151,6 +153,7 @@ type NavEntry =
       kind: 'suggest';
       key: 'suggest';
       label: string;
+      shortLabel?: string;
       icon: LucideIcon;
     };
 
@@ -183,6 +186,7 @@ function buildNavEntries(opts: {
       key: 'social-feed',
       href: '/dashboard/social-feed',
       label: 'Social Feed',
+      shortLabel: 'Social',
       icon: Rss,
     });
   }
@@ -238,7 +242,13 @@ function buildNavEntries(opts: {
   });
 
   if (opts.canSeeSuggest) {
-    items.push({ kind: 'suggest', key: 'suggest', label: 'Suggestions', icon: Lightbulb });
+    items.push({
+      kind: 'suggest',
+      key: 'suggest',
+      label: 'Suggestions',
+      shortLabel: 'Suggest',
+      icon: Lightbulb,
+    });
   }
 
   items.push({
@@ -246,6 +256,7 @@ function buildNavEntries(opts: {
     key: 'notifications',
     href: '/dashboard/notifications',
     label: 'Notifications',
+    shortLabel: 'Alerts',
     icon: Bell,
     badge: opts.unreadNotifications,
   });
@@ -261,6 +272,11 @@ function buildNavEntries(opts: {
   }
 
   return items;
+}
+
+function desktopNavLabel(entry: NavEntry): string {
+  if (entry.shortLabel) return entry.shortLabel;
+  return entry.label;
 }
 
 function entryIsActive(
@@ -292,9 +308,12 @@ function DashboardNavSuspenseFallback() {
         </div>
       </div>
       <div className={cn(DASHBOARD_NAV_DESKTOP, 'hidden border-b border-border sm:block')}>
-        <div className="dashboard-nav-desktop-scroll flex min-h-[44px] w-full flex-nowrap items-center gap-3 overflow-x-auto py-2">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
-            <div key={i} className="h-4 w-16 shrink-0 animate-pulse rounded bg-muted" />
+        <div
+          className="grid min-h-[40px] w-full gap-1 py-2"
+          style={{ gridTemplateColumns: 'repeat(11, minmax(0, 1fr))' }}
+        >
+          {Array.from({ length: 11 }).map((_, i) => (
+            <div key={i} className="mx-auto h-3 w-full max-w-[3.5rem] animate-pulse rounded bg-muted" />
           ))}
         </div>
       </div>
@@ -321,7 +340,6 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
   const unreadNotifications = useUnreadNotificationCount(user?.id);
 
   const [mobileOpen, setMobileOpen] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   const suggestFromQuery = searchParams.get('suggest') === '1';
   const suggestActive = suggestOpen || suggestFromQuery;
@@ -351,20 +369,9 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
 
   const activeLabel = resolveActiveLabel(navEntries, pathname, suggestActive);
 
-  useLayoutEffect(() => {
-    const root = scrollRef.current;
-    if (!root) return;
-    const id = requestAnimationFrame(() => {
-      root
-        .querySelector<HTMLElement>('[data-dash-nav-active="true"]')
-        ?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
-    });
-    return () => cancelAnimationFrame(id);
-  }, [pathname, suggestOpen, suggestFromQuery, navEntries.length]);
-
   const desktopTabClass = (isActive: boolean) =>
     cn(
-      'relative flex shrink-0 items-center gap-1.5 whitespace-nowrap px-0.5 pb-2 pt-0.5 text-[13px] font-medium transition-colors sm:gap-2 sm:px-1 sm:text-sm',
+      'relative flex w-full min-w-0 items-center justify-center gap-0.5 whitespace-nowrap px-0.5 pb-2 pt-0.5 text-center text-[10px] font-medium transition-colors sm:gap-1 sm:text-xs lg:gap-1.5 lg:text-[13px] xl:text-sm',
       isActive
         ? 'text-gold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:rounded-full after:bg-gold'
         : 'text-muted-foreground hover:text-foreground'
@@ -378,9 +385,9 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
     const Icon = entry.icon;
 
     const inner = (
-      <>
-        <span className="relative inline-flex text-current">
-          <Icon className="h-4 w-4 shrink-0" aria-hidden />
+      <span className="flex min-w-0 flex-col items-center gap-0.5 lg:flex-row lg:gap-1">
+        <span className="relative inline-flex shrink-0 text-current">
+          <Icon className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5 lg:h-4 lg:w-4" aria-hidden />
           {entry.kind === 'link' && entry.badge != null && entry.badge > 0 && (
             <span
               className="pointer-events-none absolute -right-2 -top-1.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-gold px-0.5 text-[9px] font-bold leading-none text-charcoal"
@@ -389,8 +396,8 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
             </span>
           )}
         </span>
-        <span>{entry.label}</span>
-      </>
+        <span className="min-w-0 max-w-full truncate">{desktopNavLabel(entry)}</span>
+      </span>
     );
 
     if (entry.kind === 'suggest') {
@@ -517,75 +524,85 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
   return (
     <div className="relative z-30 min-w-0 w-full">
       <div className={DASHBOARD_NAV_SHELL}>
-        {/* Mobile header row */}
-        <div className="flex w-full items-center justify-between gap-3 border-b border-border/80 py-2.5 sm:hidden">
-          <p
-            className="min-w-0 truncate text-sm font-semibold tracking-tight"
-            style={{ color: GOLD }}
-          >
-            {activeLabel}
-          </p>
-          <button
-            type="button"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gold/25 bg-gold/5 transition-colors hover:bg-gold/10"
-            style={{ color: GOLD }}
-            aria-expanded={mobileOpen}
-            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
-            onClick={() => setMobileOpen((o) => !o)}
-          >
-            <LayoutGrid className="h-5 w-5" aria-hidden />
-          </button>
+        {/* Mobile: bar + menu anchored flush under bar (no gap above grid). */}
+        <div className="relative sm:hidden">
+          <div className="flex w-full items-center justify-between gap-3 border-b border-border/80 py-2.5">
+            <p
+              className="min-w-0 truncate text-sm font-semibold tracking-tight"
+              style={{ color: GOLD }}
+            >
+              {activeLabel}
+            </p>
+            <button
+              type="button"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gold/25 bg-gold/5 transition-colors hover:bg-gold/10"
+              style={{ color: GOLD }}
+              aria-expanded={mobileOpen}
+              aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+              onClick={() => setMobileOpen((o) => !o)}
+            >
+              <LayoutGrid className="h-5 w-5" aria-hidden />
+            </button>
+          </div>
+
+          <AnimatePresence mode="sync">
+            {mobileOpen && (
+              <>
+                <motion.button
+                  key="dash-nav-backdrop"
+                  type="button"
+                  aria-label="Close menu"
+                  className="fixed inset-0 z-40 cursor-default bg-black/55 sm:hidden"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={() => setMobileOpen(false)}
+                />
+                <motion.div
+                  key="dash-nav-panel"
+                  className="absolute left-1/2 z-50 w-screen max-w-[100vw] -translate-x-1/2"
+                  style={{
+                    top: '100%',
+                    marginTop: -1,
+                    background: `linear-gradient(180deg, ${PANEL_BG} 0%, ${PANEL_BG_ALT} 100%)`,
+                    borderTop: `1px solid rgba(198, 166, 100, 0.45)`,
+                    boxShadow: '0 24px 48px rgba(0,0,0,0.45)',
+                  }}
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <nav className="px-3 pb-4 pt-2" aria-label="Dashboard navigation">
+                    <div className="grid grid-cols-2 gap-2">
+                      {navEntries.map((entry, i) => {
+                        const oddLast = i === navEntries.length - 1 && navEntries.length % 2 === 1;
+                        return (
+                          <div key={entry.key} className={cn(oddLast && 'col-span-2')}>
+                            {renderMobileCell(entry)}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </nav>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
-      {/* Desktop: single row; horizontal scroll + thin gold scrollbar when needed (max-w-7xl fits more tabs). */}
+      {/* Desktop: one row, equal columns — fits all tabs without horizontal scroll or clipping. */}
       <div className={cn(DASHBOARD_NAV_DESKTOP, 'hidden border-b border-border sm:block')}>
         <nav
-          ref={scrollRef}
-          className="dashboard-nav-desktop-scroll flex w-full min-w-0 flex-nowrap items-stretch gap-x-2 overflow-x-auto py-2 sm:gap-x-3 lg:gap-x-3.5"
+          className="grid w-full min-w-0 gap-x-0.5 gap-y-0 py-2 sm:gap-x-1 lg:gap-x-1.5"
+          style={{ gridTemplateColumns: `repeat(${navEntries.length}, minmax(0, 1fr))` }}
           aria-label="Dashboard navigation"
         >
           {navEntries.map(renderDesktopTab)}
-          <div className="w-1 shrink-0 sm:w-2" aria-hidden />
         </nav>
       </div>
-
-      <AnimatePresence mode="sync">
-        {mobileOpen && (
-          <>
-            <motion.button
-              key="dash-nav-backdrop"
-              type="button"
-              aria-label="Close menu"
-              className="fixed inset-0 z-40 cursor-default bg-black/55 sm:hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setMobileOpen(false)}
-            />
-            <motion.div
-              key="dash-nav-panel"
-              className="absolute left-1/2 z-50 w-screen max-w-[100vw] -translate-x-1/2 sm:hidden"
-              style={{
-                top: '100%',
-                marginTop: 0,
-                background: `linear-gradient(180deg, ${PANEL_BG} 0%, ${PANEL_BG_ALT} 100%)`,
-                borderTop: `1px solid rgba(198, 166, 100, 0.45)`,
-                boxShadow: '0 24px 48px rgba(0,0,0,0.45)',
-              }}
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <nav className="px-3 pb-5 pt-4" aria-label="Dashboard navigation">
-                <div className="grid grid-cols-2 gap-2">{navEntries.map(renderMobileCell)}</div>
-              </nav>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
