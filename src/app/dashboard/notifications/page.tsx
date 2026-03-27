@@ -8,15 +8,16 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePageTitle } from '@/hooks/usePageTitle';
 
 export default function NotificationsPage() {
-  const { user} = useAuth();
+  const { user } = useAuth();
   usePageTitle('Notifications');
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
 
+      <DashboardNav />
+
       <main className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 sm:py-8">
-        <DashboardNav />
 
         <div>
           <h1 className="text-2xl font-semibold mb-1">Notifications</h1>

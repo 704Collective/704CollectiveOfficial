@@ -6,7 +6,12 @@ export const DASHBOARD_MAIN =
 export const DASHBOARD_MAIN_WIDE =
   'w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8';
 
-/** Matches Header inner width so tab bar lines up with main content (fixes edge clipping). */
+/**
+ * Matches Header inner width so tab bar lines up with main content.
+ * Render `<DashboardNav />` as a sibling of `<main>`, not inside it — nesting inside
+ * `<main>` doubles horizontal padding and narrows the tab row; with `overflow-x: hidden`
+ * on html/body that can clip the last labels (e.g. Settings).
+ */
 export const DASHBOARD_NAV_SHELL =
   'relative mx-auto w-full min-w-0 max-w-5xl px-4 sm:px-6 lg:px-8';
 

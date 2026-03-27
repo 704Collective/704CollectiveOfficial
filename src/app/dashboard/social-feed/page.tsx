@@ -39,12 +39,10 @@ export default function SocialFeedPage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+
+      <DashboardNav />
+
       <main className="mx-auto w-full max-w-5xl space-y-4 px-4 py-6 sm:px-6 lg:px-8 sm:py-8">
-        <div className="flex items-center gap-2 w-full min-w-0">
-          <div className="flex-1 min-w-0">
-            <DashboardNav />
-          </div>
-        </div>
         <h1 className="text-2xl font-semibold text-foreground">Social Feed</h1>
         <SectionErrorBoundary>
           <FeedView

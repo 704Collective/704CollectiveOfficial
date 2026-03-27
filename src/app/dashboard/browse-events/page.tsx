@@ -150,9 +150,9 @@ export default function BrowseEventsPage() {
     <div className="min-h-screen" style={{ backgroundColor: '#000000' }}>
       <Header />
 
-      <main className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 sm:py-8">
-        <DashboardNav />
+      <DashboardNav />
 
+      <main className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 sm:py-8">
         <div>
           <h1 className="text-2xl font-semibold mb-1">Browse Events</h1>
           <p className="text-sm text-muted-foreground">
