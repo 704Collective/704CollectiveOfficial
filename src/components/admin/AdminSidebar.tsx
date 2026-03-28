@@ -8,6 +8,7 @@ import {
   Contact, Mail, Workflow, PieChart, GitPullRequest, FileText, Share2, Megaphone,
   ClipboardCheck, LayoutGrid, Inbox, ClipboardSignature, UserX, Lightbulb,
   FolderOpen, Network, Shield, Rss, Handshake, Receipt, MessagesSquare, Database, Bug,
+  Newspaper,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminSection } from '@/components/AdminLayout';
@@ -193,6 +194,28 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
             })}
           </div>
         </div>
+
+        {/* CONTENT — admin + super admin */}
+        {isAdminOrSuper && (
+          <div className="mt-5 border-t border-border pt-3">
+            <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground px-3 mb-1.5">Content</p>
+            <div className="space-y-0.5">
+              <Link
+                href="/admin/blog"
+                onClick={onMobileClose}
+                className={cn(
+                  'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  pathname.startsWith('/admin/blog')
+                    ? 'bg-accent text-foreground border-l-2 border-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                )}
+              >
+                <Newspaper className={cn('w-4 h-4 shrink-0', pathname.startsWith('/admin/blog') && 'text-primary')} />
+                Blog
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* PORTAL — admin + super admin */}
         {isAdminOrSuper && (
