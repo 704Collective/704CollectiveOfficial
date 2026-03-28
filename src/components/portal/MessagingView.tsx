@@ -114,13 +114,16 @@ function hasUnread(conv: Conversation, currentUserId: string): boolean {
   return conv.lastMessage.created_at > participant.last_read_at;
 }
 
-function initials(name: string): string {
-  return name
-    .split(' ')
+function initials(name: string | null | undefined): string {
+  const t = name?.trim();
+  if (!t) return '?';
+  return t
+    .split(/\s+/)
+    .filter((n) => n.length > 0)
     .slice(0, 2)
     .map((n) => n[0])
     .join('')
-    .toUpperCase();
+    .toUpperCase() || '?';
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────
