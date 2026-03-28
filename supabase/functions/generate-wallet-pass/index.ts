@@ -112,7 +112,9 @@ Deno.serve(async (req) => {
     // ── Fetch profile ──
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("id, full_name, member_since, subscription_status, created_at, member_type")
+      .select(
+        "id, full_name, member_since, subscription_status, created_at, member_type, membership_override"
+      )
       .eq("id", userId)
       .is("deleted_at", null)
       .single();
@@ -124,7 +126,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (profile.subscription_status !== "active") {
+    const sub = profile.subscription_status;
+    const canIssuePass =
+      profile.membership_override === true ||
+      sub === "active" ||
+      sub === "trialing";
+
+    if (!canIssuePass) {
       return new Response(JSON.stringify({ error: "Active membership required" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -33,14 +33,25 @@ function useDevicePlatform() {
   }, []);
 }
 
+/** Popup + blank-tab redirect is unreliable on mobile; use same-tab navigation after the edge call. */
+function preferSameTabWalletOpen(): boolean {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) return true;
+  try {
+    return window.matchMedia('(max-width: 639px)').matches;
+  } catch {
+    return false;
+  }
+}
+
 export function WalletButtons({ compact = false }: { compact?: boolean }) {
   const [googleLoading, setGoogleLoading] = useState(false);
   const platform = useDevicePlatform();
 
   const handleGoogleWallet = async () => {
-    // Open a tab synchronously on the click event so the browser does not block it as a popup
-    // after the async edge-function call completes.
-    const walletTab = window.open('', '_blank', 'noopener,noreferrer');
+    const useSameTab = preferSameTabWalletOpen();
+    // Desktop: open blank tab synchronously on click so async redirect is not blocked as a popup.
+    const walletTab = useSameTab ? null : window.open('', '_blank', 'noopener,noreferrer');
     setGoogleLoading(true);
     try {
       const supabase = createClient();
@@ -52,13 +63,21 @@ export function WalletButtons({ compact = false }: { compact?: boolean }) {
       if (error) {
         walletTab?.close();
         console.error('[WalletButtons] Edge function error:', error);
-        toast.error('Could not connect to wallet service. Please try again.');
+        const msg =
+          typeof (error as { message?: string }).message === 'string'
+            ? (error as { message: string }).message
+            : '';
+        toast.error(
+          msg && msg !== 'Edge Function returned a non-2xx status code'
+            ? msg
+            : 'Could not connect to wallet service. Please try again.'
+        );
         return;
       }
 
       if (data?.error === 'Google Wallet not configured') {
         walletTab?.close();
-        toast.error('Google Wallet is not configured yet. Check back soon!');
+        toast.error('Google Wallet is not configured yet. Ask an admin to set wallet secrets in Supabase.');
         return;
       }
 
@@ -69,12 +88,17 @@ export function WalletButtons({ compact = false }: { compact?: boolean }) {
       }
 
       if (data?.walletUrl) {
+        const url = data.walletUrl as string;
         if (walletTab) {
-          walletTab.opener = null;
-          walletTab.location.href = data.walletUrl as string;
+          try {
+            walletTab.opener = null;
+            walletTab.location.href = url;
+          } catch {
+            walletTab.close();
+            window.location.assign(url);
+          }
         } else {
-          toast.info('Opening Google Wallet…', { duration: 2000 });
-          window.location.assign(data.walletUrl as string);
+          window.location.assign(url);
         }
         return;
       }

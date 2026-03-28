@@ -460,7 +460,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
     const Icon = entry.icon;
 
     const cellClass = cn(
-      'flex min-h-[5.25rem] flex-col items-center justify-center gap-1.5 rounded-xl border px-2.5 py-3 text-center transition-colors sm:min-h-[5.5rem] sm:gap-2 sm:px-3 sm:py-3.5',
+      'flex min-h-[5.25rem] w-full min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl border px-2.5 py-3 text-center transition-colors sm:min-h-[5.5rem] sm:gap-2 sm:px-3 sm:py-3.5',
       active
         ? 'border-charcoal/20 bg-gold text-charcoal shadow-md shadow-black/25 ring-1 ring-black/10'
         : 'border-white/[0.08] bg-[#2E2E2E] hover:bg-[#353535]'
@@ -524,7 +524,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
         );
       }
       return (
-        <Link key={entry.key} href="/dashboard?suggest=1" className={cellClass} onClick={close}>
+        <Link key={entry.key} href="/dashboard?suggest=1" className={cn(cellClass, 'no-underline')} onClick={close}>
           {iconWrap}
           {labelEl}
         </Link>
@@ -532,7 +532,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
     }
 
     return (
-      <Link key={entry.key} href={entry.href} className={cellClass} onClick={close}>
+      <Link key={entry.key} href={entry.href} className={cn(cellClass, 'no-underline')} onClick={close}>
         {iconWrap}
         {labelEl}
       </Link>
@@ -605,12 +605,29 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
                   transition={{ duration: 0.18 }}
                 >
                   <nav className="px-3 pb-3 pt-1.5" aria-label="Dashboard navigation">
-                    <div className="grid grid-cols-2 gap-2">
-                      {navEntries.map((entry) => (
-                        <div key={entry.key} className="min-w-0">
-                          {renderMobileCell(entry)}
-                        </div>
-                      ))}
+                    <div className="grid grid-cols-2 items-stretch gap-2">
+                      {navEntries.map((entry, index) => {
+                        const isLastAlone =
+                          index === navEntries.length - 1 && navEntries.length % 2 === 1;
+                        return (
+                          <div
+                            key={entry.key}
+                            className={cn(
+                              'flex min-w-0 w-full',
+                              isLastAlone && 'col-span-2 justify-center'
+                            )}
+                          >
+                            <div
+                              className={cn(
+                                'flex w-full min-w-0',
+                                isLastAlone && 'max-w-[calc((100%-0.5rem)/2)]'
+                              )}
+                            >
+                              {renderMobileCell(entry)}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </nav>
                 </motion.div>
