@@ -14,8 +14,6 @@ import { AdminSection } from '@/components/AdminLayout';
 import { WorkspaceSwitcher } from '@/components/admin/WorkspaceSwitcher';
 import { NotificationBell } from '@/components/business/NotificationBell';
 import { useAuth } from '@/hooks/useAuth';
-import logo from '@/assets/704-logo.png';
-
 interface AdminSidebarProps {
   activeSection?: AdminSection;
   onSectionChange?: (section: AdminSection) => void;
@@ -86,7 +84,7 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
           }}
           className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
         >
-          <Image src={logo} alt="704 Collective" width={32} height={32} className="rounded-lg" />
+          <Image src="/logo.png" alt="704 Collective" width={32} height={32} className="rounded-lg" />
           <span className="text-base font-semibold text-foreground">704 Collective</span>
         </button>
       </div>

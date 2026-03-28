@@ -9,7 +9,6 @@ import { Check, Calendar, ArrowRight, Loader2, Mail, XCircle } from 'lucide-reac
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import logo from '@/assets/704-logo.png';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
@@ -70,7 +69,7 @@ function PaymentSuccess() {
         <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-lg">
           <div className="container flex h-16 items-center">
             <Link href="/" className="flex items-center gap-2">
-              <Image src={logo} alt="704 Collective" height={36} width={36} className="h-9 w-auto" />
+              <Image src="/logo.png" alt="704 Collective" height={36} width={36} className="h-9 w-auto" />
               <span className="text-foreground text-lg font-medium">Social</span>
             </Link>
           </div>
@@ -118,7 +117,7 @@ function PaymentSuccess() {
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-lg">
         <div className="container flex h-16 items-center">
           <Link href="/" className="flex items-center gap-2">
-            <Image src={logo} alt="704 Collective" height={36} width={36} className="h-9 w-auto" />
+            <Image src="/logo.png" alt="704 Collective" height={36} width={36} className="h-9 w-auto" />
             <span className="text-foreground text-lg font-medium">Social</span>
           </Link>
         </div>

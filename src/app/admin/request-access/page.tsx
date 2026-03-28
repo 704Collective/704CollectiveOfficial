@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Shield, CheckCircle } from 'lucide-react';
-import logo from '@/assets/704-logo.png';
+import Image from 'next/image';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 export default function RequestAccess() {
@@ -98,8 +98,7 @@ export default function RequestAccess() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <img src={logo.src}
- alt="704 Collective" className="h-16 w-auto" />
+            <Image src="/logo.png" alt="704 Collective" width={64} height={64} className="h-16 w-auto" />
           </div>
           <div className="flex items-center justify-center gap-2 mb-2">
             <Shield className="w-5 h-5 text-primary" />

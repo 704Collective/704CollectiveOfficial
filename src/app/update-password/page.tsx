@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { z } from 'zod';
-import logo from '@/assets/704-logo.png';
 import Image from 'next/image';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
@@ -69,8 +68,7 @@ export default function UpdatePassword() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <Link href="/" className="inline-flex flex-col sm:flex-row items-center justify-center gap-2">
-            <img src={logo.src}
- alt="704 Collective" className="h-12 w-auto" />
+            <Image src="/logo.png" alt="704 Collective" width={48} height={48} className="h-12 w-auto" />
             <span className="text-foreground text-2xl font-medium">Social</span>
           </Link>
         </div>

@@ -35,7 +35,6 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
-import logo from '@/assets/704-logo.png';
 import { cn } from '@/lib/utils';
 import { isMemberDashboardRoute } from '@/lib/member-dashboard-route';
 
@@ -107,7 +106,7 @@ export function Header() {
         {/* Left — logo */}
         <div className="flex min-w-0 shrink-0 items-center">
           <Link href="/" className="flex items-center gap-2">
-            <Image src={logo} alt="704 Collective" className="h-8 w-auto sm:h-9" height={36} width={36} />
+            <Image src="/logo.png" alt="704 Collective" className="h-8 w-auto sm:h-9" height={36} width={36} />
           </Link>
         </div>
 
@@ -176,7 +175,7 @@ export function Header() {
                         user ? 'bg-black/40 ring-[#C6A664]/25' : 'bg-muted ring-border'
                       )}
                     >
-                      <Image src={logo} alt="704 Collective" className="h-6 w-auto" height={24} width={24} />
+                      <Image src="/logo.png" alt="704 Collective" className="h-6 w-auto" height={24} width={24} />
                     </div>
                     <div className="min-w-0">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">

@@ -36,7 +36,7 @@ export function SEOJsonLd(props: SEOJsonLdProps) {
           url: CANONICAL_BASE,
           description:
             "Charlotte's community for young professionals. Events, networking, and real friendships.",
-          logo: `${CANONICAL_BASE}/assets/704-logo.png`,
+          logo: `${CANONICAL_BASE}/logo.png`,
         },
         {
           '@context': 'https://schema.org',

@@ -1,5 +1,4 @@
 import Image from 'next/image';
-import logo from '@/assets/704-logo.png';
 
 /**
  * Shown automatically by Next.js while the /auth/callback segment loads.
@@ -19,7 +18,7 @@ export default function AuthCallbackLoading() {
       }}
     >
       <Image
-        src={logo}
+        src="/logo.png"
         alt="704 Collective"
         width={72}
         height={72}
