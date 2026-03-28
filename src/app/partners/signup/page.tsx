@@ -4,6 +4,7 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { MarketingPageRoot } from "@/components/MarketingPageRoot";
 
 const partnerTypeOptions = [
   {
@@ -110,6 +111,7 @@ export default function PartnerSignup() {
         padding: "24px",
       }}
     >
+      <MarketingPageRoot>
       <div style={{ width: "100%", maxWidth: "440px" }}>
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: "36px" }}>
@@ -614,6 +616,7 @@ export default function PartnerSignup() {
           </Link>
         </div>
       </div>
+      </MarketingPageRoot>
     </div>
   );
 }

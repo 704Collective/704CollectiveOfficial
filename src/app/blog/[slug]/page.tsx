@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { MarketingPageRoot } from "@/components/MarketingPageRoot";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -24,6 +25,7 @@ export default async function BlogPostPage({ params }: Props) {
     <>
       <Nav />
       <main style={{ paddingTop: "64px", minHeight: "60vh" }}>
+        <MarketingPageRoot>
         <section
           style={{
             backgroundColor: "#1A1A1A",
@@ -100,6 +102,7 @@ export default async function BlogPostPage({ params }: Props) {
             </Link>
           </div>
         </section>
+        </MarketingPageRoot>
       </main>
       <Footer />
     </>

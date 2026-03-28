@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Shield, CheckCircle } from 'lucide-react';
 import logo from '@/assets/704-logo.png';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 export default function RequestAccess() {
   const [fullName, setFullName] = useState('');
@@ -73,6 +74,7 @@ export default function RequestAccess() {
   if (success) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <MarketingPageRoot>
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
@@ -85,12 +87,14 @@ export default function RequestAccess() {
             </Link>
           </CardContent>
         </Card>
+        </MarketingPageRoot>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <MarketingPageRoot>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
@@ -184,6 +188,7 @@ export default function RequestAccess() {
           </div>
         </CardContent>
       </Card>
+      </MarketingPageRoot>
     </div>
   );
 }

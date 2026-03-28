@@ -4,6 +4,7 @@ import Nav from '@/components/Nav';
 import { Footer } from '@/components/Footer';
 import { getFeaturedPartnerLogos, type FeaturedPartnerLogo } from '@/lib/partnerFeatured';
 import { FeaturedPartnersCarousel } from '@/components/partners/FeaturedPartnersCarousel';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import { Store, Building2, Sparkles, Handshake } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -23,6 +24,7 @@ export default async function PartnersPage() {
     <>
       <Nav />
       <main className="bg-[#0a0a0a] text-white">
+        <MarketingPageRoot>
         {/* Hero */}
         <section className="relative min-h-[100dvh] flex flex-col justify-end pb-20 pt-28 px-4 sm:px-6">
           <div
@@ -242,6 +244,7 @@ export default async function PartnersPage() {
             </Link>
           </div>
         </section>
+        </MarketingPageRoot>
       </main>
       <Footer />
     </>

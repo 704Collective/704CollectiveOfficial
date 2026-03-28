@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { partnerRedirectTarget } from "@/lib/partnerLoginRedirect";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { MarketingPageRoot } from "@/components/MarketingPageRoot";
 
 function PartnerLoginForm() {
   const router = useRouter();
@@ -43,6 +44,7 @@ function PartnerLoginForm() {
         padding: "24px",
       }}
     >
+      <MarketingPageRoot>
       <div style={{ width: "100%", maxWidth: "400px" }}>
         {/* Logo / Header */}
         <div style={{ textAlign: "center", marginBottom: "40px" }}>
@@ -246,6 +248,7 @@ function PartnerLoginForm() {
           </Link>
         </div>
       </div>
+      </MarketingPageRoot>
     </div>
   );
 }

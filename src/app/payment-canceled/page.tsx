@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import logo from '@/assets/704-logo.png';
 import Image from 'next/image';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 export default function PaymentCanceled() {
   usePageTitle('Payment Canceled');
@@ -23,6 +24,7 @@ export default function PaymentCanceled() {
       </header>
 
       <main className="container py-20">
+        <MarketingPageRoot>
         <div className="max-w-md mx-auto text-center space-y-8">
           {/* Cancel Icon */}
           <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto">
@@ -59,6 +61,7 @@ export default function PaymentCanceled() {
             </Button>
           </div>
         </div>
+        </MarketingPageRoot>
       </main>
     </div>
   );

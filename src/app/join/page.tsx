@@ -17,6 +17,7 @@ import {
   StaggerContainer,
   StaggerItem,
 } from '@/components/Animations';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 interface Event {
   id: string;
@@ -77,6 +78,7 @@ export default function Join() {
     <>
       <Nav />
       <main style={{ paddingTop: '64px', backgroundColor: '#000', minHeight: '100dvh' }}>
+        <MarketingPageRoot>
         <div style={{ maxWidth: '960px', margin: '0 auto', padding: '48px 24px 80px' }}>
 
           {/* Hero CTA */}
@@ -396,6 +398,7 @@ export default function Join() {
             )}
           </section>
         </div>
+        </MarketingPageRoot>
       </main>
       <Footer />
 

@@ -12,6 +12,7 @@ import {
   StaggerItem,
   ScaleUp,
 } from '@/components/Animations';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 const team = [
   { name: 'Adam Gould', title: 'Co-Founder', initials: 'AG' },
@@ -43,6 +44,7 @@ export default function About() {
     <>
       <Nav />
       <main style={{ paddingTop: '64px', backgroundColor: '#000' }}>
+        <MarketingPageRoot>
 
         {/* ── HERO ── */}
         <section style={{ padding: '96px 24px 80px', textAlign: 'center' }}>
@@ -340,6 +342,7 @@ export default function About() {
             </div>
           </section>
         )}
+        </MarketingPageRoot>
       </main>
       <Footer />
 

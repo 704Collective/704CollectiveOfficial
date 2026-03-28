@@ -852,6 +852,7 @@ export default function CrmCampaignsPage() {
 
       {/* Table — desktop */}
       <div className="hidden md:block bg-card border border-border rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/30">
@@ -933,6 +934,7 @@ export default function CrmCampaignsPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Cards — mobile */}

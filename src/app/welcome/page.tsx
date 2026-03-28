@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import Nav from '@/components/Nav';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 type Status = 'loading' | 'setup' | 'success' | 'error';
 
@@ -201,6 +202,7 @@ function WelcomeContent() {
     <>
       <Nav />
       <main style={{ paddingTop: '64px', backgroundColor: '#0d0d0d', minHeight: '100dvh' }}>
+        <MarketingPageRoot>
         <div style={{
           maxWidth: '480px',
           width: '100%',
@@ -491,6 +493,7 @@ function WelcomeContent() {
             </div>
           )}
         </div>
+        </MarketingPageRoot>
       </main>
 
       <style>{`

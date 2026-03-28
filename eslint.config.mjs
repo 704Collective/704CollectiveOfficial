@@ -21,6 +21,9 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "**/*.test.ts",
+    "e2e/**",
+    "playwright-report/**",
+    "test-results/**",
     // Deno edge functions — different runtime; lint separately if needed
     "supabase/**",
   ]),

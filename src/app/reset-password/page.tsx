@@ -11,6 +11,7 @@ import { Loader2, CheckCircle, ArrowLeft } from 'lucide-react';
 import { z } from 'zod';
 import logo from '@/assets/704-logo.png';
 import Image from 'next/image';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 const emailSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -64,6 +65,7 @@ export default function ResetPassword() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <MarketingPageRoot>
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <Link href="/" className="inline-flex flex-col sm:flex-row items-center justify-center gap-2">
@@ -129,6 +131,7 @@ export default function ResetPassword() {
           </Link>
         </p>
       </div>
+      </MarketingPageRoot>
     </div>
   );
 }

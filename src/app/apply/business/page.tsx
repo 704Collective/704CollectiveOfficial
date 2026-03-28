@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Nav from '@/components/Nav';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -198,6 +199,7 @@ export default function BusinessApplicationPage() {
     return (
       <div className="min-h-screen bg-background flex flex-col" style={{ backgroundColor: '#1A1A1A' }}>
         <Nav />
+        <MarketingPageRoot>
         <div className="flex-1 flex items-center justify-center px-4 py-16">
           <div className="w-full max-w-md text-center space-y-6">
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
@@ -227,6 +229,7 @@ export default function BusinessApplicationPage() {
             </button>
           </div>
         </div>
+        </MarketingPageRoot>
       </div>
     );
   }
@@ -236,6 +239,7 @@ export default function BusinessApplicationPage() {
     return (
       <div className="min-h-screen bg-background flex flex-col" style={{ backgroundColor: '#1A1A1A' }}>
         <Nav />
+        <MarketingPageRoot>
         <div className="flex-1 flex items-center justify-center px-4 py-16">
           <div className="w-full max-w-md text-center space-y-6">
             <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
@@ -254,6 +258,7 @@ export default function BusinessApplicationPage() {
             </Button>
           </div>
         </div>
+        </MarketingPageRoot>
       </div>
     );
   }
@@ -263,6 +268,7 @@ export default function BusinessApplicationPage() {
     return (
       <div className="min-h-screen bg-background flex flex-col" style={{ backgroundColor: '#1A1A1A' }}>
         <Nav />
+        <MarketingPageRoot>
         <div className="flex-1 px-4 py-12">
           <div className="w-full max-w-xl mx-auto space-y-8">
             <div>
@@ -373,6 +379,7 @@ export default function BusinessApplicationPage() {
             </form>
           </div>
         </div>
+        </MarketingPageRoot>
       </div>
     );
   }
@@ -381,6 +388,7 @@ export default function BusinessApplicationPage() {
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#1A1A1A' }}>
       <Nav />
+      <MarketingPageRoot>
       <div className="flex-1 flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-md space-y-8">
           <div>
@@ -429,6 +437,7 @@ export default function BusinessApplicationPage() {
           </p>
         </div>
       </div>
+      </MarketingPageRoot>
     </div>
   );
 }

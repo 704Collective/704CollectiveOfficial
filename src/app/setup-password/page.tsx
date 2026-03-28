@@ -12,6 +12,7 @@ import { Loader2, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { z } from 'zod';
 import logo from '@/assets/704-logo.png';
 import Image from 'next/image';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 const passwordSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
@@ -129,6 +130,7 @@ export default function SetupPassword() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <MarketingPageRoot>
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <Link href="/" className="inline-flex flex-col sm:flex-row items-center justify-center gap-2">
@@ -233,6 +235,7 @@ export default function SetupPassword() {
           )}
         </div>
       </div>
+      </MarketingPageRoot>
     </div>
   );
 }

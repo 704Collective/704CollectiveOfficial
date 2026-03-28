@@ -79,7 +79,7 @@ export function AdminLayout({
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
-            className="flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            className="flex items-center justify-center min-h-11 min-w-11 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             aria-label="Open navigation"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -89,11 +89,11 @@ export function AdminLayout({
             </svg>
           </button>
           <span className="text-sm font-semibold text-foreground">704 Collective</span>
-          <div className="w-9" />
+          <div className="min-w-11" aria-hidden />
         </header>
 
         {/* Page content */}
-        <main className="flex-1 pb-20 lg:pb-0">
+        <main className="flex-1 pb-[calc(56px+env(safe-area-inset-bottom)+24px)] lg:pb-0">
           <div className="w-full max-w-3xl mx-auto px-4 py-6 sm:px-6 md:max-w-5xl lg:px-8 lg:py-8">
             {title && (
               <h1 className="hidden lg:block text-2xl font-semibold text-foreground mb-6">

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Nav from '@/components/Nav';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -137,6 +138,7 @@ export default function SignupPage() {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Nav />
+        <MarketingPageRoot>
         <div className="flex-1 flex items-center justify-center px-4 py-16">
           <div className="w-full max-w-md text-center space-y-6">
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
@@ -173,6 +175,7 @@ export default function SignupPage() {
             </Button>
           </div>
         </div>
+        </MarketingPageRoot>
       </div>
     );
   }
@@ -182,6 +185,7 @@ export default function SignupPage() {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Nav />
+        <MarketingPageRoot>
         <div className="flex-1 flex items-center justify-center px-4 py-16">
           <div className="w-full max-w-lg space-y-6">
             <div className="text-center">
@@ -242,6 +246,7 @@ export default function SignupPage() {
             </p>
           </div>
         </div>
+        </MarketingPageRoot>
       </div>
     );
   }
@@ -268,6 +273,7 @@ export default function SignupPage() {
         </div>
       )}
       <Nav />
+      <MarketingPageRoot>
       <div className="flex-1 flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
@@ -363,6 +369,7 @@ export default function SignupPage() {
           </div>
         </div>
       </div>
+      </MarketingPageRoot>
     </div>
   );
 }

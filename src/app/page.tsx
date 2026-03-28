@@ -18,6 +18,7 @@ import {
 } from "@/components/Animations";
 import TiltCard from "@/components/TiltCard";
 import GradientShift from "@/components/GradientShift";
+import { MarketingPageRoot } from "@/components/MarketingPageRoot";
 
 export const metadata: Metadata = {
   title: "704 Collective | Where Charlotte Connects",
@@ -72,6 +73,7 @@ export default async function Home() {
       <Nav />
 
       <main style={{ paddingTop: "64px" }}>
+        <MarketingPageRoot>
         {/* ════════════════════════════════════════════
             SECTION 1: HERO
         ════════════════════════════════════════════ */}
@@ -1642,6 +1644,7 @@ export default async function Home() {
             </StaggerContainer>
           </div>
         </section>
+        </MarketingPageRoot>
       </main>
 
       <Footer />

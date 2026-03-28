@@ -18,6 +18,7 @@ import { ThankYouModal } from '@/components/ThankYouModal';
 import { createClient } from '@/lib/supabase/client';
 import { useTicketActions } from '@/hooks/useTicketActions';
 import { EventCategory, CATEGORY_CONFIG } from '@/components/CategoryBadge';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 interface Event {
   id: string;
@@ -160,6 +161,7 @@ export default function Events() {
       <Nav />
       <div style={{ paddingTop: '64px', minHeight: '100vh', backgroundColor: '#000000' }}>
         <main style={{ maxWidth: '1100px', margin: '0 auto', padding: '48px 24px 80px' }}>
+          <MarketingPageRoot>
 
           {/* Page Header */}
           <div style={{ marginBottom: '40px', textAlign: 'center' }}>
@@ -375,6 +377,7 @@ export default function Events() {
               </div>
             </SectionErrorBoundary>
           )}
+          </MarketingPageRoot>
         </main>
 
         <ThankYouModal open={showThankYou} onOpenChange={setShowThankYou} type={thankYouType} />

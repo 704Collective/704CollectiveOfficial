@@ -11,6 +11,7 @@ import {
   WordReveal,
 } from "@/components/Animations";
 import TiltCard from "@/components/TiltCard";
+import { MarketingPageRoot } from "@/components/MarketingPageRoot";
 
 export const metadata: Metadata = {
   title: "704 Business | Charlotte's Premier Business Community",
@@ -146,6 +147,7 @@ export default function BusinessPage() {
     <>
       <Nav />
       <main style={{ paddingTop: "64px" }}>
+        <MarketingPageRoot>
         {/* ════════════════════════════════════════════
             HERO
         ════════════════════════════════════════════ */}
@@ -1037,6 +1039,7 @@ export default function BusinessPage() {
             </ScaleUp>
           </div>
         </section>
+        </MarketingPageRoot>
 
       </main>
       <Footer />

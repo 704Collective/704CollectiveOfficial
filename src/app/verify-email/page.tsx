@@ -12,6 +12,7 @@ import { Loader2, Mail, ArrowLeft } from 'lucide-react';
 import logo from '@/assets/704-logo.png';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 export default function VerifyEmailPage() {
   return (
@@ -56,6 +57,7 @@ function VerifyEmail() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <MarketingPageRoot>
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <Link href="/" className="inline-flex flex-col sm:flex-row items-center justify-center gap-2">
@@ -91,6 +93,7 @@ function VerifyEmail() {
           </Link>
         </p>
       </div>
+      </MarketingPageRoot>
     </div>
   );
 }

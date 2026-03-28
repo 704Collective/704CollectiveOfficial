@@ -7,6 +7,7 @@ import Nav from '@/components/Nav';
 import { Footer } from '@/components/Footer';
 import Link from 'next/link';
 import { ArrowLeft, Loader2 } from 'lucide-react';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -33,6 +34,7 @@ export default function CheckoutPage() {
           backgroundColor: '#000000',
         }}
       >
+        <MarketingPageRoot>
         <div
           style={{
             maxWidth: '720px',
@@ -148,6 +150,7 @@ export default function CheckoutPage() {
             </div>
           )}
         </div>
+        </MarketingPageRoot>
       </main>
       <Footer />
     </>

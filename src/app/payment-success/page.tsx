@@ -12,6 +12,7 @@ import { usePageTitle } from '@/hooks/usePageTitle';
 import logo from '@/assets/704-logo.png';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 export default function PaymentSuccessPage() {
   return (
@@ -75,6 +76,7 @@ function PaymentSuccess() {
           </div>
         </header>
         <main className="container py-20">
+          <MarketingPageRoot>
           <div className="max-w-md mx-auto text-center space-y-8">
             <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
               <XCircle className="w-10 h-10 text-destructive" />
@@ -92,6 +94,7 @@ function PaymentSuccess() {
               </Link>
             </Button>
           </div>
+          </MarketingPageRoot>
         </main>
       </div>
     );
@@ -122,6 +125,7 @@ function PaymentSuccess() {
       </header>
 
       <main className="container py-20">
+        <MarketingPageRoot>
         <div className="max-w-md mx-auto text-center space-y-8">
           <div className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
             <Check className="w-10 h-10 text-green-500" />
@@ -209,6 +213,7 @@ function PaymentSuccess() {
             )}
           </div>
         </div>
+        </MarketingPageRoot>
       </main>
     </div>
   );

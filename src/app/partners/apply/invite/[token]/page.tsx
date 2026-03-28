@@ -3,6 +3,7 @@ import Link from 'next/link';
 import Nav from '@/components/Nav';
 import { PartnerApplyForm } from '@/components/partners/PartnerApplyForm';
 import { validatePartnerInviteToken } from '@/lib/partnerInviteToken';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 export const metadata: Metadata = {
   title: 'Partner Invite | 704 Collective',
@@ -26,6 +27,7 @@ export default async function PartnerInviteApplyPage({ params }: Props) {
     return (
       <>
         <Nav />
+        <MarketingPageRoot>
         <div className="min-h-screen bg-[#0a0a0a] pt-28 pb-16 px-4 flex flex-col items-center">
           <div className="max-w-md text-center rounded-2xl border border-red-500/30 bg-red-950/20 p-8">
             <h1 className="text-xl font-semibold text-white mb-3">Invite unavailable</h1>
@@ -35,6 +37,7 @@ export default async function PartnerInviteApplyPage({ params }: Props) {
             </Link>
           </div>
         </div>
+        </MarketingPageRoot>
       </>
     );
   }

@@ -6,6 +6,7 @@ import { Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthContext } from '@/contexts/AuthContext';
 import Nav from '@/components/Nav';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 export default function PendingReviewPage() {
   const { profile, loading, signOut } = useAuthContext();
@@ -49,6 +50,7 @@ export default function PendingReviewPage() {
           justifyContent: 'center',
         }}
       >
+        <MarketingPageRoot>
         <div
           style={{
             maxWidth: '480px',
@@ -192,6 +194,7 @@ export default function PendingReviewPage() {
             </Button>
           </div>
         </div>
+        </MarketingPageRoot>
       </main>
     </>
   );

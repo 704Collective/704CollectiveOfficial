@@ -35,3 +35,18 @@ jobs:
           STRIPE_SECRET_KEY: sk_test_ci
           STRIPE_SOCIAL_PRODUCT_ID: prod_test_ci
           SUPABASE_SERVICE_ROLE_KEY: service-role-test-ci-only
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: E2E (mobile smoke + Lighthouse)
+        run: npm run test:e2e
+        env:
+          CI: true
+          NEXT_PUBLIC_SITE_URL: https://example.com
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: anon-test-key-for-ci-build-only
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_ci
+          STRIPE_SECRET_KEY: sk_test_ci
+          STRIPE_SOCIAL_PRODUCT_ID: prod_test_ci
+          SUPABASE_SERVICE_ROLE_KEY: service-role-test-ci-only

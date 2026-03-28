@@ -19,6 +19,7 @@ import { WhosGoing } from '@/components/WhosGoing';
 import { CategoryBadge, EventCategory } from '@/components/CategoryBadge';
 import { AddToCalendarButtons } from '@/components/AddToCalendarButtons';
 import { WaitlistBadge } from '@/components/WaitlistBadge';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 interface Event {
   id: string;
@@ -231,6 +232,7 @@ export default function EventDetail() {
     <>
       <Nav />
       <div style={{ paddingTop: '64px', minHeight: '100vh', backgroundColor: '#000' }}>
+        <MarketingPageRoot>
         <SEOJsonLd type="event" name={event.title} description={event.description || undefined} startDate={event.start_time} endDate={event.end_time} locationName={event.location_name || undefined} locationAddress={event.location_address || undefined} ticketPrice={event.ticket_price ?? undefined} imageUrl={event.image_url || undefined} eventUrl={`https://704collective.com/events/${event.id}`} />
 
         {event.image_url && (
@@ -336,6 +338,7 @@ export default function EventDetail() {
         {!hasTicket && !waitlistPosition && <div className="mobile-spacer" style={{ height: '80px', display: 'none' }} />}
 
         <ThankYouModal open={showThankYou} onOpenChange={setShowThankYou} type={thankYouType} />
+        </MarketingPageRoot>
       </div>
       <Footer />
 

@@ -4,6 +4,7 @@ import Nav from '@/components/Nav';
 import { Footer } from '@/components/Footer';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { FadeUp } from '@/components/Animations';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 const sectionStyle: React.CSSProperties = { marginBottom: '48px' };
 const h2Style: React.CSSProperties = { fontSize: '1.375rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '16px' };
@@ -21,6 +22,7 @@ export default function Privacy() {
     <>
       <Nav />
       <main style={{ paddingTop: '64px', backgroundColor: '#000', minHeight: '100vh' }}>
+        <MarketingPageRoot>
         <div style={{ maxWidth: '720px', margin: '0 auto', padding: '64px 24px 96px' }}>
           <FadeUp>
             <h1 style={{ fontSize: 'clamp(2rem, 4.5vw, 2.75rem)', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', marginBottom: '8px' }}>
@@ -150,6 +152,7 @@ export default function Privacy() {
             <p style={{ ...pStyle, marginBottom: 0 }}>Website: <a href="https://704collective.com" style={linkStyle}>704collective.com</a></p>
           </section>
         </div>
+        </MarketingPageRoot>
       </main>
       <Footer />
     </>

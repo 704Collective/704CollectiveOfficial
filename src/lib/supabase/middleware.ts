@@ -93,6 +93,14 @@ export async function updateSession(request: NextRequest) {
 
   // ── 1. Not logged in → redirect to login ───────────────────────────────────
   if (isProtectedRoute && !user) {
+    const isPublicAdminAuth =
+      path === '/admin/login' ||
+      path === '/admin/login/' ||
+      path === '/admin/request-access' ||
+      path === '/admin/request-access/';
+    if (isPublicAdminAuth) {
+      return supabaseResponse;
+    }
     const url = request.nextUrl.clone();
     if (path.startsWith('/partners/dashboard')) {
       url.pathname = '/partners/login';

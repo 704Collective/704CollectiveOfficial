@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import Nav from '@/components/Nav';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import { CheckCircle2 } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -13,6 +14,7 @@ export default function PartnerApplySubmittedPage() {
   return (
     <>
       <Nav />
+      <MarketingPageRoot>
       <div className="min-h-screen bg-[#0a0a0a] pt-24 pb-16 px-4 flex flex-col items-center justify-center">
         <div className="max-w-md text-center">
           <Link href="/" className="inline-block mb-8">
@@ -34,6 +36,7 @@ export default function PartnerApplySubmittedPage() {
           </Link>
         </div>
       </div>
+      </MarketingPageRoot>
     </>
   );
 }

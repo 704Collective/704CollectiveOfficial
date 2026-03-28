@@ -3,6 +3,7 @@ import Image from "next/image";
 import Nav from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { FadeUp, FadeIn } from "@/components/Animations";
+import { MarketingPageRoot } from "@/components/MarketingPageRoot";
 
 export const metadata: Metadata = {
   title: "Blog | 704 Collective",
@@ -22,6 +23,7 @@ export default function BlogPage() {
     <>
       <Nav />
       <main style={{ paddingTop: "64px" }}>
+        <MarketingPageRoot>
         {/* Hero */}
         <section
           style={{
@@ -146,6 +148,7 @@ export default function BlogPage() {
             </FadeUp>
           </div>
         </section>
+        </MarketingPageRoot>
       </main>
       <Footer />
     </>

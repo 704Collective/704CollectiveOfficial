@@ -11,6 +11,7 @@ import {
   StaggerContainer,
   StaggerItem,
 } from '@/components/Animations';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 function TikTokIcon({ style }: { style?: React.CSSProperties }) {
   return (
@@ -48,6 +49,7 @@ export default function Contact() {
     <>
       <Nav />
       <main style={{ paddingTop: '64px', backgroundColor: '#000', minHeight: '100vh' }}>
+        <MarketingPageRoot>
 
         {/* ── HERO ── */}
         <section style={{ padding: '96px 24px 48px', textAlign: 'center' }}>
@@ -162,6 +164,7 @@ export default function Contact() {
             </FadeUp>
           </div>
         </section>
+        </MarketingPageRoot>
       </main>
       <Footer />
     </>

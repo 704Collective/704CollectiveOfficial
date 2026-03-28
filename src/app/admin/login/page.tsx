@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Shield } from 'lucide-react';
 import logo from '@/assets/704-logo.png';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -68,6 +69,7 @@ export default function AdminLogin() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <MarketingPageRoot>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
@@ -144,6 +146,7 @@ export default function AdminLogin() {
           </div>
         </CardContent>
       </Card>
+      </MarketingPageRoot>
     </div>
   );
 }

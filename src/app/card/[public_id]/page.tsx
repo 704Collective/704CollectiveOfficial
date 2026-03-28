@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { CardDisplay, type BusinessCardData } from '@/components/portal/BusinessCard';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 interface Props {
   params: Promise<{ public_id: string }>;
@@ -56,6 +57,7 @@ export default async function PublicCardPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-[#1A1A1A] flex flex-col items-center justify-center px-4 py-16">
+      <MarketingPageRoot>
       <div className="mb-8 text-center">
         <p className="text-[#D4A853]/70 text-xs tracking-[0.35em] uppercase font-semibold mb-1">
           704 Collective
@@ -80,6 +82,7 @@ export default async function PublicCardPage({ params }: Props) {
         </Link>
         <p className="text-white/25 text-xs mt-6">© 704 Collective · Charlotte, NC</p>
       </div>
+      </MarketingPageRoot>
     </div>
   );
 }

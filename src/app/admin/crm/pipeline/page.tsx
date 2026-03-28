@@ -619,58 +619,113 @@ export default function CrmPipelinePage() {
         </div>
       ) : (
         /* ── List View ── */
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Deal</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Contact</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Stage</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Value</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Industry</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Applied</th>
-                <th className="w-10 px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {deals.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground text-sm">
-                    No deals yet. Add your first deal to get started.
-                  </td>
-                </tr>
-              ) : (
-                deals.map(deal => {
-                  const stage = STAGES.find(s => s.key === deal.stage);
-                  return (
-                    <tr
-                      key={deal.id}
-                      className="border-b border-border hover:bg-muted/20 transition-colors cursor-pointer"
-                      onClick={() => setDetailDeal(deal)}
-                    >
-                      <td className="px-4 py-3">
+        <>
+          <div className="hidden md:block bg-card border border-border rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Deal</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Contact</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Stage</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Value</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Industry</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Applied</th>
+                    <th className="w-10 px-4 py-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {deals.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground text-sm">
+                        No deals yet. Add your first deal to get started.
+                      </td>
+                    </tr>
+                  ) : (
+                    deals.map(deal => {
+                      const stage = STAGES.find(s => s.key === deal.stage);
+                      return (
+                        <tr
+                          key={deal.id}
+                          className="border-b border-border hover:bg-muted/20 transition-colors cursor-pointer"
+                          onClick={() => setDetailDeal(deal)}
+                        >
+                          <td className="px-4 py-3">
+                            <p className="font-medium text-foreground">{deal.name}</p>
+                          </td>
+                          <td className="px-4 py-3">
+                            {deal.contact ? (
+                              <div>
+                                <p className="text-sm text-foreground">{deal.contact.full_name ?? '—'}</p>
+                                <p className="text-xs text-muted-foreground">{deal.contact.email}</p>
+                              </div>
+                            ) : <span className="text-muted-foreground">—</span>}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${stage?.bg} ${stage?.color} ${stage?.border}`}>
+                              {stage?.label}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-primary font-medium">{formatCurrency(deal.value)}</td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">{deal.industry ?? '—'}</td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">{daysAgo(deal.applied_at)}</td>
+                          <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7">
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-44">
+                                <DropdownMenuItem onClick={() => setDetailDeal(deal)} className="text-sm">View / Edit</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleDelete(deal.id)} className="text-sm text-red-400 focus:text-red-400 gap-2">
+                                  <Trash2 className="w-4 h-4" /> Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="md:hidden space-y-3">
+            {deals.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground text-sm">
+                No deals yet. Add your first deal to get started.
+              </div>
+            ) : (
+              deals.map(deal => {
+                const stage = STAGES.find(s => s.key === deal.stage);
+                return (
+                  <div
+                    key={deal.id}
+                    className="bg-card border border-border rounded-xl p-4 cursor-pointer"
+                    onClick={() => setDetailDeal(deal)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
                         <p className="font-medium text-foreground">{deal.name}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        {deal.contact ? (
-                          <div>
-                            <p className="text-sm text-foreground">{deal.contact.full_name ?? '—'}</p>
-                            <p className="text-xs text-muted-foreground">{deal.contact.email}</p>
-                          </div>
-                        ) : <span className="text-muted-foreground">—</span>}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${stage?.bg} ${stage?.color} ${stage?.border}`}>
-                          {stage?.label}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-primary font-medium">{formatCurrency(deal.value)}</td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{deal.industry ?? '—'}</td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{daysAgo(deal.applied_at)}</td>
-                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                        {deal.contact && (
+                          <>
+                            <p className="text-xs text-muted-foreground truncate mt-0.5">
+                              {deal.contact.full_name ?? deal.contact.email}
+                            </p>
+                            {deal.contact.full_name && deal.contact.email && (
+                              <p className="text-xs text-muted-foreground/70 truncate">{deal.contact.email}</p>
+                            )}
+                          </>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
                               <MoreHorizontal className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -682,14 +737,24 @@ export default function CrmPipelinePage() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 mt-3">
+                      <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${stage?.bg} ${stage?.color} ${stage?.border}`}>
+                        {stage?.label}
+                      </span>
+                      <span className="text-sm text-primary font-medium">{formatCurrency(deal.value)}</span>
+                      {deal.industry && (
+                        <span className="text-xs text-muted-foreground">{deal.industry}</span>
+                      )}
+                      <span className="text-xs text-muted-foreground ml-auto">{daysAgo(deal.applied_at)}</span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </>
       )}
 
       {/* Deal detail dialog */}

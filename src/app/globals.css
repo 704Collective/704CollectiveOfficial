@@ -436,7 +436,7 @@ summary:focus-visible {
     padding-right: 20px !important;
   }
 
-  #hero {
+  [data-page="marketing"] #hero {
     min-height: calc(100vh - 64px) !important;
     min-height: calc(100dvh - 64px) !important;
   }
@@ -628,10 +628,10 @@ summary:focus-visible {
   }
 }
 
-/* ── Typography scaling on very small phones ────────────────  */
+/* ── Typography scaling on very small phones (marketing only) ─  */
 @media (max-width: 380px) {
-  h1 { font-size: clamp(1.375rem, 6vw, 1.875rem) !important; }
-  h2 { font-size: clamp(1.125rem, 5vw, 1.5rem) !important; }
+  [data-page="marketing"] h1 { font-size: clamp(1.375rem, 6vw, 1.875rem) !important; }
+  [data-page="marketing"] h2 { font-size: clamp(1.125rem, 5vw, 1.5rem) !important; }
 }
 
 /* ── Messages page full height fix on mobile ────────────────  */

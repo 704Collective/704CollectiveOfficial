@@ -20,6 +20,7 @@ import {
 } from '@/components/Animations';
 import TiltCard from '@/components/TiltCard';
 import GradientShift from '@/components/GradientShift';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 /* ─── Types ─── */
 
@@ -125,6 +126,7 @@ export default function SocialPage() {
     <>
       <Nav />
       <main style={{ paddingTop: '64px' }}>
+        <MarketingPageRoot>
 
         {/* ════════════════════════════════════════════
             HERO
@@ -988,6 +990,7 @@ export default function SocialPage() {
             </FadeUp>
           </div>
         </GradientShift>
+        </MarketingPageRoot>
       </main>
       <Footer />
 

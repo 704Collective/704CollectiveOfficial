@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Nav from '@/components/Nav';
+import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -125,6 +126,7 @@ export function PartnerApplyForm({
   return (
     <>
       <Nav />
+      <MarketingPageRoot>
       <div className="min-h-screen bg-[#0a0a0a] pt-20 pb-16 px-4">
         <div className="max-w-lg mx-auto">
           <div className="text-center mb-8">
@@ -417,6 +419,7 @@ export function PartnerApplyForm({
           </form>
         </div>
       </div>
+      </MarketingPageRoot>
     </>
   );
 }
