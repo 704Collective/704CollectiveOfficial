@@ -10,8 +10,6 @@ function service() {
   );
 }
 
-const ADAM = 'adam@cltbucketlist.com';
-
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const {
@@ -21,13 +19,11 @@ export async function GET(request: NextRequest) {
 
   const { data: prof } = await supabase
     .from('profiles')
-    .select('email, see_all_cross_conversations')
+    .select('role')
     .eq('id', user.id)
     .maybeSingle();
 
-  const emailOk = prof?.email?.toLowerCase() === ADAM;
-  const flag = (prof as { see_all_cross_conversations?: boolean } | null)?.see_all_cross_conversations === true;
-  if (!emailOk || !flag) {
+  if (prof?.role !== 'super_admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

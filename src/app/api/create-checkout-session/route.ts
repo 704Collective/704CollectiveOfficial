@@ -1,7 +1,23 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { createRateLimiter } from '@/lib/upstash';
+import { getRequestIp } from '@/lib/getRequestIp';
+import { recordRateLimit429 } from '@/lib/rateLimitMetrics';
 
-export async function POST() {
+const limiter = createRateLimiter('create-checkout-session', 10);
+
+export async function POST(request: NextRequest) {
+  const ip = getRequestIp(request);
+  const { success } = await limiter.limit(ip);
+
+  if (!success) {
+    await recordRateLimit429(request, '/api/create-checkout-session');
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    );
+  }
+
   try {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
       apiVersion: '2026-02-25.clover',

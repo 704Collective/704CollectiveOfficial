@@ -5,6 +5,11 @@ User-agent: *
 Allow: /
 
 # Block admin and dashboard routes
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /api
+Disallow: /partner-portal
+Disallow: /business-portal
 Disallow: /partners/dashboard
 Disallow: /partners/dashboard/
 Disallow: /partners/admin

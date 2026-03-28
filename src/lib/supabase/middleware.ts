@@ -51,6 +51,7 @@ export async function updateSession(request: NextRequest) {
     '/partners/dashboard',
     '/partners/admin',
     '/settings',
+    '/pending-review',
   ];
   /** Public partner marketing + auth flows only (not /partners/dashboard). */
   const isPartnerPublicPath = (p: string) =>
