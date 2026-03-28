@@ -110,7 +110,7 @@ async function fetchEventsData(page: number, filter: 'all' | 'upcoming' | 'past'
 
   if (ids.length > 0) {
     const [ticketsRes, followupsRes] = await Promise.all([
-      supabase.from('tickets').select('event_id').in('event_id', ids).eq('status', 'confirmed'),
+      supabase.from('tickets').select('event_id').in('event_id', ids).in('status', ['confirmed', 'rsvp']),
       supabase.from('guest_passes').select('event_id').in('event_id', ids).eq('status', 'used').is('followup_sent_at' as any, null),
     ]);
     (ticketsRes.data || []).forEach(t => { if (t.event_id) rsvpCounts[t.event_id] = (rsvpCounts[t.event_id] || 0) + 1; });

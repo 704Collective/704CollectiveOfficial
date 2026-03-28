@@ -27,7 +27,7 @@ export function useTickets(userId: string) {
           )
         `)
         .eq('user_id', userId)
-        .eq('status', 'confirmed');
+        .in('status', ['confirmed', 'rsvp']);
 
       if (error) throw error;
       return data ?? [];
@@ -49,7 +49,7 @@ export function useNextEvent(userId: string) {
         .from('tickets')
         .select('event_id, events (id, title, start_time, location_name, image_url)')
         .eq('user_id', userId)
-        .eq('status', 'confirmed')
+        .in('status', ['confirmed', 'rsvp'])
         .gt('events.start_time', now)
         .order('start_time', { referencedTable: 'events', ascending: true })
         .limit(1)
@@ -176,7 +176,7 @@ export function useHasTickets(userId: string) {
         .from('tickets')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId)
-        .eq('status', 'confirmed');
+        .in('status', ['confirmed', 'rsvp']);
       return (count ?? 0) > 0;
     },
     staleTime: 10 * 60 * 1000,

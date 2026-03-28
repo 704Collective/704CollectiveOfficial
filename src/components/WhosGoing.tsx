@@ -29,7 +29,7 @@ export function WhosGoing({ eventId }: WhosGoingProps) {
       .from('tickets')
       .select('*', { count: 'exact', head: true })
       .eq('event_id', eventId)
-      .eq('status', 'confirmed')
+      .in('status', ['confirmed', 'rsvp'])
       .not('user_id', 'is', null);
 
     setTotalCount(count || 0);
@@ -45,7 +45,7 @@ export function WhosGoing({ eventId }: WhosGoingProps) {
         )
       `)
       .eq('event_id', eventId)
-      .eq('status', 'confirmed')
+      .in('status', ['confirmed', 'rsvp'])
       .not('user_id', 'is', null)
       .limit(8);
 

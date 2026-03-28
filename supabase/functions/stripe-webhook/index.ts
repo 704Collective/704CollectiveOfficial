@@ -65,6 +65,43 @@ async function findProfileByCustomerId(
 }
 
 /** Insert a payment row, gracefully handling duplicate stripe_event_id. */
+/** Welcome post for brand-new social members (checkout.session.completed). */
+async function insertNewSocialMemberWelcomePost(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  fallbackName: string
+) {
+  const { data: p, error: fetchErr } = await supabase
+    .from("profiles")
+    .select("full_name, avatar_url")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (fetchErr) {
+    log("Welcome feed post: profile fetch failed (non-blocking)", { error: fetchErr.message });
+    return;
+  }
+
+  const firstName = (p?.full_name || fallbackName || "").trim().split(/\s+/)[0] || "there";
+  const content =
+    `🎉 Welcome ${firstName} to 704 Collective! They just joined the community — drop a hello below and make them feel at home!`;
+  const image_urls = p?.avatar_url ? [p.avatar_url] : [];
+
+  const { error: postErr } = await supabase.from("posts").insert({
+    author_id: userId,
+    feed_type: "social",
+    content,
+    image_urls,
+    created_at: new Date().toISOString(),
+  });
+
+  if (postErr) {
+    log("Welcome feed post insert failed (non-blocking)", { error: postErr.message });
+  } else {
+    log("Welcome feed post created for new social member", { userId });
+  }
+}
+
 async function insertPayment(
   supabase: ReturnType<typeof createClient>,
   payment: Record<string, unknown>
@@ -248,12 +285,12 @@ async function handleCheckoutCompleted(
           id: userId!,
           email: customerEmail,
           full_name: customerName,
+          member_type: "social",
           subscription_status: "active",
           subscription_id: subscriptionId,
           stripe_customer_id: stripeCustomerId,
           member_since: new Date().toISOString(),
           ...(customerPhone ? { phone: customerPhone } : {}),
-          member_since: new Date().toISOString(),
         },
         { onConflict: "id" }
       );
@@ -263,6 +300,7 @@ async function handleCheckoutCompleted(
         await supabase
           .from("profiles")
           .update({
+            member_type: "social",
             subscription_status: "active",
             subscription_id: subscriptionId,
             stripe_customer_id: stripeCustomerId,
@@ -275,6 +313,8 @@ async function handleCheckoutCompleted(
       await supabase
         .from("user_roles")
         .upsert({ user_id: userId!, role: "member" }, { onConflict: "user_id,role" });
+
+      await insertNewSocialMemberWelcomePost(supabase, userId!, customerName);
 
       const { error: resetErr } = await supabase.auth.admin.generateLink({
         type: "recovery",

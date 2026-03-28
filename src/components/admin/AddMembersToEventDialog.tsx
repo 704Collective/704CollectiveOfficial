@@ -54,7 +54,7 @@ export function AddMembersToEventDialog({
         .from('tickets')
         .select('user_id')
         .eq('event_id', eventId)
-        .eq('status', 'confirmed');
+        .in('status', ['confirmed', 'rsvp']);
       return new Set((data || []).map((t) => t.user_id).filter(Boolean));
     },
     enabled: open,

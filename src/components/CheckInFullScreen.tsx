@@ -87,7 +87,7 @@ export function CheckInFullScreen({
         )
       `)
       .eq('event_id', eventId)
-      .eq('status', 'confirmed');
+      .in('status', ['confirmed', 'rsvp']);
 
     if (!error && data) {
       type ProfileJoin = { id: string; email: string; full_name: string | null; avatar_url: string | null } | null;

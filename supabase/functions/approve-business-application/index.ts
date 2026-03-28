@@ -222,6 +222,28 @@ serve(async (req) => {
       }
     }
 
+    // Welcome posts on social + business feeds (service role bypasses RLS)
+    const { data: feedProfile } = await supabase
+      .from("profiles")
+      .select("id, avatar_url")
+      .eq("email", app.email)
+      .maybeSingle();
+
+    if (feedProfile) {
+      const firstName = (app.first_name || "").trim() || "there";
+      const content =
+        `🎉 ${firstName} just joined 704 Business! Welcome them to our community — say hello below!`;
+      const image_urls = feedProfile.avatar_url ? [feedProfile.avatar_url] : [];
+      const now = new Date().toISOString();
+      const { error: postsErr } = await supabase.from("posts").insert([
+        { author_id: feedProfile.id, feed_type: "social", content, image_urls, created_at: now },
+        { author_id: feedProfile.id, feed_type: "business", content, image_urls, created_at: now },
+      ]);
+      if (postsErr) {
+        console.error("Business welcome feed posts failed (non-blocking):", postsErr.message);
+      }
+    }
+
     // Update application status
     await supabase
       .from("business_applications")

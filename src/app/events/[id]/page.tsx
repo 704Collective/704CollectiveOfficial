@@ -67,11 +67,11 @@ export default function EventDetail() {
   };
   const fetchTicketId = async () => {
     if (!user) return;
-    const { data } = await supabase.from('tickets').select('id').eq('event_id', id).eq('user_id', user.id).eq('status', 'confirmed').maybeSingle();
+    const { data } = await supabase.from('tickets').select('id').eq('event_id', id).eq('user_id', user.id).in('status', ['confirmed', 'rsvp']).maybeSingle();
     setTicketId(data?.id || null);
   };
   const fetchTicketCount = async () => {
-    const { count } = await supabase.from('tickets').select('*', { count: 'exact', head: true }).eq('event_id', id).eq('status', 'confirmed');
+    const { count } = await supabase.from('tickets').select('*', { count: 'exact', head: true }).eq('event_id', id).in('status', ['confirmed', 'rsvp']);
     setTicketCount(count || 0);
   };
   const checkWaitlistStatus = async () => {

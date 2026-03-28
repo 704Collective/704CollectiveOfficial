@@ -1,16 +1,25 @@
 'use client';
 
-import { useEffect, useState, useRef, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Loader2, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Loader2, CheckCircle, XCircle, Eye, EyeOff, MapPin, Calendar } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
+import { format } from 'date-fns';
 
-type Status = 'loading' | 'setup' | 'success' | 'error';
+type Status = 'loading' | 'setup' | 'rsvp_gate' | 'success' | 'error';
+
+interface WelcomeEventRow {
+  id: string;
+  title: string;
+  start_time: string;
+  end_time: string;
+  location_name: string | null;
+  location_address: string | null;
+}
 
 interface FormData {
   firstName: string;
@@ -42,6 +51,10 @@ function WelcomeContent() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [rsvpEvents, setRsvpEvents] = useState<WelcomeEventRow[]>([]);
+  const [rsvpedEventIds, setRsvpedEventIds] = useState<Set<string>>(new Set());
+  const [rsvpBusyId, setRsvpBusyId] = useState<string | null>(null);
+  const [continueBusy, setContinueBusy] = useState(false);
 
   const [form, setForm] = useState<FormData>({
     firstName: '',
@@ -57,6 +70,25 @@ function WelcomeContent() {
   const attemptRef = useRef(0);
   const maxAttempts = 5;
   const retryDelay = 2000;
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user || cancelled) return;
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('has_completed_onboarding_rsvp')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      if (!cancelled && prof?.has_completed_onboarding_rsvp) {
+        router.replace('/dashboard');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -109,6 +141,72 @@ function WelcomeContent() {
     verify();
   }, [sessionId, router]);
 
+  useEffect(() => {
+    if (status !== 'rsvp_gate') return;
+    let cancelled = false;
+    (async () => {
+      const now = new Date();
+      const end = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const { data: evs, error } = await supabase
+        .from('events')
+        .select('id, title, start_time, end_time, location_name, location_address')
+        .eq('is_published', true)
+        .gte('start_time', now.toISOString())
+        .lte('start_time', end.toISOString())
+        .order('start_time', { ascending: true });
+      if (cancelled) return;
+      if (error) {
+        setRsvpEvents([]);
+        return;
+      }
+      setRsvpEvents((evs || []) as WelcomeEventRow[]);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+      const { data: tix } = await supabase
+        .from('tickets')
+        .select('event_id')
+        .eq('user_id', user.id)
+        .in('status', ['rsvp', 'confirmed']);
+      const next = new Set<string>();
+      (tix || []).forEach(t => {
+        if (t.event_id) next.add(t.event_id);
+      });
+      setRsvpedEventIds(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [status]);
+
+  const proceedAfterAuth = useCallback(async () => {
+    const { data: { user: u } } = await supabase.auth.getUser();
+    if (!u) {
+      setFormErrors({ password: 'Could not load your session.' });
+      setSubmitting(false);
+      return;
+    }
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('member_type, has_completed_onboarding_rsvp')
+      .eq('id', u.id)
+      .maybeSingle();
+
+    const needsRsvpGate =
+      prof?.member_type !== 'business' &&
+      !prof?.has_completed_onboarding_rsvp;
+
+    if (!needsRsvpGate) {
+      setStatus('success');
+      setTimeout(() => router.push('/dashboard?welcome=1'), 1800);
+      setSubmitting(false);
+      return;
+    }
+
+    setStatus('rsvp_gate');
+    setSubmitting(false);
+  }, [router]);
+
   const updateField = (field: keyof FormData, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
     if (formErrors[field as keyof FormErrors]) {
@@ -157,8 +255,7 @@ function WelcomeContent() {
             setSubmitting(false);
             return;
           }
-          setStatus('success');
-          setTimeout(() => router.push('/dashboard?welcome=1'), 2000);
+          await proceedAfterAuth();
           return;
         }
         setFormErrors({ password: msg });
@@ -177,11 +274,62 @@ function WelcomeContent() {
         return;
       }
 
-      setStatus('success');
-      setTimeout(() => router.push('/dashboard?welcome=1'), 2000);
+      await proceedAfterAuth();
     } catch {
       setFormErrors({ password: 'Something went wrong. Please try again.' });
       setSubmitting(false);
+    }
+  };
+
+  const hasRsvpRequirementMet =
+    rsvpEvents.length === 0 || rsvpEvents.some(e => rsvpedEventIds.has(e.id));
+
+  const handleWelcomeRsvp = async (eventId: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    if (rsvpedEventIds.has(eventId)) return;
+    setRsvpBusyId(eventId);
+    try {
+      const { error } = await supabase.from('tickets').insert({
+        event_id: eventId,
+        user_id: user.id,
+        ticket_type: 'member_free',
+        status: 'rsvp',
+        source: 'welcome_onboarding_rsvp',
+      });
+      if (error) {
+        if (error.code === '23505') {
+          setRsvpedEventIds(prev => new Set([...prev, eventId]));
+          return;
+        }
+        return;
+      }
+      setRsvpedEventIds(prev => new Set([...prev, eventId]));
+    } finally {
+      setRsvpBusyId(null);
+    }
+  };
+
+  const handleContinueFromRsvp = async () => {
+    if (!hasRsvpRequirementMet) return;
+    setContinueBusy(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setContinueBusy(false);
+        return;
+      }
+      const { error } = await supabase
+        .from('profiles')
+        .update({ has_completed_onboarding_rsvp: true })
+        .eq('id', user.id);
+      if (error) {
+        setContinueBusy(false);
+        return;
+      }
+      router.push('/dashboard?welcome=1');
+    } finally {
+      setContinueBusy(false);
     }
   };
 
@@ -203,6 +351,111 @@ function WelcomeContent() {
       <Nav />
       <main style={{ paddingTop: '64px', backgroundColor: '#0d0d0d', minHeight: '100dvh' }}>
         <MarketingPageRoot>
+        {status === 'rsvp_gate' ? (
+          <div style={{
+            maxWidth: '920px',
+            width: '100%',
+            margin: '0 auto',
+            padding: 'clamp(24px, 5vw, 48px) clamp(16px, 4vw, 32px)',
+            minHeight: 'calc(100dvh - 64px)',
+          }}>
+            <div style={{ textAlign: 'center', marginBottom: 'clamp(24px, 4vw, 40px)' }}>
+              <h1 style={{ fontSize: 'clamp(1.5rem, 4vw, 2rem)', fontWeight: 700, color: '#FFFFFF', marginBottom: '10px' }}>
+                RSVP to an upcoming event
+              </h1>
+              <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, maxWidth: '560px', margin: '0 auto' }}>
+                Pick at least one event in the next 30 days so we know what to expect you at. You can always change this later from your dashboard.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
+              {rsvpEvents.length === 0 ? (
+                <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.45)', fontSize: '0.9375rem' }}>
+                  No published events in the next 30 days yet. You can continue to your dashboard.
+                </p>
+              ) : (
+                rsvpEvents.map(ev => {
+                  const start = new Date(ev.start_time);
+                  const has = rsvpedEventIds.has(ev.id);
+                  const busy = rsvpBusyId === ev.id;
+                  const loc = [ev.location_name, ev.location_address].filter(Boolean).join(' · ') || 'TBA';
+                  return (
+                    <div
+                      key={ev.id}
+                      style={{
+                        backgroundColor: '#1A1A1A',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: '14px',
+                        padding: '20px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
+                        <div style={{ flex: '1 1 220px' }}>
+                          <h2 style={{ fontSize: '1.0625rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '8px' }}>{ev.title}</h2>
+                          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                            <Calendar size={14} style={{ flexShrink: 0 }} />
+                            {format(start, 'EEEE, MMM d, yyyy · h:mm a')}
+                          </p>
+                          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+                            <MapPin size={14} style={{ flexShrink: 0, marginTop: '2px' }} />
+                            <span>{loc}</span>
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleWelcomeRsvp(ev.id)}
+                          disabled={has || busy}
+                          style={{
+                            flexShrink: 0,
+                            minWidth: '120px',
+                            minHeight: '44px',
+                            padding: '0 18px',
+                            borderRadius: '10px',
+                            fontWeight: 600,
+                            fontSize: '0.875rem',
+                            cursor: has || busy ? 'default' : 'pointer',
+                            border: has ? '1px solid rgba(34,197,94,0.5)' : '1px solid #C6A664',
+                            backgroundColor: has ? 'rgba(34,197,94,0.12)' : 'transparent',
+                            color: has ? '#86efac' : '#C6A664',
+                            opacity: busy ? 0.7 : 1,
+                          }}
+                        >
+                          {busy ? '…' : has ? 'RSVP’d' : 'RSVP'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <button
+                type="button"
+                onClick={handleContinueFromRsvp}
+                disabled={!hasRsvpRequirementMet || continueBusy}
+                style={{
+                  minWidth: '280px',
+                  minHeight: '52px',
+                  padding: '0 28px',
+                  borderRadius: '10px',
+                  fontWeight: 700,
+                  fontSize: '0.9375rem',
+                  border: 'none',
+                  cursor: !hasRsvpRequirementMet || continueBusy ? 'not-allowed' : 'pointer',
+                  backgroundColor: hasRsvpRequirementMet && !continueBusy ? '#C6A664' : 'rgba(255,255,255,0.12)',
+                  color: hasRsvpRequirementMet && !continueBusy ? '#1A1A1A' : 'rgba(255,255,255,0.35)',
+                  transition: 'background-color 200ms ease, color 200ms ease',
+                }}
+              >
+                {continueBusy ? 'Saving…' : 'Continue to Dashboard'}
+              </button>
+            </div>
+          </div>
+        ) : (
         <div style={{
           maxWidth: '480px',
           width: '100%',
@@ -439,7 +692,7 @@ function WelcomeContent() {
                   {submitting ? (
                     <><Loader2 style={{ width: '18px', height: '18px', animation: 'spin 1s linear infinite' }} />Setting up your account...</>
                   ) : (
-                    'Complete Setup & Go to Dashboard →'
+                    'Continue'
                   )}
                 </button>
 
@@ -493,6 +746,7 @@ function WelcomeContent() {
             </div>
           )}
         </div>
+        )}
         </MarketingPageRoot>
       </main>
 

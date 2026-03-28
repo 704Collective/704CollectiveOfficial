@@ -184,6 +184,7 @@ export type Database = {
           end_time: string
           id: string
           image_url: string | null
+          is_published: boolean
           is_members_only: boolean | null
           location_address: string | null
           location_name: string | null
@@ -209,6 +210,7 @@ export type Database = {
           end_time: string
           id?: string
           image_url?: string | null
+          is_published?: boolean
           is_members_only?: boolean | null
           location_address?: string | null
           location_name?: string | null
@@ -234,6 +236,7 @@ export type Database = {
           end_time?: string
           id?: string
           image_url?: string | null
+          is_published?: boolean
           is_members_only?: boolean | null
           location_address?: string | null
           location_name?: string | null
@@ -566,6 +569,7 @@ export type Database = {
           deleted_at: string | null
           email: string
           full_name: string | null
+          has_completed_onboarding_rsvp: boolean
           hubspot_contact_id: string | null
           id: string
           imported_at: string | null
@@ -591,6 +595,7 @@ export type Database = {
           deleted_at?: string | null
           email: string
           full_name?: string | null
+          has_completed_onboarding_rsvp?: boolean
           hubspot_contact_id?: string | null
           id: string
           imported_at?: string | null
@@ -616,6 +621,7 @@ export type Database = {
           deleted_at?: string | null
           email?: string
           full_name?: string | null
+          has_completed_onboarding_rsvp?: boolean
           hubspot_contact_id?: string | null
           id?: string
           imported_at?: string | null

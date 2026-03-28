@@ -65,7 +65,7 @@ export function AdminCheckIn({ adminId }: AdminCheckInProps) {
       .from('tickets')
       .select('*', { count: 'exact', head: true })
       .eq('event_id', selectedEventId)
-      .eq('status', 'confirmed');
+      .in('status', ['confirmed', 'rsvp']);
 
     setRsvpCount(count || 0);
   };
