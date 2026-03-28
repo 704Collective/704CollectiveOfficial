@@ -208,7 +208,10 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
         const ext = img.file.name.split('.').pop() ?? 'jpg';
         const path = `posts/${currentUser.id}/${Date.now()}.${ext}`;
         const { error } = await supabase.storage.from('portal-media').upload(path, img.file, { upsert: false });
-        if (error) throw new Error(`Image upload failed: ${error.message}`);
+        if (error) {
+          console.error('[CreatePost] portal-media upload failed', { path, message: error.message });
+          throw new Error(`Image upload failed: ${error.message}`);
+        }
         const { data: { publicUrl } } = supabase.storage.from('portal-media').getPublicUrl(path);
         uploadedImageUrls.push(publicUrl);
       }
@@ -218,7 +221,10 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
         for (const f of pendingFiles) {
           const path = `posts/${currentUser.id}/${Date.now()}-${f.file.name}`;
           const { error } = await supabase.storage.from('portal-files').upload(path, f.file, { upsert: false });
-          if (error) throw new Error(`File upload failed: ${error.message}`);
+          if (error) {
+            console.error('[CreatePost] portal-files upload failed', { path, message: error.message });
+            throw new Error(`File upload failed: ${error.message}`);
+          }
           const { data: { publicUrl } } = supabase.storage.from('portal-files').getPublicUrl(path);
           uploadedFileUrls.push(publicUrl);
           uploadedFileNames.push(f.file.name);
@@ -229,13 +235,14 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
         }
       }
 
-      // Insert post
+      const createdAt = new Date().toISOString();
       const { data, error } = await supabase
         .from('posts')
         .insert({
           author_id: currentUser.id,
           feed_type: feedType,
           content: content.trim() || null,
+          created_at: createdAt,
           image_urls: uploadedImageUrls.length > 0 ? uploadedImageUrls : null,
           file_urls: uploadedFileUrls.length > 0 ? uploadedFileUrls : null,
           file_names: uploadedFileNames.length > 0 ? uploadedFileNames : null,
@@ -243,7 +250,21 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
         .select('*')
         .single();
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error('[CreatePost] posts insert failed', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          author_id: currentUser.id,
+          feed_type: feedType,
+        });
+        throw new Error(error.message);
+      }
+      if (!data) {
+        console.error('[CreatePost] posts insert returned no row', { author_id: currentUser.id, feed_type: feedType });
+        throw new Error('Post was not saved. Please try again.');
+      }
 
       void notifyAfterFeedPostCreated(data.id);
 
@@ -263,6 +284,7 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
       setLibraryAttachments([]);
       toast.success('Post published');
     } catch (err) {
+      console.error('[CreatePost] handleSubmit error', err);
       toast.error(err instanceof Error ? err.message : 'Failed to publish post');
     } finally {
       setUploading(false);

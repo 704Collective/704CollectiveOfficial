@@ -15,15 +15,16 @@ import type { PostAuthor } from './FeedPost';
 const PAGE_SIZE = 20;
 
 async function fetchPostsPage(feedType: 'social' | 'business', userId: string, cursor?: string): Promise<FeedPostData[]> {
+  // Single post_likes embed (left join): !inner would hide posts with no likes.
+  // like_count is derived from likers.length so we do not embed post_likes twice.
   let query = supabase
     .from('posts')
     .select(`
       id, author_id, feed_type, content, image_urls, file_urls, file_names,
       is_edited, edited_at, created_at, deleted_at,
       author:profiles!posts_author_id_fkey(id, full_name, avatar_url),
-      like_count:post_likes(count),
       comment_count:post_comments(count),
-      user_has_liked:post_likes!inner(user_id)
+      likers:post_likes(user_id)
     `)
     .eq('feed_type', feedType)
     .is('deleted_at', null)
@@ -35,18 +36,31 @@ async function fetchPostsPage(feedType: 'social' | 'business', userId: string, c
   }
 
   const { data, error } = await query;
-  if (error) throw error;
+  if (error) {
+    console.error('[FeedView] fetchPostsPage failed', {
+      feedType,
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
+    throw error;
+  }
 
   // Normalise Supabase aggregate shapes
-  return ((data ?? []) as any[]).map(row => ({
-    ...row,
-    author: Array.isArray(row.author) ? row.author[0] ?? null : row.author,
-    like_count: Array.isArray(row.like_count) ? (row.like_count[0] as any)?.count ?? 0 : 0,
-    comment_count: Array.isArray(row.comment_count) ? (row.comment_count[0] as any)?.count ?? 0 : 0,
-    user_has_liked: Array.isArray(row.user_has_liked)
-      ? row.user_has_liked.some((l: any) => l.user_id === userId)
-      : false,
-  })) as FeedPostData[];
+  return ((data ?? []) as any[]).map(row => {
+    const likers = row.likers;
+    const userHasLiked =
+      Array.isArray(likers) && likers.some((l: { user_id?: string }) => l.user_id === userId);
+    const { likers: _drop, ...rest } = row;
+    return {
+      ...rest,
+      author: Array.isArray(row.author) ? row.author[0] ?? null : row.author,
+      like_count: Array.isArray(likers) ? likers.length : 0,
+      comment_count: Array.isArray(row.comment_count) ? (row.comment_count[0] as any)?.count ?? 0 : 0,
+      user_has_liked: userHasLiked,
+    };
+  }) as FeedPostData[];
 }
 
 // ---------------------------------------------------------------------------

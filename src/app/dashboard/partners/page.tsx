@@ -13,8 +13,6 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Search, Handshake } from 'lucide-react';
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
-import { DASHBOARD_MAIN_WIDE } from '@/lib/dashboard-layout';
-import { cn } from '@/lib/utils';
 
 type Listing = {
   id: string;
@@ -186,42 +184,44 @@ export default function DashboardPartnersDirectoryPage() {
     <div className="min-h-screen bg-[#1A1A1A]">
       <Header />
       <DashboardNav />
-      <main className={cn(DASHBOARD_MAIN_WIDE)}>
-        <div className="mb-8 text-center sm:text-left">
-          <h1 className="text-2xl font-bold tracking-tight text-white">Partner directory</h1>
-          <p className="mt-1 text-sm text-white/50">
-            Browse approved 704 Collective partners. Message a partner from their profile.
-          </p>
-        </div>
-
-        <div className="relative mx-auto mb-8 max-w-md sm:mx-0">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/35" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, description, or type…"
-            className="pl-10 bg-white/5 border-white/15 text-white placeholder:text-white/35"
-          />
-        </div>
-
-        {loadError && (
-          <div className="rounded-lg border border-destructive/40 bg-destructive/10 text-destructive-foreground px-4 py-3 text-sm mb-6">
-            {loadError}
-            <button type="button" className="underline ml-2 text-white" onClick={() => void load()}>
-              Retry
-            </button>
+      <main className="w-full py-4 sm:py-8">
+        <div className="w-full max-w-3xl mx-auto px-4">
+          <div className="mb-8 text-center">
+            <h1 className="text-2xl font-bold tracking-tight text-white">Partner directory</h1>
+            <p className="mt-1 text-sm text-white/50">
+              Browse approved 704 Collective partners. Message a partner from their profile.
+            </p>
           </div>
-        )}
 
-        {dataLoading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-[#D4A853]" />
+          <div className="relative mx-auto mb-8 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/35" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name, description, or type…"
+              className="pl-10 bg-white/5 border-white/15 text-white placeholder:text-white/35"
+            />
           </div>
-        ) : (
-          <SectionErrorBoundary>
-            <PartnersGridBody listings={listings} search={search} />
-          </SectionErrorBoundary>
-        )}
+
+          {loadError && (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 text-destructive-foreground px-4 py-3 text-sm mb-6">
+              {loadError}
+              <button type="button" className="underline ml-2 text-white" onClick={() => void load()}>
+                Retry
+              </button>
+            </div>
+          )}
+
+          {dataLoading ? (
+            <div className="flex justify-center py-20">
+              <Loader2 className="h-8 w-8 animate-spin text-[#D4A853]" />
+            </div>
+          ) : (
+            <SectionErrorBoundary>
+              <PartnersGridBody listings={listings} search={search} />
+            </SectionErrorBoundary>
+          )}
+        </div>
       </main>
     </div>
   );
