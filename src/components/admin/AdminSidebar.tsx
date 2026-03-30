@@ -3,6 +3,9 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { countUnreadSocialInbox } from '@/lib/social/queries';
+import { DEFAULT_WORKSPACE_ID } from '@/lib/social/constants';
 import {
   LayoutDashboard, Calendar, Users, QrCode, ClipboardList, Settings, BarChart2,
   Contact, Mail, Workflow, PieChart, GitPullRequest, FileText, Share2, Megaphone,
@@ -21,14 +24,27 @@ interface AdminSidebarProps {
   onMobileClose?: () => void;
 }
 
+function CrmSocialUnreadBadge() {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    countUnreadSocialInbox(DEFAULT_WORKSPACE_ID).then(setN);
+  }, []);
+  if (!n) return null;
+  return (
+    <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center font-semibold">
+      {n > 9 ? '9+' : n}
+    </span>
+  );
+}
+
 const CRM_NAV = [
   { icon: LayoutGrid,     label: 'Dashboard',   href: '/admin/crm' },
   { icon: Contact,        label: 'Contacts',    href: '/admin/crm/contacts' },
+  { icon: Share2,         label: 'Social',      href: '/admin/crm/social', badgeSocial: true as const },
   { icon: Mail,           label: 'Campaigns',   href: '/admin/crm/campaigns' },
   { icon: Workflow,       label: 'Automations', href: '/admin/crm/automations' },
   { icon: GitPullRequest, label: 'Pipeline',    href: '/admin/crm/pipeline' },
   { icon: FileText,       label: 'Forms',       href: '/admin/crm/forms' },
-  { icon: Share2,         label: 'Social',      href: '/admin/crm/social' },
   { icon: Megaphone,      label: 'Ads',         href: '/admin/crm/ads' },
   { icon: ClipboardCheck, label: 'Surveys',     href: '/admin/crm/surveys' },
   { icon: PieChart,       label: 'Reports',     href: '/admin/crm/reports' },
@@ -175,6 +191,7 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
               const isActive = item.href === '/admin/crm'
                 ? pathname === '/admin/crm'
                 : pathname.startsWith(item.href);
+              const showSocialBadge = 'badgeSocial' in item && item.badgeSocial;
               return (
                 <Link
                   key={item.href}
@@ -188,7 +205,8 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
                   )}
                 >
                   <item.icon className={cn('w-4 h-4 shrink-0', isActive && 'text-primary')} />
-                  {item.label}
+                  <span className="flex-1">{item.label}</span>
+                  {showSocialBadge ? <CrmSocialUnreadBadge /> : null}
                 </Link>
               );
             })}

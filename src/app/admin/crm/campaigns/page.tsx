@@ -26,6 +26,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { CampaignSocialTab } from '@/components/campaigns/CampaignSocialTab';
 
 /* ─── Types ─── */
 type CampaignStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed' | 'cancelled';
@@ -519,7 +520,7 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
   const [saving, setSaving] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [sending, setSending] = useState(false);
-  const [activeTab, setActiveTab] = useState<'design' | 'settings'>('design');
+  const [activeTab, setActiveTab] = useState<'design' | 'settings' | 'social'>('design');
   const [senderNames, setSenderNames] = useState<string[]>(['704 Collective Team']);
 
   useEffect(() => {
@@ -631,7 +632,7 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
 
       {/* Tabs */}
       <div className="flex border-b border-border mb-6">
-        {(['design', 'settings'] as const).map(tab => (
+        {(['design', 'settings', 'social'] as const).map(tab => (
           <button
             key={tab}
             type="button"
@@ -642,12 +643,20 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            {tab}
+            {tab === 'social' ? 'Social' : tab}
           </button>
         ))}
       </div>
 
-      {activeTab === 'settings' ? (
+      {activeTab === 'social' ? (
+        isNew || !campaign ? (
+          <p className="text-sm text-muted-foreground border border-dashed border-border rounded-lg p-6">
+            Save the campaign as a draft first to link social posts and view cross-channel performance.
+          </p>
+        ) : (
+          <CampaignSocialTab campaignId={campaign.id} />
+        )
+      ) : activeTab === 'settings' ? (
         <div className="max-w-xl space-y-5">
           <div>
             <Label className="text-xs text-muted-foreground mb-1.5 block">Campaign Name <span className="text-red-400">*</span></Label>

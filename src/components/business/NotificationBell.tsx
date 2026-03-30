@@ -6,8 +6,10 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { formatDistanceToNow } from 'date-fns';
 import {
-  Bell, MessageSquare, Users, Calendar, Megaphone, Clock, X,
+  Bell, MessageSquare, Users, Calendar, Megaphone, Clock, X, Share2,
 } from 'lucide-react';
+import { countUnreadSocialInbox, getInboxMessages } from '@/lib/social/queries';
+import { DEFAULT_WORKSPACE_ID } from '@/lib/social/constants';
 
 interface Notification {
   id: string;
@@ -28,9 +30,12 @@ export function NotificationBell() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [socialUnread, setSocialUnread] = useState(0);
+  const [socialPreview, setSocialPreview] = useState<{ id: string; author_name: string; content: string; received_at: string }[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const notifUnread = notifications.filter(n => !n.is_read).length;
+  const unreadCount = notifUnread + socialUnread;
 
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
@@ -46,6 +51,24 @@ export function NotificationBell() {
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
+
+  useEffect(() => {
+    countUnreadSocialInbox(DEFAULT_WORKSPACE_ID).then(setSocialUnread);
+  }, [open, notifications]);
+
+  useEffect(() => {
+    if (!open) return;
+    getInboxMessages(DEFAULT_WORKSPACE_ID, { status: 'unread', limit: 8 }).then(rows => {
+      setSocialPreview(
+        (rows as { id: string; author_name: string; content: string; received_at: string }[]).map(r => ({
+          id: r.id,
+          author_name: r.author_name,
+          content: r.content,
+          received_at: r.received_at,
+        }))
+      );
+    });
+  }, [open]);
 
   // Realtime subscription for new notifications
   useEffect(() => {
@@ -118,6 +141,7 @@ export function NotificationBell() {
       case 'new_event':     return <Calendar className="w-4 h-4" style={{ color: '#60a5fa' }} />;
       case 'event_reminder':return <Clock className="w-4 h-4" style={{ color: '#f59e0b' }} />;
       case 'broadcast':     return <Megaphone className="w-4 h-4" style={{ color: '#a78bfa' }} />;
+      case 'social_inbox':  return <Share2 className="w-4 h-4" style={{ color: '#C6A664' }} />;
       default:              return <Bell className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.4)' }} />;
     }
   };
@@ -216,7 +240,60 @@ export function NotificationBell() {
 
           {/* List */}
           <div style={{ overflowY: 'auto', flex: 1 }}>
-            {notifications.length === 0 ? (
+            {socialPreview.length > 0 && (
+              <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <p style={{
+                  fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase',
+                  letterSpacing: '0.08em', color: 'rgba(255,255,255,0.35)',
+                  padding: '10px 16px 6px',
+                }}>
+                  Social inbox
+                </p>
+                {socialPreview.map((s, i) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      router.push('/admin/crm/social');
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'flex-start', gap: '12px',
+                      width: '100%', textAlign: 'left',
+                      padding: '10px 16px',
+                      backgroundColor: 'rgba(198,166,100,0.06)',
+                      borderBottom: i < socialPreview.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                      border: 'none', cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{
+                      width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
+                      backgroundColor: 'rgba(255,255,255,0.06)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <Share2 style={{ width: '14px', height: '14px', color: '#C6A664' }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '2px' }}>
+                        {s.author_name}
+                      </p>
+                      <p style={{
+                        fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)',
+                        lineHeight: 1.4,
+                        overflow: 'hidden', display: '-webkit-box',
+                        WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                      }}>
+                        {s.content}
+                      </p>
+                      <p style={{ fontSize: '0.6875rem', color: 'rgba(255,255,255,0.2)', marginTop: '4px' }}>
+                        {formatDistanceToNow(new Date(s.received_at), { addSuffix: true })}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            {notifications.length === 0 && socialPreview.length === 0 ? (
               <div style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
                 justifyContent: 'center', padding: '40px 24px', textAlign: 'center',
@@ -226,7 +303,7 @@ export function NotificationBell() {
                   You&apos;re all caught up
                 </p>
               </div>
-            ) : (
+            ) : notifications.length > 0 ? (
               notifications.map((n, i) => (
                 <button
                   key={n.id}
@@ -283,7 +360,7 @@ export function NotificationBell() {
                   )}
                 </button>
               ))
-            )}
+            ) : null}
           </div>
         </div>
       )}
