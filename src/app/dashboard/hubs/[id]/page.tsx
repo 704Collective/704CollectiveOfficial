@@ -23,7 +23,7 @@ import {
   ChevronLeft, Users, FileText, MessageSquare, Pencil, Trash2, Download,
   Upload, Heart, Send, Loader2, X, Paperclip, Plus,
 } from 'lucide-react';
-import { DASHBOARD_MAIN } from '@/lib/dashboard-layout';
+import { DASHBOARD_MAIN, DASHBOARD_MAIN_WIDE } from '@/lib/dashboard-layout';
 import { cn } from '@/lib/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -674,7 +674,7 @@ export default function HubDetailPage() {
       <div className="min-h-screen bg-[#1A1A1A]">
         <Header />
         <DashboardNav />
-        <main className="max-w-4xl mx-auto px-4 py-8">
+        <main className={cn(DASHBOARD_MAIN_WIDE)}>
           <Skeleton className="h-48 rounded-2xl bg-[#2E2E2E] mb-6" />
           <Skeleton className="h-8 w-48 bg-[#2E2E2E]" />
         </main>
@@ -687,7 +687,7 @@ export default function HubDetailPage() {
       <div className="min-h-screen bg-[#1A1A1A]">
         <Header />
         <DashboardNav />
-        <main className={cn(DASHBOARD_MAIN, 'text-center')}>
+        <main className={cn(DASHBOARD_MAIN_WIDE, 'text-center')}>
           <p className="text-white/40">Hub not found.</p>
           <Button variant="link" className="text-[#D4A853]" onClick={() => router.push('/dashboard/hubs')}>Back to Hubs</Button>
         </main>
@@ -737,10 +737,10 @@ export default function HubDetailPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-[#2E2E2E] p-1 rounded-xl mb-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-1 bg-[#2E2E2E] p-1 rounded-xl mb-6">
           {tabs.map((tab) => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+              className={`w-full sm:flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === tab.key ? 'bg-[#D4A853] text-[#1A1A1A]' : 'text-white/50 hover:text-white'
               }`}>
               {tab.icon} {tab.label}

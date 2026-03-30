@@ -4,6 +4,7 @@ import ScrollProgress from "@/components/ScrollProgress";
 import ScrollToTop from "@/components/ScrollToTop";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import JsonLd from "@/components/JsonLd";
+import { organizationSchema704 } from "@/lib/jsonLdSchemas";
 import { Providers } from "@/components/Providers";
 import "./globals.css";
 
@@ -83,7 +84,7 @@ export default function RootLayout({
       <head>
         <link rel="dns-prefetch" href="https://bnmtynevbuplqpuqvmna.supabase.co" />
         <link rel="preconnect" href="https://bnmtynevbuplqpuqvmna.supabase.co" crossOrigin="anonymous" />
-        <JsonLd />
+        <JsonLd schema={organizationSchema704} />
       </head>
       <body>
         <ErrorBoundary>

@@ -10,6 +10,8 @@ import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
 import { useAuth } from '@/hooks/useAuth';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { Loader2 } from 'lucide-react';
+import { DASHBOARD_MAIN } from '@/lib/dashboard-layout';
+import { cn } from '@/lib/utils';
 
 export default function BusinessFeedPage() {
   const { user, profile, loading, isActiveMember, isAdmin, isSuperAdmin, isBusinessMember } = useAuth();
@@ -50,7 +52,7 @@ export default function BusinessFeedPage() {
 
       <DashboardNav />
 
-      <main className="mx-auto w-full max-w-5xl space-y-4 px-4 py-6 sm:px-6 lg:px-8 sm:py-8">
+      <main className={cn(DASHBOARD_MAIN, 'space-y-4')}>
         <h1 className="text-2xl font-semibold text-foreground">Business Feed</h1>
         <SectionErrorBoundary>
           <FeedView

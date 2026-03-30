@@ -5,6 +5,8 @@ import { Footer } from '@/components/Footer';
 import { getFeaturedPartnerLogos, type FeaturedPartnerLogo } from '@/lib/partnerFeatured';
 import { FeaturedPartnersCarousel } from '@/components/partners/FeaturedPartnersCarousel';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
+import JsonLd from '@/components/JsonLd';
+import { partnerProgramServiceSchema704 } from '@/lib/jsonLdSchemas';
 import { Store, Building2, Sparkles, Handshake } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -22,6 +24,7 @@ export default async function PartnersPage() {
 
   return (
     <>
+      <JsonLd schema={partnerProgramServiceSchema704} />
       <Nav />
       <main className="bg-[#0a0a0a] text-white">
         <MarketingPageRoot>

@@ -18,15 +18,38 @@ const log = (step: string, details?: unknown) => {
 const BRAND = {
   color: "#1A1A1A",       // Charcoal background
   surface: "#2E2E2E",     // Graphite card surface
-  accent: "#D4A853",      // Gold/amber CTA
+  accent: "#C6A664",      // Gold CTA (704 brand)
   accentText: "#1A1A1A",  // Dark text on gold buttons
   text: "#FAF6F0",        // Ivory primary text
   textSecondary: "#D8D8D8", // Silver secondary text
   textMuted: "#A0A0A0",   // Grey metadata
   border: "rgba(255,255,255,0.10)",
   logoUrl: "https://chnpjxwcmxkmcdoivmra.supabase.co/storage/v1/object/public/public-assets/704-logo.png",
-  fontStack: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+  fontStack:
+    "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
 };
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function htmlToPlainText(html: string): string {
+  const stripped = html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+  return stripped || "704 Collective notification";
+}
 
 function baseLayout(content: string, origin?: string): string {
   const homeUrl = origin || "#";
@@ -544,7 +567,131 @@ function partnerAccountDeletionRequestTemplate(data: {
 <p style="margin:0 0 8px;font-size:14px;color:${BRAND.textSecondary};"><strong style="color:${BRAND.text};">Email:</strong> ${data.email}</p>
 <p style="margin:0 0 8px;font-size:14px;color:${BRAND.textSecondary};"><strong style="color:${BRAND.text};">Name:</strong> ${data.fullName}</p>
 <p style="margin:0 0 0;font-size:14px;color:${BRAND.textSecondary};"><strong style="color:${BRAND.text};">Company:</strong> ${data.companyName}</p>
-`),
+`, "https://704collective.com"),
+  };
+}
+
+function socialSignupConfirmationTemplate(data: { name: string; origin?: string }): { subject: string; html: string } {
+  const name = data.name || "there";
+  const base = data.origin ?? "https://704collective.com";
+  return {
+    subject: "You're signed up — confirm your email | 704 Collective",
+    html: baseLayout(
+      `<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name}!</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Thanks for creating your 704 Collective account. Use the confirmation link in your inbox to verify your email and continue.</p>
+<p style="margin:0;font-size:14px;line-height:1.6;color:${BRAND.textMuted};">Questions? hello@704collective.com</p>`,
+      base,
+    ),
+  };
+}
+
+function businessApplicationMemberConfirmTemplate(data: {
+  name: string;
+  company: string;
+  origin?: string;
+}): { subject: string; html: string } {
+  const base = data.origin ?? "https://704collective.com";
+  return {
+    subject: "We received your 704 Business application",
+    html: baseLayout(
+      `<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${data.name}!</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Thanks for applying to <strong style="color:${BRAND.text};">704 Business</strong> for <strong>${data.company}</strong>. Our team will review your application and follow up by email.</p>
+${ctaButton("Visit 704 Collective", base)}`,
+      base,
+    ),
+  };
+}
+
+function businessApplicationAdminNotifyTemplate(data: {
+  company: string;
+  applicantEmail: string;
+  adminPanelUrl: string;
+  origin?: string;
+}): { subject: string; html: string } {
+  const base = data.origin ?? "https://704collective.com";
+  return {
+    subject: `New 704 Business application: ${data.company}`,
+    html: baseLayout(
+      `<p style="margin:0 0 12px;font-size:16px;font-weight:600;color:${BRAND.text};">New business application</p>
+<p style="margin:0 0 8px;font-size:14px;color:${BRAND.textSecondary};"><strong>Company:</strong> ${data.company}</p>
+<p style="margin:0 0 24px;font-size:14px;color:${BRAND.textSecondary};"><strong>Email:</strong> ${data.applicantEmail}</p>
+${ctaButton("Review in admin", data.adminPanelUrl)}`,
+      base,
+    ),
+  };
+}
+
+function businessMembershipApprovedTemplate(data: {
+  firstName: string;
+  creditNoteHtml?: string;
+  origin?: string;
+}): { subject: string; html: string } {
+  const base = data.origin ?? "https://704collective.com";
+  const credit = data.creditNoteHtml
+    ? `<div style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">${data.creditNoteHtml}</div>`
+    : "";
+  return {
+    subject: "You're in — welcome to 704 Business",
+    html: baseLayout(
+      `<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Welcome to 704 Business, ${data.firstName}.</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Your application has been approved. Log in to your member portal for meetings, workshops, introductions, and full community access.</p>
+${credit}
+${ctaButton("Go to my portal", `${base}/dashboard`)}`,
+      base,
+    ),
+  };
+}
+
+function businessApplicationDecisionTemplate(data: {
+  firstName: string;
+  action: string;
+  reason?: string;
+  checkoutEmail: string;
+  origin?: string;
+}): { subject: string; html: string } {
+  const base = data.origin ?? "https://704collective.com";
+  const isDenied = data.action === "denied";
+  const subject = isDenied
+    ? "Your 704 Business application"
+    : "You've been added to our waitlist — 704 Business";
+  const reasonBlock = data.reason
+    ? `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};"><strong>Note from our team:</strong> ${escapeHtml(data.reason)}</p>`
+    : "";
+  const body = isDenied
+    ? `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Thank you for applying to 704 Business. After reviewing your application, we've decided not to move forward at this time.</p>
+${reasonBlock}
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">You're welcome to join as a Social member while you stay connected to the community.</p>
+${ctaButton("Join Social — $30/mo", `${base}/join/checkout?email=${encodeURIComponent(data.checkoutEmail)}`)}`
+    : `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Thank you for applying to 704 Business. We've added you to our waitlist and will reach out when a spot opens.</p>
+${reasonBlock}
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">In the meantime, you're welcome to join as a Social member.</p>
+${ctaButton("Join Social — $30/mo", `${base}/join/checkout?email=${encodeURIComponent(data.checkoutEmail)}`)}`;
+  return {
+    subject,
+    html: baseLayout(
+      `<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${data.firstName},</p>
+${body}`,
+      base,
+    ),
+  };
+}
+
+function welcomeOnboardingCompleteTemplate(data: {
+  name: string;
+  calendarUrl: string;
+  dashboardUrl: string;
+  origin?: string;
+}): { subject: string; html: string } {
+  const base = data.origin ?? "https://704collective.com";
+  return {
+    subject: "You're all set — welcome to 704 Collective",
+    html: baseLayout(
+      `<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${data.name}!</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">You've finished onboarding. Head to your dashboard for events, messages, and your member calendar.</p>
+${ctaButton("Open your dashboard", data.dashboardUrl)}
+<p style="margin:16px 0 0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">Add events to your calendar: <a href="${data.calendarUrl}" style="color:${BRAND.accent};word-break:break-all;">Subscribe</a></p>`,
+      base,
+    ),
   };
 }
 
@@ -642,6 +789,38 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
         companyName: string;
         fullName: string;
       });
+    case "social-signup-confirmation":
+      return socialSignupConfirmationTemplate(data as { name: string; origin?: string });
+    case "business-application-member-confirm":
+      return businessApplicationMemberConfirmTemplate(data as { name: string; company: string; origin?: string });
+    case "business-application-admin-notify":
+      return businessApplicationAdminNotifyTemplate(data as {
+        company: string;
+        applicantEmail: string;
+        adminPanelUrl: string;
+        origin?: string;
+      });
+    case "business-membership-approved":
+      return businessMembershipApprovedTemplate(data as {
+        firstName: string;
+        creditNoteHtml?: string;
+        origin?: string;
+      });
+    case "business-application-decision":
+      return businessApplicationDecisionTemplate(data as {
+        firstName: string;
+        action: string;
+        reason?: string;
+        checkoutEmail: string;
+        origin?: string;
+      });
+    case "welcome-onboarding-complete":
+      return welcomeOnboardingCompleteTemplate(data as {
+        name: string;
+        calendarUrl: string;
+        dashboardUrl: string;
+        origin?: string;
+      });
     default:
       throw new Error(`Unknown email template: ${template}`);
   }
@@ -667,7 +846,15 @@ serve(async (req) => {
     const isServiceRole = token === serviceRoleKey;
 
     // Templates that require service role (internal/admin only)
-    const restrictedTemplates = ["admin-invite", "welcome-setup", "welcome", "password-setup", "event-change", "guest-followup", "ticket-followup", "guest-pass", "feed-mention", "partner-application-submitted", "partner-new-application-admin", "partner-welcome-invite", "partner-application-denied", "partner-event-inquiry-admin", "partner-inquiry-admin-reply-partner", "partner-team-first-superadmin", "partner-team-reply-partner", "partner-account-deletion-request"];
+    const restrictedTemplates = [
+      "admin-invite", "welcome-setup", "welcome", "password-setup", "event-change", "guest-followup",
+      "ticket-followup", "guest-pass", "feed-mention", "partner-application-submitted",
+      "partner-new-application-admin", "partner-welcome-invite", "partner-application-denied",
+      "partner-event-inquiry-admin", "partner-inquiry-admin-reply-partner", "partner-team-first-superadmin",
+      "partner-team-reply-partner", "partner-account-deletion-request", "social-signup-confirmation",
+      "business-application-member-confirm", "business-application-admin-notify", "business-membership-approved",
+      "business-application-decision", "welcome-onboarding-complete",
+    ];
 
     // ── Parse body first so we can check template ──
     const { to, template, data, skipCc } = await req.json();
@@ -718,15 +905,13 @@ serve(async (req) => {
     log("Sending email", { to, template });
 
     const { subject, html } = getTemplate(template, data || {});
+    const text = htmlToPlainText(html);
 
     // ── Send via Resend ──
     const resendKey = Deno.env.get("RESEND_API_KEY");
     if (!resendKey) throw new Error("RESEND_API_KEY not set");
 
-    const fromAddress =
-      template === "feed-mention"
-        ? "704 Collective <no-reply@704collective.com>"
-        : "704 Collective <hello@704collective.com>";
+    const fromAddress = "704 Collective <no-reply@704collective.com>";
 
     const resendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -742,6 +927,7 @@ serve(async (req) => {
           : {}),
         subject,
         html,
+        text,
       }),
     });
 

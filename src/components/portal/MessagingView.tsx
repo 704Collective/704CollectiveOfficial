@@ -769,8 +769,8 @@ export function MessagingView({ initialDirectPeerId }: { initialDirectPeerId?: s
 
       {/* ── Sidebar ── */}
       <div
-        className={`w-full md:w-72 lg:w-80 flex flex-col border-r border-white/10 shrink-0 ${
-          showSidebar ? 'flex' : 'hidden md:flex'
+        className={`w-full sm:w-72 lg:w-80 flex flex-col border-r border-white/10 shrink-0 ${
+          showSidebar ? 'flex' : 'hidden sm:flex'
         }`}
       >
         {/* Sidebar header */}
@@ -827,7 +827,9 @@ export function MessagingView({ initialDirectPeerId }: { initialDirectPeerId?: s
             {/* Panel header */}
             <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10">
               <button
-                className="md:hidden p-1 text-white/60 hover:text-white"
+                type="button"
+                aria-label="Back to conversations"
+                className="sm:hidden p-1 text-white/60 hover:text-white"
                 onClick={() => setShowSidebar(true)}
               >
                 <ChevronLeft className="h-5 w-5" />

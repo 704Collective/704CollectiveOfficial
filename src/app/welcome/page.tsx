@@ -6,6 +6,7 @@ import { Loader2, CheckCircle, XCircle, Eye, EyeOff, MapPin, Calendar } from 'lu
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
+import { sendWelcomeOnboardingCompleteEmail } from '@/app/actions/transactionalEmails';
 import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import { format } from 'date-fns';
@@ -327,6 +328,7 @@ function WelcomeContent() {
         setContinueBusy(false);
         return;
       }
+      void sendWelcomeOnboardingCompleteEmail();
       router.push('/dashboard?welcome=1');
     } finally {
       setContinueBusy(false);

@@ -21,6 +21,8 @@ import {
 import TiltCard from '@/components/TiltCard';
 import GradientShift from '@/components/GradientShift';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
+import JsonLd from '@/components/JsonLd';
+import { socialServiceSchema704 } from '@/lib/jsonLdSchemas';
 
 /* ─── Types ─── */
 
@@ -124,6 +126,7 @@ export default function SocialPage() {
 
   return (
     <>
+      <JsonLd schema={socialServiceSchema704} />
       <Nav />
       <main style={{ paddingTop: '64px' }}>
         <MarketingPageRoot>

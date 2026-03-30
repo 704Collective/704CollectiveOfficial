@@ -9,9 +9,7 @@ import { updateSession } from '@/lib/supabase/middleware';
  * See `supabase/functions/generate-wallet-pass/index.ts` and `src/lib/walletPass.ts`.
  */
 
-export async function middleware(request: NextRequest) {
-  // Hard-bypass for manifest and other static resources — must be the very
-  // first check so no auth logic runs for these paths regardless of matcher.
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (pathname === '/manifest.json' || pathname === '/manifest.webmanifest') {
     return NextResponse.next();
@@ -20,9 +18,6 @@ export async function middleware(request: NextRequest) {
   return await updateSession(request);
 }
 
-// Positive allowlist: middleware only runs on routes that require auth checks.
-// Everything else — manifest.json, static assets, public marketing pages — is
-// completely excluded, eliminating the 401 errors on public resources.
 export const config = {
   matcher: [
     '/dashboard/:path*',

@@ -11,11 +11,7 @@ interface Props {
 
 async function getCard(publicId: string): Promise<BusinessCardData | null> {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from('business_cards')
-    .select('*')
-    .eq('public_id', publicId)
-    .maybeSingle();
+  const { data } = await supabase.rpc('get_business_card_public', { pid: publicId }).maybeSingle();
   if (!data) return null;
   const row = data as Record<string, unknown>;
   return {

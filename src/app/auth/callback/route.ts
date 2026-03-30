@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
   const redirectResponse = NextResponse.redirect(new URL(destination, origin));
 
   // Forward the session cookies onto the redirect response so the browser
-  // stores them and the middleware can verify the session on the next request.
+  // stores them and the proxy (session refresh) can verify the session on the next request.
   pendingCookies.forEach(({ name, value, options }) => {
     redirectResponse.cookies.set(name, value, options as Parameters<typeof redirectResponse.cookies.set>[2]);
   });

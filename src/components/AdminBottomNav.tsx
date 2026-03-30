@@ -59,7 +59,10 @@ export function AdminBottomNav({ activeSection, onSectionChange }: AdminBottomNa
       className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background"
       style={{ touchAction: 'manipulation' }}
     >
-      <div className="flex items-stretch" style={{ height: '56px' }}>
+      <div
+        className="flex items-stretch overflow-x-auto overflow-y-hidden"
+        style={{ height: '56px', WebkitOverflowScrolling: 'touch' }}
+      >
         {NAV_ITEMS.map((item) => {
           const active = isActive(item);
           const Icon   = item.icon;
@@ -70,7 +73,7 @@ export function AdminBottomNav({ activeSection, onSectionChange }: AdminBottomNa
               onClick={() => handleTap(item)}
               style={{ minHeight: '44px' }}
               className={cn(
-                'flex flex-col items-center justify-center flex-1 gap-0.5 transition-colors',
+                'flex flex-col items-center justify-center shrink-0 min-w-[4.75rem] px-1 gap-0.5 transition-colors',
                 active
                   ? 'text-primary'
                   : 'text-muted-foreground hover:text-foreground'

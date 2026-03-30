@@ -36,7 +36,6 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
     const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
     const SITE_URL = Deno.env.get("SITE_URL") ?? "https://704collective.com";
 
@@ -255,42 +254,26 @@ serve(async (req) => {
       })
       .eq("id", application_id);
 
-    // Send welcome email
-    const creditNote = proratedCredit > 0
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const creditNoteHtml = proratedCredit > 0
       ? `<p>Your social membership credit of $${(proratedCredit / 100).toFixed(2)} has been applied to your first month.</p>`
-      : "";
+      : undefined;
 
-    await fetch("https://api.resend.com/emails", {
+    await fetch(`${supabaseUrl}/functions/v1/send-email`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
         "Content-Type": "application/json",
+        Authorization: `Bearer ${serviceKey}`,
       },
       body: JSON.stringify({
-        from: "704 Collective <no-reply@704collective.com>",
-        to: `${app.first_name} ${app.last_name} <${app.email}>`,
-        subject: "You're in — welcome to 704 Business",
-        html: `
-          <div style="font-family:'Plus Jakarta Sans',sans-serif;max-width:600px;margin:0 auto;padding:32px;background:#FAF6F0;">
-            <img src="${SITE_URL}/logo.png" alt="704 Collective" style="height:40px;margin-bottom:32px;" />
-            <h2 style="color:#1A1A1A;margin-bottom:8px;">Welcome to 704 Business, ${app.first_name}.</h2>
-            <p style="color:#2E2E2E;line-height:1.7;">
-              Your application has been approved. You now have full Business membership access — 
-              monthly meetings, exclusive workshops, private dinners, strategic introductions, and everything in between.
-            </p>
-            ${creditNote}
-            <p style="color:#2E2E2E;line-height:1.7;">
-              Log in to your portal to get started. If you have any questions, just reply to this email.
-            </p>
-            <a href="${SITE_URL}/dashboard"
-               style="display:inline-block;margin-top:24px;padding:14px 32px;background:#C6A664;color:#1A1A1A;text-decoration:none;border-radius:6px;font-weight:700;">
-              Go to My Portal
-            </a>
-            <p style="color:#999;font-size:12px;margin-top:48px;">
-              704 Collective · Charlotte, NC
-            </p>
-          </div>
-        `,
+        to: app.email,
+        template: "business-membership-approved",
+        data: {
+          firstName: (app.first_name || "there").trim(),
+          creditNoteHtml,
+          origin: SITE_URL,
+        },
       }),
     });
 

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
+import { sendBusinessApplicationSubmittedEmails } from '@/app/actions/transactionalEmails';
 import { toast } from 'sonner';
 import { Loader2, ChevronRight, ChevronLeft } from 'lucide-react';
 
@@ -169,21 +170,11 @@ export default function BusinessApplicationPage() {
           .eq('id', currentUser.id);
       }
 
-      // Send notification email to admins
-      await supabase.functions.invoke('send-email', {
-        body: {
-          to: 'hello@704collective.com',
-          subject: `New Business Application: ${form.firstName} ${form.lastName}`,
-          html: `
-            <h2>New Business Application Received</h2>
-            <p><strong>Name:</strong> ${form.firstName} ${form.lastName}</p>
-            <p><strong>Email:</strong> ${form.email}</p>
-            <p><strong>Company:</strong> ${form.company}</p>
-            <p><strong>Title:</strong> ${form.title}</p>
-            <p><strong>Industry:</strong> ${form.industry}</p>
-            <p><a href="${window.location.origin}/admin?section=applications">Review in admin panel →</a></p>
-          `,
-        },
+      await sendBusinessApplicationSubmittedEmails({
+        applicantEmail: form.email.trim().toLowerCase(),
+        applicantFirstName: form.firstName.trim(),
+        company: form.company.trim(),
+        adminPanelUrl: `${window.location.origin}/admin?section=applications`,
       });
 
       setStep('done');

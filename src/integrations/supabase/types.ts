@@ -837,6 +837,10 @@ export type Database = {
         Returns: boolean
       }
       is_active_user: { Args: { _user_id: string }; Returns: boolean }
+      get_business_card_public: {
+        Args: { pid: string }
+        Returns: Record<string, unknown>[]
+      }
     }
     Enums: {
       app_role: "admin" | "member"

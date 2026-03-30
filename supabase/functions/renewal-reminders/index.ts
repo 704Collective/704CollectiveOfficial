@@ -67,6 +67,7 @@ serve(async (_req) => {
         to: to.name ? `${to.name} <${to.email}>` : to.email,
         subject,
         html,
+        text: `${subject}\n\n704 Collective membership — manage your account: ${SITE_URL}/dashboard/settings`,
       }),
     });
 

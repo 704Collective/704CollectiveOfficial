@@ -13,6 +13,8 @@ import {
   ScaleUp,
 } from '@/components/Animations';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
+import JsonLd from '@/components/JsonLd';
+import { organizationSchema704 } from '@/lib/jsonLdSchemas';
 
 const team = [
   { name: 'Adam Gould', title: 'Co-Founder', initials: 'AG' },
@@ -42,6 +44,7 @@ export default function About() {
 
   return (
     <>
+      <JsonLd schema={organizationSchema704} />
       <Nav />
       <main style={{ paddingTop: '64px', backgroundColor: '#000' }}>
         <MarketingPageRoot>

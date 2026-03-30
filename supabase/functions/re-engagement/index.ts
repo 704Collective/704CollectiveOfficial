@@ -162,6 +162,7 @@ serve(async (_req) => {
           to: member.full_name ? `${member.full_name} <${member.email}>` : member.email,
           subject,
           html,
+          text: `${subject}\n\nHey ${firstName}, we miss you at 704 Collective. See upcoming events: ${SITE_URL}/events`,
         }),
       });
 

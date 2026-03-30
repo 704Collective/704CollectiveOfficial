@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
+import { sendSocialSignupConfirmationEmail } from '@/app/actions/transactionalEmails';
 import { toast } from 'sonner';
 import { Loader2, Crown, Ticket, X } from 'lucide-react';
 
@@ -99,6 +100,7 @@ export default function SignupPage() {
           member_type: 'social_non_member',
           subscription_status: 'inactive',
         });
+        void sendSocialSignupConfirmationEmail();
       }
 
       setStep('verify');

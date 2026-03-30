@@ -12,6 +12,8 @@ import {
 } from "@/components/Animations";
 import TiltCard from "@/components/TiltCard";
 import { MarketingPageRoot } from "@/components/MarketingPageRoot";
+import JsonLd from "@/components/JsonLd";
+import { businessServiceSchema704 } from "@/lib/jsonLdSchemas";
 
 export const metadata: Metadata = {
   title: "704 Business | Charlotte's Premier Business Community",
@@ -145,6 +147,7 @@ function SectionLabel({ text }: { text: string }) {
 export default function BusinessPage() {
   return (
     <>
+      <JsonLd schema={businessServiceSchema704} />
       <Nav />
       <main style={{ paddingTop: "64px" }}>
         <MarketingPageRoot>

@@ -8,7 +8,7 @@ import { cookies } from 'next/headers';
  *
  * Runs server-side so it has access to HttpOnly cookies (including the PKCE
  * code-verifier set by signInWithOAuth) and can set the resulting auth
- * session cookies via Set-Cookie headers that the middleware will recognise
+ * session cookies via Set-Cookie headers that the proxy will recognise
  * on the very next request.
  *
  * Returns the destination path the client should navigate to.
