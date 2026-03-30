@@ -166,8 +166,15 @@ export default function AdminInboxPage() {
         .from('admin_conversation_participants')
         .select('conversation_id, user_id, last_read_at')
         .eq('user_id', user.id);
-      if (pe) throw pe;
-      const ids = [...new Set((parts ?? []).map((p) => p.conversation_id))];
+
+      if (pe) {
+        console.error('[admin-inbox] load participants', pe);
+        toast.error('Could not load conversations');
+        setConvs([]);
+        return;
+      }
+
+      const ids = [...new Set((parts ?? []).map((p) => p.conversation_id).filter(Boolean))];
       if (!ids.length) {
         setConvs([]);
         return;
@@ -178,20 +185,57 @@ export default function AdminInboxPage() {
         .select('id, type, title, updated_at, created_by')
         .in('id', ids)
         .order('updated_at', { ascending: false });
-      if (ce) throw ce;
+
+      if (ce) {
+        console.error('[admin-inbox] load conversations', ce);
+        toast.error('Could not load conversations');
+        setConvs([]);
+        return;
+      }
 
       const { data: allParts, error: ape } = await supabase
         .from('admin_conversation_participants')
         .select('conversation_id, user_id, last_read_at')
         .in('conversation_id', ids);
-      if (ape) throw ape;
 
-      const uidSet = new Set((allParts ?? []).map((p) => p.user_id));
-      const { data: profRows } = await supabase
-        .from('profiles')
-        .select('id, full_name, avatar_url, email')
-        .in('id', [...uidSet]);
-      const profMap = Object.fromEntries((profRows ?? []).map((p) => [p.id, p as ProfileMini]));
+      if (ape) {
+        console.error('[admin-inbox] load all participants', ape);
+        toast.error('Could not load conversations');
+        setConvs([]);
+        return;
+      }
+
+      const uidList = [...new Set((allParts ?? []).map((p) => p.user_id).filter(Boolean))];
+
+      let profMap: Record<string, ProfileMini> = {};
+      if (uidList.length > 0) {
+        const { data: profRows, error: pre } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url, email')
+          .in('id', uidList);
+        if (pre) {
+          console.error('[admin-inbox] load profiles', pre);
+          toast.error('Could not load conversations');
+          setConvs([]);
+          return;
+        }
+        profMap = Object.fromEntries((profRows ?? []).map((p) => [p.id, p as ProfileMini]));
+      }
+
+      const { data: msgs, error: me } = await supabase
+        .from('admin_messages')
+        .select('conversation_id, content, created_at, sender_id')
+        .in('conversation_id', ids)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(800);
+
+      if (me) {
+        console.error('[admin-inbox] load last messages', me);
+        toast.error('Could not load conversations');
+        setConvs([]);
+        return;
+      }
 
       const partByConv = new Map<string, ParticipantRow[]>();
       for (const row of allParts ?? []) {
@@ -205,15 +249,6 @@ export default function AdminInboxPage() {
         list.push(r);
         partByConv.set(r.conversation_id, list);
       }
-
-      const { data: msgs, error: me } = await supabase
-        .from('admin_messages')
-        .select('conversation_id, content, created_at, sender_id')
-        .in('conversation_id', ids)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-        .limit(800);
-      if (me) throw me;
 
       const lastByConv = new Map<string, LastMsg>();
       for (const m of msgs ?? []) {
@@ -234,8 +269,9 @@ export default function AdminInboxPage() {
       }));
       setConvs(enriched);
     } catch (e) {
-      console.error(e);
+      console.error('[admin-inbox] unexpected', e);
       toast.error('Could not load conversations');
+      setConvs([]);
     } finally {
       setLoadingList(false);
     }
@@ -574,7 +610,9 @@ export default function AdminInboxPage() {
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
                 ) : convs.length === 0 ? (
-                  <p className="text-sm text-muted-foreground px-3 py-6">No conversations yet.</p>
+                  <p className="text-sm text-muted-foreground px-3 py-6 leading-relaxed">
+                    No conversations yet. Click New Message to start one.
+                  </p>
                 ) : (
                   convs.map((c) => {
                     const title = convTitle(c, user!.id);
