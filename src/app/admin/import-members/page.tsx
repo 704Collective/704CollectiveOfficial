@@ -320,7 +320,7 @@ export default function ImportMembers() {
                     <p className="text-sm text-muted-foreground">{rows.length} rows found</p>
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={handleReset}>
+                <Button variant="ghost" size="icon" aria-label="Clear import file" onClick={handleReset}>
                   <X className="w-4 h-4" />
                 </Button>
               </CardContent>

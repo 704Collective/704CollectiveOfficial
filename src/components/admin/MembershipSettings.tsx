@@ -117,6 +117,7 @@ export function MembershipSettings() {
                 size="icon"
                 className="h-6 w-6 shrink-0"
                 onClick={copyCheckoutUrl}
+                aria-label="Copy checkout URL"
                 title="Copy checkout URL"
               >
                 <Copy className="w-3 h-3" />

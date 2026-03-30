@@ -126,7 +126,7 @@ export async function submitPartnerEventInquiry(payload: {
     });
   }
 
-  const { data: inserted, error: insErr } = await supabase
+  const { data: inserted, error: insErr } = await admin
     .from('event_inquiries')
     .insert({
       partner_id: user.id,
@@ -151,7 +151,7 @@ export async function submitPartnerEventInquiry(payload: {
 
   const inquiryId = inserted.id as string;
 
-  const { error: openErr } = await supabase.from('event_inquiry_messages').insert({
+  const { error: openErr } = await admin.from('event_inquiry_messages').insert({
     inquiry_id: inquiryId,
     sender_id: user.id,
     content: msg,
@@ -251,7 +251,7 @@ export async function postEventInquiryMessage(
   const isOwner = inq.partner_id === user.id;
   if (!isStaff && !isOwner) return { ok: false, error: 'Forbidden' };
 
-  const { error: msgErr } = await supabase.from('event_inquiry_messages').insert({
+  const { error: msgErr } = await admin.from('event_inquiry_messages').insert({
     inquiry_id: inquiryId,
     sender_id: user.id,
     content: text,

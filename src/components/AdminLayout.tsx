@@ -50,7 +50,7 @@ export function AdminLayout({
     <div className="min-h-screen bg-background">
 
       {/* ── Desktop Sidebar ── */}
-      <aside className="hidden lg:flex lg:flex-col fixed inset-y-0 left-0 w-60 border-r border-border bg-sidebar z-30">
+      <aside className="hidden sm:flex sm:flex-col fixed inset-y-0 left-0 w-60 border-r border-border bg-sidebar z-30">
         <AdminSidebar
           activeSection={activeSection}
           onSectionChange={onSectionChange}
@@ -72,10 +72,10 @@ export function AdminLayout({
         </SheetContent>
       </Sheet>
 
-      <div className="lg:ml-60 min-h-screen flex flex-col">
+      <div className="sm:ml-60 min-h-screen flex flex-col">
 
-        {/* Mobile top bar */}
-        <header className="lg:hidden sticky top-0 z-20 flex h-14 items-center justify-between px-4 border-b border-border bg-background/95 backdrop-blur-sm shrink-0">
+        {/* Mobile top bar (< sm) */}
+        <header className="sm:hidden sticky top-0 z-20 flex h-14 items-center justify-between px-4 border-b border-border bg-background/95 backdrop-blur-sm shrink-0">
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
@@ -93,10 +93,10 @@ export function AdminLayout({
         </header>
 
         {/* Page content */}
-        <main id="main-content" className="flex-1 pb-[calc(56px+env(safe-area-inset-bottom)+24px)] lg:pb-0">
+        <main id="main-content" className="flex-1 pb-[calc(56px+env(safe-area-inset-bottom)+24px)] sm:pb-0">
           <div className="w-full max-w-3xl mx-auto px-4 py-6 sm:px-6 md:max-w-5xl lg:px-8 lg:py-8">
             {title && (
-              <h1 className="hidden lg:block text-2xl font-semibold text-foreground mb-6">
+              <h1 className="hidden sm:block text-2xl font-semibold text-foreground mb-6">
                 {title}
               </h1>
             )}

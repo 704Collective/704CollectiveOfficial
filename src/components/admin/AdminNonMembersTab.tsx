@@ -96,7 +96,7 @@ export function AdminNonMembersTab({ onNavigateToDashboard }: AdminNonMembersTab
   return (
     <div className="animate-in fade-in-0 duration-200">
       <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={onNavigateToDashboard}><ArrowLeft className="w-4 h-4" /></Button>
+        <Button variant="ghost" size="icon" aria-label="Back to admin overview" onClick={onNavigateToDashboard}><ArrowLeft className="w-4 h-4" /></Button>
         <h2 className="text-xl font-semibold">Non-Members</h2>
         <Badge variant="outline" className="text-xs">{totalCount} leads</Badge>
       </div>

@@ -135,7 +135,7 @@ export function FeedView({ feedType, currentUser, currentProfile }: FeedViewProp
         pages: [[newPost, ...(old.pages[0] ?? [])], ...old.pages.slice(1)],
       };
     });
-  }, [queryClient, queryKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [queryClient, queryKey]);  
 
   const handleDelete = useCallback((postId: string) => {
     queryClient.setQueryData(queryKey, (old: any) => {
@@ -145,7 +145,7 @@ export function FeedView({ feedType, currentUser, currentProfile }: FeedViewProp
         pages: old.pages.map((page: FeedPostData[]) => page.filter(p => p.id !== postId)),
       };
     });
-  }, [queryClient, queryKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [queryClient, queryKey]);  
 
   const handleEdit = useCallback(async (post: FeedPostData) => {
     const newContent = window.prompt('Edit post:', post.content ?? '');
@@ -165,7 +165,7 @@ export function FeedView({ feedType, currentUser, currentProfile }: FeedViewProp
         };
       });
     }
-  }, [queryClient, queryKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [queryClient, queryKey]);  
 
   const allPosts = data?.pages.flat() ?? [];
 

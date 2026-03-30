@@ -3,17 +3,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
 import {
-  Plus, MoreHorizontal, ArrowLeft, Trash2, X, Loader2,
-  Workflow, Mail, Clock, Play, Pause, Archive,
-  ChevronDown, ChevronUp, GripVertical, Users, Zap,
+  Plus, MoreHorizontal, ArrowLeft, Trash2, Loader2,
+  Workflow, Mail, Play, Pause, Archive,
+  ChevronDown, ChevronUp, Users, Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -616,7 +614,7 @@ export default function CrmAutomationsPage() {
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="Open drip campaign actions menu">
                         <MoreHorizontal className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -698,7 +696,7 @@ export default function CrmAutomationsPage() {
                       </span>
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Open sequence actions menu">
                     <MoreHorizontal className="w-4 h-4" />
                   </Button>
                 </div>

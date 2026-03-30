@@ -118,7 +118,7 @@ function AdminDashboard() {
             <Skeleton className="h-7 w-40" />
             <Skeleton className="h-9 w-28" />
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             {[1,2,3,4].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -156,7 +156,7 @@ function AdminDashboard() {
           <SectionErrorBoundary>
             <div className="animate-in fade-in-0 duration-200">
               <div className="flex items-center gap-3 mb-6">
-                <Button type="button" variant="ghost" size="icon" onClick={goToDashboard}>
+                <Button type="button" variant="ghost" size="icon" aria-label="Back to admin overview" onClick={goToDashboard}>
                   <ArrowLeft className="w-4 h-4" />
                 </Button>
                 <h2 className="text-lg font-semibold text-foreground">Event Check-in</h2>
@@ -170,7 +170,7 @@ function AdminDashboard() {
           <SectionErrorBoundary>
             <div className="animate-in fade-in-0 duration-200">
               <div className="flex items-center gap-3 mb-6">
-                <Button type="button" variant="ghost" size="icon" onClick={goToDashboard}>
+                <Button type="button" variant="ghost" size="icon" aria-label="Back to admin overview" onClick={goToDashboard}>
                   <ArrowLeft className="w-4 h-4" />
                 </Button>
                 <h2 className="text-lg font-semibold text-foreground">Task Board</h2>

@@ -318,7 +318,7 @@ export default function CrmDashboardPage() {
           <div className="h-7 w-40 bg-muted animate-pulse rounded mb-1" />
           <div className="h-4 w-64 bg-muted animate-pulse rounded" />
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map(i => (
             <div key={i} className="h-32 bg-muted animate-pulse rounded-xl" />
           ))}
@@ -345,7 +345,7 @@ export default function CrmDashboardPage() {
       </div>
 
       {/* Row 1 — Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {statCards.map((card) => (
           <StatCardWidget key={card.label} card={card} />
         ))}
@@ -473,7 +473,7 @@ export default function CrmDashboardPage() {
               <p className="text-xs text-muted-foreground mb-4">
                 Sent {format(new Date(lastCampaign.sent_at), 'MMM d, yyyy')} · {lastCampaign.sent_count.toLocaleString()} recipients
               </p>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {[
                   { label: 'Open Rate', value: lastCampaign.sent_count > 0 ? `${Math.round((lastCampaign.open_count / lastCampaign.sent_count) * 100)}%` : '—' },
                   { label: 'Click Rate', value: lastCampaign.sent_count > 0 ? `${Math.round((lastCampaign.click_count / lastCampaign.sent_count) * 100)}%` : '—' },

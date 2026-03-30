@@ -410,7 +410,7 @@ export default function CrmSurveysPage() {
               <div className="flex items-center gap-2 shrink-0">
                 <Button variant="outline" size="sm" onClick={() => setBuilderSurvey(survey)} className="h-8 text-xs">Edit</Button>
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
+                  <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Open survey actions menu"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-40">
                     <DropdownMenuItem onClick={() => handleActivate(survey)} className="text-sm">{survey.status === 'active' ? 'Close Survey' : 'Activate'}</DropdownMenuItem>
                     <DropdownMenuSeparator />

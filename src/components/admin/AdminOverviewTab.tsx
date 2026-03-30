@@ -109,7 +109,7 @@ export function AdminOverviewTab({ onSectionChange, onFilterChange }: AdminOverv
           <Skeleton className="h-7 w-40" />
           <Skeleton className="h-9 w-28" />
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
         </div>
         <Skeleton className="h-10 w-64" />
@@ -165,7 +165,7 @@ export function AdminOverviewTab({ onSectionChange, onFilterChange }: AdminOverv
     <div className="space-y-6">
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Overview</p>
           <h2 className="text-xl font-semibold text-foreground">Dashboard</h2>
@@ -175,7 +175,7 @@ export function AdminOverviewTab({ onSectionChange, onFilterChange }: AdminOverv
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
         {statCards.map((stat) => (
           <Card
             key={stat.label}

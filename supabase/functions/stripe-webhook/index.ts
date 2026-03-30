@@ -205,16 +205,27 @@ async function handleCheckoutCompleted(
       memberAction = "existing_active";
       log("Updating existing active profile", { userId });
 
-      await supabase
-        .from("profiles")
-        .update({
-          subscription_status: "active",
-          stripe_customer_id: stripeCustomerId,
-          subscription_id: subscriptionId,
-          cancel_at_period_end: false,
-          ...(customerPhone ? { phone: customerPhone } : {}),
-        })
-        .eq("id", userId);
+      const mt = activeProfile.member_type as string | null | undefined;
+      const updates: Record<string, unknown> = {
+        subscription_status: "active",
+        stripe_customer_id: stripeCustomerId,
+        subscription_id: subscriptionId,
+        cancel_at_period_end: false,
+        ...(customerPhone ? { phone: customerPhone } : {}),
+      };
+      // Social checkout: ensure member_type social when not business/partner
+      if (
+        mt !== "business" &&
+        mt !== "partner" &&
+        (!mt || mt === "social_non_member" || mt === "non_member" || mt === "social")
+      ) {
+        updates.member_type = "social";
+      }
+      if (!activeProfile.member_since) {
+        updates.member_since = new Date().toISOString();
+      }
+
+      await supabase.from("profiles").update(updates).eq("id", userId);
     } else if (softDeletedProfile) {
       // ── reactivate soft-deleted member ──
       userId = softDeletedProfile.id;

@@ -530,7 +530,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   return (
     <div className="animate-in fade-in-0 duration-200">
       <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={onNavigateToDashboard}><ArrowLeft className="w-4 h-4" /></Button>
+        <Button variant="ghost" size="icon" aria-label="Back to admin overview" onClick={onNavigateToDashboard}><ArrowLeft className="w-4 h-4" /></Button>
         <h2 className="text-xl font-semibold">Event Management</h2>
       </div>
 
@@ -623,7 +623,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                         <TableCell className="py-3">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-                              <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="w-4 h-4" /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Open event actions menu"><MoreHorizontal className="w-4 h-4" /></Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={e => { e.stopPropagation(); openEdit(event); }}><Pencil className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>

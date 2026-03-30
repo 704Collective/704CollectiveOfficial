@@ -111,7 +111,7 @@ export function AdminSuggestionsTab({ onNavigateToDashboard }: AdminSuggestionsT
   return (
     <div className="animate-in fade-in-0 duration-200">
       <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={onNavigateToDashboard}>
+        <Button variant="ghost" size="icon" aria-label="Back to admin overview" onClick={onNavigateToDashboard}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <h2 className="text-xl font-semibold">Event Suggestions</h2>
@@ -179,6 +179,7 @@ export function AdminSuggestionsTab({ onNavigateToDashboard }: AdminSuggestionsT
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
+                        aria-label={s.is_read ? 'Mark suggestion unread' : 'Mark suggestion read'}
                         title={s.is_read ? 'Mark unread' : 'Mark read'}
                         onClick={() => s.is_read
                           ? markUnreadMutation.mutate(s.id)
@@ -197,6 +198,7 @@ export function AdminSuggestionsTab({ onNavigateToDashboard }: AdminSuggestionsT
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-destructive hover:text-destructive"
+                          aria-label="Delete suggestion"
                           onClick={() => deleteMutation.mutate(s.id)}
                           disabled={deleteMutation.isPending}
                         >

@@ -308,7 +308,7 @@ export function FeedPost({ post, currentUser, onDelete, onEdit }: FeedPostProps)
         {isAuthor && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Open post options">
                 <MoreHorizontal className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -391,8 +391,9 @@ export function FeedPost({ post, currentUser, onDelete, onEdit }: FeedPostProps)
           size="sm"
           className={cn('gap-1.5 h-8 px-2', liked && 'text-rose-500')}
           onClick={toggleLike}
+          aria-label={liked ? `Unlike post, ${likeCount} likes` : `Like post${likeCount > 0 ? `, ${likeCount} likes` : ''}`}
         >
-          <Heart className={cn('w-4 h-4', liked && 'fill-current')} />
+          <Heart className={cn('w-4 h-4', liked && 'fill-current')} aria-hidden />
           <span className="text-xs">{likeCount > 0 ? likeCount : ''}</span>
         </Button>
         <Button
@@ -400,8 +401,9 @@ export function FeedPost({ post, currentUser, onDelete, onEdit }: FeedPostProps)
           size="sm"
           className="gap-1.5 h-8 px-2"
           onClick={toggleComments}
+          aria-label={`Comment on post${commentCount > 0 ? `, ${commentCount} comments` : ''}`}
         >
-          <MessageCircle className="w-4 h-4" />
+          <MessageCircle className="w-4 h-4" aria-hidden />
           <span className="text-xs">{commentCount > 0 ? commentCount : ''}</span>
         </Button>
       </div>
@@ -466,6 +468,7 @@ export function FeedPost({ post, currentUser, onDelete, onEdit }: FeedPostProps)
                   size="icon"
                   variant="ghost"
                   className="absolute right-1 bottom-1 h-7 w-7"
+                  aria-label="Send comment"
                   onClick={submitComment}
                   disabled={!newComment.trim() || submittingComment}
                 >

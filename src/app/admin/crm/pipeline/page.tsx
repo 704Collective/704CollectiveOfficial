@@ -139,7 +139,7 @@ function DealCard({
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Open deal actions menu">
               <MoreHorizontal className="w-3.5 h-3.5" />
             </Button>
           </DropdownMenuTrigger>
@@ -620,8 +620,8 @@ export default function CrmPipelinePage() {
       ) : (
         /* ── List View ── */
         <>
-          <div className="hidden md:block bg-card border border-border rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
+          <div className="hidden sm:block bg-card border border-border rounded-xl overflow-hidden">
+            <div className="overflow-x-auto min-w-0">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
@@ -672,7 +672,7 @@ export default function CrmPipelinePage() {
                           <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Open deal actions menu">
                                   <MoreHorizontal className="w-4 h-4" />
                                 </Button>
                               </DropdownMenuTrigger>
@@ -694,7 +694,7 @@ export default function CrmPipelinePage() {
             </div>
           </div>
 
-          <div className="md:hidden space-y-3">
+          <div className="sm:hidden space-y-3">
             {deals.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground text-sm">
                 No deals yet. Add your first deal to get started.
@@ -725,7 +725,7 @@ export default function CrmPipelinePage() {
                       <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Open deal actions menu">
                               <MoreHorizontal className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>

@@ -62,7 +62,7 @@ export function AdminSponsorsTab({ onNavigateToDashboard }: AdminSponsorsTabProp
     <div className="animate-in fade-in-0 duration-200">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={onNavigateToDashboard}><ArrowLeft className="w-4 h-4" /></Button>
+          <Button variant="ghost" size="icon" aria-label="Back to admin overview" onClick={onNavigateToDashboard}><ArrowLeft className="w-4 h-4" /></Button>
           <h2 className="text-xl font-semibold">Sponsor/Vendor Management</h2>
         </div>
         <Button onClick={() => setAddOpen(true)}><Plus className="w-4 h-4 mr-2" />Add Sponsor/Vendor</Button>

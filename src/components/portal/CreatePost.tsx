@@ -358,7 +358,9 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
                 <Image src={img.previewUrl} alt="preview" fill className="object-cover" unoptimized />
               )}
               <button
+                type="button"
                 onClick={() => removeImage(img.id)}
+                aria-label="Remove image from post"
                 className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center hover:bg-black/80"
               >
                 <X className="w-3 h-3 text-white" />
@@ -381,6 +383,7 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
               <button
                 type="button"
                 onClick={() => removeLibraryAttachment(lib.url)}
+                aria-label="Remove library attachment"
                 className="text-muted-foreground hover:text-destructive"
               >
                 <X className="w-3.5 h-3.5" />
@@ -391,7 +394,7 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
             <div key={f.id} className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg text-sm">
               <span className="flex-1 truncate">{f.file.name}</span>
               <span className="text-xs text-muted-foreground shrink-0">{formatBytes(f.file.size)}</span>
-              <button onClick={() => removeFile(f.id)} className="text-muted-foreground hover:text-destructive">
+              <button type="button" onClick={() => removeFile(f.id)} aria-label="Remove file attachment" className="text-muted-foreground hover:text-destructive">
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -409,6 +412,7 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
             className="h-8 w-8"
             onClick={() => imageInputRef.current?.click()}
             disabled={pendingImages.length >= 4}
+            aria-label="Add images to post (max 4)"
             title="Add images (max 4)"
           >
             <ImageIcon className="w-4 h-4" />
@@ -428,6 +432,7 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
                 size="icon"
                 className="h-8 w-8"
                 onClick={() => fileInputRef.current?.click()}
+                aria-label="Attach files to post"
                 title="Attach files (up to 5 GB each)"
               >
                 <Paperclip className="w-4 h-4" />
@@ -439,6 +444,7 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
                   className="h-8 w-8"
                   type="button"
                   onClick={() => void openResourceLibrary()}
+                  aria-label="Open resource library"
                   title="Resource Library"
                 >
                   <Library className="w-4 h-4" />

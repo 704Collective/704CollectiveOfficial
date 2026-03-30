@@ -637,15 +637,15 @@ export default function CrmContactsPage() {
               <Trash2 className="w-3.5 h-3.5" /> Delete
             </Button>
           </div>
-          <button type="button" onClick={() => setSelected(new Set())} className="ml-auto text-muted-foreground hover:text-foreground">
+          <button type="button" onClick={() => setSelected(new Set())} aria-label="Clear selection" className="ml-auto text-muted-foreground hover:text-foreground">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
       {/* Table — desktop */}
-      <div className="hidden md:block bg-card border border-border rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="hidden sm:block bg-card border border-border rounded-xl overflow-hidden">
+        <div className="overflow-x-auto min-w-0">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/30">
@@ -731,7 +731,7 @@ export default function CrmContactsPage() {
                     <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Open contact actions menu">
                             <MoreHorizontal className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -764,7 +764,7 @@ export default function CrmContactsPage() {
       </div>
 
       {/* Cards — mobile */}
-      <div className="md:hidden space-y-3">
+      <div className="sm:hidden space-y-3">
         {loading ? (
           Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="h-24 bg-muted animate-pulse rounded-xl" />
@@ -790,7 +790,7 @@ export default function CrmContactsPage() {
                   <LeadScoreDot score={c.lead_score ?? 0} />
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Open contact actions menu">
                         <MoreHorizontal className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>

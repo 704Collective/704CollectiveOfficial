@@ -98,7 +98,7 @@ export function AdminFinancialsTab({ onNavigateToDashboard }: AdminFinancialsTab
     return (
       <div className="space-y-4 animate-in fade-in-0 duration-200">
         <div className="flex items-center gap-3 mb-4">
-          <Button variant="ghost" size="icon" onClick={onNavigateToDashboard}><ArrowLeft className="w-4 h-4" /></Button>
+          <Button variant="ghost" size="icon" aria-label="Back to admin overview" onClick={onNavigateToDashboard}><ArrowLeft className="w-4 h-4" /></Button>
           <h2 className="text-xl font-semibold">Financials</h2>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -113,7 +113,7 @@ export function AdminFinancialsTab({ onNavigateToDashboard }: AdminFinancialsTab
     return (
       <div className="animate-in fade-in-0 duration-200">
         <div className="flex items-center gap-3 mb-6">
-          <Button variant="ghost" size="icon" onClick={onNavigateToDashboard}><ArrowLeft className="w-4 h-4" /></Button>
+          <Button variant="ghost" size="icon" aria-label="Back to admin overview" onClick={onNavigateToDashboard}><ArrowLeft className="w-4 h-4" /></Button>
           <h2 className="text-xl font-semibold">Financials</h2>
         </div>
         <div className="text-center py-12">
@@ -136,7 +136,7 @@ export function AdminFinancialsTab({ onNavigateToDashboard }: AdminFinancialsTab
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={onNavigateToDashboard}><ArrowLeft className="w-4 h-4" /></Button>
+          <Button variant="ghost" size="icon" aria-label="Back to admin overview" onClick={onNavigateToDashboard}><ArrowLeft className="w-4 h-4" /></Button>
           <div>
             <h2 className="text-xl font-semibold">Financials</h2>
             {data.last_updated && (

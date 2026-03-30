@@ -9,7 +9,7 @@ import {
   Plus, MoreHorizontal, Search, X, ArrowLeft, Send, Clock,
   BarChart2, Copy, Trash2, ChevronUp, ChevronDown, GripVertical,
   Type, Image as ImageIcon, MousePointer, Minus, AlignLeft,
-  Calendar, Space, Eye, Code, Loader2, Users, ChevronDown as ChevronDownIcon,
+  Calendar, Space, Code, Loader2, Users, ChevronDown as ChevronDownIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -863,8 +863,8 @@ export default function CrmCampaignsPage() {
       </div>
 
       {/* Table — desktop */}
-      <div className="hidden md:block bg-card border border-border rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="hidden sm:block bg-card border border-border rounded-xl overflow-hidden">
+        <div className="overflow-x-auto min-w-0">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/30">
@@ -928,7 +928,7 @@ export default function CrmCampaignsPage() {
                     <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="w-4 h-4" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Open campaign actions menu"><MoreHorizontal className="w-4 h-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-44">
                           <DropdownMenuItem onClick={() => setEditCampaign(c)} className="text-sm">Edit</DropdownMenuItem>
@@ -950,7 +950,7 @@ export default function CrmCampaignsPage() {
       </div>
 
       {/* Cards — mobile */}
-      <div className="md:hidden space-y-3">
+      <div className="sm:hidden space-y-3">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-28 bg-muted animate-pulse rounded-xl" />)
         ) : campaigns.length === 0 ? (

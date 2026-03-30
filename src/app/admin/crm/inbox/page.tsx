@@ -151,8 +151,8 @@ function ThreadView({ thread, onBack, onReply }: { thread: GmailThread; onBack: 
         </Button>
         <h2 className="font-semibold text-foreground flex-1 truncate">{thread.subject}</h2>
         <div className="flex items-center gap-1 shrink-0">
-          <Button variant="ghost" size="icon" className="h-8 w-8"><Archive className="w-4 h-4" /></Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8"><Trash2 className="w-4 h-4" /></Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Archive thread"><Archive className="w-4 h-4" /></Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Delete thread"><Trash2 className="w-4 h-4" /></Button>
           <Button size="sm" onClick={() => onReply(thread)} className="gap-2 ml-1"><Reply className="w-4 h-4" /> Reply</Button>
         </div>
       </div>

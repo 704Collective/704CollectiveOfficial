@@ -95,7 +95,7 @@ export default function AdminBlogListPage() {
 
   return (
     <AdminLayout title="Blog">
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <p className="text-sm text-muted-foreground">
             Create and manage blog posts for the public site.
@@ -154,7 +154,7 @@ export default function AdminBlogListPage() {
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                         {post.status === 'published' && (
-                          <Button variant="ghost" size="icon" asChild title="View">
+                          <Button variant="ghost" size="icon" asChild title="View" aria-label={`View published post: ${post.title}`}>
                             <a href={`/blog/${post.slug}`} target="_blank" rel="noopener noreferrer">
                               <ExternalLink className="w-4 h-4" />
                             </a>
@@ -164,6 +164,7 @@ export default function AdminBlogListPage() {
                           variant="ghost"
                           size="icon"
                           title="Edit"
+                          aria-label={`Edit blog post: ${post.title}`}
                           onClick={() => router.push(`/admin/blog/${post.id}/edit`)}
                         >
                           <Pencil className="w-4 h-4" />
@@ -173,6 +174,7 @@ export default function AdminBlogListPage() {
                           size="icon"
                           className="text-destructive hover:text-destructive"
                           title="Delete"
+                          aria-label={`Delete blog post: ${post.title}`}
                           onClick={() => setDeleteId(post.id)}
                         >
                           <Trash2 className="w-4 h-4" />

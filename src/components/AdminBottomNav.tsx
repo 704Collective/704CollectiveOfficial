@@ -56,7 +56,7 @@ export function AdminBottomNav({ activeSection, onSectionChange }: AdminBottomNa
 
   return (
     <nav
-      className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background"
+      className="sm:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background"
       style={{ touchAction: 'manipulation' }}
     >
       <div

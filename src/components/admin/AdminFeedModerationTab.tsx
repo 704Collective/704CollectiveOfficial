@@ -70,7 +70,7 @@ export function AdminFeedModerationTab({ onNavigateToDashboard }: AdminFeedModer
   return (
     <div className="animate-in fade-in-0 duration-200 space-y-6">
       <div className="flex items-center gap-3">
-        <Button type="button" variant="ghost" size="icon" onClick={onNavigateToDashboard}>
+        <Button type="button" variant="ghost" size="icon" aria-label="Back to admin overview" onClick={onNavigateToDashboard}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div>
