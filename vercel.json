@@ -1,7 +1,0 @@
-{
-  "crons": [
-    { "path": "/api/social/publish", "schedule": "* * * * *" },
-    { "path": "/api/social/sync-metrics", "schedule": "0 */4 * * *" },
-    { "path": "/api/social/sync-inbox", "schedule": "*/5 * * * *" }
-  ]
-}

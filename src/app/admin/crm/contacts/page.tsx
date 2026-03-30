@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -740,11 +739,6 @@ export default function CrmContactsPage() {
                           <DropdownMenuItem onClick={() => setEditContact(c)} className="gap-2 text-sm">
                             <UserPlus className="w-4 h-4" /> View / Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem asChild className="text-sm">
-                            <Link href={`/admin/crm/contacts/${c.id}`} className="flex items-center gap-2 cursor-pointer">
-                              <UserPlus className="w-4 h-4" /> Profile page
-                            </Link>
-                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setDripContact(c)} className="gap-2 text-sm">
                             <Workflow className="w-4 h-4" /> Add to Drip
                           </DropdownMenuItem>
@@ -801,15 +795,10 @@ export default function CrmContactsPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
-                          <DropdownMenuItem onClick={() => setEditContact(c)} className="gap-2 text-sm">
-                            <UserPlus className="w-4 h-4" /> View / Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild className="text-sm">
-                            <Link href={`/admin/crm/contacts/${c.id}`} className="flex items-center gap-2 cursor-pointer">
-                              <UserPlus className="w-4 h-4" /> Profile page
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setDripContact(c)} className="gap-2 text-sm">
+                      <DropdownMenuItem onClick={() => setEditContact(c)} className="gap-2 text-sm">
+                        <UserPlus className="w-4 h-4" /> View / Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setDripContact(c)} className="gap-2 text-sm">
                         <Workflow className="w-4 h-4" /> Add to Drip
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setConvertContact(c)} className="gap-2 text-sm">
