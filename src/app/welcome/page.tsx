@@ -351,7 +351,7 @@ function WelcomeContent() {
   return (
     <>
       <Nav />
-      <main style={{ paddingTop: '64px', backgroundColor: '#0d0d0d', minHeight: '100dvh' }}>
+      <main id="main-content" style={{ paddingTop: '64px', backgroundColor: '#0d0d0d', minHeight: '100dvh' }}>
         <MarketingPageRoot>
         {status === 'rsvp_gate' ? (
           <div style={{

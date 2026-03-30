@@ -40,7 +40,7 @@ export default function PendingReviewPage() {
   return (
     <>
       <Nav />
-      <main
+      <main id="main-content" 
         style={{
           paddingTop: '64px',
           backgroundColor: '#0d0d0d',

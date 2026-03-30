@@ -15,6 +15,8 @@ import { MarketingPageRoot } from "@/components/MarketingPageRoot";
 import JsonLd from "@/components/JsonLd";
 import { businessServiceSchema704 } from "@/lib/jsonLdSchemas";
 
+export const dynamic = "force-static";
+
 export const metadata: Metadata = {
   title: "704 Business | Charlotte's Premier Business Community",
   description:
@@ -149,7 +151,7 @@ export default function BusinessPage() {
     <>
       <JsonLd schema={businessServiceSchema704} />
       <Nav />
-      <main style={{ paddingTop: "64px" }}>
+      <main id="main-content" style={{ paddingTop: "64px" }}>
         <MarketingPageRoot>
         {/* ════════════════════════════════════════════
             HERO

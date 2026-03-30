@@ -56,6 +56,8 @@ export function FeaturedPartnersCarousel({ partners }: { partners: FeaturedLogo[
               width={160}
               height={80}
               className="object-contain max-h-16 sm:max-h-20 w-auto"
+              sizes="(max-width: 640px) 128px, 160px"
+              loading="lazy"
               unoptimized
             />
           ) : (

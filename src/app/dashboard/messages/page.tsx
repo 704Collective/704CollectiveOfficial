@@ -7,7 +7,8 @@ import { DashboardNav } from '@/components/DashboardNav';
 import { MessagesPageClient } from '@/app/dashboard/messages/MessagesPageClient';
 import { useAuth } from '@/hooks/useAuth';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import { Loader2 } from 'lucide-react';
+import { MessagesPageShellSkeleton, MessagesInnerSkeleton } from '@/components/dashboard/DashboardLoadingSkeletons';
+import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
 import { DASHBOARD_MAIN_WIDE } from '@/lib/dashboard-layout';
 import { cn } from '@/lib/utils';
 
@@ -26,11 +27,7 @@ export default function MessagesPage() {
   }, [loading, user, canAccess, router]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#1A1A1A] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#D4A853]" />
-      </div>
-    );
+    return <MessagesPageShellSkeleton />;
   }
 
   if (!user || !canAccess) return null;
@@ -39,15 +36,11 @@ export default function MessagesPage() {
     <div className="min-h-screen bg-[#1A1A1A]">
       <Header />
       <DashboardNav />
-      <main className={cn(DASHBOARD_MAIN_WIDE)}>
-        <Suspense
-          fallback={
-            <div className="flex justify-center py-24">
-              <Loader2 className="h-8 w-8 animate-spin text-[#D4A853]" />
-            </div>
-          }
-        >
-          <MessagesPageClient />
+      <main id="main-content" className={cn(DASHBOARD_MAIN_WIDE)}>
+        <Suspense fallback={<MessagesInnerSkeleton />}>
+          <SectionErrorBoundary>
+            <MessagesPageClient />
+          </SectionErrorBoundary>
         </Suspense>
       </main>
     </div>

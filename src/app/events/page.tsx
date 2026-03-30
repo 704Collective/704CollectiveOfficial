@@ -160,7 +160,7 @@ export default function Events() {
     <>
       <Nav />
       <div style={{ paddingTop: '64px', minHeight: '100vh', backgroundColor: '#000000' }}>
-        <main style={{ maxWidth: '1100px', margin: '0 auto', padding: '48px 24px 80px' }}>
+        <main id="main-content" style={{ maxWidth: '1100px', margin: '0 auto', padding: '48px 24px 80px' }}>
           <MarketingPageRoot>
 
           {/* Page Header */}

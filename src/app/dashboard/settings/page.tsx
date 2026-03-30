@@ -16,6 +16,7 @@ import { usePageTitle } from '@/hooks/usePageTitle';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 export default function SettingsPage() {
@@ -136,7 +137,7 @@ export default function SettingsPage() {
 
       <DashboardNav />
 
-      <main className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 sm:py-8">
+      <main id="main-content" className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 sm:py-8">
         <h1 className="text-2xl font-semibold">Account Settings</h1>
 
         {/* Profile */}
@@ -152,9 +153,9 @@ export default function SettingsPage() {
           {/* Avatar */}
           <div className="flex items-center gap-4">
             <div className="relative">
-              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center overflow-hidden shrink-0">
+              <div className="relative w-12 h-12 rounded-full bg-muted flex items-center justify-center overflow-hidden shrink-0">
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                  <Image src={avatarUrl} alt="Your profile photo" fill className="object-cover" sizes="48px" unoptimized />
                 ) : (
                   <span className="text-sm font-semibold">{initials}</span>
                 )}
@@ -162,8 +163,9 @@ export default function SettingsPage() {
             </div>
             <div>
               <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 text-sm text-foreground hover:text-muted-foreground transition-colors"
+                className="flex items-center gap-1.5 text-sm text-foreground hover:text-muted-foreground transition-colors rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A664]"
               >
                 <Camera className="w-3.5 h-3.5" />
                 Change Photo

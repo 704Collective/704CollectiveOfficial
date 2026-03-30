@@ -7,8 +7,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { format } from 'date-fns';
-import { Loader2 } from 'lucide-react';
 import { InquiryModal } from '@/components/partner/InquiryModal';
+import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
+import { PartnerPortalEventsSkeleton } from '@/components/dashboard/DashboardLoadingSkeletons';
+import { toast } from 'sonner';
 import type { PartnerInquiryType } from '@/app/actions/partnerPortalActions';
 
 type EventRow = {
@@ -57,14 +59,20 @@ export default function PartnerPortalEventsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const nowIso = new Date().toISOString();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('events')
       .select(
         'id, title, start_time, end_time, description, image_url, location_name, location_address, open_for_venue_partner, open_for_sponsor_inquiry, vendor_booth_spots_available'
       )
       .gte('start_time', nowIso)
       .order('start_time', { ascending: true });
-    setEvents((data ?? []) as EventRow[]);
+    if (error) {
+      console.error('[partner-portal/events]', error.message);
+      toast.error('Could not load events.');
+      setEvents([]);
+    } else {
+      setEvents((data ?? []) as EventRow[]);
+    }
     setLoading(false);
   }, []);
 
@@ -87,14 +95,11 @@ export default function PartnerPortalEventsPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-[#C6A664]" />
-      </div>
-    );
+    return <PartnerPortalEventsSkeleton />;
   }
 
   return (
+    <SectionErrorBoundary>
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -119,7 +124,15 @@ export default function PartnerPortalEventsPage() {
               <div className="md:flex">
                 <div className="relative h-48 md:h-auto md:w-72 shrink-0 bg-white/5">
                   {e.image_url ? (
-                    <Image src={e.image_url} alt="" fill className="object-cover" sizes="(max-width:768px) 100vw, 288px" unoptimized />
+                    <Image
+                      src={e.image_url}
+                      alt={e.title}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width:768px) 100vw, 288px"
+                      loading="lazy"
+                      unoptimized
+                    />
                   ) : (
                     <div className="h-full w-full flex items-center justify-center text-white/20 text-sm">No image</div>
                   )}
@@ -193,5 +206,6 @@ export default function PartnerPortalEventsPage() {
 
       <InquiryModal open={modalOpen} onOpenChange={setModalOpen} inquiryType={modalType} event={modalEvent} />
     </div>
+    </SectionErrorBoundary>
   );
 }

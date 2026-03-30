@@ -15,7 +15,9 @@ export async function GET(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized', message: 'Unauthorized' }, { status: 401 });
+  }
 
   const { data: prof } = await supabase
     .from('profiles')
@@ -24,13 +26,16 @@ export async function GET(request: NextRequest) {
     .maybeSingle();
 
   if (prof?.role !== 'super_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    return NextResponse.json({ error: 'Forbidden', message: 'Forbidden' }, { status: 403 });
   }
 
   const source = request.nextUrl.searchParams.get('source');
   const id = request.nextUrl.searchParams.get('id');
   if (!source || !id) {
-    return NextResponse.json({ error: 'Missing source or id' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Missing source or id', message: 'Missing source or id' },
+      { status: 400 }
+    );
   }
 
   const admin = service();
@@ -52,5 +57,5 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: true });
     return NextResponse.json({ messages: msgs ?? [] });
   }
-  return NextResponse.json({ error: 'Invalid source' }, { status: 400 });
+  return NextResponse.json({ error: 'Invalid source', message: 'Invalid source' }, { status: 400 });
 }

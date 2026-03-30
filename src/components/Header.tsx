@@ -136,9 +136,8 @@ export function Header() {
           {!dashboardMemberHeader && (
             <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Open menu</span>
+              <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open menu">
+                <Menu className="h-5 w-5" aria-hidden />
               </Button>
             </SheetTrigger>
             <SheetContent
@@ -190,6 +189,7 @@ export function Header() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      aria-label="Close menu"
                       className={cn(
                         'h-9 w-9 rounded-full shrink-0',
                         user
@@ -197,8 +197,7 @@ export function Header() {
                           : 'text-muted-foreground hover:bg-muted'
                       )}
                     >
-                      <X className="h-4 w-4" />
-                      <span className="sr-only">Close menu</span>
+                      <X className="h-4 w-4" aria-hidden />
                     </Button>
                   </SheetClose>
                 </div>

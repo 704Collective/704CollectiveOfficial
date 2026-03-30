@@ -80,7 +80,5 @@ export async function handleOAuthCallback(
     destination = '/signup';
   }
 
-  console.log(`[auth/callback] Session exchange OK — userId: ${user.id} → ${destination}`);
-
   return destination;
 }

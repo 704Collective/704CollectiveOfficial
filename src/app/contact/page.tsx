@@ -48,7 +48,7 @@ export default function Contact() {
   return (
     <>
       <Nav />
-      <main style={{ paddingTop: '64px', backgroundColor: '#000', minHeight: '100vh' }}>
+      <main id="main-content" style={{ paddingTop: '64px', backgroundColor: '#000', minHeight: '100vh' }}>
         <MarketingPageRoot>
 
         {/* ── HERO ── */}

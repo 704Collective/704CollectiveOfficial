@@ -346,7 +346,15 @@ export function FeedPost({ post, currentUser, onDelete, onEdit }: FeedPostProps)
                 images.length === 3 && i === 0 ? 'row-span-2' : 'aspect-square'
               )}
             >
-              <Image src={url} alt={`Image ${i + 1}`} fill className="object-cover" unoptimized />
+              <Image
+                src={url}
+                alt={`Image ${i + 1}`}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 560px"
+                loading="lazy"
+                unoptimized
+              />
               {i === 3 && images.length > 4 && (
                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                   <span className="text-white text-xl font-bold">+{images.length - 4}</span>

@@ -82,7 +82,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const lastEvent = useRef<string>('');
 
   const fetchAndApply = useCallback(async (user: User, session: Session) => {
-    console.log('[Auth] fetchAndApply called with userId:', user.id);
     try {
       // Use a raw fetch instead of the Supabase JS client to avoid the
       // navigator.locks deadlock that occurs on soft refresh (Ctrl+R).
@@ -103,7 +102,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
       const rows = res.ok ? await res.json() : [];
       const profile = Array.isArray(rows) ? (rows[0] ?? null) : null;
-      console.log('[Auth] profile fetch resolved:', profile ? profile.id : null);
       if (!isMounted.current) return;
       setState({ user, session, loading: false, profile: profile as Profile | null, ...deriveFlags(profile) });
     } catch {
@@ -116,8 +114,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isMounted.current = true;
 
     const { data: { subscription } } = supabaseRef.current.auth.onAuthStateChange(async (event, session) => {
-      console.log('[Auth]', event, !!session?.user);
-
       if (!isMounted.current) return;
 
       if (session?.user) {

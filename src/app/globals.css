@@ -123,6 +123,27 @@
   .min-h-screen {
     min-height: 100dvh;
   }
+
+  a:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px #c6a664;
+    border-radius: 2px;
+  }
+
+  summary:focus-visible,
+  [role="button"]:focus-visible {
+    outline: 2px solid #c6a664;
+    outline-offset: 2px;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 /* ═══════════════════════════════════════════

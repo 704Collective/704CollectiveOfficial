@@ -7,9 +7,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
+import { PartnerPortalInquiriesSkeleton } from '@/components/dashboard/DashboardLoadingSkeletons';
 import { postEventInquiryMessage } from '@/app/actions/partnerPortalActions';
 
 type InquiryListRow = {
@@ -58,12 +62,18 @@ export default function PartnerInquiriesPage() {
   const loadList = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('event_inquiries')
       .select('id, inquiry_type, status, created_at, event_id, events(title)')
       .eq('partner_id', user.id)
       .order('created_at', { ascending: false });
-    setRows((data ?? []) as unknown as InquiryListRow[]);
+    if (error) {
+      console.error('[partner-portal/inquiries]', error.message);
+      toast.error('Could not load inquiries.');
+      setRows([]);
+    } else {
+      setRows((data ?? []) as unknown as InquiryListRow[]);
+    }
     setLoading(false);
   }, [user]);
 
@@ -73,11 +83,18 @@ export default function PartnerInquiriesPage() {
 
   async function loadThread(inquiryId: string) {
     setLoadingThread(true);
-    const { data: raw } = await supabase
+    const { data: raw, error: msgErr } = await supabase
       .from('event_inquiry_messages')
       .select('id, content, created_at, sender_id')
       .eq('inquiry_id', inquiryId)
       .order('created_at', { ascending: true });
+    if (msgErr) {
+      console.error('[partner-portal/inquiries] thread', msgErr.message);
+      toast.error('Could not load messages.');
+      setMessages([]);
+      setLoadingThread(false);
+      return;
+    }
     const list = raw ?? [];
     const senderIds = [...new Set(list.map((m) => m.sender_id))];
     let nameById: Record<string, { full_name: string | null; role: string | null }> = {};
@@ -139,14 +156,11 @@ export default function PartnerInquiriesPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-[#C6A664]" />
-      </div>
-    );
+    return <PartnerPortalInquiriesSkeleton />;
   }
 
   return (
+    <SectionErrorBoundary>
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold text-white">Inquiries</h2>
@@ -191,8 +205,10 @@ export default function PartnerInquiriesPage() {
                   {expanded && (
                     <div className="mt-6 border-t border-white/10 pt-6 space-y-4">
                       {loadingThread ? (
-                        <div className="flex justify-center py-8">
-                          <Loader2 className="w-6 h-6 animate-spin text-[#C6A664]" />
+                        <div className="space-y-2 py-4">
+                          <Skeleton className="h-16 w-full rounded-lg" />
+                          <Skeleton className="h-16 w-4/5 rounded-lg" />
+                          <Skeleton className="h-16 w-full rounded-lg" />
                         </div>
                       ) : (
                         <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
@@ -218,12 +234,18 @@ export default function PartnerInquiriesPage() {
                         </div>
                       )}
                       <div className="flex flex-col sm:flex-row gap-2">
-                        <Textarea
-                          value={reply}
-                          onChange={(e) => setReply(e.target.value)}
-                          placeholder="Write a message…"
-                          className="min-h-[80px] bg-white/5 border-white/10 flex-1"
-                        />
+                        <div className="flex-1 space-y-1.5">
+                          <Label htmlFor="inquiry-reply" className="text-white/70 text-xs">
+                            Your message
+                          </Label>
+                          <Textarea
+                            id="inquiry-reply"
+                            value={reply}
+                            onChange={(e) => setReply(e.target.value)}
+                            placeholder="Write a message…"
+                            className="min-h-[80px] bg-white/5 border-white/10 w-full"
+                          />
+                        </div>
                         <Button
                           type="button"
                           className="bg-[#C6A664] text-black sm:self-end shrink-0"
@@ -242,5 +264,6 @@ export default function PartnerInquiriesPage() {
         </div>
       )}
     </div>
+    </SectionErrorBoundary>
   );
 }

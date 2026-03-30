@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Nav from "@/components/Nav";
-import { Footer } from "@/components/Footer"
-;
+import { Footer } from "@/components/Footer";
 import Link from "next/link";
+import { HERO_BLUR_DATA_URL } from "@/lib/heroBlur";
 import { getFeaturedPartnerLogos } from "@/lib/partnerFeatured";
 import { FeaturedPartnersCarousel } from "@/components/partners/FeaturedPartnersCarousel";
 import {
@@ -19,6 +20,8 @@ import {
 import TiltCard from "@/components/TiltCard";
 import GradientShift from "@/components/GradientShift";
 import { MarketingPageRoot } from "@/components/MarketingPageRoot";
+
+export const dynamic = "force-static";
 
 export const metadata: Metadata = {
   title: "704 Collective | Where Charlotte Connects",
@@ -72,7 +75,7 @@ export default async function Home() {
     <>
       <Nav />
 
-      <main style={{ paddingTop: "64px" }}>
+      <main id="main-content" style={{ paddingTop: "64px" }}>
         <MarketingPageRoot>
         {/* ════════════════════════════════════════════
             SECTION 1: HERO
@@ -91,16 +94,25 @@ export default async function Home() {
         >
           {/* Background photo */}
           <div
+            aria-hidden
             style={{
               position: "absolute",
               inset: 0,
-              backgroundImage: "url('/hero-home.jpg')",
-              backgroundSize: "cover",
-              backgroundPosition: "center 30%",
               transform: "scale(1.04)",
               transition: "transform 8s ease-out",
             }}
-          />
+          >
+            <Image
+              src="/hero-home.jpg"
+              alt=""
+              fill
+              priority
+              placeholder="blur"
+              blurDataURL={HERO_BLUR_DATA_URL}
+              className="object-cover object-[center_30%]"
+              sizes="100vw"
+            />
+          </div>
 
           {/* Dark overlay - bottom heavy so text pops */}
           <div

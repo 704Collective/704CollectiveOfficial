@@ -197,7 +197,7 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main Content — mobile: centered max-w-3xl; desktop: full width + original padding */}
-      <main className="flex-1 overflow-y-auto w-full max-w-3xl mx-auto px-4 py-8 md:max-w-none md:mx-0 md:px-10 lg:py-10">
+      <main id="main-content" className="flex-1 overflow-y-auto w-full max-w-3xl mx-auto px-4 py-8 md:max-w-none md:mx-0 md:px-10 lg:py-10">
         {children}
       </main>
     </div>

@@ -386,7 +386,7 @@ export default function BusinessFeedPage() {
   return (
     <>
       <BusinessPortalNav />
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8 space-y-4">
+      <main id="main-content" className="max-w-2xl mx-auto px-4 sm:px-6 py-8 space-y-4">
 
         {/* Header */}
         <div className="mb-6">

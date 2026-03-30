@@ -77,7 +77,7 @@ export default function Join() {
   return (
     <>
       <Nav />
-      <main style={{ paddingTop: '64px', backgroundColor: '#000', minHeight: '100dvh' }}>
+      <main id="main-content" style={{ paddingTop: '64px', backgroundColor: '#000', minHeight: '100dvh' }}>
         <MarketingPageRoot>
         <div style={{ maxWidth: '960px', margin: '0 auto', padding: '48px 24px 80px' }}>
 

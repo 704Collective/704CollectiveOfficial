@@ -9,6 +9,8 @@ import JsonLd from '@/components/JsonLd';
 import { partnerProgramServiceSchema704 } from '@/lib/jsonLdSchemas';
 import { Store, Building2, Sparkles, Handshake } from 'lucide-react';
 
+export const dynamic = 'force-static';
+
 export const metadata: Metadata = {
   title: 'Partners | 704 Collective',
   description:
@@ -26,7 +28,7 @@ export default async function PartnersPage() {
     <>
       <JsonLd schema={partnerProgramServiceSchema704} />
       <Nav />
-      <main className="bg-[#0a0a0a] text-white">
+      <main id="main-content" className="bg-[#0a0a0a] text-white">
         <MarketingPageRoot>
         {/* Hero */}
         <section className="relative min-h-[100dvh] flex flex-col justify-end pb-20 pt-28 px-4 sm:px-6">

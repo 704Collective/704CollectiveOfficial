@@ -22,7 +22,7 @@ export default function PaymentCanceled() {
         </div>
       </header>
 
-      <main className="container py-20">
+      <main id="main-content" className="container py-20">
         <MarketingPageRoot>
         <div className="max-w-md mx-auto text-center space-y-8">
           {/* Cancel Icon */}

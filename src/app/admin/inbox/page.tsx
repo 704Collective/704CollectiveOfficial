@@ -1,5 +1,6 @@
 'use client';
 
+import NextImage from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
@@ -741,8 +742,9 @@ export default function AdminInboxPage() {
                             {(m.image_urls?.length ?? 0) > 0 && (
                               <div className="flex flex-wrap gap-2 mt-2">
                                 {m.image_urls!.map((u) => (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img key={u} src={u} alt="" className="max-h-40 rounded-md border" />
+                                  <div key={u} className="relative h-40 w-40 max-w-full rounded-md border overflow-hidden shrink-0">
+                                    <NextImage src={u} alt="" fill className="object-cover" sizes="160px" loading="lazy" />
+                                  </div>
                                 ))}
                               </div>
                             )}
@@ -801,8 +803,9 @@ export default function AdminInboxPage() {
                             {(m.image_urls?.length ?? 0) > 0 && (
                               <div className="flex flex-wrap gap-2 mt-2">
                                 {m.image_urls!.map((u) => (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img key={u} src={u} alt="" className="max-h-40 rounded-md border" />
+                                  <div key={u} className="relative h-40 w-40 max-w-full rounded-md border overflow-hidden shrink-0">
+                                    <NextImage src={u} alt="" fill className="object-cover" sizes="160px" loading="lazy" />
+                                  </div>
                                 ))}
                               </div>
                             )}
@@ -830,10 +833,10 @@ export default function AdminInboxPage() {
                   <input ref={fileRef} type="file" multiple className="hidden" onChange={(e) => void uploadAndSend(e.target.files, false)} />
                   <div className="flex items-end gap-2">
                     <div className="flex gap-1 shrink-0">
-                      <Button type="button" size="icon" variant="outline" onClick={() => imgRef.current?.click()}>
+                      <Button type="button" size="icon" variant="outline" aria-label="Attach image" onClick={() => imgRef.current?.click()}>
                         <ImageIcon className="h-4 w-4" />
                       </Button>
-                      <Button type="button" size="icon" variant="outline" onClick={() => fileRef.current?.click()}>
+                      <Button type="button" size="icon" variant="outline" aria-label="Attach file" onClick={() => fileRef.current?.click()}>
                         <Paperclip className="h-4 w-4" />
                       </Button>
                     </div>
@@ -841,6 +844,7 @@ export default function AdminInboxPage() {
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
                       placeholder="Write a message…"
+                      aria-label="Message"
                       className="min-h-[44px] max-h-32 resize-none"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
@@ -849,7 +853,7 @@ export default function AdminInboxPage() {
                         }
                       }}
                     />
-                    <Button type="button" size="icon" onClick={() => void sendText()} disabled={sending}>
+                    <Button type="button" size="icon" aria-label="Send message" onClick={() => void sendText()} disabled={sending}>
                       {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     </Button>
                   </div>

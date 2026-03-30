@@ -185,7 +185,7 @@ export default function MemberProfilePage() {
       <div className="min-h-screen bg-[#1A1A1A]">
         <Header />
         <DashboardNav />
-        <main className={cn(DASHBOARD_MAIN)}>
+        <main id="main-content" className={cn(DASHBOARD_MAIN)}>
           <Skeleton className="h-8 w-32 bg-[#2E2E2E] mb-8" />
           <div className="flex gap-6">
             <Skeleton className="h-24 w-24 rounded-full bg-[#2E2E2E]" />
@@ -207,7 +207,7 @@ export default function MemberProfilePage() {
       <div className="min-h-screen bg-[#1A1A1A]">
         <Header />
         <DashboardNav />
-        <main className="max-w-4xl mx-auto px-4 py-8 text-center">
+        <main id="main-content" className="max-w-4xl mx-auto px-4 py-8 text-center">
           <p className="text-white/50">Member not found.</p>
           <Button variant="link" className="text-[#D4A853] mt-4" onClick={() => router.back()}>
             Go back
@@ -237,7 +237,7 @@ export default function MemberProfilePage() {
     <div className="min-h-screen bg-[#1A1A1A]">
       <Header />
       <DashboardNav />
-      <main className={cn(DASHBOARD_MAIN)}>
+      <main id="main-content" className={cn(DASHBOARD_MAIN)}>
         {/* Back */}
         <button
           onClick={() => router.back()}

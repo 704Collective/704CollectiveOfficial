@@ -5,7 +5,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { BusinessPortalNav } from '@/components/business/BusinessPortalNav';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
-import { Loader2, Search, Globe, Linkedin, Instagram, MessageSquare } from 'lucide-react';
+import { Search, Globe, Linkedin, Instagram, MessageSquare } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -123,7 +124,7 @@ export default function BusinessDirectoryPage() {
   return (
     <>
       <BusinessPortalNav />
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+      <main id="main-content" className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -158,8 +159,24 @@ export default function BusinessDirectoryPage() {
 
         {/* Loading */}
         {loading && (
-          <div className="flex items-center justify-center py-24">
-            <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#C6A664' }} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="rounded-[14px] border border-white/[0.07] bg-[#111111] p-5 space-y-4"
+              >
+                <div className="flex gap-4">
+                  <Skeleton className="h-16 w-16 rounded-lg shrink-0" />
+                  <div className="flex-1 space-y-2 min-w-0">
+                    <Skeleton className="h-4 w-3/5 max-w-full" />
+                    <Skeleton className="h-3 w-2/5 max-w-full" />
+                  </div>
+                </div>
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-4/5" />
+                <Skeleton className="h-8 w-28 rounded-md" />
+              </div>
+            ))}
           </div>
         )}
 

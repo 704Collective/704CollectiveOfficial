@@ -128,7 +128,7 @@ export default function SocialPage() {
     <>
       <JsonLd schema={socialServiceSchema704} />
       <Nav />
-      <main style={{ paddingTop: '64px' }}>
+      <main id="main-content" style={{ paddingTop: '64px' }}>
         <MarketingPageRoot>
 
         {/* ════════════════════════════════════════════

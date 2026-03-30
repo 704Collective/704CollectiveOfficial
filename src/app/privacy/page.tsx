@@ -21,7 +21,7 @@ export default function Privacy() {
   return (
     <>
       <Nav />
-      <main style={{ paddingTop: '64px', backgroundColor: '#000', minHeight: '100vh' }}>
+      <main id="main-content" style={{ paddingTop: '64px', backgroundColor: '#000', minHeight: '100vh' }}>
         <MarketingPageRoot>
         <div style={{ maxWidth: '720px', margin: '0 auto', padding: '64px 24px 96px' }}>
           <FadeUp>

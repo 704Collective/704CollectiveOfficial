@@ -18,7 +18,7 @@ export default function PartnersDirectoryError({
     <div className="min-h-screen bg-[#1A1A1A]">
       <Header />
       <DashboardNav />
-      <main className={cn(DASHBOARD_MAIN, 'py-16 text-center text-white/80')}>
+      <main id="main-content" className={cn(DASHBOARD_MAIN, 'py-16 text-center text-white/80')}>
         <h1 className="text-xl font-semibold text-white mb-2">Something went wrong</h1>
         <p className="text-sm text-white/50 mb-6">{error.message}</p>
         <div className="flex gap-3 justify-center">

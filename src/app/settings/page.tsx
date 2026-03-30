@@ -119,7 +119,7 @@ export default function Settings() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container py-8 max-w-2xl">
+      <main id="main-content" className="container py-8 max-w-2xl">
         <h1 className="text-3xl font-semibold mb-8">Account Settings</h1>
 
         <div className="space-y-6">

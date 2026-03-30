@@ -240,7 +240,7 @@ export default function BusinessProfilePage() {
   return (
     <>
       <BusinessPortalNav />
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-10">
+      <main id="main-content" className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-10">
 
         {/* Header */}
         <div className="flex items-start justify-between gap-4">

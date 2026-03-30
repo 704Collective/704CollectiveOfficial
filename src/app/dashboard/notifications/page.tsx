@@ -17,7 +17,7 @@ export default function NotificationsPage() {
 
       <DashboardNav />
 
-      <main className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 sm:py-8">
+      <main id="main-content" className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 sm:py-8">
 
         <div>
           <h1 className="text-2xl font-semibold mb-1">Notifications</h1>

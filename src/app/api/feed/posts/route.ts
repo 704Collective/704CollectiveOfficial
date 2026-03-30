@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
   if (!success) {
     await recordRateLimit429(request, '/api/feed/posts');
     return NextResponse.json(
-      { error: 'Too many requests' },
+      { error: 'Too many requests', message: 'Too many requests' },
       { status: 429, headers: { 'Retry-After': '60' } }
     );
   }

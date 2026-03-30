@@ -9,7 +9,7 @@ async function rateLimitOrContinue(request: NextRequest): Promise<NextResponse |
   const { success } = await limiter.limit(ip);
   if (!success) {
     return NextResponse.json(
-      { error: 'Too many requests' },
+      { error: 'Too many requests', message: 'Too many requests' },
       { status: 429, headers: { 'Retry-After': '60' } }
     );
   }
@@ -19,29 +19,29 @@ async function rateLimitOrContinue(request: NextRequest): Promise<NextResponse |
 export async function GET(request: NextRequest) {
   const blocked = await rateLimitOrContinue(request);
   if (blocked) return blocked;
-  return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  return NextResponse.json({ error: 'Not found', message: 'Not found' }, { status: 404 });
 }
 
 export async function POST(request: NextRequest) {
   const blocked = await rateLimitOrContinue(request);
   if (blocked) return blocked;
-  return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  return NextResponse.json({ error: 'Not found', message: 'Not found' }, { status: 404 });
 }
 
 export async function PUT(request: NextRequest) {
   const blocked = await rateLimitOrContinue(request);
   if (blocked) return blocked;
-  return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  return NextResponse.json({ error: 'Not found', message: 'Not found' }, { status: 404 });
 }
 
 export async function PATCH(request: NextRequest) {
   const blocked = await rateLimitOrContinue(request);
   if (blocked) return blocked;
-  return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  return NextResponse.json({ error: 'Not found', message: 'Not found' }, { status: 404 });
 }
 
 export async function DELETE(request: NextRequest) {
   const blocked = await rateLimitOrContinue(request);
   if (blocked) return blocked;
-  return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  return NextResponse.json({ error: 'Not found', message: 'Not found' }, { status: 404 });
 }

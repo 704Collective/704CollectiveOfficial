@@ -157,7 +157,7 @@ export default function PartnerListingDetailPage() {
       <div className="min-h-screen bg-[#1A1A1A]">
         <Header />
         <DashboardNav />
-        <main className={cn(DASHBOARD_MAIN, 'py-16 text-center text-white/70')}>
+        <main id="main-content" className={cn(DASHBOARD_MAIN, 'py-16 text-center text-white/70')}>
           <p className="text-lg font-medium text-white mb-2">Partner not found</p>
           <p className="text-sm text-white/45 mb-6">This listing may be unavailable or not approved.</p>
           <Button variant="secondary" asChild>
@@ -179,7 +179,7 @@ export default function PartnerListingDetailPage() {
     <div className="min-h-screen bg-[#1A1A1A]">
       <Header />
       <DashboardNav />
-      <main className={cn(DASHBOARD_MAIN)}>
+      <main id="main-content" className={cn(DASHBOARD_MAIN)}>
         <Link
           href="/dashboard/partners"
           className="mb-6 flex w-full items-center justify-center gap-1 text-sm text-white/45 transition-colors hover:text-white sm:inline-flex sm:w-auto sm:justify-start"

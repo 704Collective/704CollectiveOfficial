@@ -83,8 +83,6 @@ export async function GET(request: NextRequest) {
   // on the dashboard. Everyone else (no subscription yet) goes to signup.
   const destination = isActive || isAdmin || isNonMember ? '/dashboard' : '/signup';
 
-  console.log(`[auth/callback] Exchange OK — userId: ${user.id} → ${destination}`);
-
   const redirectResponse = NextResponse.redirect(new URL(destination, origin));
 
   // Forward the session cookies onto the redirect response so the browser

@@ -1,33 +1,54 @@
-'use client';
+"use client";
 
-import { usePathname } from 'next/navigation';
-import { useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import Nav from '@/components/Nav';
-import Link from 'next/link';
+import Nav from "@/components/Nav";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
-const NotFound = () => {
-  const pathname = usePathname();
-  usePageTitle('Page Not Found');
+export default function NotFound() {
+  usePageTitle("Page Not Found");
+  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
-    console.error("404 Error: User attempted to access non-existent route:", pathname);
-  }, [pathname]);
+    void supabase.auth.getSession().then(({ data }) => {
+      setLoggedIn(!!data.session?.user);
+    });
+  }, []);
+
+  const primaryHref = loggedIn ? "/dashboard" : "/";
+  const primaryLabel = loggedIn ? "Go to dashboard" : "Go to homepage";
 
   return (
     <>
       <Nav />
-      <div className="flex min-h-screen items-center justify-center bg-muted" style={{ paddingTop: '64px' }}>
-        <div className="text-center">
-          <h1 className="mb-4 text-4xl font-bold">404</h1>
-          <p className="mb-4 text-xl text-muted-foreground">Oops! Page not found</p>
-          <Link href="/" className="text-primary underline hover:text-primary/90">
-            Return to Home
-          </Link>
+      <main
+        id="main-content"
+        className="flex min-h-screen flex-col items-center justify-center bg-[#0d0d0d] px-6 pt-24 pb-16 text-center"
+      >
+        <div className="mb-8 relative w-40 h-14 mx-auto">
+          <Image
+            src="/logo-white.png"
+            alt="704 Collective"
+            fill
+            className="object-contain"
+            sizes="160px"
+            priority
+          />
         </div>
-      </div>
+        <h1 className="text-2xl font-semibold text-[#FAF6F0] mb-2">Page not found</h1>
+        <p className="text-sm text-[#A0A0A0] max-w-md mb-8 leading-relaxed">
+          This URL doesn&apos;t match any page on our site.
+        </p>
+        <Button
+          asChild
+          className="bg-[#C6A664] text-[#1A1A1A] hover:bg-[#D4B876] focus-visible:ring-2 focus-visible:ring-[#C6A664]"
+        >
+          <Link href={primaryHref}>{primaryLabel}</Link>
+        </Button>
+      </main>
     </>
   );
-};
-
-export default NotFound;
+}

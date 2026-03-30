@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -771,9 +772,16 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
               <Label>Event Image</Label>
               {form.image_url ? (
                 <div className="space-y-2">
-                  <div className="relative rounded-lg overflow-hidden border border-border">
-                    <img src={form.image_url} alt="Event preview" className="w-full h-40 object-cover" />
-                    <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => setForm(prev => ({ ...prev, image_url: '' }))}>
+                  <div className="relative rounded-lg overflow-hidden border border-border h-40 w-full">
+                    <Image
+                      src={form.image_url}
+                      alt="Event preview"
+                      fill
+                      className="object-cover"
+                      sizes="(max-width:768px) 100vw, 600px"
+                      unoptimized={!form.image_url?.includes('supabase')}
+                    />
+                    <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" aria-label="Remove event image" onClick={() => setForm(prev => ({ ...prev, image_url: '' }))}>
                       <XIcon className="w-4 h-4" />
                     </Button>
                   </div>

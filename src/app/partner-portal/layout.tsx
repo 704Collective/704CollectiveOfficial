@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Header } from '@/components/Header';
 import { PartnerHeader } from '@/components/partner/PartnerHeader';
 import { PartnerNav } from '@/components/partner/PartnerNav';
-import { Loader2 } from 'lucide-react';
+import { PartnerPortalLayoutSkeleton } from '@/components/dashboard/DashboardLoadingSkeletons';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function PartnerPortalLayout({ children }: { children: React.ReactNode }) {
@@ -68,11 +68,7 @@ export default function PartnerPortalLayout({ children }: { children: React.Reac
   }, [loading, user, profile, pathname, router, p?.member_type, partnerApproved]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#0a0a0a' }}>
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#C6A664' }} />
-      </div>
-    );
+    return <PartnerPortalLayoutSkeleton />;
   }
 
   if (!user || !profile || p?.member_type !== 'partner') {
@@ -84,7 +80,7 @@ export default function PartnerPortalLayout({ children }: { children: React.Reac
       <Header />
       <PartnerHeader companyName={companyName || 'Partner'} logoUrl={logoUrl} />
       <PartnerNav partnerApproved={partnerApproved} />
-      <main className="w-full max-w-3xl mx-auto px-4 py-8 sm:px-6 md:max-w-6xl">{children}</main>
+      <main id="main-content" className="w-full max-w-3xl mx-auto px-4 py-8 sm:px-6 md:max-w-6xl">{children}</main>
     </div>
   );
 }

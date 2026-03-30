@@ -46,7 +46,7 @@ export default function About() {
     <>
       <JsonLd schema={organizationSchema704} />
       <Nav />
-      <main style={{ paddingTop: '64px', backgroundColor: '#000' }}>
+      <main id="main-content" style={{ paddingTop: '64px', backgroundColor: '#000' }}>
         <MarketingPageRoot>
 
         {/* ── HERO ── */}

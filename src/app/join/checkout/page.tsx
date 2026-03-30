@@ -27,7 +27,7 @@ export default function CheckoutPage() {
   return (
     <>
       <Nav />
-      <main
+      <main id="main-content" 
         style={{
           paddingTop: '64px',
           minHeight: '100vh',

@@ -24,6 +24,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://704collective.com/blog" },
 };
 
+export const dynamic = "force-static";
 export const revalidate = 60;
 
 async function getPublishedPosts(): Promise<BlogPostRow[]> {
@@ -47,7 +48,7 @@ export default async function BlogPage() {
   return (
     <>
       <Nav />
-      <main style={{ paddingTop: "64px" }}>
+      <main id="main-content" style={{ paddingTop: "64px" }}>
         <MarketingPageRoot>
           <section
             style={{
@@ -200,10 +201,11 @@ export default async function BlogPage() {
                           {post.cover_image_url ? (
                             <Image
                               src={post.cover_image_url}
-                              alt=""
+                              alt={post.title ? `Cover: ${post.title}` : "Blog post cover"}
                               fill
                               className="object-cover"
                               sizes="(max-width: 640px) 100vw, 200px"
+                              loading="lazy"
                             />
                           ) : (
                             <div className="absolute inset-0 flex items-center justify-center">
@@ -212,6 +214,7 @@ export default async function BlogPage() {
                                 alt=""
                                 width={64}
                                 height={64}
+                                loading="lazy"
                                 style={{ opacity: 0.25, objectFit: "contain" }}
                               />
                             </div>

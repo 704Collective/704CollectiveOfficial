@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -24,6 +25,7 @@ import {
   Upload, Heart, Send, Loader2, X, Paperclip, Plus,
 } from 'lucide-react';
 import { DASHBOARD_MAIN, DASHBOARD_MAIN_WIDE } from '@/lib/dashboard-layout';
+import { HERO_BLUR_DATA_URL } from '@/lib/heroBlur';
 import { cn } from '@/lib/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -171,8 +173,13 @@ function HubFeedPost({
           </div>
         </div>
         {(post.author_id === currentUserId || isAdmin) && (
-          <button onClick={deletePost} className="text-white/30 hover:text-red-400 transition-colors p-1">
-            <Trash2 className="h-4 w-4" />
+          <button
+            type="button"
+            onClick={deletePost}
+            className="text-white/30 hover:text-red-400 transition-colors p-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A664]"
+            aria-label="Delete post"
+          >
+            <Trash2 className="h-4 w-4" aria-hidden />
           </button>
         )}
       </div>
@@ -184,9 +191,17 @@ function HubFeedPost({
       {post.image_urls && post.image_urls.length > 0 && (
         <div className={`grid gap-1 mb-3 ${post.image_urls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
           {post.image_urls.map((url, i) => (
-            <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="" className="rounded-lg w-full object-cover max-h-64" />
+            <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block">
+              <div className="relative w-full aspect-video max-h-64 rounded-lg overflow-hidden bg-black/20">
+                <Image
+                  src={url}
+                  alt={post.content ? `Image ${i + 1} on hub post` : `Hub post image ${i + 1}`}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width:768px) 100vw, 50vw"
+                  loading="lazy"
+                />
+              </div>
             </a>
           ))}
         </div>
@@ -207,12 +222,22 @@ function HubFeedPost({
 
       {/* Actions */}
       <div className="flex items-center gap-4 pt-2 border-t border-white/5">
-        <button onClick={toggleLike} className={`flex items-center gap-1.5 text-xs transition-colors ${liked ? 'text-red-400' : 'text-white/40 hover:text-white/70'}`}>
-          <Heart className={`h-4 w-4 ${liked ? 'fill-current' : ''}`} />
+        <button
+          type="button"
+          onClick={toggleLike}
+          aria-label={liked ? `Unlike post, ${likeCount} likes` : `Like post, ${likeCount} likes`}
+          className={`flex items-center gap-1.5 text-xs transition-colors rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A664] ${liked ? 'text-red-400' : 'text-white/40 hover:text-white/70'}`}
+        >
+          <Heart className={`h-4 w-4 ${liked ? 'fill-current' : ''}`} aria-hidden />
           {likeCount}
         </button>
-        <button onClick={toggleComments} className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors">
-          <MessageSquare className="h-4 w-4" />
+        <button
+          type="button"
+          onClick={toggleComments}
+          aria-label="Toggle comments"
+          className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A664]"
+        >
+          <MessageSquare className="h-4 w-4" aria-hidden />
           {post.comment_count + comments.length - (post.comment_count > 0 ? 0 : 0)}
         </button>
       </div>
@@ -674,7 +699,7 @@ export default function HubDetailPage() {
       <div className="min-h-screen bg-[#1A1A1A]">
         <Header />
         <DashboardNav />
-        <main className={cn(DASHBOARD_MAIN_WIDE)}>
+        <main id="main-content" className={cn(DASHBOARD_MAIN_WIDE)}>
           <Skeleton className="h-48 rounded-2xl bg-[#2E2E2E] mb-6" />
           <Skeleton className="h-8 w-48 bg-[#2E2E2E]" />
         </main>
@@ -687,7 +712,7 @@ export default function HubDetailPage() {
       <div className="min-h-screen bg-[#1A1A1A]">
         <Header />
         <DashboardNav />
-        <main className={cn(DASHBOARD_MAIN_WIDE, 'text-center')}>
+        <main id="main-content" className={cn(DASHBOARD_MAIN_WIDE, 'text-center')}>
           <p className="text-white/40">Hub not found.</p>
           <Button variant="link" className="text-[#D4A853]" onClick={() => router.push('/dashboard/hubs')}>Back to Hubs</Button>
         </main>
@@ -705,18 +730,29 @@ export default function HubDetailPage() {
     <div className="min-h-screen bg-[#1A1A1A]">
       <Header />
       <DashboardNav />
-      <main className={cn(DASHBOARD_MAIN)}>
+      <main id="main-content" className={cn(DASHBOARD_MAIN)}>
         {/* Back */}
-        <button onClick={() => router.push('/dashboard/hubs')}
-          className="mb-5 flex w-full items-center justify-center gap-1.5 text-sm text-white/50 transition-colors hover:text-white sm:w-auto sm:justify-start">
-          <ChevronLeft className="h-4 w-4" /> All Hubs
+        <button
+          type="button"
+          onClick={() => router.push('/dashboard/hubs')}
+          className="mb-5 flex w-full items-center justify-center gap-1.5 text-sm text-white/50 transition-colors hover:text-white sm:w-auto sm:justify-start rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C6A664]"
+        >
+          <ChevronLeft className="h-4 w-4" aria-hidden /> All Hubs
         </button>
 
         {/* Hub header */}
         <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-[#D4A853]/20 via-[#1A1A1A] to-[#D4A853]/10 border border-white/10 mb-6">
           {hub.header_image_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={hub.header_image_url} alt={hub.title} className="absolute inset-0 w-full h-full object-cover opacity-40" />
+            <Image
+              src={hub.header_image_url}
+              alt=""
+              fill
+              className="object-cover opacity-40"
+              sizes="100vw"
+              priority
+              placeholder="blur"
+              blurDataURL={HERO_BLUR_DATA_URL}
+            />
           )}
           <div className="relative z-10 p-6 flex items-end justify-between gap-4">
             <div>

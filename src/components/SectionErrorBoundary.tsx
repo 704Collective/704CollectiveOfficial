@@ -6,12 +6,25 @@ import { Button } from '@/components/ui/button';
 
 function SectionFallback({ resetError }: { resetError: () => void }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-6 text-center space-y-3">
-      <AlertTriangle className="w-6 h-6 text-muted-foreground mx-auto" />
-      <p className="text-sm text-muted-foreground">
-        Couldn't load this section. Try refreshing.
+    <div
+      role="alert"
+      className="rounded-xl border border-white/[0.08] bg-[#1E1E1E] p-8 text-center shadow-sm space-y-4"
+    >
+      <div className="flex justify-center">
+        <div className="rounded-full bg-white/[0.06] p-3">
+          <AlertTriangle className="w-6 h-6 text-[#C6A664]/80" aria-hidden />
+        </div>
+      </div>
+      <p className="text-sm text-[#FAF6F0]/85 leading-relaxed">
+        Something went wrong loading this section
       </p>
-      <Button variant="outline" size="sm" onClick={resetError}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="border-white/15 text-[#FAF6F0] hover:bg-white/[0.06] focus-visible:ring-2 focus-visible:ring-[#C6A664]"
+        onClick={resetError}
+      >
         Retry
       </Button>
     </div>

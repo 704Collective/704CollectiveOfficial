@@ -1,5 +1,6 @@
 'use client';
 
+import NextImage from 'next/image';
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -178,7 +179,18 @@ function BlockPreview({ block }: { block: Block }) {
       return (
         <div className="py-2 flex justify-center">
           {c.url
-            ? <img src={c.url} alt={c.alt} className="max-w-full rounded-lg max-h-48 object-cover" />
+            ? (
+                <NextImage
+                  src={c.url}
+                  alt={c.alt || 'Campaign image'}
+                  width={800}
+                  height={384}
+                  className="max-w-full rounded-lg max-h-48 object-cover w-auto h-auto"
+                  sizes="(max-width:768px) 100vw, 600px"
+                  loading="lazy"
+                  unoptimized
+                />
+              )
             : <div className="w-full h-24 bg-muted rounded-lg flex items-center justify-center text-muted-foreground text-sm">Image URL required</div>
           }
         </div>

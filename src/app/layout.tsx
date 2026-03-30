@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { SkipLink } from "@/components/SkipLink";
 import ScrollProgress from "@/components/ScrollProgress";
 import ScrollToTop from "@/components/ScrollToTop";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -87,6 +88,7 @@ export default function RootLayout({
         <JsonLd schema={organizationSchema704} />
       </head>
       <body>
+        <SkipLink />
         <ErrorBoundary>
           <Providers>
             <ScrollProgress />

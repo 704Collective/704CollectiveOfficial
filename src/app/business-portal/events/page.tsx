@@ -144,7 +144,7 @@ export default function BusinessEventsPage() {
             {format(calendarDate, 'MMMM yyyy')}
           </h2>
           <div className="flex gap-2">
-            <Button variant="outline" size="icon" onClick={() => setCalendarDate(d => subMonths(d, 1))}
+            <Button variant="outline" size="icon" aria-label="Previous month" onClick={() => setCalendarDate(d => subMonths(d, 1))}
               style={{ borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.5)' }}>
               <ChevronLeft className="w-4 h-4" />
             </Button>
@@ -152,7 +152,7 @@ export default function BusinessEventsPage() {
               style={{ borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.5)', fontSize: '0.8125rem' }}>
               Today
             </Button>
-            <Button variant="outline" size="icon" onClick={() => setCalendarDate(d => addMonths(d, 1))}
+            <Button variant="outline" size="icon" aria-label="Next month" onClick={() => setCalendarDate(d => addMonths(d, 1))}
               style={{ borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.5)' }}>
               <ChevronRight className="w-4 h-4" />
             </Button>
@@ -234,7 +234,7 @@ export default function BusinessEventsPage() {
   return (
     <>
       <BusinessPortalNav />
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+      <main id="main-content" className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">

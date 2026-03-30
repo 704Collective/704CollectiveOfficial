@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   if (!success) {
     await recordRateLimit429(request, '/api/create-checkout-session');
     return NextResponse.json(
-      { error: 'Too many requests' },
+      { error: 'Too many requests', message: 'Too many requests' },
       { status: 429, headers: { 'Retry-After': '60' } }
     );
   }
@@ -32,7 +32,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (!prices.data.length) {
-      return NextResponse.json({ error: 'No active price found' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'No active price found', message: 'No active price found' },
+        { status: 400 }
+      );
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -45,7 +48,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ clientSecret: session.client_secret });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Stripe checkout session error:', message);
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('Stripe checkout session error');
+    return NextResponse.json({ error: message, message }, { status: 500 });
   }
 }

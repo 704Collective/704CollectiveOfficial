@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import NextImage from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { notifyNewConversation } from '@/app/actions/notifyNewConversation';
@@ -247,9 +248,16 @@ function MessageBubble({
           {msg.image_urls && msg.image_urls.length > 0 && (
             <div className="grid grid-cols-2 gap-1 mt-2">
               {msg.image_urls.map((url, i) => (
-                <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt="" className="rounded w-full object-cover max-h-32" />
+                <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="relative block w-full max-h-32 rounded overflow-hidden">
+                  <NextImage
+                    src={url}
+                    alt=""
+                    width={400}
+                    height={200}
+                    className="rounded w-full h-auto max-h-32 object-cover"
+                    sizes="(max-width:768px) 100vw, 400px"
+                    loading="lazy"
+                  />
                 </a>
               ))}
             </div>

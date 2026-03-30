@@ -24,6 +24,7 @@ import { Crown, AlertCircle, CreditCard, Loader2, Lightbulb, Heart, ArrowRight, 
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DashboardOverviewSkeleton } from '@/components/dashboard/DashboardLoadingSkeletons';
 import { supabase } from '@/integrations/supabase/client';
 import { DASHBOARD_MAIN } from '@/lib/dashboard-layout';
 import { cn } from '@/lib/utils';
@@ -235,7 +236,9 @@ export default function Dashboard() {
       .from('profiles')
       .update({ last_seen_at: new Date().toISOString() })
       .eq('id', user.id)
-      .then(() => {});
+      .then(({ error }) => {
+        if (error) console.error('[dashboard] last_seen update failed');
+      });
   }, [user]);
 
   // Load business application when profile is available.
@@ -254,7 +257,8 @@ export default function Dashboard() {
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle()
-        .then(({ data }) => {
+        .then(({ data, error: baErr }) => {
+          if (baErr) console.error('[dashboard] business_applications fetch failed');
           setApplication(data ?? null);
         });
     }
@@ -284,11 +288,7 @@ export default function Dashboard() {
     }
   }, [loading, user, router]);
 
-  if (loading) return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-    </div>
-  );
+  if (loading) return <DashboardOverviewSkeleton />;
 
   // Auth resolved but no user — redirect is in flight via the effect above.
   if (!user || !profile) return null;
@@ -352,7 +352,7 @@ export default function Dashboard() {
         onSuggestClick={() => setSuggestModalOpen(true)}
       />
 
-      <main className={cn(DASHBOARD_MAIN, 'space-y-6')}>
+      <main id="main-content" className={cn(DASHBOARD_MAIN, 'space-y-6')}>
 
         {/* Past due warning */}
         {isPastDue && (

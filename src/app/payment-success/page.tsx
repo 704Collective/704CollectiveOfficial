@@ -74,7 +74,7 @@ function PaymentSuccess() {
             </Link>
           </div>
         </header>
-        <main className="container py-20">
+        <main id="main-content" className="container py-20">
           <MarketingPageRoot>
           <div className="max-w-md mx-auto text-center space-y-8">
             <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
@@ -123,7 +123,7 @@ function PaymentSuccess() {
         </div>
       </header>
 
-      <main className="container py-20">
+      <main id="main-content" className="container py-20">
         <MarketingPageRoot>
         <div className="max-w-md mx-auto text-center space-y-8">
           <div className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">

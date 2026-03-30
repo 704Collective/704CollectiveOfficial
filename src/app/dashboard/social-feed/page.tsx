@@ -8,7 +8,7 @@ import { FeedView } from '@/components/portal/FeedView';
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
 import { useAuth } from '@/hooks/useAuth';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import { Loader2 } from 'lucide-react';
+import { SocialOrBusinessFeedPageSkeleton } from '@/components/dashboard/DashboardLoadingSkeletons';
 import { DASHBOARD_MAIN } from '@/lib/dashboard-layout';
 import { cn } from '@/lib/utils';
 
@@ -29,11 +29,7 @@ export default function SocialFeedPage() {
   }, [loading, user, canAccess, router]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <SocialOrBusinessFeedPageSkeleton />;
   }
 
   if (!user || !canAccess) return null;
@@ -44,7 +40,7 @@ export default function SocialFeedPage() {
 
       <DashboardNav />
 
-      <main className={cn(DASHBOARD_MAIN, 'space-y-4')}>
+      <main id="main-content" className={cn(DASHBOARD_MAIN, 'space-y-4')}>
         <h1 className="text-2xl font-semibold text-foreground">Social Feed</h1>
         <SectionErrorBoundary>
           <FeedView

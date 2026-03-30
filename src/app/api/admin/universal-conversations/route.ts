@@ -15,7 +15,9 @@ export async function GET(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized', message: 'Unauthorized' }, { status: 401 });
+  }
 
   const { data: prof } = await supabase
     .from('profiles')
@@ -24,7 +26,7 @@ export async function GET(request: NextRequest) {
     .maybeSingle();
 
   if (prof?.role !== 'super_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    return NextResponse.json({ error: 'Forbidden', message: 'Forbidden' }, { status: 403 });
   }
 
   const q = request.nextUrl.searchParams.get('q')?.trim().toLowerCase() ?? '';

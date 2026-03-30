@@ -89,7 +89,7 @@ export default async function BlogPostPage({ params }: Props) {
   return (
     <>
       <Nav />
-      <main style={{ paddingTop: "64px", minHeight: "60vh" }}>
+      <main id="main-content" style={{ paddingTop: "64px", minHeight: "60vh" }}>
         <MarketingPageRoot>
           <article
             style={{

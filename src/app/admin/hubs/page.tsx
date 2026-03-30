@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
@@ -394,10 +395,9 @@ export default function AdminHubsPage() {
                   <TableRow key={hub.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-accent overflow-hidden shrink-0 flex items-center justify-center">
+                        <div className="relative h-9 w-9 rounded-lg bg-accent overflow-hidden shrink-0 flex items-center justify-center">
                           {hub.header_image_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={hub.header_image_url} alt="" className="w-full h-full object-cover" />
+                            <Image src={hub.header_image_url} alt="" fill className="object-cover" sizes="36px" loading="lazy" />
                           ) : (
                             <span className="text-xs font-bold text-primary opacity-40">704</span>
                           )}

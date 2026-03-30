@@ -93,7 +93,7 @@ export function AdminLayout({
         </header>
 
         {/* Page content */}
-        <main className="flex-1 pb-[calc(56px+env(safe-area-inset-bottom)+24px)] lg:pb-0">
+        <main id="main-content" className="flex-1 pb-[calc(56px+env(safe-area-inset-bottom)+24px)] lg:pb-0">
           <div className="w-full max-w-3xl mx-auto px-4 py-6 sm:px-6 md:max-w-5xl lg:px-8 lg:py-8">
             {title && (
               <h1 className="hidden lg:block text-2xl font-semibold text-foreground mb-6">

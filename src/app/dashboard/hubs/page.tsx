@@ -7,7 +7,8 @@ import { DashboardNav } from '@/components/DashboardNav';
 import { HubsView } from '@/components/portal/HubsView';
 import { useAuth } from '@/hooks/useAuth';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import { Loader2 } from 'lucide-react';
+import { HubsListingPageSkeleton } from '@/components/dashboard/DashboardLoadingSkeletons';
+import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
 import { DASHBOARD_MAIN_WIDE } from '@/lib/dashboard-layout';
 import { cn } from '@/lib/utils';
 
@@ -26,11 +27,7 @@ export default function HubsPage() {
   }, [loading, user, canAccess, router]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#1A1A1A] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#D4A853]" />
-      </div>
-    );
+    return <HubsListingPageSkeleton />;
   }
 
   if (!user || !canAccess) return null;
@@ -39,8 +36,10 @@ export default function HubsPage() {
     <div className="min-h-screen bg-[#1A1A1A]">
       <Header />
       <DashboardNav />
-      <main className={cn(DASHBOARD_MAIN_WIDE)}>
-        <HubsView />
+      <main id="main-content" className={cn(DASHBOARD_MAIN_WIDE)}>
+        <SectionErrorBoundary>
+          <HubsView />
+        </SectionErrorBoundary>
       </main>
     </div>
   );

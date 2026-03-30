@@ -18,7 +18,7 @@ export default function PartnerDetailError({
     <div className="min-h-screen bg-[#1A1A1A]">
       <Header />
       <DashboardNav />
-      <main className={cn(DASHBOARD_MAIN, 'py-16 text-center text-white/80')}>
+      <main id="main-content" className={cn(DASHBOARD_MAIN, 'py-16 text-center text-white/80')}>
         <p className="text-lg font-medium text-white mb-2">Could not load partner</p>
         <p className="text-sm text-white/50 mb-6">{error.message}</p>
         <div className="flex gap-2 justify-center">
