@@ -24,7 +24,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { notifyHubAdded } from '@/app/actions/notifyHubAdded';
 import { toast } from 'sonner';
 import {
-  Plus, Pencil, Trash2, Users, X, Search, Loader2, Upload, ChevronRight,
+  Plus, Pencil, Trash2, Users, X, Search, Loader2, Upload,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -159,7 +159,7 @@ function HubFormModal({
             </div>
           </div>
           <Button onClick={save} disabled={!title.trim() || saving}
-            className="w-full bg-[#D4A853] hover:bg-[#B8923F] text-[#1A1A1A] font-semibold">
+            className="w-full bg-[#C6A664] hover:bg-[#C6A664] text-[#1A1A1A] font-semibold">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : existing ? 'Save Changes' : 'Create Hub'}
           </Button>
         </div>
@@ -266,13 +266,13 @@ function ManageMembersModal({
             <div className="space-y-1 max-h-40 overflow-y-auto">
               {searchResults.map((m) => (
                 <div key={m.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#2E2E2E] hover:bg-[#3E3E3E]">
-                  <Avatar className="h-7 w-7"><AvatarImage src={m.avatar_url ?? undefined} /><AvatarFallback className="bg-[#1A1A1A] text-[#D4A853] text-xs">{initials(m.full_name)}</AvatarFallback></Avatar>
+                  <Avatar className="h-7 w-7"><AvatarImage src={m.avatar_url ?? undefined} /><AvatarFallback className="bg-[#1A1A1A] text-[#C6A664] text-xs">{initials(m.full_name)}</AvatarFallback></Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white truncate">{m.full_name}</p>
                     {m.title && <p className="text-xs text-white/40 truncate">{m.title}</p>}
                   </div>
                   <Button size="sm" onClick={() => addMember(m)} disabled={addingId === m.id}
-                    className="bg-[#D4A853] hover:bg-[#B8923F] text-[#1A1A1A] h-7 px-2 text-xs">
+                    className="bg-[#C6A664] hover:bg-[#C6A664] text-[#1A1A1A] h-7 px-2 text-xs">
                     {addingId === m.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Add'}
                   </Button>
                 </div>
@@ -285,7 +285,7 @@ function ManageMembersModal({
             <p className="text-xs text-white/50 mb-2">{members.length} current members</p>
             {members.map((m) => (
               <div key={m.user_id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#2E2E2E]">
-                <Avatar className="h-7 w-7"><AvatarImage src={m.profile?.avatar_url ?? undefined} /><AvatarFallback className="bg-[#1A1A1A] text-[#D4A853] text-xs">{initials(m.profile?.full_name || '?')}</AvatarFallback></Avatar>
+                <Avatar className="h-7 w-7"><AvatarImage src={m.profile?.avatar_url ?? undefined} /><AvatarFallback className="bg-[#1A1A1A] text-[#C6A664] text-xs">{initials(m.profile?.full_name || '?')}</AvatarFallback></Avatar>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-white truncate">{m.profile?.full_name}</p>
                   {m.profile?.title && <p className="text-xs text-white/40 truncate">{m.profile.title}</p>}

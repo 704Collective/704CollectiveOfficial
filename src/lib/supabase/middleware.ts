@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { postAuthDestination } from '@/lib/postAuthRedirect';
 
 // Paths that must bypass all authentication checks entirely.
 // Keeps static/public assets from triggering Supabase getUser() calls,
@@ -113,10 +114,16 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // ── 2. Logged in hitting login page → dashboard ────────────────────────────
+  // ── 2. Logged in hitting /login → role-appropriate home ────────────────────
   if (isAuthRoute && user) {
+    const { data: loginProfile } = await supabase
+      .from('profiles')
+      .select('role, member_type, subscription_status, membership_override')
+      .eq('id', user.id)
+      .is('deleted_at', null)
+      .maybeSingle();
     const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
+    url.pathname = postAuthDestination(loginProfile);
     return NextResponse.redirect(url);
   }
 

@@ -13,7 +13,6 @@ import Nav from '@/components/Nav';
 import { Footer } from '@/components/Footer';
 import {
   FadeUp,
-  FadeIn,
   StaggerContainer,
   StaggerItem,
 } from '@/components/Animations';

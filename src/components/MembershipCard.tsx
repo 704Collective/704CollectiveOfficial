@@ -71,19 +71,19 @@ export function MembershipCard({
         >
           {isBusiness ? (
             <>
-              <span className="block text-center text-[8px] font-bold uppercase leading-none tracking-[0.22em] text-[#D4C49A] sm:text-[9px] sm:tracking-[0.26em]">
+              <span className="block text-center text-[8px] font-bold uppercase leading-none tracking-[0.22em] text-[#C6A664] sm:text-[9px] sm:tracking-[0.26em]">
                 Business
               </span>
-              <span className="mt-1 block text-center text-[7px] font-semibold uppercase leading-none tracking-[0.28em] text-[#D4C49A]/90 sm:text-[8px]">
+              <span className="mt-1 block text-center text-[7px] font-semibold uppercase leading-none tracking-[0.28em] text-[#C6A664]/90 sm:text-[8px]">
                 Member
               </span>
             </>
           ) : (
             <>
-              <span className="block text-center text-[8px] font-bold uppercase leading-none tracking-[0.2em] text-[#D4C49A] sm:text-[9px]">
+              <span className="block text-center text-[8px] font-bold uppercase leading-none tracking-[0.2em] text-[#C6A664] sm:text-[9px]">
                 Social
               </span>
-              <span className="mt-1 block text-center text-[7px] font-semibold uppercase leading-none tracking-[0.24em] text-[#D4C49A]/90 sm:text-[8px]">
+              <span className="mt-1 block text-center text-[7px] font-semibold uppercase leading-none tracking-[0.24em] text-[#C6A664]/90 sm:text-[8px]">
                 Member
               </span>
             </>

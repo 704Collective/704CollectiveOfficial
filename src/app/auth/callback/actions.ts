@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { postAuthDestination } from '@/lib/postAuthRedirect';
 
 /**
  * Server action: exchanges the OAuth PKCE code for a Supabase session.
@@ -58,26 +59,10 @@ export async function handleOAuthCallback(
     .eq('id', user.id)
     .maybeSingle();
 
-  const isActive =
-    profile?.subscription_status === 'active' ||
-    profile?.subscription_status === 'trialing' ||
-    profile?.membership_override === true;
+  let destination = postAuthDestination(profile);
 
-  const isAdmin =
-    profile?.role === 'admin' ||
-    profile?.role === 'super_admin';
-
-  const isNonMember =
-    profile?.member_type === 'social_non_member' ||
-    profile?.member_type === 'business_non_member' ||
-    profile?.member_type === 'non_member';
-
-  let destination = '/dashboard';
-
-  if (source === 'login' && !isActive && !isAdmin && !isNonMember) {
+  if (source === 'login' && destination === '/signup') {
     destination = '/signup?error=no_account';
-  } else if (!isActive && !isAdmin && !isNonMember) {
-    destination = '/signup';
   }
 
   return destination;

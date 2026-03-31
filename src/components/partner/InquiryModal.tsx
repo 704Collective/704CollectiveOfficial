@@ -116,7 +116,7 @@ export function InquiryModal({ open, onOpenChange, inquiryType, event }: Inquiry
         onOpenChange(v);
       }}
     >
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto border-white/10 bg-[#141414] text-white">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto border-white/10 bg-[#2E2E2E] text-white">
         <DialogHeader>
           <DialogTitle className="text-lg">
             {inquiryType === 'vendor' && 'Vendor inquiry'}

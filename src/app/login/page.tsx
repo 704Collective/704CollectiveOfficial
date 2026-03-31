@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
 import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
+import { postAuthDestination } from '@/lib/postAuthRedirect';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -37,7 +38,7 @@ export default function LoginPage() {
 function Login() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const isDeactivated = searchParams.get('deactivated') === 'true';
   const isBanned = searchParams.get('error') === 'banned';
   usePageTitle('Login');
@@ -77,13 +78,13 @@ function Login() {
   const [showGoogleHint, setShowGoogleHint] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!authLoading && user && profile) {
       const path = window.location.pathname;
       if (path !== '/setup-password' && path !== '/update-password') {
-        router.push('/dashboard');
+        router.replace(postAuthDestination(profile));
       }
     }
-  }, [user, authLoading, router]);
+  }, [user, profile, authLoading, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,8 +131,22 @@ function Login() {
       return;
     }
 
+    const { data: authUser } = await supabase.auth.getUser();
+    const uid = authUser.user?.id;
+    if (!uid) {
+      setLoading(false);
+      toast.error('Could not resolve session');
+      return;
+    }
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('role, member_type, subscription_status, membership_override')
+      .eq('id', uid)
+      .maybeSingle();
+
     toast.success('Welcome back!');
-    router.push('/dashboard');
+    router.push(postAuthDestination(prof));
+    setLoading(false);
   };
 
   const handleGoogleLogin = async () => {

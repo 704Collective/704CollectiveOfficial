@@ -181,7 +181,7 @@ export function MessagesPageShellSkeleton() {
 export function PartnerPortalLayoutSkeleton() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0a0a0a" }}>
-      <Skeleton className="h-16 w-full rounded-none bg-[#2a2a2a]" />
+      <Skeleton className="h-16 w-full rounded-none bg-[#2E2E2E]" />
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-4">
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <Skeleton className="h-12 w-48 rounded-lg" />

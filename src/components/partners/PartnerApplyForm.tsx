@@ -143,7 +143,7 @@ export function PartnerApplyForm({
 
           <form
             onSubmit={(e) => void handleSubmit(e)}
-            className="space-y-6 rounded-2xl border border-white/[0.08] bg-[#141414] p-6 sm:p-8 shadow-xl shadow-black/20"
+            className="space-y-6 rounded-2xl border border-white/[0.08] bg-[#2E2E2E] p-6 sm:p-8 shadow-xl shadow-black/20"
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">

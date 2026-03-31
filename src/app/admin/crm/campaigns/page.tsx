@@ -9,13 +9,12 @@ import {
   Plus, MoreHorizontal, Search, X, ArrowLeft, Send, Clock,
   BarChart2, Copy, Trash2, ChevronUp, ChevronDown, GripVertical,
   Type, Image as ImageIcon, MousePointer, Minus, AlignLeft,
-  Calendar, Space, Code, Loader2, Users, ChevronDown as ChevronDownIcon,
+  Calendar, Space, Loader2, Users, ChevronDown as ChevronDownIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,

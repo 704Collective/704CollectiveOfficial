@@ -58,7 +58,7 @@ export function Header() {
       toast.error('Failed to sign out');
     } else {
       toast.success('Signed out successfully');
-      router.push('/');
+      router.push('/login');
     }
   }, [router]);
 

@@ -135,7 +135,7 @@ export default function PartnerListingDetailPage() {
   if (loading || !user || isPartnerAccount || !canAccess) {
     return (
       <div className="min-h-screen bg-[#1A1A1A] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#D4A853]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#C6A664]" />
       </div>
     );
   }
@@ -146,7 +146,7 @@ export default function PartnerListingDetailPage() {
         <Header />
         <DashboardNav />
         <div className="flex justify-center py-24">
-          <Loader2 className="h-8 w-8 animate-spin text-[#D4A853]" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#C6A664]" />
         </div>
       </div>
     );
@@ -202,7 +202,7 @@ export default function PartnerListingDetailPage() {
             <h1 className="text-2xl sm:text-3xl font-bold text-white mt-6 text-center">{listing.company_name}</h1>
             <div className="flex flex-wrap gap-2 justify-center mt-4">
               {(listing.partner_types ?? []).map((t) => (
-                <Badge key={t} className="bg-[#D4A853]/20 text-[#D4A853] border-0">
+                <Badge key={t} className="bg-[#C6A664]/20 text-[#C6A664] border-0">
                   {typeLabel(t)}
                 </Badge>
               ))}
@@ -221,7 +221,7 @@ export default function PartnerListingDetailPage() {
                   href={href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-[#D4A853] hover:underline text-sm font-medium"
+                  className="inline-flex items-center gap-2 text-[#C6A664] hover:underline text-sm font-medium"
                 >
                   <ExternalLink className="h-4 w-4" />
                   Visit website
@@ -236,7 +236,7 @@ export default function PartnerListingDetailPage() {
 
             <Button
               type="button"
-              className="w-full sm:w-auto gap-2 bg-[#D4A853] text-black hover:bg-[#c49b4a]"
+              className="w-full sm:w-auto gap-2 bg-[#C6A664] text-black hover:bg-[#C6A664]"
               onClick={() => void handleSendMessage()}
               disabled={msgBusy}
             >

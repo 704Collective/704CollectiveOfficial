@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
-  ArrowLeft, Search, Users, Mail, ChevronLeft, ChevronRight, UserX,
+  ArrowLeft, Search, Mail, ChevronLeft, ChevronRight, UserX,
 } from 'lucide-react';
 
 // ── Types ────────────────────────────────────────────────────────────────────

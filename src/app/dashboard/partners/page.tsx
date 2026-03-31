@@ -56,7 +56,7 @@ function PartnersGridBody({
   if (filtered.length === 0) {
     return (
       <div className="mx-auto max-w-2xl rounded-xl border border-white/10 bg-white/[0.03] px-6 py-16 text-center">
-        <Handshake className="h-12 w-12 mx-auto text-[#D4A853]/60 mb-4" />
+        <Handshake className="h-12 w-12 mx-auto text-[#C6A664]/60 mb-4" />
         <p className="text-white/80 font-medium">
           {listings.length === 0 ? 'No approved partners in the directory yet.' : 'No partners match your search.'}
         </p>
@@ -75,7 +75,7 @@ function PartnersGridBody({
         <Link
           key={l.id}
           href={`/dashboard/partners/${l.id}`}
-          className="group rounded-xl border border-white/10 bg-white/[0.04] p-5 transition-colors hover:border-[#D4A853]/40 hover:bg-white/[0.06]"
+          className="group rounded-xl border border-white/10 bg-white/[0.04] p-5 transition-colors hover:border-[#C6A664]/40 hover:bg-white/[0.06]"
         >
           <div className="flex gap-4">
             <div className="relative h-16 w-16 shrink-0 rounded-lg bg-white/10 overflow-hidden border border-white/10">
@@ -88,7 +88,7 @@ function PartnersGridBody({
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="font-semibold text-white truncate group-hover:text-[#D4A853] transition-colors">
+              <h2 className="font-semibold text-white truncate group-hover:text-[#C6A664] transition-colors">
                 {l.company_name}
               </h2>
               <div className="flex flex-wrap gap-1 mt-2">
@@ -175,7 +175,7 @@ export default function DashboardPartnersDirectoryPage() {
   if (loading || !user || isPartnerAccount || !canAccess) {
     return (
       <div className="min-h-screen bg-[#1A1A1A] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#D4A853]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#C6A664]" />
       </div>
     );
   }
@@ -214,7 +214,7 @@ export default function DashboardPartnersDirectoryPage() {
 
           {dataLoading ? (
             <div className="flex justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-[#D4A853]" />
+              <Loader2 className="h-8 w-8 animate-spin text-[#C6A664]" />
             </div>
           ) : (
             <SectionErrorBoundary>

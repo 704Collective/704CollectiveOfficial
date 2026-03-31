@@ -20,8 +20,8 @@ export default function PartnerApplySubmittedPage() {
           <Link href="/" className="inline-block mb-8">
             <Image src="/logo-nav.png" alt="704 Collective" width={56} height={56} />
           </Link>
-          <div className="w-16 h-16 rounded-full bg-[#D4A853]/15 flex items-center justify-center mx-auto mb-6">
-            <CheckCircle2 className="w-9 h-9 text-[#D4A853]" strokeWidth={2} />
+          <div className="w-16 h-16 rounded-full bg-[#C6A664]/15 flex items-center justify-center mx-auto mb-6">
+            <CheckCircle2 className="w-9 h-9 text-[#C6A664]" strokeWidth={2} />
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-4">Application Submitted!</h1>
           <p className="text-white/65 leading-relaxed mb-10">
@@ -30,7 +30,7 @@ export default function PartnerApplySubmittedPage() {
           </p>
           <Link
             href="/"
-            className="inline-flex items-center justify-center px-8 py-3 rounded-lg bg-[#D4A853] hover:bg-[#C6A664] text-[#1A1A1A] font-semibold transition-colors"
+            className="inline-flex items-center justify-center px-8 py-3 rounded-lg bg-[#C6A664] hover:bg-[#C6A664] text-[#1A1A1A] font-semibold transition-colors"
           >
             Back to homepage
           </Link>

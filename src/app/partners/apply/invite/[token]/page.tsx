@@ -32,7 +32,7 @@ export default async function PartnerInviteApplyPage({ params }: Props) {
           <div className="max-w-md text-center rounded-2xl border border-red-500/30 bg-red-950/20 p-8">
             <h1 className="text-xl font-semibold text-white mb-3">Invite unavailable</h1>
             <p className="text-white/65 text-sm mb-8">{msg}</p>
-            <Link href="/partners/apply" className="text-[#D4A853] text-sm font-medium hover:underline">
+            <Link href="/partners/apply" className="text-[#C6A664] text-sm font-medium hover:underline">
               Apply without an invite
             </Link>
           </div>

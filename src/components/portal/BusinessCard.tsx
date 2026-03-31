@@ -74,29 +74,29 @@ function CardDisplay({ card, className = '' }: { card: BusinessCardData; classNa
   return (
     <div
       id="business-card-printable"
-      className={`relative bg-gradient-to-br from-[#1A1A1A] via-[#242424] to-[#1A1A1A] border border-[#D4A853]/30 rounded-2xl p-6 overflow-hidden shadow-2xl ${className}`}
+      className={`relative bg-gradient-to-br from-[#1A1A1A] via-[#242424] to-[#1A1A1A] border border-[#C6A664]/30 rounded-2xl p-6 overflow-hidden shadow-2xl ${className}`}
     >
       {/* Gold accent lines */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#D4A853]/60 to-transparent" />
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#D4A853]/30 to-transparent" />
-      <div className="absolute top-0 bottom-0 left-0 w-px bg-gradient-to-b from-transparent via-[#D4A853]/20 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#C6A664]/60 to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#C6A664]/30 to-transparent" />
+      <div className="absolute top-0 bottom-0 left-0 w-px bg-gradient-to-b from-transparent via-[#C6A664]/20 to-transparent" />
 
       {/* 704 watermark */}
-      <span className="absolute top-4 right-4 text-[#D4A853]/8 font-black text-5xl select-none pointer-events-none leading-none">
+      <span className="absolute top-4 right-4 text-[#C6A664]/8 font-black text-5xl select-none pointer-events-none leading-none">
         704
       </span>
 
       <div className="flex items-start gap-4 relative">
-        <Avatar className="h-16 w-16 ring-2 ring-[#D4A853]/30 shrink-0">
+        <Avatar className="h-16 w-16 ring-2 ring-[#C6A664]/30 shrink-0">
           <AvatarImage src={card.avatar_url ?? undefined} alt={memberDisplayName(card.full_name)} />
-          <AvatarFallback className="bg-[#2E2E2E] text-[#D4A853] text-xl">
+          <AvatarFallback className="bg-[#2E2E2E] text-[#C6A664] text-xl">
             {initialsFromFullName(card.full_name)}
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1 pt-1">
           <h3 className="text-lg font-bold text-white leading-tight">{memberDisplayName(card.full_name)}</h3>
           {card.title && (
-            <p className="text-sm text-[#D4A853] font-medium mt-0.5 leading-tight">{card.title}</p>
+            <p className="text-sm text-[#C6A664] font-medium mt-0.5 leading-tight">{card.title}</p>
           )}
           {card.company && (
             <p className="text-sm text-white/60 mt-0.5 leading-tight">{card.company}</p>
@@ -130,11 +130,11 @@ function CardDisplay({ card, className = '' }: { card: BusinessCardData; classNa
 
       {/* 704 Collective branding */}
       <div className="mt-4 flex items-center gap-1.5">
-        <div className="h-px flex-1 bg-[#D4A853]/20" />
-        <span className="text-[9px] text-[#D4A853]/50 font-semibold tracking-widest uppercase">
+        <div className="h-px flex-1 bg-[#C6A664]/20" />
+        <span className="text-[9px] text-[#C6A664]/50 font-semibold tracking-widest uppercase">
           704 Collective
         </span>
-        <div className="h-px flex-1 bg-[#D4A853]/20" />
+        <div className="h-px flex-1 bg-[#C6A664]/20" />
       </div>
     </div>
   );
@@ -153,7 +153,7 @@ function ContactItem({
 }) {
   const inner = (
     <span className="flex items-center gap-1.5 text-xs text-white/60 hover:text-white/90 transition-colors truncate">
-      <span className="text-[#D4A853]/70 shrink-0">{icon}</span>
+      <span className="text-[#C6A664]/70 shrink-0">{icon}</span>
       <span className="truncate">{value}</span>
     </span>
   );
@@ -304,7 +304,7 @@ function EditModal({ open, onClose, userId, existing, onSaved }: EditModalProps)
           <div>
             <div className="flex items-center justify-between mb-2">
               <Label className="text-white/70 text-xs">Custom Fields</Label>
-              <button onClick={addCustomField} className="text-xs text-[#D4A853] hover:underline flex items-center gap-1">
+              <button onClick={addCustomField} className="text-xs text-[#C6A664] hover:underline flex items-center gap-1">
                 <Plus className="h-3 w-3" /> Add Field
               </button>
             </div>
@@ -334,7 +334,7 @@ function EditModal({ open, onClose, userId, existing, onSaved }: EditModalProps)
           <Button
             onClick={save}
             disabled={saving}
-            className="w-full bg-[#D4A853] hover:bg-[#B8923F] text-[#1A1A1A] font-semibold"
+            className="w-full bg-[#C6A664] hover:bg-[#C6A664] text-[#1A1A1A] font-semibold"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : existing ? 'Save Changes' : 'Create Card'}
           </Button>
@@ -397,7 +397,7 @@ export function BusinessCard({ userId, card: initialCard, isOwner, onCardUpdated
         </div>
         <Button
           onClick={() => setEditOpen(true)}
-          className="bg-[#D4A853] hover:bg-[#B8923F] text-[#1A1A1A] font-semibold gap-2"
+          className="bg-[#C6A664] hover:bg-[#C6A664] text-[#1A1A1A] font-semibold gap-2"
         >
           <Plus className="h-4 w-4" /> Create Card
         </Button>

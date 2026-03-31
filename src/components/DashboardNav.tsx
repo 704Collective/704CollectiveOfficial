@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -475,7 +475,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
       >
         <Icon
           className="h-5 w-5"
-          style={{ color: active ? '#141414' : GOLD }}
+          style={{ color: active ? '#1A1A1A' : GOLD }}
           aria-hidden
         />
         {entry.kind === 'link' && entry.badge != null && entry.badge > 0 && (

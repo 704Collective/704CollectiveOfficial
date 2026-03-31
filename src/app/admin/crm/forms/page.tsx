@@ -6,8 +6,8 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
   Plus, MoreHorizontal, Trash2, X, Loader2, ArrowLeft,
-  FileText, ChevronUp, ChevronDown, Copy, ExternalLink,
-  ToggleLeft, Eye, Settings,
+  FileText, ChevronUp, ChevronDown, Copy,
+  ToggleLeft, Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

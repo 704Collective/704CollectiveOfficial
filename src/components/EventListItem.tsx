@@ -1,7 +1,7 @@
 'use client';
 
 import { format } from 'date-fns';
-import { MapPin, Users, Loader2, Lock } from 'lucide-react';
+import { MapPin, Loader2, Lock } from 'lucide-react';
 import { CategoryBadge, EventCategory } from '@/components/CategoryBadge';
 
 interface EventListItemProps {

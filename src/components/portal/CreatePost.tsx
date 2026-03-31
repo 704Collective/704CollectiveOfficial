@@ -376,7 +376,7 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
           {libraryAttachments.map((lib) => (
             <div
               key={lib.url}
-              className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg text-sm border border-[#D4A853]/20"
+              className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg text-sm border border-[#C6A664]/20"
             >
               <span className="flex-1 truncate">{lib.name}</span>
               <span className="text-xs text-muted-foreground shrink-0">Library</span>

@@ -55,7 +55,7 @@ export default async function PublicCardPage({ params }: Props) {
     <div className="min-h-screen bg-[#1A1A1A] flex flex-col items-center justify-center px-4 py-16">
       <MarketingPageRoot>
       <div className="mb-8 text-center">
-        <p className="text-[#D4A853]/70 text-xs tracking-[0.35em] uppercase font-semibold mb-1">
+        <p className="text-[#C6A664]/70 text-xs tracking-[0.35em] uppercase font-semibold mb-1">
           704 Collective
         </p>
         <p className="text-white/35 text-xs">Digital business card</p>
@@ -66,13 +66,13 @@ export default async function PublicCardPage({ params }: Props) {
       </div>
 
       <div className="mt-12 text-center max-w-sm">
-        <div className="h-px bg-gradient-to-r from-transparent via-[#D4A853]/25 to-transparent mb-8" />
+        <div className="h-px bg-gradient-to-r from-transparent via-[#C6A664]/25 to-transparent mb-8" />
         <p className="text-white/45 text-sm mb-5 leading-relaxed">
           Connect with Charlotte&apos;s premier young professional and business community.
         </p>
         <Link
           href="https://704collective.com"
-          className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#D4A853] hover:bg-[#C6A664] text-[#1A1A1A] text-sm font-semibold rounded-lg transition-colors shadow-lg shadow-black/20"
+          className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#C6A664] hover:bg-[#C6A664] text-[#1A1A1A] text-sm font-semibold rounded-lg transition-colors shadow-lg shadow-black/20"
         >
           Join 704 Collective
         </Link>

@@ -11,8 +11,8 @@ import { formatDistanceToNow } from 'date-fns';
 import Image from 'next/image';
 import {
   Heart, MessageSquare, Share2, MoreHorizontal, Send,
-  Upload, X, Loader2, EyeOff, Trash2, Flag, VolumeX,
-  ChevronDown, ChevronUp, Globe, Briefcase,
+  Upload, X, Loader2, EyeOff, Trash2, VolumeX,
+  ChevronDown, Globe, Briefcase,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,

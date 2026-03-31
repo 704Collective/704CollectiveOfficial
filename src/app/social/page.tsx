@@ -11,11 +11,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { format, addDays } from 'date-fns';
 import {
   FadeUp,
-  SlideIn,
   StaggerContainer,
   StaggerItem,
   ScaleUp,
-  DrawLine,
   WordReveal,
 } from '@/components/Animations';
 import TiltCard from '@/components/TiltCard';

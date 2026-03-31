@@ -9,10 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Header } from '@/components/Header';
 import { DashboardNav } from '@/components/DashboardNav';
 import { useAuth } from '@/hooks/useAuth';
@@ -160,7 +158,7 @@ function HubFeedPost({
         <div className="flex items-center gap-3">
           <Avatar className="h-9 w-9">
             <AvatarImage src={post.author?.avatar_url ?? undefined} />
-            <AvatarFallback className="bg-[#1A1A1A] text-[#D4A853] text-xs">
+            <AvatarFallback className="bg-[#1A1A1A] text-[#C6A664] text-xs">
               {initials(post.author?.full_name || '?')}
             </AvatarFallback>
           </Avatar>
@@ -212,7 +210,7 @@ function HubFeedPost({
         <div className="space-y-1 mb-3">
           {post.file_urls.map((url, i) => (
             <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-2 text-xs text-[#D4A853] hover:underline">
+              className="flex items-center gap-2 text-xs text-[#C6A664] hover:underline">
               <Paperclip className="h-3 w-3" />
               {post.file_names?.[i] || 'File'}
             </a>
@@ -252,7 +250,7 @@ function HubFeedPost({
               <div key={c.id} className="flex gap-2">
                 <Avatar className="h-6 w-6 shrink-0 mt-0.5">
                   <AvatarImage src={c.author?.avatar_url ?? undefined} />
-                  <AvatarFallback className="bg-[#1A1A1A] text-[#D4A853] text-[9px]">
+                  <AvatarFallback className="bg-[#1A1A1A] text-[#C6A664] text-[9px]">
                     {initials(c.author?.full_name || '?')}
                   </AvatarFallback>
                 </Avatar>
@@ -272,7 +270,7 @@ function HubFeedPost({
               className="bg-[#1A1A1A] border-white/10 text-white text-xs placeholder:text-white/30 h-8"
             />
             <Button size="sm" onClick={submitComment} disabled={!commentDraft.trim() || sendingComment}
-              className="bg-[#D4A853] hover:bg-[#B8923F] text-[#1A1A1A] h-8 px-2">
+              className="bg-[#C6A664] hover:bg-[#C6A664] text-[#1A1A1A] h-8 px-2">
               {sendingComment ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
             </Button>
           </div>
@@ -382,7 +380,7 @@ function HubFeedTab({ hubId, currentUserId, isAdmin }: { hubId: string; currentU
           onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) createPost(); }}
           placeholder="Share something with this hub…"
           rows={3}
-          className="bg-[#1A1A1A] border-white/10 text-white text-sm placeholder:text-white/30 resize-none focus-visible:ring-[#D4A853]/50"
+          className="bg-[#1A1A1A] border-white/10 text-white text-sm placeholder:text-white/30 resize-none focus-visible:ring-[#C6A664]/50"
         />
         <div className="flex items-center justify-between">
           <div className="flex gap-2">
@@ -394,7 +392,7 @@ function HubFeedTab({ hubId, currentUserId, isAdmin }: { hubId: string; currentU
             </button>
           </div>
           <Button size="sm" onClick={createPost} disabled={!draft.trim() || posting}
-            className="bg-[#D4A853] hover:bg-[#B8923F] text-[#1A1A1A] font-semibold text-xs h-8 px-4">
+            className="bg-[#C6A664] hover:bg-[#C6A664] text-[#1A1A1A] font-semibold text-xs h-8 px-4">
             {posting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Post'}
           </Button>
         </div>
@@ -455,7 +453,7 @@ function HubMembersTab({ hubId, isAdmin }: { hubId: string; isAdmin: boolean }) 
           <div key={m.user_id} className="flex items-center gap-3 bg-[#2E2E2E] border border-white/10 rounded-xl px-4 py-3">
             <Avatar className="h-9 w-9">
               <AvatarImage src={m.profile?.avatar_url ?? undefined} />
-              <AvatarFallback className="bg-[#1A1A1A] text-[#D4A853] text-xs">
+              <AvatarFallback className="bg-[#1A1A1A] text-[#C6A664] text-xs">
                 {initials(m.profile?.full_name || '?')}
               </AvatarFallback>
             </Avatar>
@@ -559,14 +557,14 @@ function HubResourcesTab({ hubId, currentUserId, isAdmin }: { hubId: string; cur
           if (files.length) uploadFiles(files);
         }}
         className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
-          dragging ? 'border-[#D4A853] bg-[#D4A853]/5' : 'border-white/10 hover:border-white/20'
+          dragging ? 'border-[#C6A664] bg-[#C6A664]/5' : 'border-white/10 hover:border-white/20'
         }`}
         onClick={() => fileInputRef.current?.click()}
       >
         <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(e) => uploadFiles(Array.from(e.target.files ?? []))} />
         {uploading ? (
           <div className="flex flex-col items-center gap-2">
-            <Loader2 className="h-8 w-8 animate-spin text-[#D4A853]" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#C6A664]" />
             <p className="text-sm text-white/50">Uploading…</p>
           </div>
         ) : (
@@ -714,7 +712,7 @@ export default function HubDetailPage() {
         <DashboardNav />
         <main id="main-content" className={cn(DASHBOARD_MAIN_WIDE, 'text-center')}>
           <p className="text-white/40">Hub not found.</p>
-          <Button variant="link" className="text-[#D4A853]" onClick={() => router.push('/dashboard/hubs')}>Back to Hubs</Button>
+          <Button variant="link" className="text-[#C6A664]" onClick={() => router.push('/dashboard/hubs')}>Back to Hubs</Button>
         </main>
       </div>
     );
@@ -741,7 +739,7 @@ export default function HubDetailPage() {
         </button>
 
         {/* Hub header */}
-        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-[#D4A853]/20 via-[#1A1A1A] to-[#D4A853]/10 border border-white/10 mb-6">
+        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-[#C6A664]/20 via-[#1A1A1A] to-[#C6A664]/10 border border-white/10 mb-6">
           {hub.header_image_url && (
             <Image
               src={hub.header_image_url}
@@ -765,7 +763,7 @@ export default function HubDetailPage() {
             </div>
             {canManage && (
               <Button size="sm" onClick={openEdit}
-                className="bg-[#D4A853]/10 hover:bg-[#D4A853]/20 text-[#D4A853] border border-[#D4A853]/30 gap-1.5 shrink-0">
+                className="bg-[#C6A664]/10 hover:bg-[#C6A664]/20 text-[#C6A664] border border-[#C6A664]/30 gap-1.5 shrink-0">
                 <Pencil className="h-3.5 w-3.5" /> Edit Hub
               </Button>
             )}
@@ -777,7 +775,7 @@ export default function HubDetailPage() {
           {tabs.map((tab) => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
               className={`w-full sm:flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === tab.key ? 'bg-[#D4A853] text-[#1A1A1A]' : 'text-white/50 hover:text-white'
+                activeTab === tab.key ? 'bg-[#C6A664] text-[#1A1A1A]' : 'text-white/50 hover:text-white'
               }`}>
               {tab.icon} {tab.label}
             </button>
@@ -828,7 +826,7 @@ export default function HubDetailPage() {
               </div>
             </div>
             <Button onClick={saveEdit} disabled={!editTitle.trim() || editSaving}
-              className="w-full bg-[#D4A853] hover:bg-[#B8923F] text-[#1A1A1A] font-semibold">
+              className="w-full bg-[#C6A664] hover:bg-[#C6A664] text-[#1A1A1A] font-semibold">
               {editSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Changes'}
             </Button>
           </div>

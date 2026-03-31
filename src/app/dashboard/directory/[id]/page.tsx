@@ -209,7 +209,7 @@ export default function MemberProfilePage() {
         <DashboardNav />
         <main id="main-content" className="max-w-4xl mx-auto px-4 py-8 text-center">
           <p className="text-white/50">Member not found.</p>
-          <Button variant="link" className="text-[#D4A853] mt-4" onClick={() => router.back()}>
+          <Button variant="link" className="text-[#C6A664] mt-4" onClick={() => router.back()}>
             Go back
           </Button>
         </main>
@@ -226,7 +226,7 @@ export default function MemberProfilePage() {
 
   const memberTypeBadge =
     member.member_type === 'business'
-      ? { label: 'Business Member', color: 'bg-[#D4A853]/20 text-[#D4A853] border-[#D4A853]/30' }
+      ? { label: 'Business Member', color: 'bg-[#C6A664]/20 text-[#C6A664] border-[#C6A664]/30' }
       : member.member_type === 'social'
       ? { label: 'Social Member', color: 'bg-green-500/20 text-green-300 border-green-500/30' }
       : null;
@@ -250,9 +250,9 @@ export default function MemberProfilePage() {
         <div className="bg-[#2E2E2E] border border-white/10 rounded-2xl p-6 md:p-8">
           <div className="flex flex-col sm:flex-row gap-6 items-start">
             {/* Avatar */}
-            <Avatar className="h-24 w-24 ring-4 ring-[#D4A853]/20 shrink-0">
+            <Avatar className="h-24 w-24 ring-4 ring-[#C6A664]/20 shrink-0">
               <AvatarImage src={member.avatar_url ?? undefined} alt={memberDisplayName(member.full_name)} />
-              <AvatarFallback className="bg-[#1A1A1A] text-[#D4A853] text-3xl">
+              <AvatarFallback className="bg-[#1A1A1A] text-[#C6A664] text-3xl">
                 {initialsFromFullName(member.full_name)}
               </AvatarFallback>
             </Avatar>
@@ -277,7 +277,7 @@ export default function MemberProfilePage() {
                     <Button
                       onClick={handleMessage}
                       disabled={messagingLoading}
-                      className="bg-[#D4A853] hover:bg-[#B8923F] text-[#1A1A1A] font-semibold gap-2"
+                      className="bg-[#C6A664] hover:bg-[#C6A664] text-[#1A1A1A] font-semibold gap-2"
                     >
                       {messagingLoading ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -391,7 +391,7 @@ function InfoRow({
             href={href}
             target={external ? '_blank' : undefined}
             rel={external ? 'noopener noreferrer' : undefined}
-            className="text-sm text-[#D4A853] hover:underline truncate block"
+            className="text-sm text-[#C6A664] hover:underline truncate block"
           >
             {value}
           </a>

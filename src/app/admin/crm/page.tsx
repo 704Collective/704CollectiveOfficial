@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  Users, TrendingUp, DollarSign, GitPullRequest,
+  Users, DollarSign, GitPullRequest,
   Mail, Calendar, Activity, ArrowUpRight, ArrowDownRight,
-  Clock, CheckCircle2, Circle, AlertCircle,
+  Clock, CheckCircle2,
 } from 'lucide-react';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import {

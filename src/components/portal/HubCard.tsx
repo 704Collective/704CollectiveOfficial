@@ -19,9 +19,9 @@ interface Props {
 
 export function HubCard({ hub, onClick }: Props) {
   return (
-    <div className="bg-[#2E2E2E] border border-white/10 rounded-xl overflow-hidden flex flex-col hover:border-[#D4A853]/30 transition-colors group cursor-pointer" onClick={onClick}>
+    <div className="bg-[#2E2E2E] border border-white/10 rounded-xl overflow-hidden flex flex-col hover:border-[#C6A664]/30 transition-colors group cursor-pointer" onClick={onClick}>
       {/* Header image */}
-      <div className="h-28 relative overflow-hidden bg-gradient-to-br from-[#D4A853]/30 via-[#1A1A1A] to-[#D4A853]/10">
+      <div className="h-28 relative overflow-hidden bg-gradient-to-br from-[#C6A664]/30 via-[#1A1A1A] to-[#C6A664]/10">
         {hub.header_image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -31,7 +31,7 @@ export function HubCard({ hub, onClick }: Props) {
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-[#D4A853]/20 font-black text-5xl select-none">704</span>
+            <span className="text-[#C6A664]/20 font-black text-5xl select-none">704</span>
           </div>
         )}
       </div>
@@ -54,7 +54,7 @@ export function HubCard({ hub, onClick }: Props) {
           )}
           <Button
             size="sm"
-            className="ml-auto bg-[#D4A853]/10 hover:bg-[#D4A853]/20 text-[#D4A853] border border-[#D4A853]/30 text-xs h-7 px-3"
+            className="ml-auto bg-[#C6A664]/10 hover:bg-[#C6A664]/20 text-[#C6A664] border border-[#C6A664]/30 text-xs h-7 px-3"
             onClick={(e) => { e.stopPropagation(); onClick(); }}
           >
             View Hub

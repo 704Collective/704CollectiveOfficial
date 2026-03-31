@@ -158,7 +158,7 @@ export function NotificationBell() {
         <div style={{
           position: 'absolute', top: 'calc(100% + 8px)', right: 0,
           width: '360px', maxHeight: '480px',
-          backgroundColor: '#141414',
+          backgroundColor: '#2E2E2E',
           border: '1px solid rgba(255,255,255,0.08)',
           borderRadius: '14px',
           boxShadow: '0 20px 60px rgba(0,0,0,0.6)',

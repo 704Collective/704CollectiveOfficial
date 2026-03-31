@@ -3,12 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
 import {
-  Plus, MoreHorizontal, X, Loader2, ArrowLeft,
-  DollarSign, User, Building2, Calendar, FileText,
-  CheckCircle2, XCircle, Clock, AlertCircle, ChevronRight,
-  Mail, Phone, Trash2, Edit,
+  Plus, MoreHorizontal, Loader2, User, Building2, Clock,
+  Mail, Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
-  DialogFooter, DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,

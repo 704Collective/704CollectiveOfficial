@@ -8,14 +8,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { formatDistanceToNow, format, isToday, isYesterday } from 'date-fns';
+import { format, isToday, isYesterday } from 'date-fns';
 import Image from 'next/image';
 import {
-  Send, Plus, Search, Users, MessageSquare, X, Check,
-  MoreHorizontal, Loader2, ChevronLeft, UserPlus, Pencil,
+  Send, Search, Users, MessageSquare, X, Check,
+  MoreHorizontal, Loader2, ChevronLeft,
 } from 'lucide-react';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,

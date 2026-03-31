@@ -394,7 +394,7 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
           <Button
             type="button"
             disabled={saving}
-            className="bg-[#C6A664] text-[#1A1A1A] hover:bg-[#B8923F] order-1 sm:order-2"
+            className="bg-[#C6A664] text-[#1A1A1A] hover:bg-[#C6A664] order-1 sm:order-2"
             onClick={() => void save('published')}
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}

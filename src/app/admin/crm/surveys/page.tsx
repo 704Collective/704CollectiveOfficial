@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
   Plus, MoreHorizontal, Trash2, X, Loader2, ArrowLeft,
-  ClipboardCheck, ChevronUp, ChevronDown, Star, BarChart2,
+  ClipboardCheck, ChevronUp, ChevronDown, Star,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

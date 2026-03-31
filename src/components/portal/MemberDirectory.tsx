@@ -63,20 +63,20 @@ function MemberCard({
 
   const memberTypeBadge =
     member.member_type === 'business'
-      ? { label: 'Business', color: 'bg-[#D4A853]/20 text-[#D4A853] border-[#D4A853]/30' }
+      ? { label: 'Business', color: 'bg-[#C6A664]/20 text-[#C6A664] border-[#C6A664]/30' }
       : member.member_type === 'social'
       ? { label: 'Social', color: 'bg-green-500/20 text-green-300 border-green-500/30' }
       : null;
 
   return (
-    <div className="bg-[#2E2E2E] border border-white/10 rounded-xl p-5 flex flex-col gap-4 hover:border-[#D4A853]/30 transition-colors">
+    <div className="bg-[#2E2E2E] border border-white/10 rounded-xl p-5 flex flex-col gap-4 hover:border-[#C6A664]/30 transition-colors">
       <div
         className="flex items-start gap-4 cursor-pointer"
         onClick={() => router.push(`/dashboard/directory/${member.id}`)}
       >
         <Avatar className="h-14 w-14 shrink-0 ring-2 ring-white/10">
           <AvatarImage src={member.avatar_url ?? undefined} alt={memberDisplayName(member.full_name)} />
-          <AvatarFallback className="bg-[#1A1A1A] text-[#D4A853] text-lg">
+          <AvatarFallback className="bg-[#1A1A1A] text-[#C6A664] text-lg">
             {initialsFromFullName(member.full_name)}
           </AvatarFallback>
         </Avatar>
@@ -115,7 +115,7 @@ function MemberCard({
         <Button
           size="sm"
           disabled={isMessaging}
-          className="flex-1 bg-[#D4A853]/10 hover:bg-[#D4A853]/20 text-[#D4A853] border border-[#D4A853]/30 text-xs gap-1.5"
+          className="flex-1 bg-[#C6A664]/10 hover:bg-[#C6A664]/20 text-[#C6A664] border border-[#C6A664]/30 text-xs gap-1.5"
           onClick={() => onMessage(member)}
         >
           {isMessaging ? (
@@ -231,7 +231,7 @@ export function MemberDirectory() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name, company, title…"
-            className="pl-9 bg-[#2E2E2E] border-white/10 text-white placeholder:text-white/30 focus-visible:ring-[#D4A853]/50"
+            className="pl-9 bg-[#2E2E2E] border-white/10 text-white placeholder:text-white/30 focus-visible:ring-[#C6A664]/50"
           />
         </div>
       </div>

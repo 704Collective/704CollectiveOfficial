@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { sendBusinessApplicationSubmittedEmails } from '@/app/actions/transactionalEmails';
 import { toast } from 'sonner';
-import { Loader2, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Loader2, ChevronRight } from 'lucide-react';
 
 type Step = 'account' | 'verify' | 'application' | 'done';
 

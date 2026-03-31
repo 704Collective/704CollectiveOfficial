@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
-  Mail, Send, Reply, ReplyAll, Trash2, Archive,
-  Star, StarOff, Search, X, Loader2, RefreshCw,
-  Inbox, ChevronRight, Paperclip, AlertCircle,
+  Mail, Send, Reply, Trash2, Archive,
+  Star, Search, Loader2, RefreshCw,
+  Inbox, ChevronRight, AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

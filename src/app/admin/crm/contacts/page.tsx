@@ -6,12 +6,11 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
   Search, Plus, Filter, Download, MoreHorizontal, ChevronLeft, ChevronRight,
-  Mail, Workflow, ArrowRightLeft, Trash2, X, SlidersHorizontal, Tag,
-  UserPlus, Check, AlertCircle,
+  Mail, Workflow, ArrowRightLeft, Trash2, X, SlidersHorizontal,
+  UserPlus, AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -23,7 +22,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 
 /* ─── Types ─── */
 interface Contact {

@@ -14,7 +14,6 @@ import {
   StaggerItem,
   ScaleUp,
   DrawLine,
-  Parallax,
   WordReveal,
 } from "@/components/Animations";
 import TiltCard from "@/components/TiltCard";

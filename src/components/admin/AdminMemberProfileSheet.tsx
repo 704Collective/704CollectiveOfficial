@@ -15,10 +15,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
   User, Calendar, CreditCard, Shield, Settings,
-  Mail, Loader2, Check, AlertTriangle, ShieldOff,
-  ExternalLink, LogIn, RefreshCw,
+  Mail, Loader2, Check, ShieldOff,
+  ExternalLink, RefreshCw,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 

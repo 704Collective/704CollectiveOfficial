@@ -55,7 +55,7 @@ export default function GlobalError({
         </Button>
         <Button
           asChild
-          className="bg-[#C6A664] text-[#1A1A1A] hover:bg-[#D4B876] focus-visible:ring-2 focus-visible:ring-[#C6A664]"
+          className="bg-[#C6A664] text-[#1A1A1A] hover:bg-[#C6A664] focus-visible:ring-2 focus-visible:ring-[#C6A664]"
         >
           <Link href={primaryHref}>{primaryLabel}</Link>
         </Button>

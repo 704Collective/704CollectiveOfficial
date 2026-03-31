@@ -40,10 +40,10 @@ export default async function PartnersPage() {
             aria-hidden
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/85 to-black/55" aria-hidden />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#D4A853]/10 via-transparent to-transparent pointer-events-none" aria-hidden />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#C6A664]/10 via-transparent to-transparent pointer-events-none" aria-hidden />
 
           <div className="relative z-10 max-w-4xl mx-auto text-center">
-            <p className="text-[#D4A853] text-xs sm:text-sm tracking-[0.35em] uppercase font-semibold mb-4">
+            <p className="text-[#C6A664] text-xs sm:text-sm tracking-[0.35em] uppercase font-semibold mb-4">
               Partnerships
             </p>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white mb-6">
@@ -60,7 +60,7 @@ export default async function PartnersPage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link
                 href="/partners/apply"
-                className="inline-flex items-center justify-center px-8 py-3.5 rounded-lg bg-[#D4A853] hover:bg-[#C6A664] text-[#1A1A1A] font-semibold text-sm sm:text-base transition-colors shadow-lg shadow-black/40 min-w-[200px]"
+                className="inline-flex items-center justify-center px-8 py-3.5 rounded-lg bg-[#C6A664] hover:bg-[#C6A664] text-[#1A1A1A] font-semibold text-sm sm:text-base transition-colors shadow-lg shadow-black/40 min-w-[200px]"
               >
                 Become a Partner
               </Link>
@@ -84,11 +84,11 @@ export default async function PartnersPage() {
             </p>
 
             <div className="grid md:grid-cols-2 gap-8">
-              <article className="rounded-2xl border border-white/10 bg-[#141414] p-8 hover:border-[#D4A853]/35 transition-colors">
-                <div className="w-12 h-12 rounded-xl bg-[#D4A853]/15 flex items-center justify-center mb-6">
-                  <Store className="w-6 h-6 text-[#D4A853]" aria-hidden />
+              <article className="rounded-2xl border border-white/10 bg-[#2E2E2E] p-8 hover:border-[#C6A664]/35 transition-colors">
+                <div className="w-12 h-12 rounded-xl bg-[#C6A664]/15 flex items-center justify-center mb-6">
+                  <Store className="w-6 h-6 text-[#C6A664]" aria-hidden />
                 </div>
-                <h3 className="text-xl font-semibold text-[#D4A853] mb-4">Vendor</h3>
+                <h3 className="text-xl font-semibold text-[#C6A664] mb-4">Vendor</h3>
                 <div className="space-y-4 text-white/70 text-sm sm:text-base leading-relaxed">
                   <p>
                     Vendors are the heartbeat of our floor experience - pop-up makers, mobile service providers, artisan
@@ -110,11 +110,11 @@ export default async function PartnersPage() {
                 </div>
               </article>
 
-              <article className="rounded-2xl border border-white/10 bg-[#141414] p-8 hover:border-[#D4A853]/35 transition-colors">
-                <div className="w-12 h-12 rounded-xl bg-[#D4A853]/15 flex items-center justify-center mb-6">
-                  <Building2 className="w-6 h-6 text-[#D4A853]" aria-hidden />
+              <article className="rounded-2xl border border-white/10 bg-[#2E2E2E] p-8 hover:border-[#C6A664]/35 transition-colors">
+                <div className="w-12 h-12 rounded-xl bg-[#C6A664]/15 flex items-center justify-center mb-6">
+                  <Building2 className="w-6 h-6 text-[#C6A664]" aria-hidden />
                 </div>
-                <h3 className="text-xl font-semibold text-[#D4A853] mb-4">Venue</h3>
+                <h3 className="text-xl font-semibold text-[#C6A664] mb-4">Venue</h3>
                 <div className="space-y-4 text-white/70 text-sm sm:text-base leading-relaxed">
                   <p>
                     Venues are where the story of the night is written - coffee shops that flip into intimate mixers,
@@ -136,11 +136,11 @@ export default async function PartnersPage() {
                 </div>
               </article>
 
-              <article className="rounded-2xl border border-white/10 bg-[#141414] p-8 hover:border-[#D4A853]/35 transition-colors">
-                <div className="w-12 h-12 rounded-xl bg-[#D4A853]/15 flex items-center justify-center mb-6">
-                  <Sparkles className="w-6 h-6 text-[#D4A853]" aria-hidden />
+              <article className="rounded-2xl border border-white/10 bg-[#2E2E2E] p-8 hover:border-[#C6A664]/35 transition-colors">
+                <div className="w-12 h-12 rounded-xl bg-[#C6A664]/15 flex items-center justify-center mb-6">
+                  <Sparkles className="w-6 h-6 text-[#C6A664]" aria-hidden />
                 </div>
-                <h3 className="text-xl font-semibold text-[#D4A853] mb-4">Sponsor</h3>
+                <h3 className="text-xl font-semibold text-[#C6A664] mb-4">Sponsor</h3>
                 <div className="space-y-4 text-white/70 text-sm sm:text-base leading-relaxed">
                   <p>
                     Sponsorship with 704 Collective is built for mid-market and enterprise teams that want brand
@@ -162,11 +162,11 @@ export default async function PartnersPage() {
                 </div>
               </article>
 
-              <article className="rounded-2xl border border-white/10 bg-[#141414] p-8 hover:border-[#D4A853]/35 transition-colors">
-                <div className="w-12 h-12 rounded-xl bg-[#D4A853]/15 flex items-center justify-center mb-6">
-                  <Handshake className="w-6 h-6 text-[#D4A853]" aria-hidden />
+              <article className="rounded-2xl border border-white/10 bg-[#2E2E2E] p-8 hover:border-[#C6A664]/35 transition-colors">
+                <div className="w-12 h-12 rounded-xl bg-[#C6A664]/15 flex items-center justify-center mb-6">
+                  <Handshake className="w-6 h-6 text-[#C6A664]" aria-hidden />
                 </div>
-                <h3 className="text-xl font-semibold text-[#D4A853] mb-4">Partner</h3>
+                <h3 className="text-xl font-semibold text-[#C6A664] mb-4">Partner</h3>
                 <div className="space-y-4 text-white/70 text-sm sm:text-base leading-relaxed">
                   <p>
                     The Partner track is for organizations that don&apos;t fit a single box - other social clubs, business
@@ -224,7 +224,7 @@ export default async function PartnersPage() {
                 },
               ].map((step) => (
                 <li key={step.n} className="text-center flex flex-col items-center">
-                  <span className="inline-flex items-center justify-center w-11 h-11 rounded-full border border-[#D4A853]/50 text-[#D4A853] font-bold text-sm mb-4">
+                  <span className="inline-flex items-center justify-center w-11 h-11 rounded-full border border-[#C6A664]/50 text-[#C6A664] font-bold text-sm mb-4">
                     {step.n}
                   </span>
                   <h3 className="text-lg font-semibold text-white mb-3">{step.title}</h3>
@@ -236,14 +236,14 @@ export default async function PartnersPage() {
         </section>
 
         {/* Final CTA */}
-        <section className="py-20 px-4 sm:px-6 bg-gradient-to-br from-[#2a2419] via-[#1a1510] to-[#0a0a0a] border-t border-[#D4A853]/20">
+        <section className="py-20 px-4 sm:px-6 bg-gradient-to-br from-[#2a2419] via-[#1a1510] to-[#0a0a0a] border-t border-[#C6A664]/20">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-2xl sm:text-4xl font-bold text-white mb-8 leading-tight">
               Ready to Partner with Charlotte&apos;s Premier Community?
             </h2>
             <Link
               href="/partners/apply"
-              className="inline-flex items-center justify-center px-10 py-4 rounded-lg bg-[#D4A853] hover:bg-[#E4C878] text-[#1A1A1A] font-semibold transition-colors"
+              className="inline-flex items-center justify-center px-10 py-4 rounded-lg bg-[#C6A664] hover:bg-[#C6A664] text-[#1A1A1A] font-semibold transition-colors"
             >
               Become a Partner
             </Link>

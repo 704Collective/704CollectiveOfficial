@@ -7,7 +7,6 @@ import { usePageTitle } from '@/hooks/usePageTitle';
 import {
   FadeUp,
   FadeIn,
-  ScaleUp,
   StaggerContainer,
   StaggerItem,
 } from '@/components/Animations';

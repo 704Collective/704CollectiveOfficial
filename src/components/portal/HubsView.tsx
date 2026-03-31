@@ -70,7 +70,7 @@ export function HubsView() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search hubs…"
-            className="pl-9 bg-[#2E2E2E] border-white/10 text-white placeholder:text-white/30 focus-visible:ring-[#D4A853]/50"
+            className="pl-9 bg-[#2E2E2E] border-white/10 text-white placeholder:text-white/30 focus-visible:ring-[#C6A664]/50"
           />
         </div>
       </div>

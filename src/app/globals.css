@@ -10,7 +10,7 @@
   --color-ivory: #FAF6F0;
   --color-grey: #A0A0A0;
   --color-gold: #C6A664;
-  --color-gold-light: #D4B876;
+  --color-gold-light: #C6A664;
   --color-black: #000000;
   --color-white: #FFFFFF;
   --radius: 0.625rem;
@@ -18,7 +18,7 @@
   /* ─── DARK THEME (default) — 704 Collective design system ─── */
 
   /* Page canvas */
-  --background: oklch(0.20 0 0);          /* ~#2a2a2a — matches Josh's portal bg */
+  --background: oklch(0.17 0 0);          /* ~#1A1A1A primary canvas */
   --foreground: oklch(0.97 0.008 72);     /* #FAF6F0 ivory — warm white */
 
   /* Cards & surfaces — clearly lifted off the page */
@@ -230,7 +230,7 @@
 }
 
 .btn-gold:hover {
-  background-color: #D4B876;
+  background-color: #C6A664;
   box-shadow: 0 4px 20px rgba(198, 166, 100, 0.25);
 }
 

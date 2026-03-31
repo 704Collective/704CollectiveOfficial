@@ -14,11 +14,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTicketActions } from '@/hooks/useTicketActions';
 import { createClient } from '@/lib/supabase/client';
 import {
-  format, addDays, startOfMonth, startOfWeek, endOfWeek,
-  addWeeks, isSameMonth, isSameDay, isToday, addMonths, subMonths,
+  format, addDays, startOfMonth, startOfWeek, endOfWeek, isSameMonth, isSameDay, isToday, addMonths, subMonths,
 } from 'date-fns';
 import {
-  LayoutGrid, List, Calendar, ChevronLeft, ChevronRight, Briefcase, Users,
+  LayoutGrid, List, Calendar, ChevronLeft, ChevronRight, Briefcase,
 } from 'lucide-react';
 
 interface Event {

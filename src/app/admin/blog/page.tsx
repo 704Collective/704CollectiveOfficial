@@ -100,7 +100,7 @@ export default function AdminBlogListPage() {
           <p className="text-sm text-muted-foreground">
             Create and manage blog posts for the public site.
           </p>
-          <Button asChild className="bg-[#C6A664] text-[#1A1A1A] hover:bg-[#B8923F] shrink-0">
+          <Button asChild className="bg-[#C6A664] text-[#1A1A1A] hover:bg-[#C6A664] shrink-0">
             <Link href="/admin/blog/new">
               <Plus className="w-4 h-4 mr-2" />
               New Post

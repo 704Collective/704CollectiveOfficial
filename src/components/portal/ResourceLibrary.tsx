@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Search, Upload, Download, Trash2, Tag, X, Loader2, FileText, FolderOpen } from 'lucide-react';
+import { Search, Upload, Download, Trash2, Tag, X, Loader2, FolderOpen } from 'lucide-react';
 
 interface AdminResource {
   id: string;
@@ -151,7 +151,7 @@ function UploadModal({
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {tags.map((t) => (
-                  <Badge key={t} className="bg-[#D4A853]/20 text-[#D4A853] border-[#D4A853]/30 gap-1 pr-1">
+                  <Badge key={t} className="bg-[#C6A664]/20 text-[#C6A664] border-[#C6A664]/30 gap-1 pr-1">
                     {t}
                     <button onClick={() => setTags((prev) => prev.filter((x) => x !== t))}>
                       <X className="h-3 w-3" />
@@ -163,7 +163,7 @@ function UploadModal({
           </div>
 
           <Button onClick={upload} disabled={!files.length || uploading}
-            className="w-full bg-[#D4A853] hover:bg-[#B8923F] text-[#1A1A1A] font-semibold">
+            className="w-full bg-[#C6A664] hover:bg-[#C6A664] text-[#1A1A1A] font-semibold">
             {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : `Upload ${files.length || ''} File${files.length !== 1 ? 's' : ''}`}
           </Button>
         </div>
@@ -229,7 +229,7 @@ export function ResourceLibrary() {
           </p>
         </div>
         <Button onClick={() => setUploadOpen(true)}
-          className="bg-[#D4A853] hover:bg-[#B8923F] text-[#1A1A1A] font-semibold gap-2">
+          className="bg-[#C6A664] hover:bg-[#C6A664] text-[#1A1A1A] font-semibold gap-2">
           <Upload className="h-4 w-4" /> Upload Files
         </Button>
       </div>
@@ -245,12 +245,12 @@ export function ResourceLibrary() {
         {allTags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             <button onClick={() => setTagFilter('')}
-              className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${!tagFilter ? 'bg-[#D4A853]/20 text-[#D4A853] border-[#D4A853]/30' : 'border-white/10 text-white/40 hover:text-white/70'}`}>
+              className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${!tagFilter ? 'bg-[#C6A664]/20 text-[#C6A664] border-[#C6A664]/30' : 'border-white/10 text-white/40 hover:text-white/70'}`}>
               All
             </button>
             {allTags.map((t) => (
               <button key={t} onClick={() => setTagFilter(tagFilter === t ? '' : t)}
-                className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${tagFilter === t ? 'bg-[#D4A853]/20 text-[#D4A853] border-[#D4A853]/30' : 'border-white/10 text-white/40 hover:text-white/70'}`}>
+                className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${tagFilter === t ? 'bg-[#C6A664]/20 text-[#C6A664] border-[#C6A664]/30' : 'border-white/10 text-white/40 hover:text-white/70'}`}>
                 {t}
               </button>
             ))}
@@ -291,7 +291,7 @@ export function ResourceLibrary() {
               <div className="flex items-center gap-2 mt-auto pt-2 border-t border-white/5">
                 <Avatar className="h-5 w-5">
                   <AvatarImage src={r.uploader?.avatar_url ?? undefined} />
-                  <AvatarFallback className="bg-[#1A1A1A] text-[#D4A853] text-[9px]">
+                  <AvatarFallback className="bg-[#1A1A1A] text-[#C6A664] text-[9px]">
                     {initials(r.uploader?.full_name || '?')}
                   </AvatarFallback>
                 </Avatar>

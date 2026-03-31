@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse, type NextRequest } from 'next/server';
+import { postAuthDestination } from '@/lib/postAuthRedirect';
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -79,9 +80,13 @@ export async function GET(request: NextRequest) {
     profile?.member_type === 'business_non_member' ||
     profile?.member_type === 'non_member';
 
-  // Everyone with an active membership, admin role, or non-member status lands
-  // on the dashboard. Everyone else (no subscription yet) goes to signup.
-  const destination = isActive || isAdmin || isNonMember ? '/dashboard' : '/signup';
+  const isPartner = profile?.member_type === 'partner';
+
+  const allowed =
+    isActive || isAdmin || isNonMember || isPartner;
+  const destination = allowed
+    ? postAuthDestination(profile)
+    : '/signup';
 
   const redirectResponse = NextResponse.redirect(new URL(destination, origin));
 

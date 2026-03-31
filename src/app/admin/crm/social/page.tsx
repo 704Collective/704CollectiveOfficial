@@ -5,9 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
-  Plus, MoreHorizontal, Trash2, X, Loader2,
-  Instagram, Facebook, Clock, Send, Image as ImageIcon,
-  CheckCircle2, AlertCircle, Circle,
+  Plus, MoreHorizontal, Trash2, Loader2, Clock, Send,
+  CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

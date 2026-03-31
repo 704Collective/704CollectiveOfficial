@@ -149,13 +149,13 @@ function ConversationRow({
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-colors ${
         isActive
-          ? 'bg-[#D4A853]/15 border border-[#D4A853]/30'
+          ? 'bg-[#C6A664]/15 border border-[#C6A664]/30'
           : 'hover:bg-white/5 border border-transparent'
       }`}
     >
       <Avatar className="h-10 w-10 shrink-0">
         <AvatarImage src={avatar ?? undefined} />
-        <AvatarFallback className="bg-[#2E2E2E] text-[#D4A853] text-xs">
+        <AvatarFallback className="bg-[#2E2E2E] text-[#C6A664] text-xs">
           {conv.type === 'group' ? <Users className="h-4 w-4" /> : initials(name)}
         </AvatarFallback>
       </Avatar>
@@ -179,7 +179,7 @@ function ConversationRow({
           <p className="text-xs text-white/40 mt-0.5">{conv.participants.length} members</p>
         )}
       </div>
-      {unread && <div className="h-2 w-2 rounded-full bg-[#D4A853] shrink-0" />}
+      {unread && <div className="h-2 w-2 rounded-full bg-[#C6A664] shrink-0" />}
     </button>
   );
 }
@@ -228,7 +228,7 @@ function MessageBubble({
       {!isOwn && (
         <Avatar className="h-7 w-7 shrink-0 mb-1">
           <AvatarImage src={msg.sender?.avatar_url ?? undefined} />
-          <AvatarFallback className="bg-[#2E2E2E] text-[#D4A853] text-xs">
+          <AvatarFallback className="bg-[#2E2E2E] text-[#C6A664] text-xs">
             {initials(msg.sender?.full_name || '?')}
           </AvatarFallback>
         </Avatar>
@@ -240,7 +240,7 @@ function MessageBubble({
         <div
           className={`relative rounded-2xl px-3 py-2 text-sm leading-relaxed ${
             isOwn
-              ? 'bg-[#D4A853] text-[#1A1A1A] rounded-tr-sm'
+              ? 'bg-[#C6A664] text-[#1A1A1A] rounded-tr-sm'
               : 'bg-[#2E2E2E] text-white/90 rounded-tl-sm'
           }`}
         >
@@ -787,7 +787,7 @@ export function MessagingView({ initialDirectPeerId }: { initialDirectPeerId?: s
           <Button
             size="sm"
             onClick={() => setNewConvOpen(true)}
-            className="bg-[#D4A853] hover:bg-[#B8923F] text-[#1A1A1A] h-8 px-3 gap-1 text-xs"
+            className="bg-[#C6A664] hover:bg-[#C6A664] text-[#1A1A1A] h-8 px-3 gap-1 text-xs"
           >
             <Plus className="h-3.5 w-3.5" /> New
           </Button>
@@ -844,7 +844,7 @@ export function MessagingView({ initialDirectPeerId }: { initialDirectPeerId?: s
               </button>
               <Avatar className="h-8 w-8">
                 <AvatarImage src={getConversationAvatar(selectedConv, user.id) ?? undefined} />
-                <AvatarFallback className="bg-[#2E2E2E] text-[#D4A853] text-xs">
+                <AvatarFallback className="bg-[#2E2E2E] text-[#C6A664] text-xs">
                   {selectedConv.type === 'group'
                     ? <Users className="h-4 w-4" />
                     : initials(getConversationName(selectedConv, user.id))}
@@ -892,7 +892,7 @@ export function MessagingView({ initialDirectPeerId }: { initialDirectPeerId?: s
             {/* Input */}
             <div className="border-t border-white/10 p-3">
               {editingMsg && (
-                <div className="flex items-center gap-2 mb-2 px-2 py-1 bg-[#D4A853]/10 rounded text-xs text-[#D4A853]">
+                <div className="flex items-center gap-2 mb-2 px-2 py-1 bg-[#C6A664]/10 rounded text-xs text-[#C6A664]">
                   <Pencil className="h-3 w-3" />
                   Editing message
                   <button onClick={() => { setEditingMsg(null); setDraft(''); }} className="ml-auto">
@@ -930,13 +930,13 @@ export function MessagingView({ initialDirectPeerId }: { initialDirectPeerId?: s
                   }}
                   placeholder="Type a message… (Enter to send, Shift+Enter for new line)"
                   rows={1}
-                  className="flex-1 min-h-[40px] max-h-32 resize-none bg-[#2E2E2E] border-white/10 text-white text-sm placeholder:text-white/30 focus-visible:ring-[#D4A853]/50"
+                  className="flex-1 min-h-[40px] max-h-32 resize-none bg-[#2E2E2E] border-white/10 text-white text-sm placeholder:text-white/30 focus-visible:ring-[#C6A664]/50"
                 />
                 <Button
                   onClick={sendMessage}
                   disabled={!draft.trim() || sending}
                   size="sm"
-                  className="bg-[#D4A853] hover:bg-[#B8923F] text-[#1A1A1A] h-10 px-3"
+                  className="bg-[#C6A664] hover:bg-[#C6A664] text-[#1A1A1A] h-10 px-3"
                 >
                   {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
@@ -960,7 +960,7 @@ export function MessagingView({ initialDirectPeerId }: { initialDirectPeerId?: s
                 {selectedMembers.map((m) => (
                   <Badge
                     key={m.id}
-                    className="bg-[#D4A853]/20 text-[#D4A853] border-[#D4A853]/30 gap-1 pr-1"
+                    className="bg-[#C6A664]/20 text-[#C6A664] border-[#C6A664]/30 gap-1 pr-1"
                   >
                     {m.full_name}
                     <button onClick={() => setSelectedMembers((prev) => prev.filter((x) => x.id !== m.id))}>
@@ -997,7 +997,7 @@ export function MessagingView({ initialDirectPeerId }: { initialDirectPeerId?: s
                     >
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={m.avatar_url ?? undefined} />
-                        <AvatarFallback className="bg-[#2E2E2E] text-[#D4A853] text-xs">
+                        <AvatarFallback className="bg-[#2E2E2E] text-[#C6A664] text-xs">
                           {initials(m.full_name)}
                         </AvatarFallback>
                       </Avatar>
@@ -1023,7 +1023,7 @@ export function MessagingView({ initialDirectPeerId }: { initialDirectPeerId?: s
             <Button
               onClick={createConversation}
               disabled={!selectedMembers.length || creatingConv}
-              className="w-full bg-[#D4A853] hover:bg-[#B8923F] text-[#1A1A1A] font-semibold"
+              className="w-full bg-[#C6A664] hover:bg-[#C6A664] text-[#1A1A1A] font-semibold"
             >
               {creatingConv ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Start Conversation'}
             </Button>

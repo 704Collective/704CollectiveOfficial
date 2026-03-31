@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { format } from 'date-fns';
-import { MapPin, Clock, Users, Loader2, Lock } from 'lucide-react';
+import { MapPin, Clock, Loader2, Lock } from 'lucide-react';
 import { CategoryBadge, EventCategory } from '@/components/CategoryBadge';
 
 interface EventGridCardProps {
