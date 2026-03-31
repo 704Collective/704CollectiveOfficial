@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2, Upload } from 'lucide-react';
+import { ArrowLeft, Check, Clock, Loader2, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,11 +15,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { slugifyTitle } from '@/lib/blog/slugify';
 import type { BlogPostRow } from '@/lib/blog/types';
+import type { BlogSchemaType } from '@/lib/blog/schemaTypes';
+import { BLOG_SCHEMA_OPTIONS } from '@/lib/blog/schemaTypes';
+import { readingTimeMinutesFromContent } from '@/lib/blog/readingTime';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 function tagsToString(tags: string[] | null | undefined): string {
   return (tags ?? []).join(', ');
@@ -37,6 +51,8 @@ interface BlogPostEditorProps {
   initialPost?: BlogPostRow | null;
 }
 
+type PublishedPostPick = { id: string; title: string };
+
 export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
   const router = useRouter();
   const { user, profile } = useAuth();
@@ -48,6 +64,7 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
   const [excerpt, setExcerpt] = useState(initialPost?.excerpt ?? '');
   const [content, setContent] = useState(initialPost?.content ?? '');
   const [coverUrl, setCoverUrl] = useState(initialPost?.cover_image_url ?? '');
+  const [coverAlt, setCoverAlt] = useState(initialPost?.cover_image_alt ?? '');
   const [author, setAuthor] = useState(
     initialPost?.author ?? profile?.full_name?.trim() ?? ''
   );
@@ -55,8 +72,24 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
   const [tagsInput, setTagsInput] = useState(tagsToString(initialPost?.tags));
   const [metaTitle, setMetaTitle] = useState(initialPost?.meta_title ?? '');
   const [metaDescription, setMetaDescription] = useState(initialPost?.meta_description ?? '');
+  const [focusKeyword, setFocusKeyword] = useState(initialPost?.focus_keyword ?? '');
+  const [schemaType, setSchemaType] = useState<BlogSchemaType>(
+    (initialPost?.schema_type as BlogSchemaType) ?? 'BlogPosting'
+  );
+  const [canonicalUrl, setCanonicalUrl] = useState(initialPost?.canonical_url ?? '');
+  const [showToc, setShowToc] = useState(initialPost?.show_table_of_contents ?? false);
+  const [instagramUrl, setInstagramUrl] = useState(initialPost?.instagram_embed_url ?? '');
+  const [tiktokUrl, setTiktokUrl] = useState(initialPost?.tiktok_embed_url ?? '');
+  const [relatedIds, setRelatedIds] = useState<string[]>(
+    Array.isArray(initialPost?.related_post_ids) ? initialPost!.related_post_ids! : []
+  );
+  const [publishedPickList, setPublishedPickList] = useState<PublishedPostPick[]>([]);
+  const [relatedPopoverOpen, setRelatedPopoverOpen] = useState(false);
+
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const readingMinutes = useMemo(() => readingTimeMinutesFromContent(content), [content]);
 
   useEffect(() => {
     if (mode === 'new' && profile?.full_name && !author) {
@@ -69,6 +102,26 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
     setSlugPart(slugifyTitle(title));
   }, [title, slugManual, mode]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from('blog_posts')
+        .select('id,title,status')
+        .eq('status', 'published')
+        .order('title', { ascending: true });
+      if (cancelled || error) return;
+      const rows = (data ?? []) as { id: string; title: string; status: string }[];
+      const exclude = initialPost?.id;
+      setPublishedPickList(
+        rows.filter((r) => !exclude || r.id !== exclude).map((r) => ({ id: r.id, title: r.title }))
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialPost?.id]);
+
   const handleSlugInput = (v: string) => {
     setSlugManual(true);
     setSlugPart(
@@ -80,6 +133,21 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
     );
   };
 
+  const toggleRelated = (id: string) => {
+    setRelatedIds((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= 3) {
+        toast.message('You can link at most 3 related posts.');
+        return prev;
+      }
+      return [...prev, id];
+    });
+  };
+
+  const removeRelated = (id: string) => {
+    setRelatedIds((prev) => prev.filter((x) => x !== id));
+  };
+
   const buildPayload = useCallback(
     (nextStatus: 'draft' | 'published') => {
       const slug = slugPart.trim();
@@ -88,12 +156,22 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
         nextStatus === 'published'
           ? initialPost?.published_at ?? new Date().toISOString()
           : null;
+      const rt = readingTimeMinutesFromContent(content);
       return {
         title: title.trim(),
         slug,
         excerpt: excerpt.trim() || null,
         content,
         cover_image_url: coverUrl.trim() || null,
+        cover_image_alt: coverAlt.trim() || null,
+        canonical_url: canonicalUrl.trim() || null,
+        focus_keyword: focusKeyword.trim() || null,
+        schema_type: schemaType,
+        reading_time_minutes: rt,
+        show_table_of_contents: showToc,
+        instagram_embed_url: instagramUrl.trim() || null,
+        tiktok_embed_url: tiktokUrl.trim() || null,
+        related_post_ids: relatedIds.length ? relatedIds : [],
         author: author.trim() || null,
         status: nextStatus,
         tags: tags.length ? tags : null,
@@ -109,6 +187,14 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
       excerpt,
       content,
       coverUrl,
+      coverAlt,
+      canonicalUrl,
+      focusKeyword,
+      schemaType,
+      showToc,
+      instagramUrl,
+      tiktokUrl,
+      relatedIds,
       author,
       metaTitle,
       metaDescription,
@@ -207,6 +293,11 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
   const leftLabel = mode === 'new' ? 'Save Draft' : 'Update Draft';
   const rightLabel =
     mode === 'edit' && initialPost?.status === 'published' ? 'Update & Publish' : 'Publish';
+
+  const selectedRelatedTitles = useMemo(() => {
+    const map = new Map(publishedPickList.map((p) => [p.id, p.title]));
+    return relatedIds.map((id) => ({ id, title: map.get(id) ?? id }));
+  }, [relatedIds, publishedPickList]);
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-8 pb-24">
@@ -312,6 +403,15 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
               Current: {coverUrl}
             </p>
           ) : null}
+          <div className="space-y-2 pt-1">
+            <Label htmlFor="cover-image-alt">Cover Image Alt Text</Label>
+            <Input
+              id="cover-image-alt"
+              value={coverAlt}
+              onChange={(e) => setCoverAlt(e.target.value)}
+              placeholder="Describe the image for screen readers and SEO"
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -349,7 +449,7 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
         </div>
 
         <div className="space-y-4 rounded-lg border border-border p-4 bg-muted/20">
-          <Label className="text-base font-semibold">🔍 SEO Settings</Label>
+          <p className="text-base font-semibold">SEO Settings</p>
           <div className="space-y-2">
             <Label htmlFor="meta-title">Meta Title</Label>
             <Input
@@ -373,6 +473,157 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
             />
             <p className="text-xs text-muted-foreground">{metaDescription.length}/160 characters</p>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="focus-keyword">Focus Keyword</Label>
+            <Input
+              id="focus-keyword"
+              value={focusKeyword}
+              onChange={(e) => setFocusKeyword(e.target.value)}
+              placeholder="Primary keyword you want this post to rank for"
+            />
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Use this keyword naturally in your title, first paragraph, and throughout the content.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="schema-type">Schema Type</Label>
+            <Select value={schemaType} onValueChange={(v) => setSchemaType(v as BlogSchemaType)}>
+              <SelectTrigger id="schema-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BLOG_SCHEMA_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="canonical-url">Canonical URL</Label>
+            <Input
+              id="canonical-url"
+              value={canonicalUrl}
+              onChange={(e) => setCanonicalUrl(e.target.value)}
+              placeholder="https://704collective.com/blog/your-post"
+            />
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Leave blank to use the default URL. Only set this if the content was published
+              elsewhere first.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4 rounded-lg border border-border p-4 bg-muted/20">
+          <p className="text-base font-semibold">Content Settings</p>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Clock className="w-4 h-4 shrink-0 text-[#C6A664]" aria-hidden />
+            <span>
+              Reading time:{' '}
+              <span className="font-medium text-foreground">{readingMinutes} min read</span>
+            </span>
+            <span className="text-xs">(auto-calculated from content, saved with the post)</span>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-md border border-border/80 p-3">
+            <div className="space-y-1">
+              <Label htmlFor="blog-toc" className="text-foreground">
+                Auto-generate table of contents
+              </Label>
+              <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
+                Shows a clickable TOC at the top of the post based on H2 and H3 headings in your
+                content. Best for long posts with multiple sections.
+              </p>
+            </div>
+            <Switch id="blog-toc" checked={showToc} onCheckedChange={setShowToc} />
+          </div>
+        </div>
+
+        <div className="space-y-4 rounded-lg border border-border p-4 bg-muted/20">
+          <p className="text-base font-semibold">Embeds</p>
+          <div className="space-y-2">
+            <Label htmlFor="instagram-embed">Instagram Post or Reel URL (optional)</Label>
+            <Input
+              id="instagram-embed"
+              value={instagramUrl}
+              onChange={(e) => setInstagramUrl(e.target.value)}
+              placeholder="https://www.instagram.com/reel/..."
+            />
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Paste the Instagram post or reel URL. It will appear at the bottom of the post.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="tiktok-embed">TikTok Video URL (optional)</Label>
+            <Input
+              id="tiktok-embed"
+              value={tiktokUrl}
+              onChange={(e) => setTiktokUrl(e.target.value)}
+              placeholder="https://www.tiktok.com/@..."
+            />
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Paste the TikTok video URL. It will appear at the bottom of the post.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4 rounded-lg border border-border p-4 bg-muted/20">
+          <p className="text-base font-semibold">Related Posts</p>
+          <p className="text-xs text-muted-foreground">
+            Link up to 3 published posts. Search by title below.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {selectedRelatedTitles.map(({ id, title: t }) => (
+              <span
+                key={id}
+                className="inline-flex items-center gap-1 rounded-full border border-[#C6A664]/40 bg-[#C6A664]/10 px-3 py-1 text-sm"
+              >
+                <span className="max-w-[200px] truncate">{t}</span>
+                <button
+                  type="button"
+                  className="rounded-full p-0.5 hover:bg-black/10"
+                  aria-label={`Remove ${t}`}
+                  onClick={() => removeRelated(id)}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            ))}
+          </div>
+          <Popover open={relatedPopoverOpen} onOpenChange={setRelatedPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button type="button" variant="outline" className="w-full sm:w-auto border-[#C6A664]/50">
+                Search posts to link…
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="p-0 w-[min(100vw-2rem,380px)]" align="start">
+              <Command>
+                <CommandInput placeholder="Search by title…" />
+                <CommandList>
+                  <CommandEmpty>No published posts found.</CommandEmpty>
+                  <CommandGroup>
+                    {publishedPickList.map((p) => (
+                      <CommandItem
+                        key={p.id}
+                        value={`${p.title} ${p.id}`}
+                        onSelect={() => {
+                          toggleRelated(p.id);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            'mr-2 h-4 w-4',
+                            relatedIds.includes(p.id) ? 'opacity-100' : 'opacity-0'
+                          )}
+                        />
+                        <span className="truncate">{p.title}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 

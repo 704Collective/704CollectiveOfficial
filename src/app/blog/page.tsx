@@ -7,7 +7,9 @@ import { Footer } from "@/components/Footer";
 import { FadeUp, FadeIn } from "@/components/Animations";
 import { MarketingPageRoot } from "@/components/MarketingPageRoot";
 import { format } from "date-fns";
+import { Clock } from "lucide-react";
 import type { BlogPostRow } from "@/lib/blog/types";
+import { readingTimeMinutesFromContent } from "@/lib/blog/readingTime";
 
 export const metadata: Metadata = {
   title: "Blog | 704 Collective",
@@ -211,7 +213,10 @@ export default async function BlogPage() {
                           {post.cover_image_url ? (
                             <Image
                               src={post.cover_image_url}
-                              alt={post.title ? `Cover: ${post.title}` : "Blog post cover"}
+                              alt={
+                                post.cover_image_alt?.trim() ||
+                                (post.title ? `Cover: ${post.title}` : "Blog post cover")
+                              }
                               fill
                               className="object-cover"
                               sizes="(max-width: 640px) 100vw, 200px"
@@ -231,17 +236,32 @@ export default async function BlogPage() {
                           )}
                         </div>
                         <div style={{ padding: "24px" }}>
-                          <h2
-                            style={{
-                              fontSize: "1.35rem",
-                              fontWeight: 700,
-                              color: "#FAF6F0",
-                              marginBottom: "10px",
-                              letterSpacing: "-0.02em",
-                            }}
-                          >
-                            {post.title}
-                          </h2>
+                          <div className="flex flex-wrap items-start gap-2 mb-2">
+                            <h2
+                              style={{
+                                fontSize: "1.35rem",
+                                fontWeight: 700,
+                                color: "#FAF6F0",
+                                marginBottom: "0",
+                                letterSpacing: "-0.02em",
+                                flex: "1 1 auto",
+                              }}
+                            >
+                              {post.title}
+                            </h2>
+                            {post.schema_type === "NewsArticle" ? (
+                              <span
+                                className="shrink-0 text-[0.65rem] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border"
+                                style={{
+                                  borderColor: "rgba(198, 166, 100, 0.55)",
+                                  color: "#C6A664",
+                                  background: "rgba(198, 166, 100, 0.12)",
+                                }}
+                              >
+                                News
+                              </span>
+                            ) : null}
+                          </div>
                           {post.excerpt ? (
                             <p
                               style={{
@@ -258,6 +278,7 @@ export default async function BlogPage() {
                             style={{
                               display: "flex",
                               flexWrap: "wrap",
+                              alignItems: "center",
                               gap: "8px 16px",
                               fontSize: "0.8125rem",
                               color: "rgba(255,255,255,0.4)",
@@ -270,6 +291,15 @@ export default async function BlogPage() {
                                 {format(new Date(post.published_at), "MMMM d, yyyy")}
                               </span>
                             ) : null}
+                            <span className="inline-flex items-center gap-1 text-white/45">
+                              <Clock className="w-3.5 h-3.5 text-[#C6A664]/70 shrink-0" aria-hidden />
+                              <span>
+                                {(post.reading_time_minutes != null && post.reading_time_minutes > 0
+                                  ? post.reading_time_minutes
+                                  : Math.max(1, readingTimeMinutesFromContent(post.content)))}{" "}
+                                min read
+                              </span>
+                            </span>
                           </div>
                           {(post.tags?.length ?? 0) > 0 ? (
                             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>

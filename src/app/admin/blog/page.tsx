@@ -30,6 +30,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { supabase } from '@/integrations/supabase/client';
 import type { BlogPostRow } from '@/lib/blog/types';
+import type { BlogSchemaType } from '@/lib/blog/schemaTypes';
 import { toast } from 'sonner';
 
 export default function AdminBlogListPage() {
@@ -123,6 +124,8 @@ export default function AdminBlogListPage() {
                 <TableRow>
                   <TableHead>Title</TableHead>
                   <TableHead className="w-[100px]">Status</TableHead>
+                  <TableHead className="min-w-[120px]">Schema Type</TableHead>
+                  <TableHead className="min-w-[140px]">Focus Keyword</TableHead>
                   <TableHead>Author</TableHead>
                   <TableHead className="w-[120px]">Created</TableHead>
                   <TableHead className="w-[200px] text-right">Actions</TableHead>
@@ -146,6 +149,17 @@ export default function AdminBlogListPage() {
                           Draft
                         </Badge>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className="text-[0.65rem] font-normal border-[#C6A664]/40 text-[#C6A664]/95 whitespace-nowrap"
+                      >
+                        {(post.schema_type as BlogSchemaType | null) ?? 'BlogPosting'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm max-w-[180px] truncate" title={post.focus_keyword ?? ''}>
+                      {post.focus_keyword?.trim() || '—'}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{post.author ?? '—'}</TableCell>
                     <TableCell className="text-muted-foreground text-sm whitespace-nowrap">

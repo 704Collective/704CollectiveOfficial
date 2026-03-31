@@ -18,6 +18,6 @@ export function sanitizeBlogHtml(html: string): string {
       'div',
       'span',
     ],
-    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'target', 'rel'],
+    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'target', 'rel', 'id'],
   });
 }
