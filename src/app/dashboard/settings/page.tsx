@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { User, Key, Bell, CreditCard, Calendar, LogOut, Loader2, Camera } from 'lucide-react';
+import { User, Key, Bell, CreditCard, Calendar, LogOut, Loader2, Camera, Copy, Check } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { DashboardNav } from '@/components/DashboardNav';
 import { PasswordChangeForm } from '@/components/PasswordChangeForm';
@@ -18,17 +18,21 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { CalendarSyncButton } from '@/components/CalendarSyncButton';
+import { markOnboardingCalendarDone } from '@/lib/onboardingStorage';
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, profile, isActiveMember, signOut } = useAuth();
+  const { user, profile, isActiveMember, signOut, refreshProfile } = useAuth();
   usePageTitle('Settings');
 
   const [isPortalLoading, setIsPortalLoading] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [tokenCopied, setTokenCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const p = profile as any;
@@ -37,11 +41,12 @@ export default function SettingsPage() {
   useEffect(() => {
     if (profile) {
       setFullName((profile as any)?.full_name || '');
+      setPhone((profile as any)?.phone ?? '');
       setAvatarUrl((profile as any)?.avatar_url || '');
     }
   }, [profile]);
 
-  const hasStripeSubscription = !!p?.stripe_subscription_id;
+  const hasStripeSubscription = !!(p?.subscription_id || p?.stripe_subscription_id);
   const supabase = createClient();
 
   const memberSince = p?.member_since
@@ -50,12 +55,17 @@ export default function SettingsPage() {
     ? format(new Date(p.created_at), 'MMMM yyyy')
     : null;
 
-  const nextBilling = p?.subscription_end
-    ? format(new Date(p.subscription_end), 'MMMM d, yyyy')
-    : null;
+  const subEnd = p?.subscription_ends_at || p?.subscription_end;
+  const nextBilling = subEnd ? format(new Date(subEnd), 'MMMM d, yyyy') : null;
 
-  const memberType = p?.member_type === 'business' ? 'Business' : 'Social';
-  const monthlyPrice = p?.member_type === 'business' ? '$300' : '$30';
+  const memberType =
+    p?.member_type === 'business'
+      ? 'Business'
+      : p?.member_type === 'partner'
+        ? 'Partner'
+        : 'Social';
+  const monthlyPrice =
+    p?.member_type === 'business' ? '$300' : p?.member_type === 'partner' ? '—' : '$30';
 
   const handleSaveProfile = async () => {
     if (!user) return;
@@ -63,9 +73,14 @@ export default function SettingsPage() {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ full_name: fullName })
+        .update({
+          full_name: fullName.trim() || null,
+          phone: phone.trim() || null,
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', user.id);
       if (error) throw error;
+      await refreshProfile();
       toast.success('Profile updated');
     } catch {
       toast.error('Failed to save changes');
@@ -88,6 +103,7 @@ export default function SettingsPage() {
       const url = `${data.publicUrl}?t=${Date.now()}`;
       await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id);
       setAvatarUrl(url);
+      await refreshProfile();
       toast.success('Photo updated');
     } catch {
       toast.error('Failed to upload photo');
@@ -198,6 +214,21 @@ export default function SettingsPage() {
             />
           </div>
 
+          {/* Phone */}
+          <div className="space-y-1.5">
+            <Label htmlFor="settings-phone" className="text-xs text-muted-foreground">
+              Phone
+            </Label>
+            <Input
+              id="settings-phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Mobile number"
+              autoComplete="tel"
+            />
+          </div>
+
           <Button onClick={handleSaveProfile} disabled={isSavingProfile} variant="outline" size="sm">
             {isSavingProfile ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : null}
             Save Changes
@@ -304,7 +335,7 @@ export default function SettingsPage() {
         )}
 
         {/* Calendar */}
-        {p?.calendar_token && (
+        {p?.calendar_token && user && (
           <section className="card-elevated p-5 space-y-3">
             <div className="flex items-center gap-3 mb-1">
               <Calendar className="w-4 h-4 text-muted-foreground" />
@@ -313,11 +344,45 @@ export default function SettingsPage() {
                 <p className="text-xs text-muted-foreground">Your private calendar subscription</p>
               </div>
             </div>
-            <div className="bg-muted/30 rounded-lg px-3 py-2">
-              <p className="text-xs text-muted-foreground font-mono break-all">
-                Token: {p.calendar_token}
-              </p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="bg-muted/30 rounded-lg px-3 py-2 flex-1 min-w-0">
+                <p className="text-xs text-muted-foreground font-mono break-all">
+                  Token: {p.calendar_token}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(String(p.calendar_token));
+                    markOnboardingCalendarDone(user.id);
+                    setTokenCopied(true);
+                    toast.success('Token copied');
+                    setTimeout(() => setTokenCopied(false), 2000);
+                  } catch {
+                    toast.error('Could not copy');
+                  }
+                }}
+              >
+                {tokenCopied ? (
+                  <Check className="w-3.5 h-3.5 mr-1" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5 mr-1" />
+                )}
+                Copy token
+              </Button>
             </div>
+            {process.env.NEXT_PUBLIC_SUPABASE_URL ? (
+              <CalendarSyncButton
+                calendarToken={p.calendar_token}
+                baseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL}
+                variant="cta"
+                userId={user.id}
+              />
+            ) : null}
             <p className="text-xs text-muted-foreground">
               This token is used for your private calendar feed. Keep it secret.
             </p>

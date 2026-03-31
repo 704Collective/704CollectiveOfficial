@@ -411,7 +411,10 @@ export default function Dashboard() {
 
         {/* Membership card + wallet — stacked and centered on all breakpoints (desktop included) */}
         {isActiveMember && (
-          <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-5">
+          <div
+            id="wallet-section"
+            className="mx-auto flex w-full max-w-lg flex-col items-center gap-5 scroll-mt-28"
+          >
             <div className="w-full">
               <MembershipCard
                 name={p.full_name || 'Member'}
@@ -466,11 +469,14 @@ export default function Dashboard() {
 
         {/* Calendar sync */}
         {isActiveMember && p.calendar_token && (
-          <CalendarSyncButton
-            calendarToken={p.calendar_token}
-            baseUrl={supabaseUrl || ''}
-            variant="cta"
-          />
+          <div id="calendar-section" className="scroll-mt-28">
+            <CalendarSyncButton
+              calendarToken={p.calendar_token}
+              baseUrl={supabaseUrl || ''}
+              variant="cta"
+              userId={user.id}
+            />
+          </div>
         )}
 
         {/* Two-column grid */}

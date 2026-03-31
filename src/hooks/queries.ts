@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { subMinutes } from 'date-fns';
 import { createClient } from '@/lib/supabase/client';
 
 const supabase = createClient();
@@ -68,6 +69,7 @@ export function useNextEvent(userId: string) {
         .from('events')
         .select('id, title, start_time, location_name, image_url')
         .gt('start_time', now)
+        .eq('is_published', true)
         .order('start_time', { ascending: true })
         .limit(1)
         .maybeSingle();
@@ -110,6 +112,7 @@ export function useUpcomingEvents() {
         .from('events')
         .select('id, title, start_time')
         .gte('start_time', new Date().toISOString())
+        .eq('is_published', true)
         .eq('allows_guest_passes', true)
         .order('start_time', { ascending: true })
         .limit(20);
@@ -180,6 +183,36 @@ export function useHasTickets(userId: string) {
       return (count ?? 0) > 0;
     },
     staleTime: 10 * 60 * 1000,
+    enabled: !!userId,
+  });
+}
+
+/** True if user has an RSVP/ticket for at least one future (or in-progress) published event. */
+export function useHasUpcomingEventRsvp(userId: string) {
+  return useQuery({
+    queryKey: ['upcomingEventRsvp', userId],
+    queryFn: async () => {
+      const now = new Date().toISOString();
+      const { data: tickets, error: tErr } = await supabase
+        .from('tickets')
+        .select('event_id')
+        .eq('user_id', userId)
+        .in('status', ['confirmed', 'rsvp']);
+      if (tErr) throw tErr;
+      const ids = [...new Set((tickets ?? []).map((t) => t.event_id).filter(Boolean))] as string[];
+      if (ids.length === 0) return false;
+      const thirtyMinsAgo = subMinutes(new Date(), 30).toISOString();
+      const { data: evs, error: eErr } = await supabase
+        .from('events')
+        .select('id')
+        .in('id', ids)
+        .eq('is_published', true)
+        .or(`end_time.gte.${thirtyMinsAgo},and(end_time.is.null,start_time.gte.${thirtyMinsAgo})`)
+        .limit(1);
+      if (eErr) throw eErr;
+      return (evs?.length ?? 0) > 0;
+    },
+    staleTime: 2 * 60 * 1000,
     enabled: !!userId,
   });
 }

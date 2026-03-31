@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     siteName: "704 Collective",
     images: [
       {
-        url: "/og-image.png",
+        url: "https://704collective.com/og-image.png",
         width: 1200,
         height: 630,
         alt: "704 Collective",
@@ -43,6 +43,14 @@ export const metadata: Metadata = {
     locale: "en_US",
     type: "website",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "704 Collective | Where Charlotte Connects",
+    description:
+      "Charlotte's two-track social club and business membership association. Curated events, real connections, and community.",
+    images: ["https://704collective.com/og-image.png"],
+  },
+  alternates: { canonical: "https://704collective.com" },
 };
 
 /* ─── Small reusable pieces ─── */

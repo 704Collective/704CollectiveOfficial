@@ -6,6 +6,8 @@ import { Loader2, Smartphone } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { GENERATE_WALLET_PASS_FUNCTION } from '@/lib/walletPass';
 import { toast } from 'sonner';
+import { markOnboardingWalletDone } from '@/lib/onboardingStorage';
+import { useAuth } from '@/hooks/useAuth';
 
 function AppleIcon({ className }: { className?: string }) {
   return (
@@ -47,6 +49,7 @@ function preferSameTabWalletOpen(): boolean {
 export function WalletButtons({ compact = false }: { compact?: boolean }) {
   const [googleLoading, setGoogleLoading] = useState(false);
   const platform = useDevicePlatform();
+  const { user } = useAuth();
 
   const handleGoogleWallet = async () => {
     const useSameTab = preferSameTabWalletOpen();
@@ -89,6 +92,7 @@ export function WalletButtons({ compact = false }: { compact?: boolean }) {
 
       if (data?.walletUrl) {
         const url = data.walletUrl as string;
+        if (user?.id) markOnboardingWalletDone(user.id);
         if (walletTab) {
           try {
             walletTab.opener = null;

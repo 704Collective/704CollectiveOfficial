@@ -19,7 +19,17 @@ export const metadata: Metadata = {
       "Stories, insights, and updates from Charlotte's premier community.",
     url: "https://704collective.com/blog",
     siteName: "704 Collective",
-    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+    images: [
+      { url: "https://704collective.com/og-image.png", width: 1200, height: 630, alt: "704 Collective" },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Blog | 704 Collective",
+    description:
+      "Stories, insights, and updates from Charlotte's premier community.",
+    images: ["https://704collective.com/og-image.png"],
   },
   alternates: { canonical: "https://704collective.com/blog" },
 };

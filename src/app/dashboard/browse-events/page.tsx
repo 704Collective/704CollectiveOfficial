@@ -47,6 +47,7 @@ async function fetchEvents(): Promise<Event[]> {
   const { data, error } = await supabase
     .from('events')
     .select('*')
+    .eq('is_published', true)
     .lte('start_time', sixtyDaysLater)
     .or(`end_time.gte.${thirtyMinsAgo},and(end_time.is.null,start_time.gte.${thirtyMinsAgo})`)
     .order('start_time', { ascending: true });

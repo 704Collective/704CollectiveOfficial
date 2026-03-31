@@ -14,11 +14,26 @@ export const dynamic = 'force-static';
 export const metadata: Metadata = {
   title: 'Partners | 704 Collective',
   description:
-    "Partner with 704 Collective - Charlotte's curated social and business events, engaged local audiences, and meaningful brand growth.",
+    "Partner with 704 Collective — Charlotte's curated social and business events, engaged local audiences, and meaningful brand growth.",
   openGraph: {
     title: 'Partners | 704 Collective',
+    description:
+      'Vendor, venue, and sponsor opportunities with Charlotte’s premier collective.',
     url: 'https://704collective.com/partners',
+    siteName: '704 Collective',
+    images: [
+      { url: 'https://704collective.com/og-image.png', width: 1200, height: 630, alt: '704 Collective' },
+    ],
+    type: 'website',
   },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Partners | 704 Collective',
+    description:
+      'Vendor, venue, and sponsor opportunities with Charlotte’s premier collective.',
+    images: ['https://704collective.com/og-image.png'],
+  },
+  alternates: { canonical: 'https://704collective.com/partners' },
 };
 
 export default async function PartnersPage() {

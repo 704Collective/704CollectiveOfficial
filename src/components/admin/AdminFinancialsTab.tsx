@@ -67,18 +67,18 @@ export function AdminFinancialsTab({ onNavigateToDashboard }: AdminFinancialsTab
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
       if (!accessToken) throw new Error('Not authenticated');
-      const res = await fetch(
-        'https://bnmtynevbuplqpuqvmna.supabase.co/functions/v1/admin-financials',
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJubXR5bmV2YnVwbHFwdXF2bW5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk0NzQyMjQsImV4cCI6MjA1NTA1MDIyNH0.o3-rHiEhpQdi1gSNrKZQKjU7o5QkLGaEECoSNAP7hRE',
-          },
-          body: JSON.stringify(bust ? { force_refresh: true } : {}),
-        }
-      );
+      const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      if (!baseUrl || !anonKey) throw new Error('Supabase URL or anon key is not configured');
+      const res = await fetch(`${baseUrl.replace(/\/$/, '')}/functions/v1/admin-financials`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          apikey: anonKey,
+        },
+        body: JSON.stringify(bust ? { force_refresh: true } : {}),
+      });
       const json = await res.json();
       if (!res.ok || json?.error) throw new Error(json?.error || `HTTP ${res.status}`);
       setData(json);

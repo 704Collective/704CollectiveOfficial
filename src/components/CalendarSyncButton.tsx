@@ -6,23 +6,31 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
+import { markOnboardingCalendarDone } from '@/lib/onboardingStorage';
 
 interface CalendarSyncButtonProps {
   calendarToken: string;
   baseUrl: string;
   variant?: 'icon' | 'cta';
+  /** When set, marks onboarding “calendar” step complete after subscribe/copy. */
+  userId?: string;
 }
 
-export function CalendarSyncButton({ calendarToken, baseUrl, variant = 'icon' }: CalendarSyncButtonProps) {
+export function CalendarSyncButton({ calendarToken, baseUrl, variant = 'icon', userId }: CalendarSyncButtonProps) {
   const [copied, setCopied] = useState(false);
 
   const webcalUrl = `webcal://${baseUrl.replace(/^https?:\/\//, '')}/functions/v1/calendar-feed?token=${calendarToken}`;
   const httpsUrl = `${baseUrl}/functions/v1/calendar-feed?token=${calendarToken}`;
 
+  const markDone = () => {
+    if (userId) markOnboardingCalendarDone(userId);
+  };
+
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(httpsUrl);
       setCopied(true);
+      markDone();
       toast.success('Calendar URL copied!');
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -31,6 +39,7 @@ export function CalendarSyncButton({ calendarToken, baseUrl, variant = 'icon' }:
   };
 
   const openWebcal = () => {
+    markDone();
     window.location.href = webcalUrl;
   };
 

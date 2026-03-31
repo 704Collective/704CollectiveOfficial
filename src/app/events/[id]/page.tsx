@@ -32,6 +32,7 @@ interface Event {
   image_url: string | null;
   capacity: number | null;
   is_members_only: boolean | null;
+  is_published?: boolean | null;
   ticket_price: number | null;
   category: string | null;
   allows_guest_passes: boolean | null;
@@ -40,7 +41,7 @@ interface Event {
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { user, profile, isActiveMember, isAdmin, loading: authLoading } = useAuth();
+  const { user, profile, isActiveMember, isAdmin, isSuperAdmin, loading: authLoading } = useAuth();
   const { hasTicket: checkHasTicket, rsvpLoadingId, showThankYou, setShowThankYou, thankYouType, registerMemberTicket, refreshUserTickets } = useTicketActions();
 
   const [event, setEvent] = useState<Event | null>(null);
@@ -65,6 +66,14 @@ export default function EventDetail() {
     if (!data) { toast.error('Event not found'); router.push('/events'); return; }
     setEvent(data); setloading(false);
   };
+
+  useEffect(() => {
+    if (!event || authLoading) return;
+    if (event.is_published === false && !isAdmin && !isSuperAdmin) {
+      toast.error('This event is not available');
+      router.push('/events');
+    }
+  }, [event, authLoading, isAdmin, isSuperAdmin, router]);
   const fetchTicketId = async () => {
     if (!user) return;
     const { data } = await supabase.from('tickets').select('id').eq('event_id', id).eq('user_id', user.id).in('status', ['confirmed', 'rsvp']).maybeSingle();

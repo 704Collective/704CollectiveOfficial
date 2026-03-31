@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,6 +21,17 @@ export function NotificationSettings({ userId, initialSettings }: NotificationSe
   const [announcements, setAnnouncements] = useState(initialSettings?.notify_announcements ?? true);
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (!initialSettings) return;
+    setEventReminders(initialSettings.notify_event_reminders ?? true);
+    setNewEvents(initialSettings.notify_new_events ?? true);
+    setAnnouncements(initialSettings.notify_announcements ?? true);
+  }, [
+    initialSettings?.notify_event_reminders,
+    initialSettings?.notify_new_events,
+    initialSettings?.notify_announcements,
+  ]);
+
   const updateSetting = async (field: string, value: boolean) => {
     setSaving(true);
     
@@ -31,12 +42,11 @@ export function NotificationSettings({ userId, initialSettings }: NotificationSe
 
     if (error) {
       toast.error('Failed to update setting');
-      // Revert the UI change
       if (field === 'notify_event_reminders') setEventReminders(!value);
       if (field === 'notify_new_events') setNewEvents(!value);
       if (field === 'notify_announcements') setAnnouncements(!value);
     }
-    
+
     setSaving(false);
   };
 

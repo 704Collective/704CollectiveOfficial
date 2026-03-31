@@ -295,7 +295,7 @@ function WelcomeContent() {
         event_id: eventId,
         user_id: user.id,
         ticket_type: 'member_free',
-        status: 'rsvp',
+        status: 'confirmed',
         source: 'welcome_onboarding_rsvp',
       });
       if (error) {
