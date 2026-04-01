@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { CalendarConnectPrompt } from '@/components/CalendarConnectPrompt';
 
 /**
  * Minimal event shape needed by ticket actions.
@@ -43,7 +44,7 @@ interface UseTicketActionsReturn {
  * across Index.tsx, Events.tsx, and EventDetail.tsx.
  */
 export function useTicketActions(): UseTicketActionsReturn {
-  const { user, profile, isActiveMember } = useAuth();
+  const { user, profile, isActiveMember, refreshProfile } = useAuth();
   const [userTicketIds, setUserTicketIds] = useState<Set<string>>(new Set());
   const [rsvpLoadingId, setRsvpLoadingId] = useState<string | null>(null);
   const [showThankYou, setShowThankYou] = useState(false);
@@ -180,6 +181,37 @@ export function useTicketActions(): UseTicketActionsReturn {
             });
         }
 
+        // Prompt calendar subscribe only if member has not set up a feed token yet
+        if (!p?.calendar_token?.trim()) {
+          const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+          void (async () => {
+            try {
+              const res = await fetch('/api/calendar/ensure-token', {
+                method: 'POST',
+                credentials: 'include',
+              });
+              const data = (await res.json()) as { token?: string; error?: string };
+              if (!res.ok || !data.token) return;
+              await refreshProfile();
+              toast.custom(
+                (tid) => (
+                  <CalendarConnectPrompt
+                    calendarToken={data.token!}
+                    baseUrl={base}
+                    title="Add this event to your calendar"
+                    compact
+                    userId={user.id}
+                    onDismiss={() => toast.dismiss(tid)}
+                  />
+                ),
+                { duration: 60000 }
+              );
+            } catch {
+              /* non-blocking */
+            }
+          })();
+        }
+
         return true;
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Failed to get ticket';
@@ -189,7 +221,7 @@ export function useTicketActions(): UseTicketActionsReturn {
         setRsvpLoadingId(null);
       }
     },
-    [user, p, isActiveMember, userTicketIds],
+    [user, p, isActiveMember, userTicketIds, refreshProfile],
   );
 
   return {

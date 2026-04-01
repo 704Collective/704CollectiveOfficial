@@ -118,10 +118,10 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
   
-    // Validate token and check subscription status
+    // Validate token and check subscription status (need profile id for ticket join)
     const { data: profile } = await supabase
       .from("profiles")
-      .select("subscription_status")
+      .select("id, subscription_status")
       .eq("calendar_token", token)
       .is("deleted_at", null)
       .single();
@@ -134,14 +134,43 @@ serve(async (req) => {
       return new Response("Active membership required", { status: 403, headers: corsHeaders });
     }
 
-    // Fetch future events
-    const { data: events } = await supabase
-      .from("events")
-      .select("*")
-      .gte("start_time", new Date().toISOString())
-      .order("start_time", { ascending: true });
+    // Only events this member has a non-cancelled ticket for (RSVP / purchased)
+    const { data: ticketRows, error: ticketErr } = await supabase
+      .from("tickets")
+      .select("event_id")
+      .eq("user_id", profile.id)
+      .neq("status", "cancelled");
+
+    if (ticketErr) {
+      console.error("Calendar tickets query:", ticketErr);
+      return new Response("Server error", { status: 500, headers: corsHeaders });
+    }
+
+    const eventIds = [
+      ...new Set(
+        (ticketRows ?? [])
+          .map((t: { event_id: string | null }) => t.event_id)
+          .filter((id): id is string => typeof id === "string" && id.length > 0)
+      ),
+    ];
+
+    let events: Event[] = [];
+    if (eventIds.length > 0) {
+      const { data: evs, error: evErr } = await supabase
+        .from("events")
+        .select("id, title, description, start_time, end_time, location_name")
+        .in("id", eventIds)
+        .gte("start_time", new Date().toISOString())
+        .order("start_time", { ascending: true });
+
+      if (evErr) {
+        console.error("Calendar events query:", evErr);
+        return new Response("Server error", { status: 500, headers: corsHeaders });
+      }
+      events = (evs ?? []) as Event[];
+    }
   
-    const icsFile = generateICS(events || []);
+    const icsFile = generateICS(events);
 
     return new Response(icsFile, {
       status: 200,

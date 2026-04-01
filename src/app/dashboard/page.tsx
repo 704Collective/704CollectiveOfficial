@@ -12,6 +12,7 @@ import { GuestPassSection } from '@/components/GuestPassSection';
 import { NotificationsFeed } from '@/components/NotificationsFeed';
 import { NextEventHero } from '@/components/NextEventHero';
 import { CalendarSyncButton } from '@/components/CalendarSyncButton';
+import { CalendarConnectPrompt } from '@/components/CalendarConnectPrompt';
 import { MembershipStatusBar } from '@/components/MembershipStatusBar';
 import { MembershipCard } from '@/components/MembershipCard';
 import { WalletButtons } from '@/components/WalletButtons';
@@ -185,6 +186,13 @@ function DashboardSuggestFromQuery({ onOpen }: { onOpen: () => void }) {
 
 export default function Dashboard() {
   const { user, profile, isActiveMember, isAdmin, loading, refreshProfile } = useAuth();
+  const [calendarPromptDismissed, setCalendarPromptDismissed] = useState(false);
+
+  useEffect(() => {
+    if ((profile as { calendar_token?: string | null } | null)?.calendar_token) {
+      setCalendarPromptDismissed(false);
+    }
+  }, [profile]);
   const router = useRouter();
   usePageTitle('Member Portal');
   const [isPortalLoading, setIsPortalLoading] = useState(false);
@@ -467,15 +475,36 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Calendar sync */}
-        {isActiveMember && p.calendar_token && (
-          <div id="calendar-section" className="scroll-mt-28">
-            <CalendarSyncButton
-              calendarToken={p.calendar_token}
-              baseUrl={supabaseUrl || ''}
-              variant="cta"
-              userId={user.id}
-            />
+        {/* Calendar sync — RSVPed events only; prompt setup if no token yet */}
+        {isActiveMember && supabaseUrl && (
+          <div id="calendar-section" className="scroll-mt-28 space-y-2">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Calendar
+            </p>
+            {p.calendar_token ? (
+              <CalendarSyncButton
+                calendarToken={p.calendar_token}
+                baseUrl={supabaseUrl}
+                variant="cta"
+                userId={user.id}
+              />
+            ) : !calendarPromptDismissed ? (
+              <CalendarConnectPrompt
+                calendarToken={null}
+                baseUrl={supabaseUrl}
+                userId={user.id}
+                onDismiss={() => setCalendarPromptDismissed(true)}
+                onTokenCreated={() => void refreshProfile()}
+              />
+            ) : (
+              <button
+                type="button"
+                className="text-sm font-medium text-[#C6A664] hover:underline"
+                onClick={() => setCalendarPromptDismissed(false)}
+              >
+                Connect your calendar
+              </button>
+            )}
           </div>
         )}
 
