@@ -1,0 +1,4 @@
+# Stripe calls this endpoint with stripe-signature only (no Supabase JWT).
+# https://supabase.com/docs/guides/functions/function-configuration
+[functions.stripe-webhook]
+verify_jwt = false
