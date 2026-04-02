@@ -566,6 +566,8 @@ export type Database = {
           avatar_url: string | null
           calendar_token: string
           created_at: string | null
+          deactivated_at: string | null
+          deactivation_reason: string | null
           deleted_at: string | null
           email: string
           full_name: string | null
@@ -573,6 +575,7 @@ export type Database = {
           hubspot_contact_id: string | null
           id: string
           imported_at: string | null
+          is_founding_member: boolean
           member_since: string | null
           member_type: string | null
           membership_duration: string | null
@@ -592,6 +595,8 @@ export type Database = {
           avatar_url?: string | null
           calendar_token?: string
           created_at?: string | null
+          deactivated_at?: string | null
+          deactivation_reason?: string | null
           deleted_at?: string | null
           email: string
           full_name?: string | null
@@ -599,6 +604,7 @@ export type Database = {
           hubspot_contact_id?: string | null
           id: string
           imported_at?: string | null
+          is_founding_member?: boolean
           member_since?: string | null
           member_type?: string | null
           membership_duration?: string | null
@@ -618,6 +624,8 @@ export type Database = {
           avatar_url?: string | null
           calendar_token?: string
           created_at?: string | null
+          deactivated_at?: string | null
+          deactivation_reason?: string | null
           deleted_at?: string | null
           email?: string
           full_name?: string | null
@@ -625,6 +633,7 @@ export type Database = {
           hubspot_contact_id?: string | null
           id?: string
           imported_at?: string | null
+          is_founding_member?: boolean
           member_since?: string | null
           member_type?: string | null
           membership_duration?: string | null

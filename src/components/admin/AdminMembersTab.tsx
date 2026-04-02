@@ -20,6 +20,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { getInitialsAvatarStyle } from '@/lib/avatarInitialsColor';
+import { MemberStatusDotLabel, resolveSubscriptionVisualKind } from '@/lib/memberSubscriptionStatus';
 import {
   Users, Search, UserPlus, ArrowLeft, Shield, ShieldOff, Mail, Loader2,
   ChevronLeft, ChevronRight, Ban,
@@ -36,6 +38,7 @@ interface Member {
   deleted_at: string | null;
   imported_at: string | null;
   is_banned: boolean | null;
+  deactivated_at?: string | null;
 }
 
 interface MemberForm {
@@ -44,31 +47,34 @@ interface MemberForm {
   membership_override: boolean;
 }
 
-type FilterType = 'all' | 'active' | 'inactive' | 'recent' | 'deactivated' | 'imported' | 'banned';
+type FilterType = 'all' | 'active' | 'inactive' | 'trialing' | 'recent' | 'deactivated' | 'imported' | 'banned';
+
+const FILTER_ORDER: FilterType[] = ['all', 'active', 'inactive', 'trialing', 'recent', 'imported', 'deactivated', 'banned'];
+
+const FILTER_LABELS: Record<FilterType, string> = {
+  all: 'All',
+  active: 'Active',
+  inactive: 'Inactive',
+  trialing: 'Trialing',
+  recent: 'Recent',
+  imported: 'Imported',
+  deactivated: 'Deactivated',
+  banned: 'Banned',
+};
 
 // ── Avatar helpers ─────────────────────────────────────────────────
-const AVATAR_COLORS = [
-  'bg-rose-600', 'bg-amber-600', 'bg-emerald-600', 'bg-cyan-600',
-  'bg-blue-600', 'bg-violet-600', 'bg-pink-600', 'bg-teal-600',
-  'bg-indigo-600', 'bg-orange-600',
-];
-
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   return name.slice(0, 2).toUpperCase();
 }
 
-function hashName(name: string): number {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) { hash = ((hash << 5) - hash) + name.charCodeAt(i); hash |= 0; }
-  return Math.abs(hash);
-}
-
-function MemberAvatar({ name }: { name: string }) {
-  const color = AVATAR_COLORS[hashName(name) % AVATAR_COLORS.length];
+function MemberAvatar({ name, memberId }: { name: string; memberId: string }) {
   return (
-    <div className={cn('w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-white text-xs font-semibold', color)}>
+    <div
+      className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold"
+      style={getInitialsAvatarStyle(memberId)}
+    >
       {getInitials(name)}
     </div>
   );
@@ -81,14 +87,48 @@ const STALE_TIME = 5 * 60 * 1000;
 async function fetchMembersData(page: number, activeFilter: FilterType) {
   const start = (page - 1) * PAGE_SIZE;
   const end = start + PAGE_SIZE - 1;
+
   let query = supabase
     .from('profiles')
-    .select('id, email, full_name, subscription_status, membership_override, created_at, deleted_at, imported_at, is_banned', { count: 'exact' })
+    .select(
+      'id, email, full_name, subscription_status, membership_override, created_at, deleted_at, imported_at, is_banned, deactivated_at',
+      { count: 'exact' }
+    )
     .order('created_at', { ascending: false });
 
-  if (activeFilter === 'deactivated') query = query.not('deleted_at', 'is', null);
-  else if (activeFilter === 'banned') query = query.eq('is_banned', true);
-  else query = query.is('deleted_at', null);
+  if (activeFilter === 'deactivated') {
+    query = query.or('deleted_at.not.is.null,subscription_status.eq.deactivated');
+  } else if (activeFilter === 'banned') {
+    query = query.eq('is_banned', true).is('deleted_at', null);
+  } else if (activeFilter === 'inactive') {
+    query = query
+      .is('deleted_at', null)
+      .or('subscription_status.is.null,subscription_status.in.(inactive,canceled,past_due,paused)');
+  } else {
+    query = query.is('deleted_at', null).or('subscription_status.is.null,subscription_status.neq.deactivated');
+
+    switch (activeFilter) {
+      case 'active':
+        query = query.eq('subscription_status', 'active');
+        break;
+      case 'trialing':
+        query = query.eq('subscription_status', 'trialing');
+        break;
+      case 'recent': {
+        const w = new Date();
+        w.setDate(w.getDate() - 7);
+        query = query.gte('created_at', w.toISOString());
+        break;
+      }
+      case 'imported':
+        query = query.not('imported_at', 'is', null);
+        break;
+      case 'all':
+      default:
+        break;
+    }
+  }
+
   query = query.range(start, end);
 
   const [membersResult, rolesResult] = await Promise.all([
@@ -278,19 +318,11 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
     finally { setResendingWelcome(false); }
   };
 
-  // Filter
   const filtered = members.filter(member => {
-    const matchesSearch = member.full_name?.toLowerCase().includes(search.toLowerCase()) || member.email.toLowerCase().includes(search.toLowerCase());
-    if (!matchesSearch) return false;
-    switch (activeFilter) {
-      case 'active': return member.subscription_status === 'active';
-      case 'inactive': return member.subscription_status !== 'active';
-      case 'recent': { const w = new Date(); w.setDate(w.getDate() - 7); return new Date(member.created_at) >= w; }
-      case 'deactivated': return true;
-      case 'imported': return !!member.imported_at;
-      case 'banned': return !!member.is_banned;
-      default: return true;
-    }
+    const matchesSearch =
+      member.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+      member.email.toLowerCase().includes(search.toLowerCase());
+    return matchesSearch;
   });
 
   // ── Render ───────────────────────────────────────────────────────
@@ -319,9 +351,15 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
           <div className="flex flex-col gap-3 mb-4">
             <div className="overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0">
               <div className="flex gap-2 w-max lg:w-auto lg:flex-wrap">
-                {(['all', 'active', 'inactive', 'recent', 'imported', 'deactivated', 'banned'] as FilterType[]).map(f => (
-                  <Button key={f} variant={activeFilter === f ? 'default' : 'outline'} size="sm" onClick={() => setFilter(f)}>
-                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                {FILTER_ORDER.map(f => (
+                  <Button
+                    key={f}
+                    variant={activeFilter === f ? 'filterActive' : 'filterInactive'}
+                    size="sm"
+                    className="h-8"
+                    onClick={() => setFilter(f)}
+                  >
+                    {FILTER_LABELS[f]}
                   </Button>
                 ))}
               </div>
@@ -356,12 +394,15 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
                 </TableHeader>
                 <TableBody>
                   {filtered.map(member => {
-                    const statusColor = member.deleted_at ? 'bg-destructive' : member.subscription_status === 'active' ? 'bg-green-500' : 'bg-muted-foreground/50';
+                    const kind = resolveSubscriptionVisualKind(member.subscription_status, {
+                      deletedAt: member.deleted_at,
+                      subscriptionDeactivated: member.subscription_status === 'deactivated',
+                    });
                     return (
                       <TableRow key={member.id} className="cursor-pointer hover:bg-accent/50" onClick={() => openProfileSheet(member)}>
                         <TableCell className="font-medium py-3">
                           <span className="flex items-center gap-3">
-                            <MemberAvatar name={member.full_name || member.email} />
+                            <MemberAvatar name={member.full_name || member.email} memberId={member.id} />
                             <span className="flex items-center gap-2">
                               {member.full_name || 'No name'}
                               {adminUserIds.has(member.id) && <Badge className="bg-primary/10 text-primary hover:bg-primary/20 text-xs"><Shield className="w-3 h-3 mr-1" />Admin</Badge>}
@@ -372,10 +413,7 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
                         </TableCell>
                         <TableCell className="text-muted-foreground">{member.email}</TableCell>
                         <TableCell>
-                          <span className="flex items-center gap-2">
-                            <span className={cn('w-2 h-2 rounded-full shrink-0', statusColor)} />
-                            {member.deleted_at ? <span className="text-destructive text-sm">Deactivated</span> : <span className="text-sm capitalize">{member.subscription_status || 'Inactive'}</span>}
-                          </span>
+                          <MemberStatusDotLabel kind={kind} />
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {activeFilter === 'deactivated' && member.deleted_at ? format(new Date(member.deleted_at), 'MMM d, yyyy') : format(new Date(member.created_at), 'MMM d, yyyy')}
@@ -392,11 +430,13 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
           {filtered.length > 0 && (
             <div className="lg:hidden divide-y divide-border">
               {filtered.map(member => {
-                const statusColor = member.deleted_at ? 'bg-destructive' : member.subscription_status === 'active' ? 'bg-green-500' : 'bg-muted-foreground/50';
-                const statusText = member.deleted_at ? 'Deactivated' : (member.subscription_status || 'Inactive');
+                const kind = resolveSubscriptionVisualKind(member.subscription_status, {
+                  deletedAt: member.deleted_at,
+                  subscriptionDeactivated: member.subscription_status === 'deactivated',
+                });
                 return (
                   <div key={member.id} className="flex items-center gap-3 py-3 px-1 cursor-pointer active:bg-accent/30" onClick={() => openProfileSheet(member)}>
-                    <MemberAvatar name={member.full_name || member.email} />
+                    <MemberAvatar name={member.full_name || member.email} memberId={member.id} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-sm truncate">{member.full_name || 'No name'}</span>
@@ -407,9 +447,8 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
                       <p className="text-sm text-muted-foreground truncate">{member.email}</p>
                       <p className="text-xs text-muted-foreground/70">Joined {format(new Date(member.created_at), 'MMM d, yyyy')}</p>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className={cn('w-2 h-2 rounded-full', statusColor)} />
-                      <span className="text-xs capitalize text-muted-foreground">{statusText}</span>
+                    <div className="shrink-0">
+                      <MemberStatusDotLabel kind={kind} />
                     </div>
                   </div>
                 );
@@ -450,6 +489,8 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
                   <SelectItem value="canceled">Canceled</SelectItem>
                   <SelectItem value="past_due">Past Due</SelectItem>
                   <SelectItem value="trialing">Trialing</SelectItem>
+                  <SelectItem value="paused">Paused</SelectItem>
+                  <SelectItem value="deactivated">Deactivated</SelectItem>
                 </SelectContent>
               </Select>
             </div>

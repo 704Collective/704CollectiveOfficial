@@ -184,8 +184,11 @@ export default function CrmDashboardPage() {
           pipelineRes,
         ] = await Promise.all([
           supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('status', 'active'),
-          supabase.from('profiles').select('id', { count: 'exact', head: true })
-            .eq('subscription_status', 'active').is('deleted_at', null),
+          supabase
+            .from('profiles')
+            .select('id', { count: 'exact', head: true })
+            .is('deleted_at', null)
+            .in('subscription_status', ['active', 'trialing']),
           supabase.from('payments').select('amount').eq('status', 'succeeded')
             .gte('created_at', startOfMonth(new Date()).toISOString()),
           supabase.from('crm_deals').select('value').not('stage', 'in', '("denied","lost")'),

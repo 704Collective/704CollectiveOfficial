@@ -9,66 +9,57 @@
   --color-graphite: #2E2E2E;
   --color-ivory: #FAF6F0;
   --color-grey: #A0A0A0;
-  --color-gold: #C6A664;
-  --color-gold-light: #C6A664;
+  --color-gold: #c4a75f;
+  --color-gold-light: #c4a75f;
   --color-black: #000000;
-  --color-white: #FFFFFF;
-  --radius: 0.625rem;
+  --color-white: #ffffff;
+  --radius: 0.75rem;
 
-  /* ─── DARK THEME (default) — 704 Collective design system ─── */
+  --background: hsl(0 0% 10%);
+  --foreground: hsl(36 50% 96%);
+  --card: hsl(0 0% 18%);
+  --card-foreground: hsl(36 50% 96%);
+  --popover: hsl(0 0% 18%);
+  --popover-foreground: hsl(36 50% 96%);
+  --primary: hsl(0 0% 100%);
+  --primary-foreground: hsl(0 0% 0%);
+  --secondary: hsl(0 0% 21%);
+  --secondary-foreground: hsl(36 50% 96%);
+  --muted: hsl(0 0% 21%);
+  --muted-foreground: hsl(0 0% 63%);
+  --accent: hsl(0 0% 21%);
+  --accent-foreground: hsl(36 50% 96%);
+  --destructive: hsl(0 62% 50%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(0 0% 24%);
+  --input: hsl(0 0% 24%);
+  --ring: hsl(0 0% 100%);
 
-  /* Page canvas */
-  --background: oklch(0.17 0 0);          /* ~#1A1A1A primary canvas */
-  --foreground: oklch(0.97 0.008 72);     /* #FAF6F0 ivory — warm white */
+  --surface-elevated: hsl(0 0% 21%);
+  --surface-overlay: hsl(0 0% 0% / 0.8);
+  --gradient-card: linear-gradient(180deg, hsl(0 0% 21%) 0%, hsl(0 0% 15%) 100%);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.35);
+  --shadow-glow: 0 0 60px rgba(255, 255, 255, 0.06);
+  --status-active: hsl(142 76% 36%);
+  --status-inactive: hsl(0 0% 45%);
+  --status-error: hsl(0 84% 60%);
+  --status-warning: hsl(38 92% 50%);
 
-  /* Cards & surfaces — clearly lifted off the page */
-  --card: oklch(0.255 0 0);               /* clearly lifted off background */
-  --card-foreground: oklch(0.97 0.008 72);
+  --sidebar-background: hsl(0 0% 18%);
+  --sidebar-border: hsl(0 0% 24%);
+  --sidebar-foreground: hsl(36 50% 96%);
+  --sidebar: var(--sidebar-background);
+  --sidebar-primary: hsl(0 0% 100%);
+  --sidebar-primary-foreground: hsl(0 0% 0%);
+  --sidebar-accent: hsl(0 0% 21%);
+  --sidebar-accent-foreground: hsl(36 50% 96%);
+  --sidebar-ring: hsl(0 0% 100%);
 
-  /* Popovers & dropdowns — same as card */
-  --popover: oklch(0.225 0 0);
-  --popover-foreground: oklch(0.97 0.008 72);
-
-  /* ─── PRIMARY = Brand Gold #C6A664 ─── */
-  --primary: oklch(1 0 0);                /* #FFFFFF white */
-  --primary-foreground: oklch(0.14 0 0);  /* near-black text on white */
-
-  /* Secondary — graphite surface */
-  --secondary: oklch(0.24 0 0);           /* #2E2E2E graphite */
-  --secondary-foreground: oklch(0.97 0.008 72);
-
-  /* Muted — subtle backgrounds, placeholder text */
-  --muted: oklch(0.24 0 0);
-  --muted-foreground: oklch(0.63 0 0);    /* #A0A0A0 */
-
-  /* Accent — slightly lighter graphite for hover states */
-  --accent: oklch(0.26 0 0);
-  --accent-foreground: oklch(0.97 0.008 72);
-
-  /* Destructive */
-  --destructive: oklch(0.65 0.19 22);
-
-  /* Borders & inputs — increased opacity for visibility */
-  --border: oklch(1 0 0 / 14%);
-  --input: oklch(1 0 0 / 18%);
-  --ring: oklch(0.718 0.089 72);          /* gold focus ring */
-
-  /* Chart colors */
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-
-  /* Sidebar — darker than page background (correct hierarchy) */
-  --sidebar: oklch(0.115 0 0);
-  --sidebar-foreground: oklch(0.97 0.008 72);
-  --sidebar-primary: oklch(1 0 0);
-  --sidebar-primary-foreground: oklch(0.14 0 0);
-  --sidebar-accent: oklch(0.26 0 0);
-  --sidebar-accent-foreground: oklch(0.97 0.008 72);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.718 0.089 72);
 }
 
 /*
@@ -111,7 +102,7 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-heading), "Plus Jakarta Sans", sans-serif;
+    font-family: var(--font-heading), "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
   }
 
   a {

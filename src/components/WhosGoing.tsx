@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getInitialsAvatarStyle } from '@/lib/avatarInitialsColor';
 
 interface Attendee {
   id: string;
@@ -13,6 +14,14 @@ interface Attendee {
 
 interface WhosGoingProps {
   eventId: string;
+}
+
+function twoInitials(fullName: string | null): string {
+  const t = fullName?.trim();
+  if (!t) return 'M';
+  const parts = t.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return `${parts[0]![0]}${parts[parts.length - 1]![0]}`.toUpperCase();
+  return t.slice(0, 2).toUpperCase();
 }
 
 export function WhosGoing({ eventId }: WhosGoingProps) {
@@ -107,8 +116,11 @@ export function WhosGoing({ eventId }: WhosGoingProps) {
             className="w-10 h-10 border-2 border-background"
           >
             <AvatarImage src={attendee.avatar_url || undefined} alt={attendee.full_name || 'Member'} />
-            <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-              {(attendee.full_name || 'M').charAt(0).toUpperCase()}
+            <AvatarFallback
+              className="text-sm font-semibold"
+              style={getInitialsAvatarStyle(attendee.id)}
+            >
+              {twoInitials(attendee.full_name)}
             </AvatarFallback>
           </Avatar>
         ))}

@@ -86,7 +86,7 @@ export function Header() {
     cn(
       "text-sm font-medium transition-colors duration-200 relative py-1",
       isActive(path)
-        ? "text-primary after:absolute after:bottom-[-4px] after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
+        ? "text-primary after:absolute after:bottom-[-4px] after:left-0 after:right-0 after:h-[2px] after:rounded-full after:bg-[rgb(196,167,100)]"
         : "text-muted-foreground hover:text-foreground"
     );
 

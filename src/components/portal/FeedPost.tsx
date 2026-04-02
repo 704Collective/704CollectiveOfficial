@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { notifyAfterFeedCommentCreated } from '@/app/actions/portalFeedNotifications';
 import { cn } from '@/lib/utils';
+import { getInitialsAvatarStyle } from '@/lib/avatarInitialsColor';
 import type { User } from '@supabase/supabase-js';
 
 // ---------------------------------------------------------------------------
@@ -101,6 +102,7 @@ function MentionTextarea({
   className,
   onSubmit,
   minRows = 2,
+  mentionAvatarBusiness = false,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -108,6 +110,7 @@ function MentionTextarea({
   className?: string;
   onSubmit?: () => void;
   minRows?: number;
+  mentionAvatarBusiness?: boolean;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [suggestions, setSuggestions] = useState<MentionSuggestion[]>([]);
@@ -180,7 +183,12 @@ function MentionTextarea({
             >
               <Avatar className="w-6 h-6 shrink-0">
                 <AvatarImage src={s.avatar_url ?? undefined} />
-                <AvatarFallback className="text-[10px]">{initials(s.full_name)}</AvatarFallback>
+                <AvatarFallback
+                  className="text-[10px] font-semibold"
+                  style={getInitialsAvatarStyle(s.id, { businessPortal: mentionAvatarBusiness })}
+                >
+                  {initials(s.full_name)}
+                </AvatarFallback>
               </Avatar>
               <span>{s.full_name}</span>
             </button>
@@ -295,7 +303,14 @@ export function FeedPost({ post, currentUser, onDelete, onEdit }: FeedPostProps)
         <div className="flex items-center gap-2.5 min-w-0">
           <Avatar className="w-9 h-9 shrink-0">
             <AvatarImage src={post.author?.avatar_url ?? undefined} />
-            <AvatarFallback>{initials(post.author?.full_name)}</AvatarFallback>
+            <AvatarFallback
+              className="text-sm font-semibold"
+              style={getInitialsAvatarStyle(post.author?.id ?? post.author_id, {
+                businessPortal: post.feed_type === 'business',
+              })}
+            >
+              {initials(post.author?.full_name)}
+            </AvatarFallback>
           </Avatar>
           <div className="min-w-0">
             <p className="text-sm font-semibold truncate">{post.author?.full_name ?? 'Member'}</p>
@@ -421,7 +436,14 @@ export function FeedPost({ post, currentUser, onDelete, onEdit }: FeedPostProps)
                 <div key={comment.id} className="flex gap-2 group">
                   <Avatar className="w-7 h-7 shrink-0 mt-0.5">
                     <AvatarImage src={comment.author?.avatar_url ?? undefined} />
-                    <AvatarFallback className="text-[10px]">{initials(comment.author?.full_name)}</AvatarFallback>
+                    <AvatarFallback
+                      className="text-[10px] font-semibold"
+                      style={getInitialsAvatarStyle(comment.author?.id ?? comment.author_id, {
+                        businessPortal: post.feed_type === 'business',
+                      })}
+                    >
+                      {initials(comment.author?.full_name)}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="bg-muted/50 rounded-xl px-3 py-2">
@@ -451,7 +473,12 @@ export function FeedPost({ post, currentUser, onDelete, onEdit }: FeedPostProps)
           {currentUser && (
             <div className="flex gap-2 items-end">
               <Avatar className="w-7 h-7 shrink-0">
-                <AvatarFallback className="text-[10px]">
+                <AvatarFallback
+                  className="text-[10px] font-semibold"
+                  style={getInitialsAvatarStyle(currentUser.id, {
+                    businessPortal: post.feed_type === 'business',
+                  })}
+                >
                   {initials(currentUser.user_metadata?.full_name)}
                 </AvatarFallback>
               </Avatar>
@@ -463,6 +490,7 @@ export function FeedPost({ post, currentUser, onDelete, onEdit }: FeedPostProps)
                   minRows={1}
                   onSubmit={submitComment}
                   className="pr-10 text-sm"
+                  mentionAvatarBusiness={post.feed_type === 'business'}
                 />
                 <Button
                   size="icon"

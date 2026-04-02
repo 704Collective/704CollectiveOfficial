@@ -358,6 +358,8 @@ export default function BusinessEventsPage() {
                       imageUrl={event.image_url || undefined}
                       ticketPrice={event.ticket_price || 0}
                       isActiveMembersOnly={event.is_members_only || false}
+                      isBusinessOnly={event.is_business_only || false}
+                      categoryPortalTone="businessPortal"
                       userHasTicket={userTicketIds.has(event.id)}
                       isUserMember={true}
                       isLoggedIn={true}
@@ -413,6 +415,8 @@ export default function BusinessEventsPage() {
                             imageUrl={event.image_url || undefined}
                             ticketPrice={event.ticket_price || 0}
                             isActiveMembersOnly={event.is_members_only || false}
+                            isBusinessOnly={event.is_business_only || false}
+                            categoryPortalTone="businessPortal"
                             userHasTicket={userTicketIds.has(event.id)}
                             isUserMember={true}
                             isLoggedIn={true}

@@ -27,6 +27,8 @@ interface EventGridCardProps {
   onGetTicket: () => void;
   onGuestPurchase: () => void;
   onClick: () => void;
+  /** Business portal: category pills use amber vs gray outline. */
+  categoryPortalTone?: 'default' | 'businessPortal';
 }
 
 export function EventGridCard({
@@ -34,6 +36,7 @@ export function EventGridCard({
   isActiveMembersOnly, isBusinessOnly = false, userHasTicket, isUserMember, isLoggedIn,
   category, capacity, ticketCount = 0, loading,
   onGetTicket, onGuestPurchase, onClick,
+  categoryPortalTone = 'default',
 }: EventGridCardProps) {
   const startDate = new Date(startTime);
   const hasImage = !!imageUrl;
@@ -126,7 +129,12 @@ export function EventGridCard({
         {/* Category badge */}
         {category && category !== 'other' && (
           <div style={{ position: 'absolute', top: '12px', right: '12px' }}>
-            <CategoryBadge category={category as EventCategory} size="sm" />
+            <CategoryBadge
+              category={category as EventCategory}
+              size="sm"
+              tone={categoryPortalTone}
+              businessEvent={!!isBusinessOnly}
+            />
           </div>
         )}
 

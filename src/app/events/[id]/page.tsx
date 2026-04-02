@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ThankYouModal } from '@/components/ThankYouModal';
 import { WhosGoing } from '@/components/WhosGoing';
-import { CategoryBadge, EventCategory } from '@/components/CategoryBadge';
+import { CategoryBadge, EventCategory, MembersOnlyEventBadge } from '@/components/CategoryBadge';
 import { AddToCalendarButtons } from '@/components/AddToCalendarButtons';
 import { WaitlistBadge } from '@/components/WaitlistBadge';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
@@ -178,7 +178,7 @@ export default function EventDetail() {
     if (!user) {
       if (event.is_members_only) return (
         <div style={{ textAlign: 'center' }}>
-          <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: 'rgba(255,255,255,0.5)', backgroundColor: 'rgba(255,255,255,0.06)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Members Only</span>
+          <div style={{ marginBottom: '12px' }}><MembersOnlyEventBadge /></div>
           <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>Member Event</h3>
           <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>Sign in to RSVP.</p>
           <Link href="/login" style={{ ...linkBtn, backgroundColor: '#FFF', color: '#000', marginBottom: '10px' }}>Sign In</Link>
@@ -264,7 +264,7 @@ export default function EventDetail() {
             <div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
                 {event.category && event.category !== 'other' && <CategoryBadge category={event.category as EventCategory} />}
-                {event.is_members_only && <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'rgba(255,255,255,0.5)', backgroundColor: 'rgba(255,255,255,0.06)', padding: '4px 12px', borderRadius: '100px', border: '1px solid rgba(255,255,255,0.06)' }}>Members Only</span>}
+                {event.is_members_only && <MembersOnlyEventBadge />}
                 {isAtCapacity && <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#E57373', backgroundColor: 'rgba(229,115,115,0.06)', padding: '4px 12px', borderRadius: '100px' }}>Sold Out</span>}
               </div>
 

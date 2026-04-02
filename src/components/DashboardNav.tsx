@@ -381,7 +381,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
     cn(
       'relative flex w-full min-w-0 items-center justify-center gap-0.5 whitespace-nowrap px-0.5 pb-2 pt-0.5 text-center text-[10px] font-medium transition-colors sm:gap-1 sm:text-xs lg:gap-1.5 lg:text-[13px] xl:text-sm',
       isActive
-        ? 'text-gold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:rounded-full after:bg-gold'
+        ? 'text-gold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:rounded-full after:bg-[rgb(196,167,100)]'
         : 'text-muted-foreground hover:text-foreground'
     );
 

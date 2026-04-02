@@ -74,7 +74,11 @@ function useWidgetData(type: WidgetType) {
       try {
         switch (type) {
           case 'members_total': {
-            const { count } = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('subscription_status', 'active').is('deleted_at', null);
+            const { count } = await supabase
+              .from('profiles')
+              .select('id', { count: 'exact', head: true })
+              .is('deleted_at', null)
+              .in('subscription_status', ['active', 'trialing']);
             setData(count ?? 0);
             break;
           }

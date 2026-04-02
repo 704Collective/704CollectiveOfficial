@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Check, Crown, CreditCard, Loader2, Settings, AlertTriangle } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { MemberStatusPill, resolveSubscriptionVisualKind } from '@/lib/memberSubscriptionStatus';
 
 interface MembershipStatusBarProps {
   isActiveMember: boolean;
@@ -31,6 +31,7 @@ export function MembershipStatusBar({
 }: MembershipStatusBarProps) {
   const isCanceling = cancelAtPeriodEnd === true;
   const endDate = subscriptionEndsAt || subscriptionEnd;
+  const statusKind = resolveSubscriptionVisualKind(subscriptionStatus, { deletedAt: null });
 
   if (!isActiveMember) {
     return (
@@ -57,15 +58,15 @@ export function MembershipStatusBar({
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
         <div className="flex items-center gap-3 flex-wrap">
           {isCanceling ? (
-            <Badge className="bg-orange-500/10 text-orange-400 border-orange-500/30">
-              <AlertTriangle className="w-3 h-3 mr-1" />
-              Canceling
-            </Badge>
+            <span className="inline-flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 text-orange-400 shrink-0" aria-hidden />
+              <MemberStatusPill kind="canceled" />
+            </span>
           ) : (
-            <Badge className="bg-green-500/10 text-green-500 border-green-500/30">
-              <Check className="w-3 h-3 mr-1" />
-              Active
-            </Badge>
+            <span className="inline-flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 text-green-500 shrink-0" aria-hidden />
+              <MemberStatusPill kind={statusKind} />
+            </span>
           )}
           {memberSince && (
             <span className="text-sm text-muted-foreground">

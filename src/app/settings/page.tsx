@@ -16,6 +16,7 @@ import { MembershipDangerZone } from '@/components/MembershipDangerZone';
 import { toast } from 'sonner';
 import { Loader2, User, Key, Bell, CreditCard, Calendar, LogOut, ExternalLink, Crown } from 'lucide-react';
 import { format } from 'date-fns';
+import { MemberStatusDotLabel, resolveSubscriptionVisualKind } from '@/lib/memberSubscriptionStatus';
 
 export default function Settings() {
   const router = useRouter();
@@ -262,14 +263,9 @@ export default function Settings() {
                     </p>
                   )}
                 </div>
-                <span className={`px-3 py-1 rounded-full text-sm ${
-                  isActiveMember ? 'bg-green-500/10 text-green-500' : 'bg-muted text-muted-foreground'
-                }`}>
-                  {p.subscription_status === 'active' ? 'Active' : 
-                   p.subscription_status === 'paused' ? 'Paused' :
-                   p.subscription_status === 'past_due' ? 'Past Due' :
-                   p.subscription_status === 'canceled' ? 'Cancelled' : 'Inactive'}
-                </span>
+                <MemberStatusDotLabel
+                  kind={resolveSubscriptionVisualKind(p.subscription_status, { deletedAt: null })}
+                />
               </div>
 
               {hasStripeSubscription ? (

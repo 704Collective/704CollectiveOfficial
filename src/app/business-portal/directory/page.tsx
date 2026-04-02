@@ -9,6 +9,7 @@ import { Search, Globe, Linkedin, Instagram, MessageSquare } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
 import Link from 'next/link';
+import { getInitialsAvatarStyle } from '@/lib/avatarInitialsColor';
 
 interface DirectoryMember {
   user_id: string;
@@ -227,7 +228,18 @@ export default function BusinessDirectoryPage() {
                         {member.avatar_url ? (
                           <Image src={member.avatar_url} alt={member.full_name} fill style={{ objectFit: 'cover' }} unoptimized />
                         ) : (
-                          <span style={{ fontSize: '1.125rem', fontWeight: 700, color: '#C6A664' }}>
+                          <span
+                            style={{
+                              ...getInitialsAvatarStyle(member.user_id, { businessPortal: true }),
+                              fontSize: '1.125rem',
+                              fontWeight: 700,
+                              width: '100%',
+                              height: '100%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
                             {getInitials(member.full_name)}
                           </span>
                         )}

@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { notifyNewConversation } from '@/app/actions/notifyNewConversation';
 import { toast } from 'sonner';
 import { Search, MessageSquare, User, Loader2 } from 'lucide-react';
+import { getInitialsAvatarStyle } from '@/lib/avatarInitialsColor';
 
 interface DirectoryMember {
   id: string;
@@ -22,6 +23,7 @@ interface DirectoryMember {
   title: string | null;
   company: string | null;
   member_since: string | null;
+  is_founding_member?: boolean | null;
 }
 
 function memberDisplayName(fullName: string | null | undefined): string {
@@ -61,12 +63,36 @@ function MemberCard({
       ? { label: 'Admin', color: 'bg-blue-500/20 text-blue-300 border-blue-500/30' }
       : null;
 
-  const memberTypeBadge =
-    member.member_type === 'business'
-      ? { label: 'Business', color: 'bg-[#C6A664]/20 text-[#C6A664] border-[#C6A664]/30' }
-      : member.member_type === 'social'
-      ? { label: 'Social', color: 'bg-green-500/20 text-green-300 border-green-500/30' }
-      : null;
+  const businessBadgeStyle = {
+    background: 'transparent',
+    border: '1px solid rgba(255,255,255,0.2)',
+    borderRadius: 9999,
+    color: 'rgb(255,255,255)',
+    fontSize: 10,
+    fontWeight: 600 as const,
+    padding: '0 8px',
+    lineHeight: 1.4,
+  };
+  const socialBadgeStyle = {
+    background: 'transparent',
+    border: '1px solid rgb(61,61,61)',
+    borderRadius: 9999,
+    color: 'rgb(161,161,161)',
+    fontSize: 10,
+    fontWeight: 600 as const,
+    padding: '0 8px',
+    lineHeight: 1.4,
+  };
+  const founderBadgeStyle = {
+    background: 'transparent',
+    border: '1px solid rgba(234,179,8,0.3)',
+    borderRadius: 9999,
+    color: 'rgb(250,204,21)',
+    fontSize: 10,
+    fontWeight: 600 as const,
+    padding: '0 8px',
+    lineHeight: 1.4,
+  };
 
   return (
     <div className="bg-[#2E2E2E] border border-white/10 rounded-xl p-5 flex flex-col gap-4 hover:border-[#C6A664]/30 transition-colors">
@@ -76,7 +102,10 @@ function MemberCard({
       >
         <Avatar className="h-14 w-14 shrink-0 ring-2 ring-white/10">
           <AvatarImage src={member.avatar_url ?? undefined} alt={memberDisplayName(member.full_name)} />
-          <AvatarFallback className="bg-[#1A1A1A] text-[#C6A664] text-lg">
+          <AvatarFallback
+            className="text-lg font-semibold"
+            style={getInitialsAvatarStyle(member.id)}
+          >
             {initialsFromFullName(member.full_name)}
           </AvatarFallback>
         </Avatar>
@@ -94,10 +123,14 @@ function MemberCard({
                 {roleBadge.label}
               </Badge>
             )}
-            {memberTypeBadge && (
-              <Badge className={`text-[10px] px-1.5 py-0 border ${memberTypeBadge.color}`}>
-                {memberTypeBadge.label}
-              </Badge>
+            {member.member_type === 'business' && (
+              <span style={businessBadgeStyle}>Business</span>
+            )}
+            {member.member_type === 'social' && (
+              <span style={socialBadgeStyle}>Social</span>
+            )}
+            {member.is_founding_member && (
+              <span style={founderBadgeStyle}>Founder</span>
             )}
           </div>
         </div>
@@ -144,7 +177,7 @@ export function MemberDirectory() {
     try {
       const { data } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, role, member_type, title, company, member_since')
+        .select('id, full_name, avatar_url, role, member_type, title, company, member_since, is_founding_member')
         .or('member_type.eq.business,role.eq.admin,role.eq.super_admin')
         .is('deleted_at', null)
         .order('full_name', { ascending: true });

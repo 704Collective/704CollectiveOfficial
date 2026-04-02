@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { getInitialsAvatarStyle } from '@/lib/avatarInitialsColor';
+import { MemberStatusPill, resolveSubscriptionVisualKind } from '@/lib/memberSubscriptionStatus';
 
 interface Member {
   id: string;
@@ -254,10 +256,10 @@ export function AdminMemberProfileSheet({
 
   if (!member) return null;
 
-  const statusColor =
-    member.deleted_at ? 'bg-destructive/10 text-destructive border-destructive/30' :
-    member.subscription_status === 'active' ? 'bg-green-500/10 text-green-500 border-green-500/30' :
-    'bg-muted text-muted-foreground';
+  const sheetStatusKind = resolveSubscriptionVisualKind(member.subscription_status, {
+    deletedAt: member.deleted_at,
+    subscriptionDeactivated: member.subscription_status === 'deactivated',
+  });
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -266,16 +268,20 @@ export function AdminMemberProfileSheet({
         <div className="px-6 pt-6 pb-4 border-b border-border">
           <SheetHeader>
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center shrink-0 text-lg font-bold">
+              <div
+                className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 text-lg font-bold"
+                style={getInitialsAvatarStyle(member.id)}
+              >
                 {(member.full_name || member.email).charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
                 <SheetTitle className="text-left truncate">{member.full_name || 'No name'}</SheetTitle>
                 <p className="text-sm text-muted-foreground truncate mt-0.5">{member.email}</p>
                 <div className="flex flex-wrap gap-2 mt-2">
-                  <Badge className={statusColor}>
-                    {member.deleted_at ? 'Deactivated' : (member.subscription_status || 'Inactive')}
-                  </Badge>
+                  <MemberStatusPill
+                    kind={sheetStatusKind}
+                    variant={sheetStatusKind === 'active' ? 'slideInPanel' : 'default'}
+                  />
                   {isAdmin && <Badge className="bg-primary/10 text-primary border-primary/20"><Shield className="w-3 h-3 mr-1" />Admin</Badge>}
                   {member.imported_at && <Badge variant="outline">Imported</Badge>}
                 </div>
@@ -325,6 +331,8 @@ export function AdminMemberProfileSheet({
                   <SelectItem value="canceled">Canceled</SelectItem>
                   <SelectItem value="past_due">Past Due</SelectItem>
                   <SelectItem value="trialing">Trialing</SelectItem>
+                  <SelectItem value="paused">Paused</SelectItem>
+                  <SelectItem value="deactivated">Deactivated</SelectItem>
                 </SelectContent>
               </Select>
             </div>

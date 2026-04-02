@@ -31,6 +31,7 @@ import { DASHBOARD_MAIN } from '@/lib/dashboard-layout';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
+import { getInitialsAvatarStyle } from '@/lib/avatarInitialsColor';
 
 // ---------------------------------------------------------------------------
 // Feed preview widget (read-only, 3 most recent posts)
@@ -40,7 +41,7 @@ interface PreviewPost {
   content: string | null;
   created_at: string;
   like_count: number;
-  author: { full_name: string | null; avatar_url: string | null } | null;
+  author: { id: string; full_name: string | null; avatar_url: string | null } | null;
 }
 
 function FeedPreviewWidget({ feedType, href }: { feedType: 'social' | 'business'; href: string }) {
@@ -54,7 +55,7 @@ function FeedPreviewWidget({ feedType, href }: { feedType: 'social' | 'business'
       .from('posts')
       .select(`
         id, content, created_at,
-        author:profiles!posts_author_id_fkey(full_name, avatar_url),
+        author:profiles!posts_author_id_fkey(id, full_name, avatar_url),
         like_count:post_likes(count)
       `)
       .eq('feed_type', feedType)
@@ -124,13 +125,20 @@ function FeedPreviewWidget({ feedType, href }: { feedType: 'social' | 'business'
         <div className="space-y-2">
           {posts.map((post) => {
             const name = post.author?.full_name ?? 'Member';
-            const initials = name.split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase();
+            const parts = name.trim().split(/\s+/).filter(Boolean);
+            const initials =
+              parts.length >= 2
+                ? `${parts[0]![0]}${parts[parts.length - 1]![0]}`.toUpperCase()
+                : name.slice(0, 2).toUpperCase();
+            const authorKey = post.author?.id ?? name;
             return (
               <Link key={post.id} href={href} className="block card-elevated p-3 hover:bg-accent/30 transition-colors rounded-xl">
                 <div className="flex items-start gap-2.5">
                   <Avatar className="w-7 h-7 shrink-0 mt-0.5">
                     <AvatarImage src={post.author?.avatar_url ?? undefined} />
-                    <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
+                    <AvatarFallback className="text-[10px] font-semibold" style={getInitialsAvatarStyle(authorKey)}>
+                      {initials}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">

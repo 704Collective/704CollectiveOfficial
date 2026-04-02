@@ -46,7 +46,11 @@ async function fetchOverviewData(): Promise<OverviewData> {
   const [eventsRes, totalRes, activeRes, newRes, bannedRes, signupsRes, upcomingRes] = await Promise.all([
     supabase.from('events').select('*', { count: 'exact', head: true }),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).is('deleted_at', null),
-    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').is('deleted_at', null),
+    supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .is('deleted_at', null)
+      .in('subscription_status', ['active', 'trialing']),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', oneWeekAgo.toISOString()).is('deleted_at', null),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_banned', true),
     supabase.from('profiles').select('full_name, email, created_at').is('deleted_at', null).order('created_at', { ascending: false }).limit(5),

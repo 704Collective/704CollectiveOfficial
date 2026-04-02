@@ -44,13 +44,15 @@ export function MembershipSettings() {
         supabase
           .from('profiles')
           .select('*', { count: 'exact', head: true })
-          .eq('subscription_status', 'active')
-          .is('deleted_at', null),
+          .is('deleted_at', null)
+          .in('subscription_status', ['active', 'trialing']),
         supabase
           .from('profiles')
           .select('*', { count: 'exact', head: true })
-          .neq('subscription_status', 'active')
-          .is('deleted_at', null),
+          .is('deleted_at', null)
+          .or(
+            'subscription_status.is.null,subscription_status.in.(inactive,canceled,past_due,paused)'
+          ),
         supabase
           .from('profiles')
           .select('*', { count: 'exact', head: true })

@@ -8,7 +8,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -16,6 +15,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Search, Users, Mail, X, UserPlus, Loader2 } from 'lucide-react';
 import { useDebounce } from '@/hooks/use-debounce';
+import { getInitialsAvatarStyle } from '@/lib/avatarInitialsColor';
+import { MemberStatusDotLabel, resolveSubscriptionVisualKind } from '@/lib/memberSubscriptionStatus';
 
 interface Member {
   id: string;
@@ -237,7 +238,7 @@ export function AddMembersToEventDialog({
                     />
                     <Avatar className="w-8 h-8 shrink-0">
                       <AvatarImage src={member.avatar_url || undefined} />
-                      <AvatarFallback className="text-xs">
+                      <AvatarFallback className="text-xs font-semibold" style={getInitialsAvatarStyle(member.id)}>
                         {getInitials(member.full_name, member.email)}
                       </AvatarFallback>
                     </Avatar>
@@ -245,9 +246,11 @@ export function AddMembersToEventDialog({
                       <p className="text-sm font-medium truncate">{member.full_name || '—'}</p>
                       <p className="text-xs text-muted-foreground truncate">{member.email}</p>
                     </div>
-                    {member.subscription_status === 'active' && (
-                      <Badge variant="outline" className="text-xs shrink-0">Active</Badge>
-                    )}
+                    <div className="shrink-0">
+                      <MemberStatusDotLabel
+                        kind={resolveSubscriptionVisualKind(member.subscription_status, { deletedAt: null })}
+                      />
+                    </div>
                   </div>
                 );
               })}
