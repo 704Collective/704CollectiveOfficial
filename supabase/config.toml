@@ -1,4 +1,11 @@
-# Stripe calls this endpoint with stripe-signature only (no Supabase JWT).
+# External callers use provider-specific auth (not Supabase JWT).
 # https://supabase.com/docs/guides/functions/function-configuration
+
 [functions.stripe-webhook]
+verify_jwt = false
+
+[functions.email-tracking-webhook]
+verify_jwt = false
+
+[functions.calendar-feed]
 verify_jwt = false
