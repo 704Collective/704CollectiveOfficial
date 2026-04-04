@@ -77,6 +77,24 @@ function Login() {
   // Smart error hint
   const [showGoogleHint, setShowGoogleHint] = useState(false);
 
+  // If a live OAuth session exists but has no profile (ghost session that
+  // wasn't cleared by the callback), sign out so the login form works normally.
+  useEffect(() => {
+    const clearGhostSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      if (!existingProfile) {
+        await supabase.auth.signOut();
+      }
+    };
+    clearGhostSession();
+  }, []);
+
   useEffect(() => {
     if (!authLoading && user && profile) {
       const path = window.location.pathname;

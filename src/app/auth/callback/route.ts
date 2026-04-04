@@ -84,11 +84,22 @@ export async function GET(request: NextRequest) {
 
   const allowed =
     isActive || isAdmin || isNonMember || isPartner;
-  const destination = allowed
-    ? postAuthDestination(profile)
-    : '/signup';
 
-  const redirectResponse = NextResponse.redirect(new URL(destination, origin));
+  // No profile or no access: sign out before redirecting so the session
+  // cookie is cleared. Without this the middleware sees an active session
+  // and redirects every subsequent /login visit back to /signup (loop).
+  if (!allowed) {
+    await supabase.auth.signOut();
+    // pendingCookies now contains the sign-out clear operations after the
+    // session-set operations, so applying them in order wipes the session.
+    const noAccessRedirect = NextResponse.redirect(new URL('/signup', origin));
+    pendingCookies.forEach(({ name, value, options }) => {
+      noAccessRedirect.cookies.set(name, value, options as Parameters<typeof noAccessRedirect.cookies.set>[2]);
+    });
+    return noAccessRedirect;
+  }
+
+  const redirectResponse = NextResponse.redirect(new URL(postAuthDestination(profile), origin));
 
   // Forward the session cookies onto the redirect response so the browser
   // stores them and the proxy (session refresh) can verify the session on the next request.

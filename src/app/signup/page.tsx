@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Nav from '@/components/Nav';
@@ -20,6 +20,25 @@ export default function SignupPage() {
   usePageTitle('Sign Up | 704 Collective');
   const router = useRouter();
   const [step, setStep] = useState<Step>('form');
+
+  // Safety net: if the user arrives here with a live OAuth session but no
+  // profile row (ghost session), sign them out so subsequent login attempts
+  // start fresh instead of looping back here indefinitely.
+  useEffect(() => {
+    const clearGhostSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      if (!profile) {
+        await supabase.auth.signOut();
+      }
+    };
+    clearGhostSession();
+  }, []);
   const [loading, setLoading] = useState(false);
 
   // Form fields

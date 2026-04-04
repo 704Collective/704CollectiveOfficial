@@ -122,6 +122,14 @@ export async function updateSession(request: NextRequest) {
       .eq('id', user.id)
       .is('deleted_at', null)
       .maybeSingle();
+
+    // No profile means a "ghost" OAuth session with no 704 account.
+    // Let the request reach /login so the page can sign them out cleanly
+    // and they can start registration from scratch.
+    if (!loginProfile) {
+      return supabaseResponse;
+    }
+
     const url = request.nextUrl.clone();
     url.pathname = postAuthDestination(loginProfile);
     return NextResponse.redirect(url);
