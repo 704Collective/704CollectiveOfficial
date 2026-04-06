@@ -30,7 +30,7 @@ import { format, getDay, getDate } from 'date-fns';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Calendar, Plus, Pencil, Trash2, Search, Copy, Lock,
-  ChevronLeft, ChevronRight, MoreHorizontal, ArrowLeft, Upload, X as XIcon, Gift, Mail, Check, UserPlus, Bell, ExternalLink,
+  ChevronLeft, ChevronRight, MoreHorizontal, ArrowLeft, Upload, X as XIcon, Gift, Mail, Check, UserPlus, Bell, ExternalLink, Send, Loader2,
 } from 'lucide-react';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -145,6 +145,12 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   const [sentReminders, setSentReminders] = useState<Record<string, boolean>>({});
   // Tracks which event IDs are currently mid-toggle to show loading state
   const [eventbriteLoading, setEventbriteLoading] = useState<Record<string, boolean>>({});
+
+  // Message Attendees dialog state
+  const [messageEvent, setMessageEvent] = useState<Event | null>(null);
+  const [messageSubject, setMessageSubject] = useState('');
+  const [messageBody, setMessageBody] = useState('');
+  const [messageSending, setMessageSending] = useState(false);
 
   // ── React Query ──────────────────────────────────────────────────────────
   const { data, isLoading, isError } = useQuery({
@@ -336,6 +342,36 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
     },
     onError: () => toast.error('Failed to send reminders'),
   });
+
+  const handleSendMessage = async () => {
+    if (!messageEvent || !messageSubject.trim() || !messageBody.trim()) {
+      toast.error('Please fill in both subject and message');
+      return;
+    }
+    setMessageSending(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error('Not authenticated');
+
+      const res = await fetch('/api/admin/message-attendees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ event_id: messageEvent.id, subject: messageSubject.trim(), message: messageBody.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to send');
+      toast.success(`Message sent to ${json.sent} attendee${json.sent !== 1 ? 's' : ''}`);
+      setMessageEvent(null);
+      setMessageSubject('');
+      setMessageBody('');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to send message';
+      toast.error(msg);
+    } finally {
+      setMessageSending(false);
+    }
+  };
 
   // ── Form helpers ─────────────────────────────────────────────────────────
   const openCreate = () => { setEditingEvent(null); setForm(getDefaultEventForm()); setDialogOpen(true); };
@@ -629,6 +665,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                               <DropdownMenuItem onClick={e => { e.stopPropagation(); openEdit(event); }}><Pencil className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
                               <DropdownMenuItem onClick={e => { e.stopPropagation(); duplicate(event); }}><Copy className="w-4 h-4 mr-2" /> Duplicate</DropdownMenuItem>
                               <DropdownMenuItem onClick={e => { e.stopPropagation(); setAddMembersEvent(event); }}><UserPlus className="w-4 h-4 mr-2" /> Add Members</DropdownMenuItem>
+                              <DropdownMenuItem onClick={e => { e.stopPropagation(); setMessageEvent(event); setMessageSubject(''); setMessageBody(''); }}><Send className="w-4 h-4 mr-2" /> Message Attendees</DropdownMenuItem>
                               {isUpcoming && (
                                 <DropdownMenuItem
                                   disabled={sentReminders[event.id] || reminderMutation.isPending}
@@ -704,6 +741,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                         <div className="flex items-center gap-1">
                           <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); openEdit(event); }}><Pencil className="w-3 h-3 mr-1" /> Edit</Button>
                           <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setAddMembersEvent(event); }}><UserPlus className="w-3 h-3 mr-1" /> Add</Button>
+                          <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setMessageEvent(event); setMessageSubject(''); setMessageBody(''); }}><Send className="w-3 h-3 mr-1" /> Msg</Button>
                           {isUpcoming && (
                             <Button variant="ghost" size="sm" disabled={sentReminders[event.id]} onClick={e => { e.stopPropagation(); reminderMutation.mutate(event); }}>
                               <Bell className="w-3 h-3 mr-1" /> {sentReminders[event.id] ? 'Sent' : 'Remind'}
@@ -903,6 +941,46 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
           eventTitle={addMembersEvent.title}
         />
       )}
+
+      {/* Message Attendees Dialog */}
+      <Dialog open={!!messageEvent} onOpenChange={(open) => { if (!open) setMessageEvent(null); }}>
+        <DialogContent className="w-full max-w-lg mx-4 sm:mx-auto">
+          <DialogHeader>
+            <DialogTitle>Message Attendees</DialogTitle>
+            <DialogDescription>
+              Send an email to all confirmed attendees of <strong>{messageEvent?.title}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="msgSubject">Subject</Label>
+              <Input
+                id="msgSubject"
+                value={messageSubject}
+                onChange={e => setMessageSubject(e.target.value)}
+                placeholder="e.g. Important update about tonight's event"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="msgBody">Message</Label>
+              <Textarea
+                id="msgBody"
+                rows={6}
+                value={messageBody}
+                onChange={e => setMessageBody(e.target.value)}
+                placeholder="Your message to attendees…"
+                className="resize-none"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMessageEvent(null)} disabled={messageSending}>Cancel</Button>
+            <Button onClick={handleSendMessage} disabled={messageSending || !messageSubject.trim() || !messageBody.trim()}>
+              {messageSending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Sending…</> : <><Send className="w-4 h-4 mr-2" />Send to Attendees</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

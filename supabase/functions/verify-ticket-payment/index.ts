@@ -135,17 +135,19 @@ serve(async (req) => {
         .maybeSingle();
 
       if (eventData) {
-        const recipientEmail = userId
-          ? (await supabaseClient.from("profiles").select("email, full_name").eq("id", userId).maybeSingle()).data?.email
-          : guestEmail;
+        const [profileRes] = await Promise.all([
+          userId
+            ? supabaseClient.from("profiles").select("email, full_name, calendar_token").eq("id", userId).maybeSingle()
+            : Promise.resolve({ data: null }),
+        ]);
 
-        const recipientName = userId
-          ? (await supabaseClient.from("profiles").select("full_name").eq("id", userId).maybeSingle()).data?.full_name || "there"
-          : guestName || "there";
+        const recipientEmail = userId ? profileRes.data?.email : guestEmail;
+        const recipientName  = userId ? (profileRes.data?.full_name || "there") : (guestName || "there");
+        const calendarToken  = userId ? (profileRes.data?.calendar_token ?? undefined) : undefined;
 
         if (recipientEmail) {
           const eventDate = new Date(eventData.start_time);
-          const endDate = new Date(eventData.end_time);
+          const endDate   = eventData.end_time ? new Date(eventData.end_time) : new Date(eventDate.getTime() + 2 * 60 * 60 * 1000);
           const formatDate = (d: Date) => d.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/New_York" });
           const formatTime = (d: Date) => d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
 
@@ -171,6 +173,10 @@ serve(async (req) => {
                 eventLocation: eventData.location_name || "TBA",
                 eventUrl: `${origin}/events/${event_id}`,
                 qrData,
+                origin,
+                startTimeIso: eventData.start_time,
+                endTimeIso: eventData.end_time || endDate.toISOString(),
+                calendarToken,
               },
             }),
           });

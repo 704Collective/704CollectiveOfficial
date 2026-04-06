@@ -1,6 +1,28 @@
 import type { NextConfig } from "next";
 
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  [
+    "connect-src 'self'",
+    "https://*.supabase.co",
+    "wss://*.supabase.co",
+    "https://api.stripe.com",
+    "https://api.resend.com",
+    "https://immortal-alien-83842.upstash.io",
+  ].join(" "),
+  "frame-src https://js.stripe.com https://hooks.stripe.com",
+  "object-src 'none'",
+].join("; ");
+
 const securityHeaders = [
+  {
+    key: "Content-Security-Policy",
+    value: CSP,
+  },
   {
     key: "X-Frame-Options",
     value: "DENY",

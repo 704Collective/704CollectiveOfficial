@@ -131,6 +131,11 @@ ${ctaButton("Set Your Password", data.setupLink)}
   };
 }
 
+function toGCalTime(iso: string): string {
+  // Format: YYYYMMDDTHHmmssZ (UTC)
+  return iso.replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+}
+
 function rsvpConfirmationTemplate(data: {
   name: string;
   eventName: string;
@@ -140,6 +145,10 @@ function rsvpConfirmationTemplate(data: {
   eventUrl: string;
   qrData?: string;
   origin?: string;
+  // Optional fields for calendar buttons
+  startTimeIso?: string;
+  endTimeIso?: string;
+  calendarToken?: string;
 }): { subject: string; html: string } {
   const name = data.name || "there";
   const qrUrl = data.qrData
@@ -157,6 +166,41 @@ function rsvpConfirmationTemplate(data: {
 </table>`
     : "";
 
+  // Calendar buttons (only rendered when time data is available)
+  let calendarBlock = "";
+  if (data.startTimeIso && data.endTimeIso) {
+    const gcalStart = toGCalTime(data.startTimeIso);
+    const gcalEnd   = toGCalTime(data.endTimeIso);
+    const gcalUrl   = `https://calendar.google.com/calendar/render?action=TEMPLATE` +
+      `&text=${encodeURIComponent(data.eventName)}` +
+      `&dates=${gcalStart}/${gcalEnd}` +
+      `&details=${encodeURIComponent(`Join us at ${data.eventName}! ${data.eventUrl}`)}` +
+      `&location=${encodeURIComponent(data.eventLocation)}`;
+
+    const supabaseProjectUrl = (data.origin || "https://704collective.com")
+      .replace("https://704collective.com", "https://bnmtynevbuplqpuqvmna.supabase.co");
+    const icsUrl = data.calendarToken
+      ? `${supabaseProjectUrl}/functions/v1/calendar-feed?token=${data.calendarToken}`
+      : null;
+
+    calendarBlock = `
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;width:100%;">
+<tr><td align="center">
+<p style="margin:0 0 12px;font-size:14px;font-weight:600;color:${BRAND.text};">Add to your calendar</p>
+<table role="presentation" cellpadding="0" cellspacing="0">
+<tr>
+<td style="padding:0 6px;">
+<a href="${gcalUrl}" target="_blank" style="display:inline-block;padding:10px 20px;background-color:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:8px;font-size:14px;font-weight:600;color:${BRAND.accent};text-decoration:none;">📅 Google Calendar</a>
+</td>
+${icsUrl ? `<td style="padding:0 6px;">
+<a href="${icsUrl}" target="_blank" style="display:inline-block;padding:10px 20px;background-color:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:8px;font-size:14px;font-weight:600;color:${BRAND.accent};text-decoration:none;">🍎 Apple / ICS</a>
+</td>` : ""}
+</tr>
+</table>
+</td></tr>
+</table>`;
+  }
+
   return {
     subject: `You're in! ${data.eventName}`,
     html: baseLayout(`
@@ -172,6 +216,7 @@ function rsvpConfirmationTemplate(data: {
 </td></tr>
 </table>
 ${qrBlock}
+${calendarBlock}
 ${ctaButton("View Event Details", data.eventUrl)}
 <p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">Need to cancel? You can update your RSVP on the event page.</p>
 `, data.origin),
@@ -713,6 +758,11 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
         eventTime: string;
         eventLocation: string;
         eventUrl: string;
+        qrData?: string;
+        origin?: string;
+        startTimeIso?: string;
+        endTimeIso?: string;
+        calendarToken?: string;
       });
     case "event-change":
       return eventChangeTemplate(data as {
