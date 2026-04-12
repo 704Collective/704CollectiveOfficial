@@ -67,15 +67,25 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
-  // Magic link state
-  const [magicLinkMode, setMagicLinkMode] = useState(false);
+  // Magic link state (inline — primary sign-in option)
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [magicLinkLoading, setMagicLinkLoading] = useState(false);
   const [magicLinkEmail, setMagicLinkEmail] = useState('');
   const [magicLinkError, setMagicLinkError] = useState('');
+  const [magicLinkCooldown, setMagicLinkCooldown] = useState(0);
+
+  // Legacy magic-link mode (kept for existing flows triggered from elsewhere)
+  const [magicLinkMode, setMagicLinkMode] = useState(false);
 
   // Smart error hint
   const [showGoogleHint, setShowGoogleHint] = useState(false);
+
+  // Cooldown countdown for magic link
+  useEffect(() => {
+    if (magicLinkCooldown <= 0) return;
+    const timer = setTimeout(() => setMagicLinkCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [magicLinkCooldown]);
 
   // If a live OAuth session exists but has no profile (ghost session that
   // wasn't cleared by the callback), sign out so the login form works normally.
@@ -180,6 +190,37 @@ function Login() {
     e.preventDefault();
     setMagicLinkError('');
 
+    const emailToUse = (magicLinkMode ? magicLinkEmail : magicLinkEmail || email).trim();
+    const result = emailSchema.safeParse(emailToUse);
+    if (!result.success) {
+      setMagicLinkError('Please enter a valid email address');
+      return;
+    }
+
+    setMagicLinkLoading(true);
+    try {
+      const { error } = await supabase.functions.invoke('request-magic-link', {
+        body: { email: emailToUse },
+      });
+      if (error) {
+        setMagicLinkError('Something went wrong. Please try again.');
+        setMagicLinkLoading(false);
+        return;
+      }
+    } catch {
+      setMagicLinkError('Something went wrong. Please try again.');
+      setMagicLinkLoading(false);
+      return;
+    }
+    setMagicLinkLoading(false);
+    setMagicLinkSent(true);
+    setMagicLinkCooldown(60);
+  };
+
+  const handleInlineMagicLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMagicLinkError('');
+
     const result = emailSchema.safeParse(magicLinkEmail);
     if (!result.success) {
       setMagicLinkError('Please enter a valid email address');
@@ -187,20 +228,23 @@ function Login() {
     }
 
     setMagicLinkLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({
-      email: magicLinkEmail.trim(),
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?source=magic`,
-      },
-    });
-    setMagicLinkLoading(false);
-
-    if (error) {
-      setMagicLinkError(error.message);
+    try {
+      const { error } = await supabase.functions.invoke('request-magic-link', {
+        body: { email: magicLinkEmail.trim() },
+      });
+      if (error) {
+        setMagicLinkError('Something went wrong. Please try again.');
+        setMagicLinkLoading(false);
+        return;
+      }
+    } catch {
+      setMagicLinkError('Something went wrong. Please try again.');
+      setMagicLinkLoading(false);
       return;
     }
-
+    setMagicLinkLoading(false);
     setMagicLinkSent(true);
+    setMagicLinkCooldown(60);
   };
 
   const inputStyle = {
@@ -233,7 +277,7 @@ function Login() {
             </span>
           </Link>
           <p style={{ marginTop: '8px', color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.9375rem' }}>
-            {magicLinkMode ? 'Sign in with a magic link' : 'Welcome back'}
+            Welcome back
           </p>
         </div>
 
@@ -254,12 +298,12 @@ function Login() {
         {/* Card */}
         <div style={{ backgroundColor: '#1A1A1A', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', padding: 'clamp(24px, 6vw, 40px) clamp(20px, 5vw, 32px)' }}>
 
-          {/* ── MAGIC LINK MODE ── */}
+          {/* ── MAGIC LINK MODE (legacy — accessible from Google hint) ── */}
           {magicLinkMode ? (
             <div>
               <button
                 type="button"
-                onClick={() => { setMagicLinkMode(false); setMagicLinkSent(false); setMagicLinkError(''); }}
+                onClick={() => { setMagicLinkMode(false); setMagicLinkSent(false); setMagicLinkError(''); setMagicLinkCooldown(0); }}
                 style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: '0.8125rem', marginBottom: '20px', padding: '0' }}
               >
                 <ArrowLeft size={14} /> Back to sign in
@@ -272,16 +316,26 @@ function Login() {
                   </div>
                   <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '8px' }}>Check your email</h2>
                   <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>
-                    We sent a sign-in link to <strong style={{ color: '#FFFFFF' }}>{magicLinkEmail}</strong>. Click it to sign in — no password needed.
+                    Check your email for a sign-in link. It expires in 1 hour.
                   </p>
-                  <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.3)', marginTop: '12px' }}>
-                    Link expires in 1 hour. Check your spam folder if you don{"'"}t see it.
-                  </p>
+                  {magicLinkCooldown > 0 ? (
+                    <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.3)', marginTop: '12px' }}>
+                      Resend available in {magicLinkCooldown}s
+                    </p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => { setMagicLinkSent(false); setMagicLinkError(''); }}
+                      style={{ fontSize: '0.8125rem', color: '#C6A664', background: 'none', border: 'none', cursor: 'pointer', padding: '0', marginTop: '12px', textDecoration: 'underline' }}
+                    >
+                      Send again
+                    </button>
+                  )}
                 </div>
               ) : (
                 <form onSubmit={handleMagicLink}>
                   <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)', marginBottom: '20px', lineHeight: 1.6 }}>
-                    Enter your email and we{"'"}ll send you a one-click sign-in link. Works regardless of how you originally signed up.
+                    Enter your email and we{"'"}ll send you a one-click sign-in link.
                   </p>
                   <div style={{ marginBottom: '16px' }}>
                     <label htmlFor="magic-email" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)', marginBottom: '8px' }}>
@@ -302,21 +356,71 @@ function Login() {
                   </div>
                   <button
                     type="submit"
-                    disabled={magicLinkLoading}
-                    style={{ width: '100%', padding: '14px', minHeight: '48px', backgroundColor: '#FFFFFF', color: '#000000', fontWeight: 600, fontSize: '0.9375rem', border: 'none', borderRadius: '8px', cursor: magicLinkLoading ? 'not-allowed' : 'pointer', opacity: magicLinkLoading ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                    disabled={magicLinkLoading || magicLinkCooldown > 0}
+                    style={{ width: '100%', padding: '14px', minHeight: '48px', backgroundColor: '#FFFFFF', color: '#000000', fontWeight: 600, fontSize: '0.9375rem', border: 'none', borderRadius: '8px', cursor: (magicLinkLoading || magicLinkCooldown > 0) ? 'not-allowed' : 'pointer', opacity: (magicLinkLoading || magicLinkCooldown > 0) ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                   >
-                    {magicLinkLoading ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />Sending...</> : 'Send Magic Link'}
+                    {magicLinkLoading ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />Sending...</> : magicLinkCooldown > 0 ? `Resend in ${magicLinkCooldown}s` : 'Send Sign-In Link'}
                   </button>
                 </form>
               )}
             </div>
           ) : (
-            /* ── NORMAL LOGIN MODE ── */
+            /* ── MAIN SIGN-IN VIEW ── */
             <>
-              <form onSubmit={handleLogin}>
+              {/* ── PRIMARY: Magic Link ── */}
+              <form onSubmit={handleInlineMagicLink}>
+                <div style={{ marginBottom: '12px' }}>
+                  <label htmlFor="magic-inline-email" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)', marginBottom: '8px' }}>
+                    Email
+                  </label>
+                  <input
+                    id="magic-inline-email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    value={magicLinkEmail}
+                    onChange={(e) => { setMagicLinkEmail(e.target.value); setMagicLinkError(''); setMagicLinkSent(false); }}
+                    style={{ ...inputStyle, border: magicLinkError ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)' }}
+                    onFocus={(e) => { if (!magicLinkError) e.currentTarget.style.borderColor = '#C6A664'; }}
+                    onBlur={(e) => { if (!magicLinkError) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+                  />
+                  {magicLinkError && <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '6px' }}>{magicLinkError}</p>}
+                </div>
 
-                {/* Email */}
-                <div style={{ marginBottom: '20px' }}>
+                {magicLinkSent && (
+                  <div style={{ backgroundColor: 'rgba(198,166,100,0.08)', border: '1px solid rgba(198,166,100,0.2)', borderRadius: '10px', padding: '12px 16px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Mail size={16} color="#C6A664" style={{ flexShrink: 0 }} />
+                    <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.5, margin: 0 }}>
+                      Check your email for a sign-in link. It expires in 1 hour.
+                    </p>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={magicLinkLoading || magicLinkCooldown > 0}
+                  style={{ width: '100%', padding: '14px', minHeight: '48px', backgroundColor: '#FFFFFF', color: '#000000', fontWeight: 600, fontSize: '0.9375rem', border: 'none', borderRadius: '8px', cursor: (magicLinkLoading || magicLinkCooldown > 0) ? 'not-allowed' : 'pointer', opacity: (magicLinkLoading || magicLinkCooldown > 0) ? 0.7 : 1, transition: 'all 200ms ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
+                  {magicLinkLoading
+                    ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />Sending...</>
+                    : magicLinkCooldown > 0
+                    ? `Resend in ${magicLinkCooldown}s`
+                    : <><Mail size={16} />Send sign-in link</>
+                  }
+                </button>
+              </form>
+
+              {/* Divider */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', margin: '24px 0' }}>
+                <div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.08)' }} />
+                <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Or sign in with password</span>
+                <div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.08)' }} />
+              </div>
+
+              {/* ── SECONDARY: Password ── */}
+              <form onSubmit={handleLogin}>
+                {/* Email for password form */}
+                <div style={{ marginBottom: '16px' }}>
                   <label htmlFor="email" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)', marginBottom: '8px' }}>
                     Email
                   </label>
@@ -380,7 +484,7 @@ function Login() {
                 )}
 
                 {/* Forgot Password */}
-                <div style={{ textAlign: 'right', marginBottom: '24px' }}>
+                <div style={{ textAlign: 'right', marginBottom: '20px' }}>
                   <Link
                     href="/reset-password"
                     style={{ fontSize: '0.8125rem', color: 'rgba(255, 255, 255, 0.4)', textDecoration: 'none', transition: 'color 200ms ease', display: 'inline-block', padding: '4px 0' }}
@@ -395,9 +499,9 @@ function Login() {
                 <button
                   type="submit"
                   disabled={loading}
-                  style={{ width: '100%', padding: '14px', minHeight: '48px', backgroundColor: '#FFFFFF', color: '#000000', fontWeight: 600, fontSize: '0.9375rem', border: 'none', borderRadius: '8px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, transition: 'all 200ms ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  style={{ width: '100%', padding: '14px', minHeight: '48px', backgroundColor: 'transparent', color: '#FFFFFF', fontWeight: 600, fontSize: '0.9375rem', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, transition: 'all 200ms ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 >
-                  {loading ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />Signing in...</> : 'Sign In'}
+                  {loading ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />Signing in...</> : 'Sign in with password'}
                 </button>
               </form>
 
@@ -408,11 +512,11 @@ function Login() {
                 <div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.08)' }} />
               </div>
 
-              {/* Google Button */}
+              {/* ── TERTIARY: Google ── */}
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                style={{ width: '100%', padding: '14px', minHeight: '48px', backgroundColor: 'transparent', color: '#FFFFFF', fontWeight: 500, fontSize: '0.9375rem', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '8px', cursor: 'pointer', transition: 'all 200ms ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '12px' }}
+                style={{ width: '100%', padding: '14px', minHeight: '48px', backgroundColor: 'transparent', color: '#FFFFFF', fontWeight: 500, fontSize: '0.9375rem', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '8px', cursor: 'pointer', transition: 'all 200ms ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
                 onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)'; e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'; e.currentTarget.style.backgroundColor = 'transparent'; }}
               >
@@ -423,18 +527,6 @@ function Login() {
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                 </svg>
                 Continue with Google
-              </button>
-
-              {/* Magic Link option */}
-              <button
-                type="button"
-                onClick={() => { setMagicLinkMode(true); setMagicLinkEmail(email); }}
-                style={{ width: '100%', padding: '12px', backgroundColor: 'transparent', color: 'rgba(255,255,255,0.4)', fontSize: '0.8125rem', border: 'none', cursor: 'pointer', transition: 'color 200ms ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = '#FFFFFF'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.4)'; }}
-              >
-                <Mail size={14} />
-                Sign in with email link instead
               </button>
             </>
           )}

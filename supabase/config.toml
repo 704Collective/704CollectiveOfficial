@@ -9,3 +9,6 @@ verify_jwt = false
 
 [functions.calendar-feed]
 verify_jwt = false
+
+[functions.request-magic-link]
+verify_jwt = false

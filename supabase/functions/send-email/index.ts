@@ -993,6 +993,25 @@ serve(async (req) => {
 
     log("Email sent", { messageId: resendData.id });
 
+    // ── Fire-and-forget email_log insert ─────────────────────────────────────
+    try {
+      const serviceRoleClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+      await serviceRoleClient.from("email_log").insert({
+        to_email: to,
+        to_name: (data as Record<string, unknown>)?.name as string ?? null,
+        subject,
+        template,
+        status: "sent",
+        resend_id: resendData.id ?? null,
+        created_at: new Date().toISOString(),
+      });
+    } catch (logErr) {
+      console.error("[SEND-EMAIL] email_log insert failed:", logErr instanceof Error ? logErr.message : logErr);
+    }
+
     return new Response(
       JSON.stringify({ success: true, messageId: resendData.id }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
