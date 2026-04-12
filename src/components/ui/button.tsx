@@ -26,9 +26,9 @@ const buttonVariants = cva(
         marketingPill:
           "h-12 rounded-full bg-white px-8 text-base font-semibold text-black hover:bg-white/90",
         filterActive:
-          "rounded-[10px] bg-white px-3 py-1.5 text-xs font-semibold text-black shadow-none border-0 hover:bg-white/90",
+          "rounded-full bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-none border-0 hover:bg-primary/90 whitespace-nowrap",
         filterInactive:
-          "rounded-[10px] border border-[rgb(61,61,61)] bg-transparent px-3 py-1.5 text-xs font-semibold text-[rgb(250,246,240)] shadow-none hover:bg-white/5",
+          "rounded-full bg-transparent px-3 py-1.5 text-sm font-medium text-muted-foreground shadow-none border-0 hover:text-foreground hover:bg-muted whitespace-nowrap",
       },
       size: {
         default: "h-9 px-4 py-2 text-sm",

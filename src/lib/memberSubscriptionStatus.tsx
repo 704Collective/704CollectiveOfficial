@@ -37,7 +37,7 @@ const DOT_LABEL: Record<
   past_due: { dotClass: 'bg-yellow-500', label: 'Past due' },
   trialing: { dotClass: 'bg-blue-500', label: 'Trial' },
   paused: { dotClass: 'bg-muted-foreground/50', label: 'Paused' },
-  deactivated: { dotClass: 'bg-red-500', label: 'Deactivated' },
+  deactivated: { dotClass: 'bg-destructive', label: 'Deactivated' },
 };
 
 /** 8×8 dot + text label (reference portal). */
@@ -50,7 +50,7 @@ export function MemberStatusDotLabel({
 }) {
   const cfg = DOT_LABEL[kind];
   return (
-    <span className={cn('inline-flex items-center gap-2', className)}>
+    <span className={cn('inline-flex items-center gap-1.5', className)}>
       <span className={cn('w-2 h-2 rounded-full shrink-0', cfg.dotClass)} aria-hidden />
       <span className="text-sm capitalize text-foreground">
         {cfg.label}

@@ -382,7 +382,7 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
 
           {/* Desktop Table */}
           {filtered.length > 0 && (
-            <div className="hidden lg:block overflow-x-auto border rounded-lg">
+            <div className="hidden lg:block rounded-lg border border-border overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>

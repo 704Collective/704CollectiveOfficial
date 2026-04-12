@@ -171,39 +171,35 @@ export function AdminOverviewTab({ onSectionChange, onFilterChange }: AdminOverv
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Overview</p>
-          <h2 className="text-xl font-semibold text-foreground">Dashboard</h2>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Overview</p>
+          <h2 className="text-2xl font-bold text-foreground">Dashboard</h2>
           <p className="text-sm text-muted-foreground mt-0.5">Welcome back. Here's your community snapshot.</p>
         </div>
         <AdminBroadcast />
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {statCards.map((stat) => (
-          <Card
+          <div
             key={stat.label}
-            className="cursor-pointer transition-all duration-150 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-md"
+            className="bg-card border border-border rounded-xl p-5 cursor-pointer transition-all duration-150 hover:border-primary/40 hover:-translate-y-0.5"
             onClick={stat.onClick}
           >
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground leading-none mb-2 truncate">{stat.label}</p>
-                  <p className={`text-2xl font-bold tabular-nums ${stat.valueClass ?? 'text-foreground'}`}>
-                    {stat.value}
-                  </p>
-                </div>
-                <stat.icon className={`w-4 h-4 shrink-0 mt-0.5 ${stat.iconClass}`} aria-hidden="true" />
-              </div>
-            </CardContent>
-          </Card>
+            <div className="flex justify-between items-start mb-3">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground/70">{stat.label}</p>
+              <stat.icon className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            </div>
+            <p className={`text-3xl font-bold tabular-nums ${stat.valueClass ?? 'text-foreground'}`}>
+              {stat.value}
+            </p>
+          </div>
         ))}
       </div>
 
       {/* Quick Actions */}
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2.5">Quick Actions</p>
+        <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2.5">Quick Actions</p>
         <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
@@ -241,7 +237,7 @@ export function AdminOverviewTab({ onSectionChange, onFilterChange }: AdminOverv
         {/* Recent Signups */}
         <Card>
           <CardContent className="p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Recent Signups</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground/70 mb-3">Recent Signups</p>
             {recentSignups.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">No recent signups</p>
             ) : (
@@ -265,7 +261,7 @@ export function AdminOverviewTab({ onSectionChange, onFilterChange }: AdminOverv
         {/* Upcoming Events */}
         <Card>
           <CardContent className="p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Upcoming Events</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground/70 mb-3">Upcoming Events</p>
             {upcomingEvents.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">No upcoming events scheduled</p>
             ) : (

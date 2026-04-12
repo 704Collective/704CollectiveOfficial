@@ -63,10 +63,10 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
           'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors text-left',
           isActive
             ? 'bg-accent text-foreground border-l-2 border-primary'
-            : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+            : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
         )}
       >
-        <item.icon className={cn('w-4 h-4 shrink-0', isActive && 'text-primary')} />
+        <item.icon className={cn('w-4 h-4 shrink-0', isActive ? 'text-foreground' : '')} />
         {item.label}
       </button>
     );
@@ -85,8 +85,8 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
           }}
           className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
         >
-          <Image src="/logo.png" alt="704 Collective" width={32} height={32} className="rounded-lg" />
-          <span className="text-base font-semibold text-foreground">704 Collective</span>
+          <Image src="/logo.png" alt="704 Collective" width={32} height={32} className="h-8 w-8 rounded-lg" />
+          <span className="text-lg font-semibold text-foreground">704 Collective</span>
         </button>
       </div>
 
@@ -101,7 +101,7 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
       <nav className="flex-1 px-3 py-3 overflow-y-auto">
 
         {/* CORE */}
-        <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground px-3 mt-3 mb-1.5">Core</p>
+        <p className="text-xs uppercase tracking-wider text-muted-foreground/60 px-4 mt-3 mb-1 font-normal">Core</p>
         <div className="space-y-0.5">
           {navBtn({ icon: LayoutDashboard, label: 'Overview',   section: 'dashboard'  })}
           {navBtn({ icon: Calendar,        label: 'Events',     section: 'events'     })}
@@ -121,10 +121,10 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
                 'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                 pathname.startsWith('/admin/partners')
                   ? 'bg-accent text-foreground border-l-2 border-primary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
               )}
             >
-              <Handshake className={cn('w-4 h-4 shrink-0', pathname.startsWith('/admin/partners') && 'text-primary')} />
+              <Handshake className="w-4 h-4 shrink-0" />
               Partners
             </Link>
             <Link
@@ -134,10 +134,10 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
                 'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                 pathname.startsWith('/admin/invoices')
                   ? 'bg-accent text-foreground border-l-2 border-primary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
               )}
             >
-              <Receipt className={cn('w-4 h-4 shrink-0', pathname.startsWith('/admin/invoices') && 'text-primary')} />
+              <Receipt className="w-4 h-4 shrink-0" />
               Invoices
             </Link>
           </>)}
@@ -149,10 +149,10 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
                 'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                 pathname.startsWith('/admin/inbox')
                   ? 'bg-accent text-foreground border-l-2 border-primary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
               )}
             >
-              <MessagesSquare className={cn('w-4 h-4 shrink-0', pathname.startsWith('/admin/inbox') && 'text-primary')} />
+              <MessagesSquare className="w-4 h-4 shrink-0" />
               Team Inbox
             </Link>
           )}
@@ -160,7 +160,7 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
 
         {/* OPERATIONS */}
         <div className="mt-5 border-t border-border pt-3">
-          <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground px-3 mb-1.5">Operations</p>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground/60 px-4 mb-1 font-normal">Operations</p>
           <div className="space-y-0.5">
             {navBtn({ icon: QrCode,        label: 'Check-in', section: 'checkin' })}
             {navBtn({ icon: ClipboardList, label: 'Tasks',    section: 'tasks'   })}
@@ -169,7 +169,7 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
 
         {/* CRM */}
         <div className="mt-5 border-t border-border pt-3">
-          <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground px-3 mb-1.5">CRM</p>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground/60 px-4 mb-1 font-normal">CRM</p>
           <div className="space-y-0.5">
             {CRM_NAV.map((item) => {
               const isActive = item.href === '/admin/crm'
@@ -198,7 +198,7 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
         {/* CONTENT — admin + super admin */}
         {isAdminOrSuper && (
           <div className="mt-5 border-t border-border pt-3">
-            <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground px-3 mb-1.5">Content</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground/60 px-4 mb-1 font-normal">Content</p>
             <div className="space-y-0.5">
               <Link
                 href="/admin/blog"
@@ -207,10 +207,10 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
                   'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                   pathname.startsWith('/admin/blog')
                     ? 'bg-accent text-foreground border-l-2 border-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                 )}
               >
-                <Newspaper className={cn('w-4 h-4 shrink-0', pathname.startsWith('/admin/blog') && 'text-primary')} />
+                <Newspaper className="w-4 h-4 shrink-0" />
                 Blog
               </Link>
             </div>
@@ -220,7 +220,7 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
         {/* PORTAL — admin + super admin */}
         {isAdminOrSuper && (
           <div className="mt-5 border-t border-border pt-3">
-            <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground px-3 mb-1.5">Portal</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground/60 px-4 mb-1 font-normal">Portal</p>
             <div className="space-y-0.5">
               <Link
                 href="/admin/hubs"
@@ -229,10 +229,10 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
                   'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                   pathname.startsWith('/admin/hubs')
                     ? 'bg-accent text-foreground border-l-2 border-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                 )}
               >
-                <Network className={cn('w-4 h-4 shrink-0', pathname.startsWith('/admin/hubs') && 'text-primary')} />
+                <Network className="w-4 h-4 shrink-0" />
                 Hubs
               </Link>
               <Link
@@ -242,10 +242,10 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
                   'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                   pathname.startsWith('/admin/resources')
                     ? 'bg-accent text-foreground border-l-2 border-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                 )}
               >
-                <FolderOpen className={cn('w-4 h-4 shrink-0', pathname.startsWith('/admin/resources') && 'text-primary')} />
+                <FolderOpen className="w-4 h-4 shrink-0" />
                 Resources
               </Link>
               {isSuperAdmin && (
@@ -256,10 +256,10 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
                     'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                     pathname.startsWith('/admin/user-security')
                       ? 'bg-accent text-foreground border-l-2 border-primary'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                   )}
                 >
-                  <Shield className={cn('w-4 h-4 shrink-0', pathname.startsWith('/admin/user-security') && 'text-primary')} />
+                  <Shield className="w-4 h-4 shrink-0" />
                   User Security
                 </Link>
               )}
@@ -270,7 +270,7 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
         {/* MONITORING — admin + super admin */}
         {isAdminOrSuper && (
           <div className="mt-5 border-t border-border pt-3">
-            <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground px-3 mb-1.5">Monitoring</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground/60 px-4 mb-1 font-normal">Monitoring</p>
             <div className="space-y-0.5">
               <Link
                 href="/admin/upstash"
@@ -279,10 +279,10 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
                   'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                   pathname.startsWith('/admin/upstash')
                     ? 'bg-accent text-foreground border-l-2 border-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                 )}
               >
-                <Database className={cn('w-4 h-4 shrink-0', pathname.startsWith('/admin/upstash') && 'text-primary')} />
+                <Database className="w-4 h-4 shrink-0" />
                 Upstash
               </Link>
               <Link
@@ -292,10 +292,10 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
                   'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                   pathname.startsWith('/admin/sentry')
                     ? 'bg-accent text-foreground border-l-2 border-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                 )}
               >
-                <Bug className={cn('w-4 h-4 shrink-0', pathname.startsWith('/admin/sentry') && 'text-primary')} />
+                <Bug className="w-4 h-4 shrink-0" />
                 Sentry
               </Link>
             </div>
@@ -305,7 +305,7 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
         {/* SETTINGS — super admin only */}
         {isSuperAdmin && (
           <div className="mt-5 border-t border-border pt-3">
-            <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground px-3 mb-1.5">Settings</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground/60 px-4 mb-1 font-normal">Settings</p>
             <div className="space-y-0.5">
               <Link
                 href="/admin/settings"
@@ -314,10 +314,10 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
                   'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                   pathname === '/admin/settings'
                     ? 'bg-accent text-foreground border-l-2 border-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                 )}
               >
-                <Settings className={cn('w-4 h-4 shrink-0', pathname === '/admin/settings' && 'text-primary')} />
+                <Settings className="w-4 h-4 shrink-0" />
                 Settings
               </Link>
             </div>

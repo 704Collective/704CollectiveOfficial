@@ -70,14 +70,17 @@ const STATUSES = ['active', 'unsubscribed', 'bounced'];
 const SOURCES = ['manual', 'event_guest', 'guest_pass', 'website', 'import', 'form'];
 
 const TYPE_COLORS: Record<string, string> = {
-  prospect:    'bg-blue-500/15 text-blue-400 border-blue-500/20',
-  event_guest: 'bg-purple-500/15 text-purple-400 border-purple-500/20',
-  guest_pass:  'bg-pink-500/15 text-pink-400 border-pink-500/20',
-  vendor:      'bg-orange-500/15 text-orange-400 border-orange-500/20',
-  venue:       'bg-yellow-500/15 text-yellow-400 border-yellow-500/20',
-  sponsor:     'bg-cyan-500/15 text-cyan-400 border-cyan-500/20',
-  partner:     'bg-indigo-500/15 text-indigo-400 border-indigo-500/20',
-  imported:    'bg-gray-500/15 text-gray-400 border-gray-500/20',
+  member:      'bg-green-500/15 text-green-400',
+  prospect:    'bg-blue-500/15 text-blue-400',
+  event_guest: 'bg-purple-500/15 text-purple-400',
+  guest:       'bg-purple-500/15 text-purple-400',
+  guest_pass:  'bg-purple-500/15 text-purple-400',
+  applicant:   'bg-amber-500/15 text-amber-400',
+  sponsor:     'bg-pink-500/15 text-pink-400',
+  vendor:      'bg-orange-500/15 text-orange-400',
+  venue:       'bg-orange-500/15 text-orange-400',
+  partner:     'bg-teal-500/15 text-teal-400',
+  imported:    'bg-muted text-muted-foreground',
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -707,7 +710,7 @@ export default function CrmContactsPage() {
                       {c.company && <div className="text-xs text-muted-foreground/60">{c.company}</div>}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${TYPE_COLORS[c.contact_type ?? ''] ?? 'bg-muted text-muted-foreground border-border'}`}>
+                      <span className={`text-[11px] px-1.5 py-0.5 rounded-md capitalize font-normal ${TYPE_COLORS[c.contact_type ?? ''] ?? 'bg-muted text-muted-foreground'}`}>
                         {capitalize(c.contact_type ?? 'unknown')}
                       </span>
                     </td>
@@ -811,7 +814,7 @@ export default function CrmContactsPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2 mt-3 flex-wrap">
-                <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${TYPE_COLORS[c.contact_type ?? ''] ?? 'bg-muted text-muted-foreground border-border'}`}>
+                <span className={`text-[11px] px-1.5 py-0.5 rounded-md capitalize font-normal ${TYPE_COLORS[c.contact_type ?? ''] ?? 'bg-muted text-muted-foreground'}`}>
                   {capitalize(c.contact_type ?? 'unknown')}
                 </span>
                 <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${STATUS_COLORS[c.status ?? ''] ?? 'bg-muted text-muted-foreground border-border'}`}>

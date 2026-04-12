@@ -45,11 +45,11 @@ interface Application {
 type StatusFilter = 'all' | 'pending' | 'reviewing' | 'approved' | 'denied' | 'waitlisted';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  pending:    { label: 'Pending',    color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
-  reviewing:  { label: 'Reviewing',  color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-  approved:   { label: 'Approved',   color: 'bg-green-500/20 text-green-400 border-green-500/30' },
-  denied:     { label: 'Denied',     color: 'bg-red-500/20 text-red-400 border-red-500/30' },
-  waitlisted: { label: 'Waitlisted', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+  pending:    { label: 'Pending',    color: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' },
+  reviewing:  { label: 'Reviewing',  color: 'bg-blue-500/20 text-blue-400 border border-blue-500/30' },
+  approved:   { label: 'Approved',   color: 'bg-green-500/20 text-green-400 border border-green-500/30' },
+  denied:     { label: 'Denied',     color: 'bg-destructive/20 text-destructive border border-destructive/30' },
+  waitlisted: { label: 'Waitlisted', color: 'bg-muted text-muted-foreground border border-border' },
 };
 
 const PAGE_SIZE = 20;
@@ -196,7 +196,7 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
         </div>
         <div className="flex gap-2 flex-wrap">
           {(['all', 'pending', 'reviewing', 'approved', 'denied', 'waitlisted'] as StatusFilter[]).map(s => (
-            <Button key={s} variant={statusFilter === s ? 'default' : 'outline'} size="sm"
+            <Button key={s} variant={statusFilter === s ? 'filterActive' : 'filterInactive'} size="sm"
               onClick={() => { setStatusFilter(s); setPage(1); }}>
               {s === 'all' ? 'All' : STATUS_CONFIG[s].label}
             </Button>
@@ -221,7 +221,7 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
         </div>
       ) : (
         <>
-          <div className="border rounded-lg overflow-x-auto">
+          <div className="rounded-lg border border-border overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -256,9 +256,9 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
                         : <span className="text-xs text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell className="py-3">
-                      <Badge className={`text-xs border ${STATUS_CONFIG[app.status]?.color}`}>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_CONFIG[app.status]?.color ?? 'bg-muted text-muted-foreground border border-border'}`}>
                         {STATUS_CONFIG[app.status]?.label ?? app.status}
-                      </Badge>
+                      </span>
                     </TableCell>
                     <TableCell className="py-3 text-muted-foreground text-sm">
                       {format(new Date(app.created_at), 'MMM d')}
@@ -294,9 +294,9 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-3">
                   {selectedApp.first_name} {selectedApp.last_name}
-                  <Badge className={`text-xs border ${STATUS_CONFIG[selectedApp.status]?.color}`}>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_CONFIG[selectedApp.status]?.color ?? 'bg-muted text-muted-foreground border border-border'}`}>
                     {STATUS_CONFIG[selectedApp.status]?.label}
-                  </Badge>
+                  </span>
                 </DialogTitle>
                 <DialogDescription>Applied {format(new Date(selectedApp.created_at), 'MMMM d, yyyy')}</DialogDescription>
               </DialogHeader>

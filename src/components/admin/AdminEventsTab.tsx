@@ -578,7 +578,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
         </div>
         <div className="flex gap-2">
           {(['all', 'upcoming', 'past'] as const).map(f => (
-            <Button key={f} variant={filter === f ? 'default' : 'outline'} size="sm" onClick={() => { setFilter(f); setPage(1); }}>
+            <Button key={f} variant={filter === f ? 'filterActive' : 'filterInactive'} size="sm" onClick={() => { setFilter(f); setPage(1); }}>
               {f.charAt(0).toUpperCase() + f.slice(1)}
             </Button>
           ))}
@@ -604,7 +604,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
         <>
           {/* Desktop Table */}
           {!isMobile && (
-            <div className="border rounded-lg overflow-x-auto">
+            <div className="rounded-lg border border-border overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -633,7 +633,9 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                         <TableCell className="py-3 text-muted-foreground whitespace-nowrap">{rsvpCount}/{event.capacity ?? '∞'}</TableCell>
                         <TableCell className="py-3">
                           <div className="flex items-center gap-1.5">
-                            {isUpcoming ? <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20 text-xs">Upcoming</Badge> : <Badge variant="secondary" className="text-xs">Past</Badge>}
+                            {isUpcoming
+                            ? <span className="bg-green-500/20 text-green-400 border border-green-500/30 rounded-full px-2 py-0.5 text-xs font-medium">Upcoming</span>
+                            : <span className="bg-muted text-muted-foreground border border-border rounded-full px-2 py-0.5 text-xs">Past</span>}
                             {event.is_business_only && <Badge className="bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 text-xs">Business</Badge>}
                             {event.is_members_only && !event.is_business_only && <Lock className="w-3 h-3 text-muted-foreground" aria-label="Members only" />}
                           </div>
@@ -718,7 +720,9 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <Badge variant="outline" className="text-xs">{rsvpCount}/{event.capacity ?? '∞'}</Badge>
-                          {isUpcoming ? <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20 text-xs">Upcoming</Badge> : <Badge variant="secondary" className="text-xs">Past</Badge>}
+                          {isUpcoming
+                            ? <span className="bg-green-500/20 text-green-400 border border-green-500/30 rounded-full px-2 py-0.5 text-xs font-medium">Upcoming</span>
+                            : <span className="bg-muted text-muted-foreground border border-border rounded-full px-2 py-0.5 text-xs">Past</span>}
                         </div>
                       </div>
                       <div className="flex items-center justify-between mt-3">

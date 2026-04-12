@@ -388,16 +388,16 @@ function AdminSettings() {
   return (
     <AdminLayout title="Settings">
       <div className="max-w-2xl">
-        <div className="overflow-x-auto -mx-4 px-4 lg:-mx-0 lg:px-0 mb-6">
-          <div className="flex border-b border-border" style={{ minWidth: 'max-content' }}>
+        <div className="overflow-x-auto -mx-4 px-4 lg:-mx-0 lg:px-0">
+          <div className="flex border-b border-border gap-4 mb-6" style={{ minWidth: 'max-content' }}>
             {TABS.map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
-                  "px-4 py-3 text-sm font-medium transition-colors relative whitespace-nowrap shrink-0",
+                  "pb-2 text-sm transition-colors whitespace-nowrap shrink-0",
                   activeTab === tab.key
-                    ? "text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
+                    ? "text-foreground font-semibold border-b-2 border-primary"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -678,8 +678,7 @@ function AdminSettings() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold">Google</h3>
-                      <span className="flex items-center gap-1 text-xs text-green-400 font-medium">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                      <span className="bg-green-500/20 text-green-400 border border-green-500/30 rounded-full px-2.5 py-0.5 text-xs font-medium">
                         Connected
                       </span>
                     </div>
@@ -740,8 +739,7 @@ function AdminSettings() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold">Eventbrite</h3>
-                      <span className="flex items-center gap-1 text-xs text-green-400 font-medium">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                      <span className="bg-green-500/20 text-green-400 border border-green-500/30 rounded-full px-2.5 py-0.5 text-xs font-medium">
                         Active
                       </span>
                       <a
@@ -779,8 +777,7 @@ function AdminSettings() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold">Calendar Sync</h3>
-                      <span className="flex items-center gap-1 text-xs text-green-400 font-medium">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                      <span className="bg-green-500/20 text-green-400 border border-green-500/30 rounded-full px-2.5 py-0.5 text-xs font-medium">
                         Active
                       </span>
                     </div>

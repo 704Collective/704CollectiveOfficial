@@ -200,7 +200,7 @@ function StatTile({
     <div className="rounded-xl bg-muted/30 p-4 space-y-1">
       <div className="flex items-center gap-1.5">
         {dotColor === 'active' && (
-          <span className="inline-block w-2 h-2 rounded-full bg-[hsl(142,76%,36%)]" />
+          <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
         )}
         {dotColor === 'inactive' && (
           <span className="inline-block w-2 h-2 rounded-full bg-muted-foreground/50" />

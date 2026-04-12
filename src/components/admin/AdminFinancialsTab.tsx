@@ -40,13 +40,13 @@ interface FinancialsData {
 
 function StatCard({ label, value, sub, icon: Icon, trend }: { label: string; value: string; sub?: string; icon: React.ElementType; trend?: 'up' | 'down' | 'neutral' }) {
   return (
-    <div className="card-elevated p-4 space-y-2">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
+    <div className="bg-card border border-border rounded-xl p-5">
+      <div className="flex justify-between items-start mb-3">
+        <p className="text-xs uppercase tracking-wider text-muted-foreground/70">{label}</p>
         <Icon className="w-4 h-4 text-muted-foreground" />
       </div>
-      <p className="text-2xl font-bold">{value}</p>
-      {sub && <p className={`text-xs ${trend === 'up' ? 'text-green-500' : trend === 'down' ? 'text-red-400' : 'text-muted-foreground'}`}>{sub}</p>}
+      <p className="text-3xl font-bold text-foreground">{value}</p>
+      {sub && <p className={`text-xs mt-1 ${trend === 'up' ? 'text-green-400' : trend === 'down' ? 'text-destructive' : 'text-muted-foreground'}`}>{sub}</p>}
     </div>
   );
 }
@@ -141,7 +141,7 @@ export function AdminFinancialsTab({ onNavigateToDashboard }: AdminFinancialsTab
             <h2 className="text-xl font-semibold">Financials</h2>
             {data.last_updated && (
               <p className="text-xs text-muted-foreground">
-                {data.cached ? 'Cached · ' : ''}Updated {format(new Date(data.last_updated), 'MMM d h:mm a')}
+                {data.cached && <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs mr-1">Cached</span>}Updated {format(new Date(data.last_updated), 'MMM d h:mm a')}
               </p>
             )}
           </div>
@@ -186,23 +186,32 @@ export function AdminFinancialsTab({ onNavigateToDashboard }: AdminFinancialsTab
       {/* Revenue stats */}
       <div className="grid grid-cols-3 gap-3">
         {(['last30', 'last60', 'last90'] as const).map((period) => (
-          <div key={period} className="card-elevated p-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">{period === 'last30' ? 'Last 30d' : period === 'last60' ? 'Last 60d' : 'Last 90d'}</p>
-            <p className="text-xl font-bold">${Math.round(data.revenue[period].total / 100).toLocaleString()}</p>
+          <div key={period} className="bg-card border border-border rounded-xl p-5 text-center">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground/70 mb-3">{period === 'last30' ? 'Last 30 days' : period === 'last60' ? 'Last 60 days' : 'Last 90 days'}</p>
+            <p className="text-3xl font-bold text-foreground">${Math.round(data.revenue[period].total / 100).toLocaleString()}</p>
+            <div className="flex justify-between border-b border-border py-2 text-sm mt-3">
+              <span className="text-muted-foreground">Social</span>
+              <span className="text-foreground font-medium">${Math.round(data.revenue[period].social / 100).toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between py-2 text-sm">
+              <span className="text-muted-foreground">Business</span>
+              <span className="text-foreground font-medium">${Math.round(data.revenue[period].business / 100).toLocaleString()}</span>
+            </div>
           </div>
         ))}
       </div>
 
       {/* Revenue trend chart */}
       {trendData.length > 0 && (
-        <div className="card-elevated p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">Revenue Trend (6 months)</p>
+        <div className="bg-card border border-border rounded-xl p-5">
+          <p className="text-xs uppercase tracking-wider text-muted-foreground/70 mb-4">Revenue Trend (6 months)</p>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={trendData}>
               <XAxis dataKey="month" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `$${v}`} />
               <Tooltip formatter={(v: number) => [`$${v}`, 'Revenue']} />
-              <Bar dataKey="total" fill="#C6A664" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="social" fill="#22c55e" radius={[4, 4, 0, 0]} name="Social" />
+              <Bar dataKey="total" fill="#4ade80" radius={[4, 4, 0, 0]} name="Total" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -232,18 +241,20 @@ export function AdminFinancialsTab({ onNavigateToDashboard }: AdminFinancialsTab
 
       {/* Recent Payments */}
       {data.recentPayments?.length > 0 && (
-        <div className="card-elevated p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">Recent Payments</p>
-          <div className="space-y-3">
+        <div className="bg-card border border-border rounded-xl p-5">
+          <p className="text-xs uppercase tracking-wider text-muted-foreground/70 mb-4">Recent Payments</p>
+          <div className="space-y-0">
             {data.recentPayments.slice(0, 10).map((payment, i) => (
-              <div key={i} className="flex items-center justify-between gap-3 text-sm">
+              <div key={i} className="flex justify-between border-b border-border py-2 text-sm last:border-0">
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{payment.name || payment.email}</p>
+                  <p className="text-foreground font-medium truncate">{payment.name || payment.email}</p>
                   <p className="text-xs text-muted-foreground">{format(new Date(payment.created * 1000), 'MMM d, yyyy')}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="font-medium">${(payment.amount / 100).toFixed(2)}</span>
-                  <Badge variant={payment.status === 'succeeded' ? 'default' : 'secondary'} className="text-xs">{payment.status}</Badge>
+                  <span className="text-foreground font-medium">${(payment.amount / 100).toFixed(2)}</span>
+                  {payment.status === 'succeeded'
+                    ? <span className="bg-green-500/20 text-green-400 border border-green-500/30 rounded-full px-2 py-0.5 text-xs font-medium">{payment.status}</span>
+                    : <span className="bg-muted text-muted-foreground border border-border rounded-full px-2 py-0.5 text-xs">{payment.status}</span>}
                 </div>
               </div>
             ))}

@@ -292,7 +292,7 @@ export function AdminMemberProfileSheet({
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-          <TabsList className="w-full rounded-none border-b border-border bg-transparent h-auto px-6 gap-0 justify-start">
+          <TabsList className="w-full rounded-none border-b border-border bg-transparent h-auto px-6 gap-1 justify-start mb-4">
             {[
               { value: 'overview', icon: User, label: 'Overview' },
               { value: 'activity', icon: Calendar, label: 'Activity' },
@@ -303,9 +303,8 @@ export function AdminMemberProfileSheet({
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-3 text-xs font-medium gap-1.5"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none text-muted-foreground hover:text-foreground px-3 pb-2 text-sm"
               >
-                <tab.icon className="w-3.5 h-3.5" />
                 {tab.label}
               </TabsTrigger>
             ))}
@@ -401,7 +400,9 @@ export function AdminMemberProfileSheet({
                       <p className="text-xs text-muted-foreground truncate">{payment.description || 'Membership'}</p>
                       <p className="text-xs text-muted-foreground">{format(new Date(payment.created_at), 'MMM d, yyyy')}</p>
                     </div>
-                    <Badge variant={payment.status === 'succeeded' ? 'default' : 'secondary'} className="text-xs shrink-0">{payment.status}</Badge>
+                    {payment.status === 'succeeded'
+                      ? <span className="bg-green-500/20 text-green-400 border border-green-500/30 rounded-full px-2 py-0.5 text-xs font-medium shrink-0">{payment.status}</span>
+                      : <span className="bg-muted text-muted-foreground border border-border rounded-full px-2 py-0.5 text-xs shrink-0">{payment.status}</span>}
                   </div>
                 ))}
               </div>
@@ -415,8 +416,8 @@ export function AdminMemberProfileSheet({
             ) : (
               <>
                 {/* Auth info */}
-                <div className="space-y-3 p-4 rounded-lg border border-border">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Auth Info</p>
+                <div className="space-y-3 bg-card border border-border rounded-xl p-5">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground/70 mb-3">Auth Info</p>
                   <div className="grid grid-cols-1 gap-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Email confirmed</span>
@@ -470,14 +471,16 @@ export function AdminMemberProfileSheet({
                 {/* Recent Stripe charges */}
                 {details?.stripeCharges && details.stripeCharges.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recent Stripe Charges</p>
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground/70 mb-3">Recent Stripe Charges</p>
                     {details.stripeCharges.slice(0, 5).map(charge => (
                       <div key={charge.id} className="flex items-center justify-between p-2 rounded-lg border border-border text-sm">
                         <div>
                           <span className="font-medium">${(charge.amount / 100).toFixed(2)}</span>
                           <span className="text-muted-foreground ml-2">{format(new Date(charge.created * 1000), 'MMM d, yyyy')}</span>
                         </div>
-                        <Badge variant={charge.status === 'succeeded' ? 'default' : 'secondary'} className="text-xs">{charge.status}</Badge>
+                        {charge.status === 'succeeded'
+                          ? <span className="bg-green-500/20 text-green-400 border border-green-500/30 rounded-full px-2 py-0.5 text-xs font-medium">{charge.status}</span>
+                          : <span className="bg-muted text-muted-foreground border border-border rounded-full px-2 py-0.5 text-xs">{charge.status}</span>}
                       </div>
                     ))}
                   </div>
@@ -488,7 +491,7 @@ export function AdminMemberProfileSheet({
 
           {/* Actions Tab */}
           <TabsContent value="actions" className="p-6 space-y-3 mt-0">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">Email Actions</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground/70 mb-4">Email Actions</p>
 
             {member.imported_at && (
               <div className="flex items-center justify-between rounded-lg border p-3">
@@ -513,7 +516,7 @@ export function AdminMemberProfileSheet({
             </div>
 
             <div className="border-t border-border pt-4 mt-4 space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Account Actions</p>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground/70">Account Actions</p>
               {member.deleted_at ? (
                 <Button variant="outline" className="w-full" disabled={reactivating} onClick={handleReactivate}>
                   {reactivating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}

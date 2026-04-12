@@ -127,7 +127,7 @@ export function AdminNonMembersTab({ onNavigateToDashboard }: AdminNonMembersTab
         </div>
       ) : (
         <>
-          <div className="border rounded-lg overflow-x-auto">
+          <div className="rounded-lg border border-border overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>

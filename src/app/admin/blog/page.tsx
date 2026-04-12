@@ -101,7 +101,7 @@ export default function AdminBlogListPage() {
           <p className="text-sm text-muted-foreground">
             Create and manage blog posts for the public site.
           </p>
-          <Button asChild className="bg-[#C6A664] text-[#1A1A1A] hover:bg-[#C6A664] shrink-0">
+          <Button asChild className="shrink-0">
             <Link href="/admin/blog/new">
               <Plus className="w-4 h-4 mr-2" />
               New Post
@@ -109,7 +109,7 @@ export default function AdminBlogListPage() {
           </Button>
         </div>
 
-        <div className="rounded-lg border border-border overflow-x-auto">
+        <div className="rounded-lg border border-border overflow-hidden">
           {dataLoading ? (
             <div className="flex justify-center py-16">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -151,12 +151,15 @@ export default function AdminBlogListPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant="outline"
-                        className="text-[0.65rem] font-normal border-[#C6A664]/40 text-[#C6A664]/95 whitespace-nowrap"
-                      >
-                        {(post.schema_type as BlogSchemaType | null) ?? 'BlogPosting'}
-                      </Badge>
+                      {(() => {
+                        const st = (post.schema_type as BlogSchemaType | null) ?? 'BlogPosting';
+                        const cls = st === 'NewsArticle'
+                          ? 'bg-primary/20 text-primary border border-primary/30 rounded-full px-2 py-0.5 text-xs'
+                          : st === 'Article'
+                          ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full px-2 py-0.5 text-xs'
+                          : 'bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs';
+                        return <span className={`whitespace-nowrap ${cls}`}>{st}</span>;
+                      })()}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm max-w-[180px] truncate" title={post.focus_keyword ?? ''}>
                       {post.focus_keyword?.trim() || '—'}

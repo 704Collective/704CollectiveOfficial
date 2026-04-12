@@ -449,7 +449,7 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
         </div>
 
         <div className="space-y-4 rounded-lg border border-border p-4 bg-muted/20">
-          <p className="text-base font-semibold">SEO Settings</p>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground/70 mb-3">SEO Settings</p>
           <div className="space-y-2">
             <Label htmlFor="meta-title">Meta Title</Label>
             <Input
@@ -459,7 +459,7 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
               placeholder="Custom title for search engines (defaults to post title)"
               maxLength={70}
             />
-            <p className="text-xs text-muted-foreground">{metaTitle.length}/70 characters</p>
+            <p className={`text-xs text-right mt-1 ${metaTitle.length > 70 ? 'text-destructive' : metaTitle.length > 60 ? 'text-yellow-400' : 'text-muted-foreground'}`}>{metaTitle.length}/70</p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="meta-desc">Meta Description</Label>
@@ -471,7 +471,7 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
               rows={3}
               maxLength={160}
             />
-            <p className="text-xs text-muted-foreground">{metaDescription.length}/160 characters</p>
+            <p className={`text-xs text-right mt-1 ${metaDescription.length > 160 ? 'text-destructive' : metaDescription.length > 145 ? 'text-yellow-400' : 'text-muted-foreground'}`}>{metaDescription.length}/160</p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="focus-keyword">Focus Keyword</Label>
@@ -516,7 +516,7 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
         </div>
 
         <div className="space-y-4 rounded-lg border border-border p-4 bg-muted/20">
-          <p className="text-base font-semibold">Content Settings</p>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground/70 mb-3">Content Settings</p>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="w-4 h-4 shrink-0 text-[#C6A664]" aria-hidden />
             <span>
@@ -540,7 +540,7 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
         </div>
 
         <div className="space-y-4 rounded-lg border border-border p-4 bg-muted/20">
-          <p className="text-base font-semibold">Embeds</p>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground/70 mb-3">Embeds</p>
           <div className="space-y-2">
             <Label htmlFor="instagram-embed">Instagram Post or Reel URL (optional)</Label>
             <Input
@@ -568,7 +568,7 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
         </div>
 
         <div className="space-y-4 rounded-lg border border-border p-4 bg-muted/20">
-          <p className="text-base font-semibold">Related Posts</p>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground/70 mb-3">Related Posts</p>
           <p className="text-xs text-muted-foreground">
             Link up to 3 published posts. Search by title below.
           </p>
@@ -636,7 +636,7 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
             type="button"
             variant="outline"
             disabled={saving}
-            className="border-[#C6A664] text-[#C6A664] hover:bg-[#C6A664]/10 order-2 sm:order-1"
+            className="order-2 sm:order-1"
             onClick={() => void save('draft')}
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
@@ -645,7 +645,7 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
           <Button
             type="button"
             disabled={saving}
-            className="bg-[#C6A664] text-[#1A1A1A] hover:bg-[#C6A664] order-1 sm:order-2"
+            className="order-1 sm:order-2"
             onClick={() => void save('published')}
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}

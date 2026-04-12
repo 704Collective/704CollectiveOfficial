@@ -47,7 +47,7 @@ export function AdminLayout({
   }, [pathname]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" data-theme="admin">
 
       {/* ── Desktop Sidebar ── */}
       <aside className="hidden sm:flex sm:flex-col fixed inset-y-0 left-0 w-60 border-r border-border bg-sidebar z-30">
