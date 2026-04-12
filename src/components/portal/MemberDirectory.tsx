@@ -63,59 +63,33 @@ function MemberCard({
       ? { label: 'Admin', color: 'bg-blue-500/20 text-blue-300 border-blue-500/30' }
       : null;
 
-  const businessBadgeStyle = {
-    background: 'transparent',
-    border: '1px solid rgba(255,255,255,0.2)',
-    borderRadius: 9999,
-    color: 'rgb(255,255,255)',
-    fontSize: 10,
-    fontWeight: 600 as const,
-    padding: '0 8px',
-    lineHeight: 1.4,
-  };
-  const socialBadgeStyle = {
-    background: 'transparent',
-    border: '1px solid rgb(61,61,61)',
-    borderRadius: 9999,
-    color: 'rgb(161,161,161)',
-    fontSize: 10,
-    fontWeight: 600 as const,
-    padding: '0 8px',
-    lineHeight: 1.4,
-  };
-  const founderBadgeStyle = {
-    background: 'transparent',
-    border: '1px solid rgba(234,179,8,0.3)',
-    borderRadius: 9999,
-    color: 'rgb(250,204,21)',
-    fontSize: 10,
-    fontWeight: 600 as const,
-    padding: '0 8px',
-    lineHeight: 1.4,
-  };
-
   return (
-    <div className="bg-[#2E2E2E] border border-white/10 rounded-xl p-5 flex flex-col gap-4 hover:border-[#C6A664]/30 transition-colors">
+    <div className="card-elevated p-4 flex flex-col h-full">
       <div
-        className="flex items-start gap-4 cursor-pointer"
+        className="flex items-start gap-3 cursor-pointer flex-1"
         onClick={() => router.push(`/dashboard/directory/${member.id}`)}
       >
-        <Avatar className="h-14 w-14 shrink-0 ring-2 ring-white/10">
-          <AvatarImage src={member.avatar_url ?? undefined} alt={memberDisplayName(member.full_name)} />
-          <AvatarFallback
-            className="text-lg font-semibold"
-            style={getInitialsAvatarStyle(member.id)}
-          >
-            {initialsFromFullName(member.full_name)}
-          </AvatarFallback>
-        </Avatar>
+        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0">
+          {member.avatar_url ? (
+            <Avatar className="w-12 h-12 shrink-0">
+              <AvatarImage src={member.avatar_url} alt={memberDisplayName(member.full_name)} />
+              <AvatarFallback className="text-sm font-bold text-primary bg-primary/10">
+                {initialsFromFullName(member.full_name)}
+              </AvatarFallback>
+            </Avatar>
+          ) : (
+            <span className="text-sm font-bold text-primary">
+              {initialsFromFullName(member.full_name)}
+            </span>
+          )}
+        </div>
         <div className="min-w-0 flex-1">
-          <p className="font-semibold text-white leading-tight truncate">{memberDisplayName(member.full_name)}</p>
+          <p className="font-semibold text-foreground text-sm truncate">{memberDisplayName(member.full_name)}</p>
           {member.title && (
-            <p className="text-sm text-white/60 truncate mt-0.5">{member.title}</p>
+            <p className="text-xs text-muted-foreground truncate mt-0.5">{member.title}</p>
           )}
           {member.company && (
-            <p className="text-xs text-white/40 truncate">{member.company}</p>
+            <p className="text-xs text-muted-foreground truncate">{member.company}</p>
           )}
           <div className="flex flex-wrap gap-1.5 mt-2">
             {roleBadge && (
@@ -123,32 +97,39 @@ function MemberCard({
                 {roleBadge.label}
               </Badge>
             )}
+            {member.is_founding_member && (
+              <Badge variant="outline" className="text-[10px] px-2 py-0 border-yellow-500/30 text-yellow-400">
+                Founder
+              </Badge>
+            )}
             {member.member_type === 'business' && (
-              <span style={businessBadgeStyle}>Business</span>
+              <Badge variant="outline" className="text-[10px] px-2 py-0 border-primary/20 text-primary">
+                Business
+              </Badge>
             )}
             {member.member_type === 'social' && (
-              <span style={socialBadgeStyle}>Social</span>
-            )}
-            {member.is_founding_member && (
-              <span style={founderBadgeStyle}>Founder</span>
+              <Badge variant="outline" className="text-[10px] px-2 py-0 border-muted-foreground/20 text-muted-foreground">
+                Social
+              </Badge>
             )}
           </div>
         </div>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 mt-4">
         <Button
           variant="outline"
           size="sm"
-          className="flex-1 border-white/10 text-white/70 hover:text-white hover:border-white/30 bg-transparent text-xs gap-1.5"
+          className="flex-1 text-xs gap-1.5"
           onClick={() => router.push(`/dashboard/directory/${member.id}`)}
         >
           <User className="h-3.5 w-3.5" /> View Profile
         </Button>
         <Button
+          variant="outline"
           size="sm"
           disabled={isMessaging}
-          className="flex-1 bg-[#C6A664]/10 hover:bg-[#C6A664]/20 text-[#C6A664] border border-[#C6A664]/30 text-xs gap-1.5"
+          className="flex-1 text-xs gap-1.5"
           onClick={() => onMessage(member)}
         >
           {isMessaging ? (

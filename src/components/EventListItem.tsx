@@ -74,9 +74,8 @@ export function EventListItem({
       <button
         disabled={loading}
         onClick={(e) => { e.stopPropagation(); isLoggedIn ? onGetTicket() : onGuestPurchase(); }}
-        style={{ padding: '8px 22px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600, color: '#000', backgroundColor: '#FFF', border: 'none', cursor: loading ? 'wait' : 'pointer', transition: 'all 200ms ease', display: 'inline-flex', alignItems: 'center', gap: '6px', opacity: loading ? 0.6 : 1 }}
-        onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(255,255,255,0.08)'; } }}
-        onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+        className="bg-background text-foreground text-xs font-medium px-3 py-1.5 rounded-full border border-border hover:bg-muted transition-colors"
+        style={{ cursor: loading ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', opacity: loading ? 0.6 : 1 }}
       >
         {loading ? <Loader2 style={{ width: '14px', height: '14px', animation: 'spin 1s linear infinite' }} /> : 'RSVP'}
       </button>
@@ -106,10 +105,17 @@ export function EventListItem({
       }}
     >
       {/* Date column */}
-      <div style={{ textAlign: 'center', minWidth: '48px', flexShrink: 0 }}>
-        <div style={{ fontSize: '1.625rem', fontWeight: 700, color: '#FFFFFF', lineHeight: 1, letterSpacing: '-0.02em' }}>{dayNum}</div>
-        <div style={{ fontSize: '0.625rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '2px' }}>{dayAbbr}</div>
-      </div>
+      {categoryPortalTone === 'businessPortal' ? (
+        <div className="flex-shrink-0 text-center bg-[hsl(42,45%,58%)] text-background rounded-lg p-2 min-w-[48px]">
+          <div className="text-xl font-bold leading-none">{dayNum}</div>
+          <div className="text-xs font-medium uppercase mt-0.5">{dayAbbr}</div>
+        </div>
+      ) : (
+        <div style={{ textAlign: 'center', minWidth: '48px', flexShrink: 0 }}>
+          <div style={{ fontSize: '1.625rem', fontWeight: 700, color: '#FFFFFF', lineHeight: 1, letterSpacing: '-0.02em' }}>{dayNum}</div>
+          <div style={{ fontSize: '0.625rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '2px' }}>{dayAbbr}</div>
+        </div>
+      )}
 
       <div style={{ width: '1px', height: '40px', backgroundColor: 'rgba(255,255,255,0.06)', flexShrink: 0 }} />
 

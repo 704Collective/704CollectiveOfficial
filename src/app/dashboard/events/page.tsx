@@ -64,7 +64,7 @@ export default function DashboardEventsPage() {
         className="flex items-center gap-4 p-4 rounded-xl border border-border hover:border-primary/30 hover:bg-muted/30 transition-colors"
       >
         <div className="w-14 h-14 rounded-lg bg-muted flex flex-col items-center justify-center shrink-0">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+          <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             {format(date, 'MMM')}
           </span>
           <span className="text-xl font-bold leading-none">{format(date, 'd')}</span>

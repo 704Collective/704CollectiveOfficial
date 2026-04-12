@@ -5,54 +5,43 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --color-charcoal: #1A1A1A;
-  --color-graphite: #2E2E2E;
-  --color-ivory: #FAF6F0;
-  --color-grey: #A0A0A0;
-  --color-gold: #c4a75f;
-  --color-gold-light: #c4a75f;
-  --color-black: #000000;
-  --color-white: #ffffff;
-  --radius: 0.75rem;
-
-  --background: hsl(0 0% 10%);
-  --foreground: hsl(36 50% 96%);
-  --card: hsl(0 0% 18%);
-  --card-foreground: hsl(36 50% 96%);
-  --popover: hsl(0 0% 18%);
-  --popover-foreground: hsl(36 50% 96%);
+  --background: hsl(0 0% 4%);
+  --foreground: hsl(0 0% 100%);
+  --card: hsl(0 0% 10%);
+  --card-foreground: hsl(0 0% 100%);
+  --popover: hsl(0 0% 10%);
+  --popover-foreground: hsl(0 0% 100%);
   --primary: hsl(0 0% 100%);
-  --primary-foreground: hsl(0 0% 0%);
-  --secondary: hsl(0 0% 21%);
-  --secondary-foreground: hsl(36 50% 96%);
-  --muted: hsl(0 0% 21%);
-  --muted-foreground: hsl(0 0% 63%);
-  --accent: hsl(0 0% 21%);
-  --accent-foreground: hsl(36 50% 96%);
+  --primary-foreground: hsl(0 0% 4%);
+  --secondary: hsl(0 0% 4%);
+  --secondary-foreground: hsl(0 0% 100%);
+  --muted: hsl(0 0% 8%);
+  --muted-foreground: hsl(0 0% 64%);
+  --accent: hsl(0 0% 8%);
+  --accent-foreground: hsl(0 0% 100%);
   --destructive: hsl(0 62% 50%);
   --destructive-foreground: hsl(0 0% 100%);
-  --border: hsl(0 0% 24%);
-  --input: hsl(0 0% 24%);
+  --border: hsl(0 0% 15%);
+  --input: hsl(0 0% 15%);
   --ring: hsl(0 0% 100%);
+  --radius: 1rem;
 
-  --surface-elevated: hsl(0 0% 21%);
-  --surface-overlay: hsl(0 0% 0% / 0.8);
-  --gradient-card: linear-gradient(180deg, hsl(0 0% 21%) 0%, hsl(0 0% 15%) 100%);
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.35);
-  --shadow-glow: 0 0 60px rgba(255, 255, 255, 0.06);
+  --brand-gold: hsl(42 45% 58%);
+  --surface-elevated: hsl(0 0% 10%);
+  --shadow-card: 0 4px 24px rgba(0,0,0,0.4);
   --status-active: hsl(142 76% 36%);
   --status-inactive: hsl(0 0% 45%);
-  --status-error: hsl(0 84% 60%);
   --status-warning: hsl(38 92% 50%);
+  --status-error: hsl(0 84% 60%);
 
-  --sidebar-background: hsl(0 0% 18%);
-  --sidebar-border: hsl(0 0% 24%);
-  --sidebar-foreground: hsl(36 50% 96%);
+  --sidebar-background: hsl(0 0% 10%);
+  --sidebar-border: hsl(0 0% 15%);
+  --sidebar-foreground: hsl(0 0% 100%);
   --sidebar: var(--sidebar-background);
   --sidebar-primary: hsl(0 0% 100%);
-  --sidebar-primary-foreground: hsl(0 0% 0%);
-  --sidebar-accent: hsl(0 0% 21%);
-  --sidebar-accent-foreground: hsl(36 50% 96%);
+  --sidebar-primary-foreground: hsl(0 0% 4%);
+  --sidebar-accent: hsl(0 0% 8%);
+  --sidebar-accent-foreground: hsl(0 0% 100%);
   --sidebar-ring: hsl(0 0% 100%);
 
   --chart-1: oklch(0.488 0.243 264.376);
@@ -90,7 +79,7 @@
   }
 
   body {
-    font-family: var(--font-body), "Plus Jakarta Sans", sans-serif;
+    font-family: var(--font-body), 'Inter', system-ui, -apple-system, sans-serif;
     background-color: var(--background);
     color: var(--foreground);
     -webkit-font-smoothing: antialiased;
@@ -102,7 +91,7 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-heading), "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+    font-family: var(--font-heading), 'Inter', system-ui, -apple-system, sans-serif;
   }
 
   a {
@@ -261,16 +250,20 @@
 }
 
 .card-elevated {
-  background-color: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
+  @apply bg-card rounded-2xl border border-border transition-all duration-300 ease-out;
+}
+
+.card-elevated:hover {
+  @apply shadow-lg;
 }
 
 /* ——— ANIMATIONS ——— */
 
 @keyframes shine {
-  from { transform: translateX(-100%) rotate(12deg); }
-  to   { transform: translateX(200%) rotate(12deg); }
+  0% { opacity: 0; transform: translateX(-100%) rotate(12deg); }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(100%) rotate(12deg); }
 }
 
 .animate-shine {

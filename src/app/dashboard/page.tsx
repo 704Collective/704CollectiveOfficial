@@ -85,7 +85,7 @@ function FeedPreviewWidget({ feedType, href }: { feedType: 'social' | 'business'
       <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
         <div className="flex items-center gap-2">
           <Icon className="w-4 h-4 text-primary" />
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</p>
+          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">{label}</p>
         </div>
         <Button variant="ghost" size="sm" asChild className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground">
           <Link href={href}>
@@ -474,7 +474,7 @@ export default function Dashboard() {
         {/* Next Event */}
         {(isActiveMember || isPastDue) && (
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-2">
               Your Next Event
             </p>
             <SectionErrorBoundary>
@@ -486,7 +486,7 @@ export default function Dashboard() {
         {/* Calendar sync — RSVPed events only; prompt setup if no token yet */}
         {isActiveMember && supabaseUrl && (
           <div id="calendar-section" className="scroll-mt-28 space-y-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
               Calendar
             </p>
             {p.calendar_token ? (
@@ -520,7 +520,7 @@ export default function Dashboard() {
         {(isActiveMember || isPastDue) && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-2">
                 My Schedule
               </p>
               <SectionErrorBoundary>
@@ -531,7 +531,7 @@ export default function Dashboard() {
             <div className="space-y-5">
               {isActiveMember && (
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                  <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-2">
                     Grow The Community
                   </p>
                   <SectionErrorBoundary>
@@ -557,7 +557,7 @@ export default function Dashboard() {
 
         {/* Membership status bar */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-2">
             Your Membership
           </p>
           <SectionErrorBoundary>

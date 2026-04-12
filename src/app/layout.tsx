@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Inter } from "next/font/google";
 import { SkipLink } from "@/components/SkipLink";
 import ScrollProgress from "@/components/ScrollProgress";
 import ScrollToTop from "@/components/ScrollToTop";
@@ -9,13 +9,13 @@ import { organizationSchema704 } from "@/lib/jsonLdSchemas";
 import { Providers } from "@/components/Providers";
 import "./globals.css";
 
-const plusJakarta = Plus_Jakarta_Sans({
+const inter = Inter({
   subsets: ["latin"],
   variable: "--font-body",
   weight: ["300", "400", "500", "600", "700", "800"],
 });
 
-const headingFont = Plus_Jakarta_Sans({
+const headingFont = Inter({
   subsets: ["latin"],
   variable: "--font-heading",
   weight: ["600", "700", "800"],
@@ -81,7 +81,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${plusJakarta.variable} ${headingFont.variable}`}>
+    <html lang="en" className={`${inter.variable} ${headingFont.variable}`}>
       <head>
         <link rel="dns-prefetch" href="https://bnmtynevbuplqpuqvmna.supabase.co" />
         <link rel="preconnect" href="https://bnmtynevbuplqpuqvmna.supabase.co" crossOrigin="anonymous" />

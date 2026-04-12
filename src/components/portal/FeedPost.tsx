@@ -297,7 +297,7 @@ export function FeedPost({ post, currentUser, onDelete, onEdit }: FeedPostProps)
   }));
 
   return (
-    <div className="card-elevated p-4 space-y-3">
+    <div className={cn("card-elevated p-4 space-y-2", post.feed_type === 'business' && "border-border")}>
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -390,9 +390,14 @@ export function FeedPost({ post, currentUser, onDelete, onEdit }: FeedPostProps)
               download={f.name}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-sm"
+              className={cn(
+                "flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors",
+                post.feed_type === 'business'
+                  ? "text-sm text-amber-400 hover:text-amber-300"
+                  : "text-sm"
+              )}
             >
-              <Download className="w-4 h-4 shrink-0 text-muted-foreground" />
+              <Download className={cn("w-4 h-4 shrink-0", post.feed_type === 'business' ? "text-amber-400" : "text-muted-foreground")} />
               <span className="truncate flex-1">{f.name}</span>
             </a>
           ))}

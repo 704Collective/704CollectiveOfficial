@@ -153,13 +153,15 @@ export default function SettingsPage() {
 
       <DashboardNav />
 
-      <main id="main-content" className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 sm:py-8">
+      <main id="main-content" className="container py-8 max-w-2xl space-y-6">
         <h1 className="text-2xl font-semibold">Account Settings</h1>
 
         {/* Profile */}
-        <section className="card-elevated p-5 space-y-4">
+        <section className="card-elevated p-6 space-y-4">
           <div className="flex items-center gap-3 mb-1">
-            <User className="w-4 h-4 text-muted-foreground" />
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <User className="w-5 h-5 text-primary" />
+            </div>
             <div>
               <h3 className="text-sm font-medium">Profile</h3>
               <p className="text-xs text-muted-foreground">Manage your account information</p>
@@ -200,7 +202,7 @@ export default function SettingsPage() {
           {/* Email */}
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Email</Label>
-            <Input value={p?.email || user?.email || ''} disabled className="bg-muted/30" />
+            <Input value={p?.email || user?.email || ''} disabled className="bg-input border border-input rounded-lg px-3 py-2 text-sm w-full opacity-50 cursor-not-allowed" />
             <p className="text-xs text-muted-foreground">Email cannot be changed</p>
           </div>
 
@@ -236,9 +238,11 @@ export default function SettingsPage() {
         </section>
 
         {/* Password */}
-        <section className="card-elevated p-5 space-y-4">
+        <section className="card-elevated p-6 space-y-4">
           <div className="flex items-center gap-3 mb-1">
-            <Key className="w-4 h-4 text-muted-foreground" />
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Key className="w-5 h-5 text-primary" />
+            </div>
             <div>
               <h3 className="text-sm font-medium">Password</h3>
               <p className="text-xs text-muted-foreground">Update your password</p>
@@ -248,9 +252,11 @@ export default function SettingsPage() {
         </section>
 
         {/* Notifications */}
-        <section className="card-elevated p-5 space-y-4">
+        <section className="card-elevated p-6 space-y-4">
           <div className="flex items-center gap-3 mb-1">
-            <Bell className="w-4 h-4 text-muted-foreground" />
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Bell className="w-5 h-5 text-primary" />
+            </div>
             <div>
               <h3 className="text-sm font-medium">Notifications</h3>
               <p className="text-xs text-muted-foreground">Manage your notification preferences</p>
@@ -269,9 +275,11 @@ export default function SettingsPage() {
         </section>
 
         {/* Membership */}
-        <section className="card-elevated p-5 space-y-4">
+        <section className="card-elevated p-6 space-y-4">
           <div className="flex items-center gap-3 mb-1">
-            <CreditCard className="w-4 h-4 text-muted-foreground" />
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <CreditCard className="w-5 h-5 text-primary" />
+            </div>
             <div>
               <h3 className="text-sm font-medium">Membership</h3>
               <p className="text-xs text-muted-foreground">Manage your subscription</p>
@@ -292,9 +300,9 @@ export default function SettingsPage() {
               )}
             </div>
             {isActiveMember && (
-              <Badge className="bg-green-500/15 text-green-500 border-green-500/30 hover:bg-green-500/15 self-start sm:self-auto">
+              <span className="px-3 py-1 rounded-full text-sm bg-green-500/10 text-green-500 self-start sm:self-auto">
                 Active
-              </Badge>
+              </span>
             )}
           </div>
 
@@ -325,7 +333,7 @@ export default function SettingsPage() {
 
         {/* Danger Zone */}
         {isActiveMember && hasStripeSubscription && user && (
-          <section className="card-elevated p-5 border border-destructive/20">
+          <section className="card-elevated p-6 border-destructive/30 bg-destructive/5">
             <MembershipDangerZone
               userId={user.id}
               isActiveMember={isActiveMember}
@@ -336,9 +344,11 @@ export default function SettingsPage() {
 
         {/* Calendar */}
         {p?.calendar_token && user && (
-          <section className="card-elevated p-5 space-y-3">
+          <section className="card-elevated p-6 space-y-3">
             <div className="flex items-center gap-3 mb-1">
-              <Calendar className="w-4 h-4 text-muted-foreground" />
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-primary" />
+              </div>
               <div>
                 <h3 className="text-sm font-medium">Calendar</h3>
                 <p className="text-xs text-muted-foreground">Your private calendar subscription</p>
@@ -390,11 +400,13 @@ export default function SettingsPage() {
         )}
 
         {/* Sign Out */}
-        <section className="card-elevated p-5">
+        <section className="card-elevated p-6">
           {/* Fixed: stacks vertically on very small screens */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
-              <LogOut className="w-4 h-4 text-muted-foreground shrink-0" />
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <LogOut className="w-5 h-5 text-primary" />
+              </div>
               <div>
                 <h3 className="text-sm font-medium">Sign Out</h3>
                 <p className="text-xs text-muted-foreground">Sign out of your account</p>

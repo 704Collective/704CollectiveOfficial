@@ -70,9 +70,8 @@ export function EventGridCard({
       <button
         disabled={loading}
         onClick={(e) => { e.stopPropagation(); isLoggedIn ? onGetTicket() : onGuestPurchase(); }}
-        style={{ padding: '7px 18px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600, color: '#000', backgroundColor: '#FFF', border: 'none', cursor: loading ? 'wait' : 'pointer', transition: 'all 200ms ease', opacity: loading ? 0.6 : 1 }}
-        onMouseEnter={(e) => { if (!loading) e.currentTarget.style.boxShadow = '0 2px 10px rgba(255,255,255,0.08)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
+        className="bg-background text-foreground text-xs font-medium px-3 py-1.5 rounded-full border border-border hover:bg-muted transition-colors"
+        style={{ cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
       >
         {loading ? <Loader2 style={{ width: '14px', height: '14px', animation: 'spin 1s linear infinite' }} /> : 'RSVP'}
       </button>
@@ -82,6 +81,7 @@ export function EventGridCard({
   return (
     <div
       onClick={onClick}
+      className="group"
       style={{
         backgroundColor: '#1A1A1A',
         border: isBusinessOnly
@@ -93,19 +93,18 @@ export function EventGridCard({
         transition: 'all 200ms ease',
         display: 'flex',
         flexDirection: 'column',
-        // Gold aura for business-only events
         boxShadow: isBusinessOnly ? '0 0 16px rgba(198,166,100,0.08)' : 'none',
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = isBusinessOnly ? 'rgba(198,166,100,0.55)' : 'rgba(255,255,255,0.12)';
-        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.transform = 'scale(1.01)';
         e.currentTarget.style.boxShadow = isBusinessOnly
           ? '0 8px 32px rgba(198,166,100,0.12)'
           : '0 8px 32px rgba(0,0,0,0.3)';
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.borderColor = isBusinessOnly ? 'rgba(198,166,100,0.35)' : 'rgba(255,255,255,0.06)';
-        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.transform = 'scale(1)';
         e.currentTarget.style.boxShadow = isBusinessOnly ? '0 0 16px rgba(198,166,100,0.08)' : 'none';
       }}
     >
@@ -121,9 +120,9 @@ export function EventGridCard({
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(26,26,26,0.9) 0%, transparent 60%)' }} />
 
         {/* Date badge */}
-        <div style={{ position: 'absolute', top: '12px', left: '12px', backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', borderRadius: '10px', padding: '8px 12px', textAlign: 'center', minWidth: '44px' }}>
-          <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>{format(startDate, 'd')}</div>
-          <div style={{ fontSize: '0.5625rem', fontWeight: 600, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '2px' }}>{format(startDate, 'MMM')}</div>
+        <div className="absolute top-3 left-3 bg-background/90 backdrop-blur-sm rounded-lg px-2.5 py-1.5 text-center" style={{ minWidth: '44px' }}>
+          <div className="text-lg font-bold text-foreground leading-none">{format(startDate, 'd')}</div>
+          <div className="text-xs font-medium text-muted-foreground uppercase mt-0.5">{format(startDate, 'MMM')}</div>
         </div>
 
         {/* Category badge */}

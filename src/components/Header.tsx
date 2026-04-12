@@ -82,11 +82,23 @@ export function Header() {
 
   const isActive = (path: string) => pathname === path || pathname.startsWith(path + '/');
 
+  const BUSINESS_PATHS = ['/business-portal', '/dashboard/business-feed', '/dashboard/directory'];
+  const isBusinessActive = (path: string) =>
+    BUSINESS_PATHS.some(bp => path === bp || path.startsWith(bp + '/'));
+  const isOnBusinessPortal = BUSINESS_PATHS.some(bp =>
+    pathname === bp || pathname.startsWith(bp + '/')
+  );
+
   const navLinkClass = (path: string) =>
     cn(
       "text-sm font-medium transition-colors duration-200 relative py-1",
       isActive(path)
-        ? "text-primary after:absolute after:bottom-[-4px] after:left-0 after:right-0 after:h-[2px] after:rounded-full after:bg-[rgb(196,167,100)]"
+        ? cn(
+            "text-foreground",
+            isBusinessActive(path)
+              ? "after:absolute after:bottom-[-4px] after:left-0 after:right-0 after:h-0.5 after:rounded-full after:bg-[hsl(42,45%,58%)]"
+              : "after:absolute after:bottom-[-4px] after:left-0 after:right-0 after:h-0.5 after:rounded-full after:bg-foreground"
+          )
         : "text-muted-foreground hover:text-foreground"
     );
 
@@ -495,9 +507,15 @@ export function Header() {
                 >
                   {avatarUrl ? (
                     <Image src={avatarUrl} alt={displayName} width={32} height={32} className="rounded-full object-cover" unoptimized />
+                  ) : isOnBusinessPortal ? (
+                    <div className="w-8 h-8 rounded-full bg-[hsl(42,45%,58%)] flex items-center justify-center">
+                      <span className="text-sm font-bold text-background">
+                        {(displayName || displayEmail || 'U').charAt(0).toUpperCase()}
+                      </span>
+                    </div>
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                      <span className="text-sm font-bold text-white">
+                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                      <span className="text-sm font-bold text-primary-foreground">
                         {(displayName || displayEmail || 'U').charAt(0).toUpperCase()}
                       </span>
                     </div>
