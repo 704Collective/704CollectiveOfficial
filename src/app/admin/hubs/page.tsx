@@ -396,7 +396,11 @@ export default function AdminHubsPage() {
               </TableHeader>
               <TableBody>
                 {hubs.map((hub) => (
-                  <TableRow key={hub.id}>
+                  <TableRow
+                    key={hub.id}
+                    className="cursor-pointer"
+                    onClick={() => router.push(`/dashboard/hubs/${hub.id}`)}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="relative h-9 w-9 rounded-lg bg-accent overflow-hidden shrink-0 flex items-center justify-center">
@@ -422,17 +426,22 @@ export default function AdminHubsPage() {
                     <TableCell className="text-sm text-muted-foreground">
                       {format(new Date(hub.created_at), 'MMM d, yyyy')}
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => setManagingHub(hub)}
+                        <Button size="sm" variant="ghost"
+                          onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/hubs/${hub.id}`); }}
+                          className="h-7 px-2 text-muted-foreground hover:text-foreground gap-1 text-xs">
+                          View
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setManagingHub(hub); }}
                           className="h-7 px-2 text-muted-foreground hover:text-foreground gap-1 text-xs">
                           <Users className="h-3.5 w-3.5" /> Members
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => { setEditingHub(hub); setFormOpen(true); }}
+                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditingHub(hub); setFormOpen(true); }}
                           className="h-7 px-2 text-muted-foreground hover:text-foreground">
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setDeleteConfirm(hub)}
+                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setDeleteConfirm(hub); }}
                           className="h-7 px-2 text-muted-foreground hover:text-destructive">
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>

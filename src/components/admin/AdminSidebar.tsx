@@ -4,9 +4,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  LayoutDashboard, Calendar, Contact, DollarSign, Mail, MessageSquare,
-  QrCode, Layers, FileText, GitPullRequest, ClipboardList, Settings,
-  Shield,
+  LayoutDashboard, Calendar, Users, UserX, FileText, DollarSign, Mail,
+  MessageSquare, QrCode, Layers, GitPullRequest, Handshake, Receipt,
+  Newspaper, Shield, Lightbulb, BookOpen, Inbox, Upload, Lock, Database,
+  AlertTriangle, ClipboardList, Settings, BarChart2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminSection } from '@/components/AdminLayout';
@@ -25,6 +26,7 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
   const router = useRouter();
   const { isSuperAdmin, isAdmin } = useAuth();
   const isOnDashboard = pathname === '/admin';
+  const isAdminOrSuper = isAdmin || isSuperAdmin;
 
   const handleSectionClick = (section: AdminSection) => {
     if (pathname !== '/admin') {
@@ -57,11 +59,7 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
 
   const linkBtn = (href: string, icon: React.ElementType, label: string) => {
     const Icon = icon;
-    const isActive = href === '/admin/crm/contacts'
-      ? pathname.startsWith('/admin/crm/contacts') || pathname.startsWith('/admin/contacts')
-      : href === '/admin/crm/campaigns'
-      ? pathname.startsWith('/admin/crm/campaigns') || pathname.startsWith('/admin/email')
-      : pathname.startsWith(href);
+    const isActive = pathname === href || pathname.startsWith(href + '/') || pathname.startsWith(href + '?');
     return (
       <Link
         key={href}
@@ -100,6 +98,10 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
     );
   };
 
+  const groupHeading = (label: string) => (
+    <p className="text-xs uppercase tracking-wider text-muted-foreground/60 px-4 mb-1 font-normal">{label}</p>
+  );
+
   return (
     <div className="flex flex-col h-full">
       {/* Logo */}
@@ -126,49 +128,59 @@ export function AdminSidebar({ activeSection, onSectionChange, onMobileClose }: 
       <div className="mx-4 border-t border-border" />
 
       {/* Main nav */}
-      <nav className="flex-1 px-3 py-3 overflow-y-auto space-y-0.5">
+      <nav className="flex-1 px-3 py-3 overflow-y-auto">
 
-        {/* Group 1 — no heading */}
-        {sectionBtn({ icon: LayoutDashboard, label: 'Dashboard',  section: 'dashboard' })}
-        {sectionBtn({ icon: Calendar,        label: 'Events',     section: 'events'    })}
-        {linkBtn('/admin/crm/contacts', Contact, 'Contacts')}
-        {isSuperAdmin && sectionBtn({ icon: DollarSign, label: 'Financials', section: 'financials' })}
-        {linkBtn('/admin/crm/campaigns', Mail, 'Email')}
-        {disabledBtn(MessageSquare, 'Messages', 'Coming soon - SMS via Twilio')}
-        {sectionBtn({ icon: QrCode, label: 'Check-in', section: 'checkin' })}
+        {/* ── Group 1 — no heading ── */}
+        <div className="space-y-0.5">
+          {sectionBtn({ icon: LayoutDashboard, label: 'Dashboard',    section: 'dashboard'  })}
+          {sectionBtn({ icon: Calendar,        label: 'Events',       section: 'events'     })}
+          {sectionBtn({ icon: Users,           label: 'Members',      section: 'members'    })}
+          {sectionBtn({ icon: UserX,           label: 'Non-Members',  section: 'non-members' })}
+          {sectionBtn({ icon: FileText,        label: 'Applications', section: 'applications' })}
+          {isSuperAdmin && sectionBtn({ icon: DollarSign, label: 'Financials', section: 'financials' })}
+          {linkBtn('/admin/crm/campaigns', Mail, 'Email')}
+          {disabledBtn(MessageSquare, 'Messages', 'Coming soon - SMS via Twilio')}
+          {sectionBtn({ icon: QrCode, label: 'Check-in', section: 'checkin' })}
+          {linkBtn('/admin/crm', BarChart2, 'CRM')}
+        </div>
 
-        {/* Group 2 — BUSINESS */}
+        {/* ── Group 2 — BUSINESS ── */}
         <div className="mt-5 pt-3 border-t border-border">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground/60 px-4 mb-1 font-normal">Business</p>
+          {groupHeading('Business')}
           <div className="space-y-0.5">
-            {linkBtn('/admin/hubs', Layers, 'Hubs')}
-            {sectionBtn({ icon: FileText, label: 'Applications', section: 'applications' })}
+            {linkBtn('/admin/hubs',      Layers,       'Hubs')}
             {linkBtn('/admin/referrals', GitPullRequest, 'Referrals')}
+            {isAdminOrSuper && linkBtn('/admin/partners', Handshake, 'Partners')}
+            {isAdminOrSuper && linkBtn('/admin/invoices', Receipt,   'Invoices')}
           </div>
         </div>
 
-        {/* Group 3 — no heading */}
-        <div className="mt-5 pt-3 border-t border-border space-y-0.5">
-          {sectionBtn({ icon: ClipboardList, label: 'Tasks', section: 'tasks' })}
-          {linkBtn('/admin/settings', Settings, 'Settings')}
-        </div>
+        {/* ── Group 3 — CONTENT ── */}
+        {isAdminOrSuper && (
+          <div className="mt-5 pt-3 border-t border-border">
+            {groupHeading('Content')}
+            <div className="space-y-0.5">
+              {linkBtn('/admin/blog',        Newspaper,  'Blog')}
+              {sectionBtn({ icon: Shield,    label: 'Feed Moderation', section: 'feed-moderation' })}
+              {sectionBtn({ icon: Lightbulb, label: 'Suggestions',     section: 'suggestions'     })}
+              {linkBtn('/admin/resources',   BookOpen,   'Resources')}
+            </div>
+          </div>
+        )}
 
-        {/* Super-admin only: User Security */}
-        {isSuperAdmin && (
-          <div className="mt-5 pt-3 border-t border-border space-y-0.5">
-            <Link
-              href="/admin/user-security"
-              onClick={onMobileClose}
-              className={cn(
-                'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                pathname.startsWith('/admin/user-security')
-                  ? 'bg-accent text-foreground border-l-2 border-primary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-              )}
-            >
-              <Shield className="w-4 h-4 shrink-0" />
-              User Security
-            </Link>
+        {/* ── Group 4 — SYSTEM ── */}
+        {isAdminOrSuper && (
+          <div className="mt-5 pt-3 border-t border-border">
+            {groupHeading('System')}
+            <div className="space-y-0.5">
+              {linkBtn('/admin/inbox',          Inbox,         'Team Inbox')}
+              {linkBtn('/admin/import-members', Upload,        'Import Members')}
+              {isSuperAdmin && linkBtn('/admin/user-security', Lock, 'User Security')}
+              {isSuperAdmin && linkBtn('/admin/upstash',       Database,      'Upstash')}
+              {isSuperAdmin && linkBtn('/admin/sentry',        AlertTriangle, 'Sentry')}
+              {sectionBtn({ icon: ClipboardList, label: 'Tasks', section: 'tasks' })}
+              {linkBtn('/admin/settings', Settings, 'Settings')}
+            </div>
           </div>
         )}
       </nav>
