@@ -489,30 +489,32 @@ export default function Dashboard() {
             <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
               Calendar
             </p>
-            {p.calendar_token ? (
-              <CalendarSyncButton
-                calendarToken={p.calendar_token}
-                baseUrl={supabaseUrl}
-                variant="cta"
-                userId={user.id}
-              />
-            ) : !calendarPromptDismissed ? (
-              <CalendarConnectPrompt
-                calendarToken={null}
-                baseUrl={supabaseUrl}
-                userId={user.id}
-                onDismiss={() => setCalendarPromptDismissed(true)}
-                onTokenCreated={() => void refreshProfile()}
-              />
-            ) : (
-              <button
-                type="button"
-                className="text-sm font-medium text-[#C6A664] hover:underline"
-                onClick={() => setCalendarPromptDismissed(false)}
-              >
-                Connect your calendar
-              </button>
-            )}
+            <SectionErrorBoundary>
+              {p.calendar_token ? (
+                <CalendarSyncButton
+                  calendarToken={p.calendar_token}
+                  baseUrl={supabaseUrl}
+                  variant="cta"
+                  userId={user.id}
+                />
+              ) : !calendarPromptDismissed ? (
+                <CalendarConnectPrompt
+                  calendarToken={null}
+                  baseUrl={supabaseUrl}
+                  userId={user.id}
+                  onDismiss={() => setCalendarPromptDismissed(true)}
+                  onTokenCreated={() => void refreshProfile()}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="text-sm font-medium text-[#C6A664] hover:underline"
+                  onClick={() => setCalendarPromptDismissed(false)}
+                >
+                  Connect your calendar
+                </button>
+              )}
+            </SectionErrorBoundary>
           </div>
         )}
 

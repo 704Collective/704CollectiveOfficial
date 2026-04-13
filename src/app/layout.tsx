@@ -22,7 +22,10 @@ const headingFont = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "704 Collective | Charlotte's Premier Community",
+  title: {
+    template: "%s | 704 Collective",
+    default: "704 Collective | Charlotte's Premier Community",
+  },
   description:
     "Charlotte's two-tier social club and business membership association. Curated events, real connections, and a community built for people who are building something.",
   metadataBase: new URL("https://704collective.com"),
