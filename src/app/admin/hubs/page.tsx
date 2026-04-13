@@ -103,19 +103,21 @@ function HubFormModal({
     setSaving(true);
     try {
       if (existing) {
-        await supabase.from('hubs').update({
+        const { error } = await supabase.from('hubs').update({
           title: title.trim(),
           description: description.trim() || null,
           header_image_url: headerUrl || null,
           updated_at: new Date().toISOString(),
         }).eq('id', existing.id);
+        if (error) throw error;
       } else {
-        const { data: hub } = await supabase.from('hubs').insert({
+        const { data: hub, error } = await supabase.from('hubs').insert({
           title: title.trim(),
           description: description.trim() || null,
           header_image_url: headerUrl || null,
           created_by: currentUserId,
         }).select().single();
+        if (error) throw error;
         // Add creator as first member
         if (hub) {
           await supabase.from('hub_members').insert({ hub_id: hub.id, user_id: currentUserId, added_by: currentUserId });
@@ -124,6 +126,8 @@ function HubFormModal({
       toast.success(existing ? 'Hub updated' : 'Hub created');
       onSaved();
       onClose();
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Failed to save hub');
     } finally {
       setSaving(false);
     }
