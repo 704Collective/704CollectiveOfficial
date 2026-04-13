@@ -96,8 +96,8 @@ export function Header() {
         ? cn(
             "text-foreground",
             isBusinessActive(path)
-              ? "after:absolute after:bottom-[-4px] after:left-0 after:right-0 after:h-0.5 after:rounded-full after:bg-[hsl(42,45%,58%)]"
-              : "after:absolute after:bottom-[-4px] after:left-0 after:right-0 after:h-0.5 after:rounded-full after:bg-foreground"
+              ? "after:absolute after:bottom-[-8px] after:left-0 after:right-0 after:h-0.5 after:rounded-full after:bg-[hsl(42,45%,58%)]"
+              : "after:absolute after:bottom-[-8px] after:left-0 after:right-0 after:h-0.5 after:rounded-full after:bg-foreground"
           )
         : "text-muted-foreground hover:text-foreground"
     );
