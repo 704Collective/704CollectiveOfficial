@@ -22,16 +22,18 @@ serve(async (req) => {
   }
 
   try {
-    // Debug: log all incoming headers to diagnose auth issues
     console.log("[ADMIN-INVITE] incoming headers:", Object.fromEntries(req.headers.entries()));
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const siteUrl = Deno.env.get("SITE_URL") ?? "https://704collective.com";
 
-    // Shared-secret auth — called only from our own server-side API route
-    const secret = req.headers.get("x-admin-secret");
-    if (!secret || secret !== serviceRoleKey) {
-      log("Unauthorized — bad or missing x-admin-secret");
+    // Shared-secret auth using a dedicated secret (not the service role key)
+    const expectedSecret = Deno.env.get("ADMIN_INVITE_SECRET");
+    const incomingSecret = req.headers.get("x-admin-secret");
+    log("Secret check", { hasExpected: !!expectedSecret, hasIncoming: !!incomingSecret });
+    if (!expectedSecret || incomingSecret !== expectedSecret) {
+      log("Unauthorized - bad or missing x-admin-secret");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -65,7 +67,7 @@ serve(async (req) => {
     const resolvedOrigin = origin ?? siteUrl;
 
     if (existingProfiles && existingProfiles.length > 0) {
-      // Existing user — just elevate their role
+      // Existing user - just elevate their role
       userId = existingProfiles[0].id;
       const existingRole = existingProfiles[0].role;
 
@@ -84,7 +86,7 @@ serve(async (req) => {
 
       log("Admin role assigned to existing user", { userId });
     } else {
-      // New user — create auth account and send setup link
+      // New user - create auth account and send setup link
       isNewUser = true;
       const displayName = full_name?.trim() || cleanEmail;
 
@@ -111,7 +113,7 @@ serve(async (req) => {
         { onConflict: "id" },
       );
 
-      // Also generate a recovery link to include in our branded email
+      // Generate a recovery link to include in the branded email
       const { data: linkData } = await adminClient.auth.admin.generateLink({
         type: "recovery",
         email: cleanEmail,

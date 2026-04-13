@@ -33,22 +33,22 @@ export async function POST(req: NextRequest) {
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const adminInviteSecret = process.env.ADMIN_INVITE_SECRET;
 
-  if (!supabaseUrl || !serviceRoleKey) {
-    console.error('[admin/invite] Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+  if (!supabaseUrl || !adminInviteSecret) {
+    console.error('[admin/invite] Missing NEXT_PUBLIC_SUPABASE_URL or ADMIN_INVITE_SECRET');
     return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 });
   }
 
-  console.log('[admin/invite] service role key present:', !!serviceRoleKey);
+  console.log('[admin/invite] ADMIN_INVITE_SECRET present:', !!adminInviteSecret);
+
   const edgeFnUrl = `${supabaseUrl}/functions/v1/admin-invite`;
 
   const edgeRes = await fetch(edgeFnUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      // Shared secret — never exposed to the browser
-      'x-admin-secret': serviceRoleKey,
+      'x-admin-secret': adminInviteSecret,
     },
     body: JSON.stringify({
       email: email.trim(),
