@@ -125,7 +125,12 @@ export default function BusinessFeedPage() {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error('[BusinessFeed] query error:', error);
+        if (reset) { setPosts([]); setOffset(0); }
+        setHasMore(false);
+        return;
+      }
 
       // Get like/comment/share counts
       const postIds = (data || []).map((p: any) => p.id);
@@ -177,7 +182,9 @@ export default function BusinessFeedPage() {
       }
       setHasMore(formatted.length === POSTS_PER_PAGE);
     } catch (err: any) {
-      toast.error('Failed to load feed');
+      console.error('[BusinessFeed] unexpected error:', err);
+      if (reset) { setPosts([]); setOffset(0); }
+      setHasMore(false);
     } finally {
       setLoading(false);
       setLoadingMore(false);
