@@ -22,6 +22,8 @@ serve(async (req) => {
   }
 
   try {
+    // Debug: log all incoming headers to diagnose auth issues
+    console.log("[ADMIN-INVITE] incoming headers:", Object.fromEntries(req.headers.entries()));
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const siteUrl = Deno.env.get("SITE_URL") ?? "https://704collective.com";

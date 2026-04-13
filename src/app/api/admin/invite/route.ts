@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 });
   }
 
+  console.log('[admin/invite] service role key present:', !!serviceRoleKey);
   const edgeFnUrl = `${supabaseUrl}/functions/v1/admin-invite`;
 
   const edgeRes = await fetch(edgeFnUrl, {
