@@ -42,8 +42,8 @@ async function checkRateLimit(supabase: any, key: string, max: number): Promise<
   return false;
 }
 
-// Price ID for the 704 Collective Membership - $30/month
-const MEMBERSHIP_PRICE_ID = "price_1Sc9YiRzSIH3EgWL7h547P7G";
+// Social membership price ID — set STRIPE_SOCIAL_PRICE_ID in Supabase secrets
+const MEMBERSHIP_PRICE_ID = Deno.env.get("STRIPE_SOCIAL_PRICE_ID") ?? "";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
