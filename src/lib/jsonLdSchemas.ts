@@ -64,6 +64,21 @@ export const businessServiceSchema704 = {
     "Strategic networking for Charlotte's ambitious professionals - business meetings, workshops, and introductions that drive growth.",
 } as const;
 
+export const websiteSchema704 = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: '704 Collective',
+  url: SITE_URL,
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: {
+      '@type': 'EntryPoint',
+      urlTemplate: `${SITE_URL}/events?search={search_term_string}`,
+    },
+    'query-input': 'required name=search_term_string',
+  },
+} as const;
+
 export const partnerProgramServiceSchema704 = {
   '@context': 'https://schema.org',
   '@type': 'Service',

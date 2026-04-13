@@ -1,20 +1,14 @@
-# 704 Collective
-# https://704collective.com
-
 User-agent: *
 Allow: /
-
-# Block admin and dashboard routes
-Disallow: /admin
 Disallow: /dashboard
-Disallow: /api
-Disallow: /partner-portal
+Disallow: /admin
 Disallow: /business-portal
+Disallow: /partner-portal
 Disallow: /partners/dashboard
-Disallow: /partners/dashboard/
 Disallow: /partners/admin
-Disallow: /partners/admin/
 Disallow: /partners/login
 Disallow: /partners/signup
+Disallow: /api/
+Disallow: /auth/
 
 Sitemap: https://704collective.com/sitemap.xml

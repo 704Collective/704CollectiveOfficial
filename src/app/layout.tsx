@@ -13,26 +13,39 @@ const inter = Inter({
   subsets: ["latin"],
   variable: "--font-body",
   weight: ["300", "400", "500", "600", "700", "800"],
+  display: "swap",
+  preload: true,
 });
 
 const headingFont = Inter({
   subsets: ["latin"],
   variable: "--font-heading",
   weight: ["600", "700", "800"],
+  display: "swap",
+  preload: true,
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://704collective.com"),
   title: {
+    default: "704 Collective",
     template: "%s | 704 Collective",
-    default: "704 Collective | Charlotte's Premier Community",
   },
   description:
-    "Charlotte's two-tier social club and business membership association. Curated events, real connections, and a community built for people who are building something.",
-  metadataBase: new URL("https://704collective.com"),
+    "Charlotte's membership community for young professionals. Social events, business networking, and genuine connections in the Queen City.",
+  keywords: [
+    "704 Collective",
+    "Charlotte",
+    "young professionals",
+    "Charlotte networking",
+    "Charlotte social events",
+    "Charlotte membership",
+    "Queen City community",
+  ],
   openGraph: {
-    title: "704 Collective | Charlotte's Premier Community",
+    title: "704 Collective",
     description:
-      "Charlotte's two-tier social club and business membership association. Curated events, real connections, and a community built for people who are building something.",
+      "Charlotte's membership community for young professionals. Social events, business networking, and genuine connections in the Queen City.",
     url: "https://704collective.com",
     siteName: "704 Collective",
     images: [
@@ -40,7 +53,7 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "704 Collective - Your City. Your People.",
+        alt: "704 Collective - Charlotte Young Professionals Community",
       },
     ],
     locale: "en_US",
@@ -48,10 +61,24 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "704 Collective | Charlotte's Premier Community",
+    title: "704 Collective",
     description:
-      "Charlotte's two-tier social club and business membership association.",
+      "Charlotte's membership community for young professionals. Social events, business networking, and genuine connections in the Queen City.",
     images: ["/og-image.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  alternates: {
+    canonical: "https://704collective.com",
   },
   icons: {
     icon: [

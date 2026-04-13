@@ -19,6 +19,8 @@ import {
 import TiltCard from "@/components/TiltCard";
 import GradientShift from "@/components/GradientShift";
 import { MarketingPageRoot } from "@/components/MarketingPageRoot";
+import JsonLd from "@/components/JsonLd";
+import { websiteSchema704, organizationSchema704 } from "@/lib/jsonLdSchemas";
 
 export const dynamic = "force-static";
 
@@ -80,6 +82,7 @@ export default async function Home() {
 
   return (
     <>
+      <JsonLd schema={[organizationSchema704, websiteSchema704]} />
       <Nav />
 
       <main id="main-content" style={{ paddingTop: "64px" }}>
