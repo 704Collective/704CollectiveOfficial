@@ -29,34 +29,42 @@ serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Verify caller is admin
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    // Verify caller is authenticated
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const { data: { user: callerUser }, error: authError } = await adminClient.auth.getUser(token);
+    if (authError || !callerUser) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const callerId = claimsData.claims.sub as string;
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const callerId = callerUser.id;
 
-    const { data: roleData } = await adminClient
-      .from("user_roles")
+    // Check profiles.role first (primary), then user_roles table (legacy fallback)
+    const { data: profileRole } = await adminClient
+      .from("profiles")
       .select("role")
-      .eq("user_id", callerId)
-      .eq("role", "admin")
+      .eq("id", callerId)
+      .is("deleted_at", null)
       .maybeSingle();
 
-    if (!roleData) {
-      return new Response(JSON.stringify({ error: "Admin access required" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const isAdminViaProfile = profileRole?.role === "admin" || profileRole?.role === "super_admin";
+
+    if (!isAdminViaProfile) {
+      const { data: roleData } = await adminClient
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", callerId)
+        .in("role", ["admin", "super_admin"])
+        .maybeSingle();
+
+      if (!roleData) {
+        return new Response(JSON.stringify({ error: "Admin access required" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const { firstName, lastName, email, origin: bodyOrigin } = await req.json();
