@@ -344,20 +344,18 @@ function AdminSettings() {
     }
     setInviteSubmitting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const { data, error } = await supabase.functions.invoke('admin-invite', {
-        body: {
+      const response = await fetch('/api/admin/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           firstName: inviteFirstName.trim(),
           lastName: inviteLastName.trim(),
           email: inviteEmail.trim(),
           origin: window.location.origin,
-        },
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`,
-        },
+        }),
       });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to send invite');
       if (data?.isNewUser) {
         toast.success(`Invite sent to ${inviteEmail.trim()}`);
       } else {

@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-admin-secret",
 };
 
 const log = (step: string, details?: unknown) => {
@@ -24,156 +24,105 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    // Note: SUPABASE_ANON_KEY not needed — all calls use service role client
+    const siteUrl = Deno.env.get("SITE_URL") ?? "https://704collective.com";
 
-    // Require Authorization header — supabase.functions.invoke must pass it explicitly
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const token = authHeader.replace("Bearer ", "");
-
-    // Verify token and get caller identity
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    const { data: { user: callerUser }, error: authError } = await adminClient.auth.getUser(token);
-    if (authError || !callerUser) {
-      log("Auth failed", { error: authError?.message });
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
+    // Shared-secret auth — called only from our own server-side API route
+    const secret = req.headers.get("x-admin-secret");
+    if (!secret || secret !== serviceRoleKey) {
+      log("Unauthorized — bad or missing x-admin-secret");
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const callerId = callerUser.id;
+    const { email, full_name, origin } = await req.json();
 
-    // Check profiles.role first (primary), then user_roles table (legacy fallback)
-    const { data: profileRole } = await adminClient
-      .from("profiles")
-      .select("role")
-      .eq("id", callerId)
-      .is("deleted_at", null)
-      .maybeSingle();
-
-    const isAdminViaProfile = profileRole?.role === "admin" || profileRole?.role === "super_admin";
-
-    if (!isAdminViaProfile) {
-      const { data: roleData } = await adminClient
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", callerId)
-        .in("role", ["admin", "super_admin"])
-        .maybeSingle();
-
-      if (!roleData) {
-        return new Response(JSON.stringify({ error: "Admin access required" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-    }
-
-    const { firstName, lastName, email, origin: bodyOrigin } = await req.json();
-
-    if (!firstName?.trim() || !lastName?.trim() || !email?.trim()) {
-      return new Response(JSON.stringify({ error: "firstName, lastName, and email are required" }), {
+    if (!email?.trim()) {
+      return new Response(JSON.stringify({ error: "email is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const fullName = `${firstName.trim()} ${lastName.trim()}`;
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    log("Processing invite", { email: cleanEmail, fullName });
+    log("Processing invite", { email: cleanEmail });
 
-    // Check if user already exists
+    // Check if user already exists in profiles
     const { data: existingProfiles } = await adminClient
       .from("profiles")
-      .select("id, email, full_name")
+      .select("id, email, full_name, role")
       .eq("email", cleanEmail)
       .limit(1);
 
     let isNewUser = false;
     let userId: string;
     let setupLink: string | null = null;
+    const resolvedOrigin = origin ?? siteUrl;
 
     if (existingProfiles && existingProfiles.length > 0) {
-      // Existing user
+      // Existing user — just elevate their role
       userId = existingProfiles[0].id;
+      const existingRole = existingProfiles[0].role;
 
-      // Check if already admin
-      const { data: existingRole } = await adminClient
-        .from("user_roles")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("role", "admin")
-        .maybeSingle();
-
-      if (existingRole) {
+      if (existingRole === "admin" || existingRole === "super_admin") {
         return new Response(
           JSON.stringify({ error: `${existingProfiles[0].full_name || cleanEmail} is already an admin` }),
           { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
 
-      // Assign admin role
       const { error: roleErr } = await adminClient
-        .from("user_roles")
-        .insert({ user_id: userId, role: "admin" });
+        .from("profiles")
+        .update({ role: "admin" })
+        .eq("id", userId);
       if (roleErr) throw new Error(roleErr.message);
 
       log("Admin role assigned to existing user", { userId });
     } else {
-      // New user — create auth account
+      // New user — create auth account and send setup link
       isNewUser = true;
-      const tempPassword = crypto.randomUUID() + "Aa1!";
-      const createResult = await adminClient.auth.admin.createUser({
-        email: cleanEmail,
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: { full_name: fullName },
-      });
+      const displayName = full_name?.trim() || cleanEmail;
 
-      if (createResult.error) throw new Error(createResult.error.message);
-      userId = createResult.data.user.id;
+      const { data: inviteData, error: inviteErr } = await adminClient.auth.admin.inviteUserByEmail(
+        cleanEmail,
+        {
+          data: { full_name: displayName },
+          redirectTo: `${resolvedOrigin}/setup-password`,
+        },
+      );
 
-      // Create / upsert profile
-      const { error: profileErr } = await adminClient.from("profiles").upsert(
+      if (inviteErr) throw new Error(inviteErr.message);
+      userId = inviteData.user.id;
+
+      // Upsert profile
+      await adminClient.from("profiles").upsert(
         {
           id: userId,
           email: cleanEmail,
-          full_name: fullName,
+          full_name: displayName,
+          role: "admin",
           subscription_status: "inactive",
         },
         { onConflict: "id" },
       );
-      if (profileErr) log("Profile upsert error", { error: profileErr.message });
 
-      // Assign admin role
-      const { error: roleErr } = await adminClient
-        .from("user_roles")
-        .insert({ user_id: userId, role: "admin" });
-      if (roleErr) throw new Error(roleErr.message);
-
-      // Generate password setup link
-      if (!bodyOrigin) throw new Error("origin is required in the request body");
-      const { data: linkData, error: linkErr } = await adminClient.auth.admin.generateLink({
+      // Also generate a recovery link to include in our branded email
+      const { data: linkData } = await adminClient.auth.admin.generateLink({
         type: "recovery",
         email: cleanEmail,
-        options: { redirectTo: `${bodyOrigin}/setup-password` },
+        options: { redirectTo: `${resolvedOrigin}/setup-password` },
       });
-
-      if (!linkErr && linkData?.properties?.action_link) {
+      if (linkData?.properties?.action_link) {
         setupLink = linkData.properties.action_link;
       }
 
-      log("New admin user created", { userId });
+      log("New admin user created via inviteUserByEmail", { userId });
     }
 
-    // Send admin invite email (non-blocking)
+    // Send branded invite email (non-blocking)
     try {
       await fetch(`${supabaseUrl}/functions/v1/send-email`, {
         method: "POST",
@@ -185,9 +134,9 @@ serve(async (req) => {
           to: cleanEmail,
           template: "admin-invite",
           data: {
-            name: firstName.trim(),
+            name: full_name?.trim() || cleanEmail,
             setupLink,
-            loginUrl: `${bodyOrigin}/admin`,
+            loginUrl: `${resolvedOrigin}/admin`,
           },
         }),
       });
