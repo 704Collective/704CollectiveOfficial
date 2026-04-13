@@ -28,7 +28,7 @@ export default function Privacy() {
             <h1 style={{ fontSize: 'clamp(2rem, 4.5vw, 2.75rem)', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', marginBottom: '8px' }}>
               Privacy Policy
             </h1>
-            <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.35)', marginBottom: '40px' }}>Last Updated: February 2026</p>
+            <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.35)', marginBottom: '40px' }}>Last Updated: April 2026</p>
           </FadeUp>
 
           <FadeUp delay={0.1}>
@@ -43,7 +43,7 @@ export default function Privacy() {
               <p style={subheadStyle}>Information You Provide Directly:</p>
               <ul style={ulStyle}>
                 <li style={liStyle}>Name and contact information (email address, phone number)</li>
-                <li style={liStyle}>Billing information (processed securely through Stripe — we do not store full credit card numbers)</li>
+                <li style={liStyle}>Billing information (processed securely through Stripe - we do not store full credit card numbers)</li>
                 <li style={liStyle}>Profile information you choose to share (profession, interests, social media handles)</li>
                 <li style={liStyle}>Communications you send to us (emails, feedback, support requests)</li>
               </ul>
@@ -90,11 +90,11 @@ export default function Privacy() {
             <h2 style={h2Style}>4. Third-Party Services We Use</h2>
             <p style={pStyle}>We use the following third-party services that may collect or process your data:</p>
             <ul style={ulStyle}>
-              <li style={liStyle}><span style={strongStyle}>Stripe</span> — Payment processing</li>
-              <li style={liStyle}><span style={strongStyle}>Supabase</span> — Database, authentication, and hosting</li>
-              <li style={liStyle}><span style={strongStyle}>Google</span> — OAuth social login</li>
-              <li style={liStyle}><span style={strongStyle}>Resend</span> — Transactional email delivery</li>
-              <li style={liStyle}><span style={strongStyle}>Sentry</span> — Error tracking and performance monitoring</li>
+              <li style={liStyle}><span style={strongStyle}>Stripe</span> - Payment processing</li>
+              <li style={liStyle}><span style={strongStyle}>Supabase</span> - Database, authentication, and hosting</li>
+              <li style={liStyle}><span style={strongStyle}>Google</span> - OAuth social login</li>
+              <li style={liStyle}><span style={strongStyle}>Resend</span> - Transactional email delivery</li>
+              <li style={liStyle}><span style={strongStyle}>Sentry</span> - Error tracking and performance monitoring</li>
             </ul>
             <p style={pStyle}>Each of these services has their own privacy policies, which we encourage you to review.</p>
           </section>

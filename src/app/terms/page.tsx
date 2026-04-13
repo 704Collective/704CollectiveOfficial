@@ -27,7 +27,7 @@ export default function Terms() {
             <h1 style={{ fontSize: 'clamp(2rem, 4.5vw, 2.75rem)', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', marginBottom: '8px' }}>
               Terms of Service
             </h1>
-            <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.35)', marginBottom: '40px' }}>Last Updated: February 2026</p>
+            <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.35)', marginBottom: '40px' }}>Last Updated: April 2026</p>
           </FadeUp>
 
           <FadeUp delay={0.1}>
@@ -53,7 +53,7 @@ export default function Terms() {
 
           <section style={sectionStyle}>
             <h2 style={h2Style}>3. What You{"'"}re Paying For (Access, Not Attendance)</h2>
-            <p style={pStyle}>This is important, so we want to be crystal clear: Your membership fee pays for access to the 704 Collective community — not attendance at specific events.</p>
+              <p style={pStyle}>This is important, so we want to be crystal clear: Your membership fee pays for access to the 704 Collective community - not attendance at specific events.</p>
             <p style={{ ...pStyle, color: '#FFFFFF', fontWeight: 600 }}>Your membership includes:</p>
             <ul style={ulStyle}>
               <li style={liStyle}>Invitations to all 704 Collective events, workshops, and experiences</li>
@@ -61,7 +61,7 @@ export default function Terms() {
               <li style={liStyle}>Exclusive discounts at participating Charlotte partner businesses</li>
               <li style={liStyle}>Connection to our network of young professionals</li>
             </ul>
-            <p style={pStyle}>Think of us like a gym membership or streaming service — your fee covers your access to these benefits, regardless of how often you use them. We pre-pay our vendors and reserve event capacity based on our active member count, which is why we cannot offer refunds or credits for months where you did not attend events or utilize your membership benefits.</p>
+            <p style={pStyle}>Think of us like a gym membership or streaming service - your fee covers your access to these benefits, regardless of how often you use them. We pre-pay our vendors and reserve event capacity based on our active member count, which is why we cannot offer refunds or credits for months where you did not attend events or utilize your membership benefits.</p>
           </section>
 
           <section style={sectionStyle}>
