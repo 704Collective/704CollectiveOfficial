@@ -314,7 +314,7 @@ export default function CrmAdsPage() {
                   }
                 </div>
                 <div className="flex-1">
-                  <p className="font-medium text-foreground capitalize">{a.platform} Ads — {a.account_name}</p>
+                  <p className="font-medium text-foreground capitalize">{a.platform} Ads - {a.account_name}</p>
                   <p className="text-xs text-muted-foreground">ID: {a.account_id}</p>
                   {a.last_sync_at && <p className="text-xs text-muted-foreground/60">Last sync: {format(new Date(a.last_sync_at), 'MMM d, h:mm a')}</p>}
                 </div>

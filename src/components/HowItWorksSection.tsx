@@ -9,7 +9,7 @@ const STEPS = [
   {
     number: '2',
     title: 'Show Up',
-    description: '8+ events per month. Happy hours, dinners, adventures — we plan everything so you just walk in.',
+    description: '8+ events per month. Happy hours, dinners, adventures - we plan everything so you just walk in.',
   },
   {
     number: '3',

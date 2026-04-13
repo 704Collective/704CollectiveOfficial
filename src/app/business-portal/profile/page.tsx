@@ -511,7 +511,7 @@ export default function BusinessProfilePage() {
         <section>
           {sectionTitle(`Additional Photos (${form.additional_photos.length}/${MAX_ADDITIONAL_PHOTOS})`)}
           <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', marginBottom: '16px' }}>
-            Optional — showcase your business, team, or work with up to {MAX_ADDITIONAL_PHOTOS} photos.
+            Optional - showcase your business, team, or work with up to {MAX_ADDITIONAL_PHOTOS} photos.
           </p>
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
             {form.additional_photos.map((url, i) => (

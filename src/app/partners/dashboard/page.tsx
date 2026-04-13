@@ -447,7 +447,7 @@ export default function DashboardPage() {
               }}
             >
               Welcome to the family. Your partner dashboard will expand with
-              more features soon — event calendar, messaging, and analytics.
+              more features soon - event calendar, messaging, and analytics.
             </p>
           </div>
         </div>

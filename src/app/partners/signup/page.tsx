@@ -394,7 +394,7 @@ export default function PartnerSignup() {
                     marginBottom: "12px",
                   }}
                 >
-                  Partner Type(s) * — Select all that apply
+                  Partner Type(s) * - Select all that apply
                 </label>
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                   {partnerTypeOptions.map((type) => (

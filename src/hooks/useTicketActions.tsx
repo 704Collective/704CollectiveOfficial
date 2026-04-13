@@ -169,7 +169,7 @@ export function useTicketActions(): UseTicketActionsReturn {
                   name: p.full_name || 'there',
                   eventName: event.title,
                   eventDate: format(eventDate, 'EEEE, MMMM d, yyyy'),
-                  eventTime: `${format(eventDate, 'h:mm a')} — ${format(endDate, 'h:mm a')}`,
+                  eventTime: `${format(eventDate, 'h:mm a')} - ${format(endDate, 'h:mm a')}`,
                   eventLocation: event.location_name || 'TBA',
                   eventUrl: `${window.location.origin}/events/${event.id}`,
                   plusOne: isBusinessMember,

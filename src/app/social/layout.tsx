@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "704 Social | 704 Collective",
     description:
-      "Curated events, wellness, and community — Charlotte's social membership track.",
+      "Curated events, wellness, and community - Charlotte's social membership track.",
     url: `${SITE_URL}/social`,
     siteName: "704 Collective",
     images: [{ url: DEFAULT_OG_IMAGE, width: 1200, height: 630, alt: "704 Collective" }],
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "704 Social | 704 Collective",
     description:
-      "Curated events, wellness, and community — Charlotte's social membership track.",
+      "Curated events, wellness, and community - Charlotte's social membership track.",
     images: [DEFAULT_OG_IMAGE],
   },
   alternates: { canonical: `${SITE_URL}/social` },

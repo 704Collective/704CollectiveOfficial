@@ -192,7 +192,7 @@ export default function SignupPage() {
               className="w-full"
               onClick={() => setStep('choice')}
             >
-              I've verified my email — continue
+              I've verified my email - continue
             </Button>
           </div>
         </div>
@@ -229,7 +229,7 @@ export default function SignupPage() {
                   <Crown className="w-6 h-6 text-primary" />
                 </div>
                 <div className="text-center">
-                  <p className="font-semibold text-foreground mb-1">Join Now — $30/mo</p>
+                  <p className="font-semibold text-foreground mb-1">Join Now - $30/mo</p>
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     Unlock free RSVPs, guest passes, member-only events, and full community access.
                   </p>
@@ -300,7 +300,7 @@ export default function SignupPage() {
           <div className="text-center">
             <h1 className="text-2xl font-semibold text-foreground mb-2">Create your account</h1>
             <p className="text-muted-foreground text-sm">
-              Join 704 Collective — Charlotte's members-only community.
+              Join 704 Collective - Charlotte's members-only community.
             </p>
           </div>
 

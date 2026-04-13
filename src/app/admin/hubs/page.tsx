@@ -248,7 +248,7 @@ function ManageMembersModal({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="bg-[#1A1A1A] border-white/10 text-white max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-white">Manage Members — {hub.title}</DialogTitle>
+          <DialogTitle className="text-white">Manage Members - {hub.title}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 mt-2 flex-1 overflow-hidden flex flex-col">

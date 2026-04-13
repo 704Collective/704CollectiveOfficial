@@ -290,7 +290,7 @@ export default function SettingsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
               <p className="text-sm font-medium">
-                {memberType} — {monthlyPrice}/month
+                {memberType} - {monthlyPrice}/month
               </p>
               {memberSince && (
                 <p className="text-xs text-muted-foreground mt-0.5">Member since {memberSince}</p>

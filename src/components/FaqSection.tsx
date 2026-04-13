@@ -10,7 +10,7 @@ import {
 const FAQ_ITEMS = [
   {
     q: 'What is 704 Collective?',
-    a: "A membership community for young professionals (25-35) in Charlotte. We're not another networking group — we're where you find your people. Think social hours, real connections, and a real community.",
+    a: "A membership community for young professionals (25-35) in Charlotte. We're not another networking group - we're where you find your people. Think social hours, real connections, and a real community.",
   },
   {
     q: 'What does my $30/month cover?',
@@ -18,7 +18,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What kind of events do you host?',
-    a: "Everything from happy hours at Charlotte's best spots to group dinners, rooftop hangouts, outdoor adventures, and member-only experiences. We focus on environments where you can actually talk to people — no overcrowded venues or awkward mingling.",
+    a: "Everything from happy hours at Charlotte's best spots to group dinners, rooftop hangouts, outdoor adventures, and member-only experiences. We focus on environments where you can actually talk to people - no overcrowded venues or awkward mingling.",
   },
   {
     q: 'Do I have to attend every event?',
@@ -26,7 +26,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Can I bring guests?',
-    a: 'Social events: Yes, occasionally — details vary by event. Each member gets one free guest pass per month.',
+    a: 'Social events: Yes, occasionally - details vary by event. Each member gets one free guest pass per month.',
   },
   {
     q: "What if I'm new to Charlotte?",

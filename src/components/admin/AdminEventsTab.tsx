@@ -858,9 +858,9 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
               <Select value={form.visibility} onValueChange={v => setForm(prev => ({ ...prev, visibility: v as 'public' | 'members_only' | 'business_only' }))}>
                 <SelectTrigger><SelectValue placeholder="Select visibility" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="public">Public — Anyone can see and attend</SelectItem>
-                  <SelectItem value="members_only">Members Only — Social + Business members</SelectItem>
-                  <SelectItem value="business_only">Business Only — Business members only</SelectItem>
+                  <SelectItem value="public">Public - Anyone can see and attend</SelectItem>
+                  <SelectItem value="members_only">Members Only - Social + Business members</SelectItem>
+                  <SelectItem value="business_only">Business Only - Business members only</SelectItem>
                 </SelectContent>
               </Select>
             </div>

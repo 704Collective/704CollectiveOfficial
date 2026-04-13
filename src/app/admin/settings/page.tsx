@@ -425,7 +425,7 @@ function AdminSettings() {
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-sm font-medium">Admin Team</h4>
                   {!isSuperAdmin && (
-                    <span className="text-xs text-muted-foreground">View only — super admin required to make changes</span>
+                    <span className="text-xs text-muted-foreground">View only - super admin required to make changes</span>
                   )}
                 </div>
                 {loadingData ? (
@@ -790,7 +790,7 @@ function AdminSettings() {
                       <span className="text-xs text-green-400 font-medium">Live</span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">
-                      Served as a live iCal feed — compatible with Apple Calendar, Google Calendar, and Outlook.
+                      Served as a live iCal feed - compatible with Apple Calendar, Google Calendar, and Outlook.
                     </p>
                   </div>
                 </div>

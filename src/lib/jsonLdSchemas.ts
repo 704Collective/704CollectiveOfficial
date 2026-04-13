@@ -47,7 +47,7 @@ export const socialServiceSchema704 = {
     name: 'Charlotte, NC',
   },
   description:
-    "Charlotte's activity club and social community — curated events, real friendships, and a calendar built for people who show up.",
+    "Charlotte's activity club and social community - curated events, real friendships, and a calendar built for people who show up.",
 } as const;
 
 export const businessServiceSchema704 = {
@@ -61,7 +61,7 @@ export const businessServiceSchema704 = {
     name: 'Charlotte, NC',
   },
   description:
-    "Strategic networking for Charlotte's ambitious professionals — business meetings, workshops, and introductions that drive growth.",
+    "Strategic networking for Charlotte's ambitious professionals - business meetings, workshops, and introductions that drive growth.",
 } as const;
 
 export const partnerProgramServiceSchema704 = {

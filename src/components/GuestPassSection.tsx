@@ -219,7 +219,7 @@ export function GuestPassSection({ userId }: GuestPassSectionProps) {
                 <SelectItem value="general">General Pass (any event this month)</SelectItem>
                 {(events as any[]).map((event) => (
                   <SelectItem key={event.id} value={event.id}>
-                    {event.title} — {format(new Date(event.start_time), 'MMM d')}
+                    {event.title} - {format(new Date(event.start_time), 'MMM d')}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -346,7 +346,7 @@ export default function BusinessFeedPage() {
     }
     await supabase.from('feed_mutes').insert({ user_id: user.id, muted_user_id: post.user_id });
     setPosts(prev => prev.filter(p => p.user_id !== post.user_id));
-    toast.success(`${post.author_name} muted — you won't see their posts`);
+    toast.success(`${post.author_name} muted - you won't see their posts`);
   };
 
   // ── Delete ─────────────────────────────────────────────────────────────────
@@ -558,7 +558,7 @@ export default function BusinessFeedPage() {
                 fontSize: '0.75rem', color: 'rgba(239,68,68,0.8)',
                 display: 'flex', alignItems: 'center', gap: '6px',
               }}>
-                <EyeOff className="w-3 h-3" /> Shadow hidden — only visible to admins and the author
+                <EyeOff className="w-3 h-3" /> Shadow hidden - only visible to admins and the author
               </div>
             )}
 

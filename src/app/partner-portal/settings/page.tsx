@@ -186,7 +186,7 @@ export default function PartnerPortalSettingsPage() {
       <div className="rounded-xl border border-red-500/25 p-6 bg-red-500/5 space-y-4">
         <h3 className="text-lg font-semibold text-red-200">Danger zone</h3>
         <p className="text-sm text-white/55">
-          Request account deletion. We&apos;ll email the team at hello@704collective.com — your account is not deleted
+          Request account deletion. We&apos;ll email the team at hello@704collective.com - your account is not deleted
           automatically.
         </p>
         <div className="space-y-2 max-w-md">

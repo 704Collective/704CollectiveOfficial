@@ -61,7 +61,7 @@ const SOCIAL_PERKS = [
   '8+ curated social events per month',
   'Free RSVPs to all member events',
   '+1 guest pass per event',
-  'Wellness days — cold plunge, sauna, run club',
+  'Wellness days - cold plunge, sauna, run club',
   'Member-only event access',
   'Charlotte insider deals and early access',
   'Community feed and member directory',
@@ -186,7 +186,7 @@ export function NonMemberDashboard({ profile, application }: NonMemberDashboardP
                   <div className="flex flex-col sm:flex-row gap-3">
                     <Button className="flex-1" onClick={handleJoinSocial}>
                       <Crown className="w-4 h-4 mr-2" />
-                      Join Social — $30/mo
+                      Join Social - $30/mo
                     </Button>
                     <Button variant="outline" className="flex-1" onClick={handleApplyBusiness}>
                       <Briefcase className="w-4 h-4 mr-2" />
@@ -316,7 +316,7 @@ export function NonMemberDashboard({ profile, application }: NonMemberDashboardP
                     {statusConfig.label}
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {appStatus === 'pending' && 'Your application is in our queue. We review every application personally — expect to hear from us within 48 hours.'}
+                    {appStatus === 'pending' && 'Your application is in our queue. We review every application personally - expect to hear from us within 48 hours.'}
                     {appStatus === 'reviewing' && 'Our team is currently reviewing your application. We\'ll be in touch shortly.'}
                     {appStatus === 'approved' && 'Congratulations! Your application has been approved. Check your email for next steps.'}
                     {appStatus === 'denied' && 'We appreciate your interest. Your application wasn\'t a fit at this time. You\'re welcome to join as a Social member.'}
@@ -324,7 +324,7 @@ export function NonMemberDashboard({ profile, application }: NonMemberDashboardP
                   </p>
                   {(appStatus === 'denied' || appStatus === 'waitlisted') && (
                     <Button size="sm" className="mt-3" onClick={handleJoinSocial}>
-                      Join as Social Member — $30/mo
+                      Join as Social Member - $30/mo
                     </Button>
                   )}
                 </div>
@@ -332,7 +332,7 @@ export function NonMemberDashboard({ profile, application }: NonMemberDashboardP
                 {/* Full application read-only */}
                 <div className="rounded-xl border border-border bg-card p-5 space-y-5">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Your Submitted Application — {format(new Date(application.created_at), 'MMMM d, yyyy')}
+                    Your Submitted Application - {format(new Date(application.created_at), 'MMMM d, yyyy')}
                   </p>
 
                   {[
@@ -369,7 +369,7 @@ export function NonMemberDashboard({ profile, application }: NonMemberDashboardP
                   {emailSent ? (
                     <p className="text-sm text-green-400 flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4" />
-                      Message sent — we'll get back to you soon.
+                      Message sent - we'll get back to you soon.
                     </p>
                   ) : (
                     <form onSubmit={handleSendEmail} className="space-y-3">

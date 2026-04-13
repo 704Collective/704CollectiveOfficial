@@ -120,7 +120,7 @@ export function WalletButtons({ compact = false }: { compact?: boolean }) {
 
   // Apple Wallet not ready yet — show holding message immediately, no API call needed
   const handleAppleWallet = () => {
-    toast("We're polishing the Apple experience—hang tight, 704 fam! Use the Google link or show your profile for now.", {
+    toast("We're polishing the Apple experience - hang tight, 704 fam! Use the Google link or show your profile for now.", {
       duration: 5000,
       icon: <Smartphone className="w-4 h-4 shrink-0" />,
       position: 'bottom-right',

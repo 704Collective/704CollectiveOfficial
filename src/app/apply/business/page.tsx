@@ -206,7 +206,7 @@ export default function BusinessApplicationPage() {
               </p>
             </div>
             <Button className="w-full" onClick={() => setStep('application')}>
-              I've verified — continue to application
+              I've verified - continue to application
             </Button>
             <button
               type="button"
@@ -241,7 +241,7 @@ export default function BusinessApplicationPage() {
             <div>
               <h1 className="text-2xl font-semibold text-foreground mb-2">Application submitted</h1>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Thanks {form.firstName} — we review every application personally. Expect to hear from us within 48 hours.
+                Thanks {form.firstName} - we review every application personally. Expect to hear from us within 48 hours.
               </p>
             </div>
             <Button className="w-full" onClick={() => router.push('/dashboard')}>
@@ -314,7 +314,7 @@ export default function BusinessApplicationPage() {
                   {
                     key: 'conflictLesson' as keyof FormData,
                     label: 'Describe a recent conflict or issue you\'ve had (personal or business) and what you learned from solving it. *',
-                    placeholder: 'Be honest — this tells us more about you than any résumé.',
+                    placeholder: 'Be honest - this tells us more about you than any résumé.',
                   },
                   {
                     key: 'missingInCharlotte' as keyof FormData,
@@ -324,7 +324,7 @@ export default function BusinessApplicationPage() {
                   {
                     key: 'oneYearGoal' as keyof FormData,
                     label: 'One year from now, what do you expect to have gotten out of joining 704 Collective\'s Business Membership? *',
-                    placeholder: 'Be specific — what does success look like for you?',
+                    placeholder: 'Be specific - what does success look like for you?',
                   },
                   {
                     key: 'rightIntro' as keyof FormData,
@@ -339,7 +339,7 @@ export default function BusinessApplicationPage() {
                   {
                     key: 'anythingElse' as keyof FormData,
                     label: 'Anything else we should know about you, your business, your lifestyle?',
-                    placeholder: 'This is your space — say whatever didn\'t fit above.',
+                    placeholder: 'This is your space - say whatever didn\'t fit above.',
                     optional: true,
                   },
                 ].map(q => (

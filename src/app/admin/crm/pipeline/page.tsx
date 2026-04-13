@@ -332,7 +332,7 @@ function DealDetailDialog({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
                 <Label className="text-xs text-muted-foreground mb-1.5 block">Deal Name <span className="text-red-400">*</span></Label>
-                <Input value={form.name} onChange={f('name')} placeholder="e.g. John Smith — Business Application" className="text-sm" />
+                <Input value={form.name} onChange={f('name')} placeholder="e.g. John Smith - Business Application" className="text-sm" />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground mb-1.5 block">Stage</Label>

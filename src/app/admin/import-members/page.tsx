@@ -486,7 +486,7 @@ export default function ImportMembers() {
                   <div className="space-y-1">
                     {validation.invalid.map((item, i) => (
                       <p key={i} className="text-sm text-destructive">
-                        Row {item.row}: {item.email} — {item.issue}
+                        Row {item.row}: {item.email} - {item.issue}
                       </p>
                     ))}
                   </div>

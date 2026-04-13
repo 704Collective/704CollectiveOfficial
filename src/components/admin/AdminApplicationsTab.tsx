@@ -139,7 +139,7 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
     onSuccess: (_, { action }) => {
       const labels: Record<string, string> = {
         reviewing:  'Moved to reviewing',
-        approved:   'Application approved — member has been notified',
+        approved:   'Application approved - member has been notified',
         denied:     'Application denied',
         waitlisted: 'Added to waitlist',
       };
@@ -338,7 +338,7 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
                   {selectedApp.industry && <div><span className="text-muted-foreground">Industry: </span>{selectedApp.industry}</div>}
                   {selectedApp.years_in_charlotte && <div><span className="text-muted-foreground">Years in CLT: </span>{selectedApp.years_in_charlotte}</div>}
                   {selectedApp.referral_source && <div className="col-span-2"><span className="text-muted-foreground">How they heard: </span>{selectedApp.referral_source}</div>}
-                  <div><span className="text-muted-foreground">Plan: </span><span className="capitalize">{selectedApp.billing_plan}</span> — {selectedApp.billing_plan === 'annual' ? '$3,600/yr' : '$300/mo'}</div>
+                  <div><span className="text-muted-foreground">Plan: </span><span className="capitalize">{selectedApp.billing_plan}</span> - {selectedApp.billing_plan === 'annual' ? '$3,600/yr' : '$300/mo'}</div>
                   <div><span className="text-muted-foreground">Card on file: </span>{selectedApp.card_saved ? '✓ Saved' : 'Not yet'}</div>
                 </div>
 
@@ -384,14 +384,14 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
                   </p>
                   <div className="space-y-1.5">
                     <label className="text-xs text-muted-foreground">
-                      Reason <span className="font-normal">(optional — will be included in the email to the applicant)</span>
+                      Reason <span className="font-normal">(optional - will be included in the email to the applicant)</span>
                     </label>
                     <Textarea
                       value={denyReason}
                       onChange={e => setDenyReason(e.target.value)}
                       placeholder={pendingAction === 'denied'
                         ? 'e.g. We don\'t feel it\'s the right fit at this time...'
-                        : 'e.g. We\'d love to have you — we\'ll be in touch when a spot opens...'}
+                        : 'e.g. We\'d love to have you - we\'ll be in touch when a spot opens...'}
                       rows={3}
                       className="text-sm"
                       autoFocus

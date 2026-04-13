@@ -71,7 +71,7 @@ export function SuggestEventModal({ open, onOpenChange, profileId, email, fullNa
             autoFocus
           />
           <p className="text-xs text-muted-foreground">
-            Describe your event idea — what, where, when, vibe, anything helps.
+            Describe your event idea - what, where, when, vibe, anything helps.
           </p>
 
           <DialogFooter>

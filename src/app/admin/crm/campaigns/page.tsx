@@ -298,9 +298,9 @@ function BlockEditor({ block, onChange }: { block: Block; onChange: (b: Block) =
           <Select value={c.size} onValueChange={v => update('size', v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="h1">H1 — Large</SelectItem>
-              <SelectItem value="h2">H2 — Medium</SelectItem>
-              <SelectItem value="h3">H3 — Small</SelectItem>
+              <SelectItem value="h1">H1 - Large</SelectItem>
+              <SelectItem value="h2">H2 - Medium</SelectItem>
+              <SelectItem value="h3">H3 - Small</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -663,7 +663,7 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
           <div>
             <Label className="text-xs text-muted-foreground mb-1.5 block">Campaign Name <span className="text-red-400">*</span></Label>
             <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. March Weekly Update" className="text-sm" />
-            <p className="text-xs text-muted-foreground/60 mt-1">Internal name — not visible to recipients</p>
+            <p className="text-xs text-muted-foreground/60 mt-1">Internal name - not visible to recipients</p>
           </div>
           <div>
             <Label className="text-xs text-muted-foreground mb-1.5 block">Subject Line <span className="text-red-400">*</span></Label>

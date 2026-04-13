@@ -337,7 +337,7 @@ export default function PartnerPortalDashboardPage() {
                           {format(new Date(e.start_time), 'MMM d, yyyy · h:mm a')}
                         </p>
                         {needsVenue(e) && (
-                          <p className="text-[0.65rem] text-amber-400/90 mt-1">Venue TBD — host opportunity</p>
+                          <p className="text-[0.65rem] text-amber-400/90 mt-1">Venue TBD - host opportunity</p>
                         )}
                       </div>
                     </div>

@@ -98,7 +98,7 @@ export function CalendarSyncButton({ calendarToken, baseUrl, variant = 'icon', u
               <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
               <div>
                 <p className="text-sm font-medium">Sync to Calendar</p>
-                <p className="text-xs text-muted-foreground">RSVP&apos;d events only — Google, Apple, or Outlook</p>
+                <p className="text-xs text-muted-foreground">RSVP&apos;d events only - Google, Apple, or Outlook</p>
               </div>
             </div>
             <span className="text-xs text-muted-foreground">Subscribe →</span>

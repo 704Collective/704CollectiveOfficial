@@ -258,7 +258,7 @@ export default function BrowseEventsPage() {
               {hasActiveFilters ? 'No results found' : 'No upcoming events'}
             </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              {hasActiveFilters ? 'Try a different search term or category.' : "Check back soon — we're planning something great."}
+              {hasActiveFilters ? 'Try a different search term or category.' : "Check back soon - we're planning something great."}
             </p>
             {hasActiveFilters && (
               <Button variant="outline" size="sm" onClick={clearFilters}>Clear Filters</Button>

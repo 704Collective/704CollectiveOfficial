@@ -172,7 +172,7 @@ export function MembershipSettings() {
 
         <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
           <p className="text-sm text-muted-foreground">
-            Promo codes and coupons (e.g. <span className="font-mono text-foreground">EXAMPLE-CODE</span> — 100% off) are
+            Promo codes and coupons (e.g. <span className="font-mono text-foreground">EXAMPLE-CODE</span> - 100% off) are
             created and managed directly in the Stripe Dashboard.
           </p>
           <Button variant="outline" size="sm" asChild>

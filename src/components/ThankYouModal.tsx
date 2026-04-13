@@ -38,7 +38,7 @@ export function ThankYouModal({ open, onOpenChange, type, event }: ThankYouModal
   const nav = (path: string) => { onOpenChange(false); router.push(path); };
 
   const titles: Record<ThankYouType, string> = { new_member: 'Welcome to 704 Collective!', member: "You're RSVP'd!", guest: 'Ticket Confirmed!' };
-  const descs: Record<ThankYouType, string> = { new_member: 'Your membership is active. RSVP for upcoming events now!', member: "We'll see you there! Check out more events happening soon.", guest: 'Check out more upcoming events — or become a member for unlimited free access!' };
+  const descs: Record<ThankYouType, string> = { new_member: 'Your membership is active. RSVP for upcoming events now!', member: "We'll see you there! Check out more events happening soon.", guest: 'Check out more upcoming events - or become a member for unlimited free access!' };
 
   const btn = (primary: boolean): React.CSSProperties => ({
     display: 'block', width: '100%', padding: '14px 24px', borderRadius: '10px', fontSize: '0.875rem',
@@ -80,7 +80,7 @@ export function ThankYouModal({ open, onOpenChange, type, event }: ThankYouModal
           </>}
           {type === 'guest' && <>
             <button onClick={() => nav('/events')} style={btn(true)}>Browse More Events</button>
-            <button onClick={() => nav('/social')} style={btn(false)}>Become a Member — $30/mo</button>
+            <button onClick={() => nav('/social')} style={btn(false)}>Become a Member - $30/mo</button>
             <button onClick={() => onOpenChange(false)} style={{ ...btn(false), border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: '0.8125rem' }}>Done</button>
           </>}
         </div>

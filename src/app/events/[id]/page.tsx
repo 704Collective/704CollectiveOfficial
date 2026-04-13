@@ -209,7 +209,7 @@ export default function EventDetail() {
         <div style={{ textAlign: 'center' }}>
           <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#4CAF50', backgroundColor: 'rgba(76,175,80,0.06)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Member Benefit</span>
           <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>Free Entry</h3>
-          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>RSVP — it{"'"}s on us.</p>
+          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>RSVP - it{"'"}s on us.</p>
           <button onClick={handleMemberRegister} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> RSVPing...</> : 'RSVP for Free'}</button>
         </div>
       );
@@ -221,7 +221,7 @@ export default function EventDetail() {
         <button onClick={handlePurchaseTicket} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> Redirecting...</> : 'Purchase Ticket'}</button>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0' }}><div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255,255,255,0.06)' }} /><span style={{ fontSize: '0.625rem', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>or</span><div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255,255,255,0.06)' }} /></div>
         <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', marginBottom: '10px' }}>Get unlimited free access to all events.</p>
-        <Link href="/social" style={{ ...linkBtn, color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)' }}>Join 704 Social — $30/mo</Link>
+        <Link href="/social" style={{ ...linkBtn, color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)' }}>Join 704 Social - $30/mo</Link>
       </div>
     );
   };

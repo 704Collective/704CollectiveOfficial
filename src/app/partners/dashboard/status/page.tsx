@@ -256,7 +256,7 @@ export default function StatusPage() {
                           fontWeight: 400,
                         }}
                       >
-                        — In progress
+                        - In progress
                       </span>
                     )}
                   </p>

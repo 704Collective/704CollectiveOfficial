@@ -39,7 +39,7 @@ const benefits = [
   'Friends, not just drinking buddies',
   'Digital membership card',
   'Member-only events & experiences',
-  'Cancel anytime — no contracts',
+  'Cancel anytime - no contracts',
 ];
 
 export default function Join() {
@@ -150,7 +150,7 @@ export default function Join() {
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
-                Join Now — $30/mo
+                Join Now - $30/mo
                 <ArrowRight style={{ width: '16px', height: '16px' }} />
               </Link>
 

@@ -3,7 +3,7 @@
 const TESTIMONIALS = [
   {
     quote:
-      '704 makes it so easy to hit fun events—especially the health and wellness ones, my personal fave—and I get to meet so many new people every time!!',
+      '704 makes it so easy to hit fun events - especially the health and wellness ones, my personal fave - and I get to meet so many new people every time!!',
     author: 'Sydney',
     role: 'Social Member',
     img: 'https://chnpjxwcmxkmcdoivmra.supabase.co/storage/v1/object/public/public-assets//Sydney.jpg',

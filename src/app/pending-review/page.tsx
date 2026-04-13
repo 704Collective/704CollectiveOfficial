@@ -101,7 +101,7 @@ export default function PendingReviewPage() {
               }}
             >
               Your application is under review. Our team will be in touch
-              shortly — typically within a few business days.
+              shortly - typically within a few business days.
             </p>
           </div>
 

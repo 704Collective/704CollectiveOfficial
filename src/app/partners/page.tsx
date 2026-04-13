@@ -14,7 +14,7 @@ export const dynamic = 'force-static';
 export const metadata: Metadata = {
   title: 'Partners | 704 Collective',
   description:
-    "Partner with 704 Collective — Charlotte's curated social and business events, engaged local audiences, and meaningful brand growth.",
+    "Partner with 704 Collective - Charlotte's curated social and business events, engaged local audiences, and meaningful brand growth.",
   openGraph: {
     title: 'Partners | 704 Collective',
     description:

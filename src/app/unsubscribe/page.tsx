@@ -105,7 +105,7 @@ function UnsubscribeContent() {
           <>
             <CheckCircle className="w-12 h-12 mx-auto" style={{ color: '#C6A664' }} />
             <h1 className="text-xl font-semibold">You&apos;re resubscribed!</h1>
-            <p style={{ color: '#D8D8D8' }}>Welcome back — you&apos;ll receive 704 Collective marketing emails again.</p>
+            <p style={{ color: '#D8D8D8' }}>Welcome back - you&apos;ll receive 704 Collective marketing emails again.</p>
             <Link href="/">
               <Button style={{ background: '#C6A664', color: '#1A1A1A' }} className="font-semibold">Back to home</Button>
             </Link>

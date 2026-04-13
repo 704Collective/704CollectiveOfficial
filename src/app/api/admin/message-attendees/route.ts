@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
 <p style="color:#D8D8D8;margin:0 0 8px;">Hey ${escHtml(name)},</p>
 <p style="color:#D8D8D8;margin:0 0 24px;">This is a message from the organizers of <strong>${escHtml(event.title)}</strong>:</p>
 <div style="background:#2E2E2E;border-radius:8px;padding:20px;margin:0 0 24px;white-space:pre-wrap;color:#FAF6F0;">${escHtml(message)}</div>
-<p style="font-size:13px;color:#A0A0A0;">— 704 Collective Team</p>
+<p style="font-size:13px;color:#A0A0A0;">- 704 Collective Team</p>
 </body></html>`;
 
     // Send in batches of 100

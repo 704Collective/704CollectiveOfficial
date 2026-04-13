@@ -89,7 +89,7 @@ export default function AdminPartnersPage() {
           Partners
         </h1>
         <p style={{ color: "#A0A0A0", fontSize: "0.875rem" }}>
-          {partners.length} total — {active.length} active, {blocked.length}{" "}
+          {partners.length} total - {active.length} active, {blocked.length}{" "}
           blocked
         </p>
       </div>

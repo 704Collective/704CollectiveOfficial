@@ -173,7 +173,7 @@ export default function Events() {
               Upcoming Events
             </h1>
             <p style={{ fontSize: '1.0625rem', color: 'rgba(255, 255, 255, 0.5)', lineHeight: 1.6, maxWidth: '500px', margin: '0 auto' }}>
-              Discover and RSVP to upcoming 704 Collective events. Members get in free — non-members can purchase tickets.
+              Discover and RSVP to upcoming 704 Collective events. Members get in free - non-members can purchase tickets.
             </p>
           </div>
 
@@ -249,7 +249,7 @@ export default function Events() {
                 {hasActiveFilters ? 'No results found' : 'No upcoming events'}
               </h3>
               <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.45)', marginBottom: '20px' }}>
-                {hasActiveFilters ? 'Try a different search term or category.' : "Check back soon — we're planning something great."}
+                {hasActiveFilters ? 'Try a different search term or category.' : "Check back soon - we're planning something great."}
               </p>
               {hasActiveFilters && (
                 <button onClick={clearFilters} style={{ padding: '10px 24px', backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', color: '#FFFFFF', fontSize: '0.875rem', cursor: 'pointer' }}>

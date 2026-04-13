@@ -143,7 +143,7 @@ export default function Settings() {
                     Redirecting...
                   </>
                 ) : (
-                  'Subscribe — $30/month'
+                  'Subscribe - $30/month'
                 )}
               </Button>
             </div>
