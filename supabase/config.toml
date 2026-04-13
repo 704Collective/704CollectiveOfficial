@@ -12,3 +12,6 @@ verify_jwt = false
 
 [functions.request-magic-link]
 verify_jwt = false
+
+[functions.capture-prospect]
+verify_jwt = false

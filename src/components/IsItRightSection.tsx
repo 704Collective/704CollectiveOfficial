@@ -14,7 +14,7 @@ const REASONS = [
   "Tried the free 600-person meetups and felt overwhelmed",
   "Want real friends, not LinkedIn connections",
   "Need variety more than just bars on a Friday night - coffee meetups, game nights, workouts, adventures",
-  "Most events in Charlotte cost $15–25. We're doing 8+ for $30",
+  "Most events in Charlotte cost $15–25. We're doing 8+ for $35",
 ];
 
 export function IsItRightSection() {

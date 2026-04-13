@@ -706,11 +706,11 @@ function businessApplicationDecisionTemplate(data: {
     ? `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Thank you for applying to 704 Business. After reviewing your application, we've decided not to move forward at this time.</p>
 ${reasonBlock}
 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">You're welcome to join as a Social member while you stay connected to the community.</p>
-${ctaButton("Join Social — $30/mo", `${base}/join/checkout?email=${encodeURIComponent(data.checkoutEmail)}`)}`
+${ctaButton("Join Social — $35/mo", `${base}/join/checkout?email=${encodeURIComponent(data.checkoutEmail)}`)}`
     : `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Thank you for applying to 704 Business. We've added you to our waitlist and will reach out when a spot opens.</p>
 ${reasonBlock}
 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">In the meantime, you're welcome to join as a Social member.</p>
-${ctaButton("Join Social — $30/mo", `${base}/join/checkout?email=${encodeURIComponent(data.checkoutEmail)}`)}`;
+${ctaButton("Join Social — $35/mo", `${base}/join/checkout?email=${encodeURIComponent(data.checkoutEmail)}`)}`;
   return {
     subject,
     html: baseLayout(

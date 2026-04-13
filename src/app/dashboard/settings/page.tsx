@@ -65,7 +65,7 @@ export default function SettingsPage() {
         ? 'Partner'
         : 'Social';
   const monthlyPrice =
-    p?.member_type === 'business' ? '$300' : p?.member_type === 'partner' ? '—' : '$30';
+    p?.member_type === 'business' ? '$300' : p?.member_type === 'partner' ? '—' : '$35';
 
   const handleSaveProfile = async () => {
     if (!user) return;

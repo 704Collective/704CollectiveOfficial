@@ -21,6 +21,7 @@ import GradientShift from "@/components/GradientShift";
 import { MarketingPageRoot } from "@/components/MarketingPageRoot";
 import JsonLd from "@/components/JsonLd";
 import { websiteSchema704, organizationSchema704 } from "@/lib/jsonLdSchemas";
+import { PromoBanner } from "@/components/PromoBanner";
 
 export const dynamic = "force-static";
 
@@ -83,6 +84,7 @@ export default async function Home() {
   return (
     <>
       <JsonLd schema={[organizationSchema704, websiteSchema704]} />
+      <PromoBanner />
       <Nav />
 
       <main id="main-content" style={{ paddingTop: "64px" }}>
@@ -401,7 +403,7 @@ export default async function Home() {
                       {
                         step: "01",
                         title: "Join",
-                        desc: "Sign up and pay $30/month. No application, no waitlist.",
+                        desc: "Sign up and pay $35/month. No application, no waitlist.",
                       },
                       {
                         step: "02",
@@ -730,7 +732,7 @@ export default async function Home() {
                           color: "#FFFFFF",
                         }}
                       >
-                        $30
+                        $35
                       </span>
                       <span
                         style={{
@@ -1259,7 +1261,7 @@ export default async function Home() {
                       marginBottom: "24px",
                     }}
                   >
-                    Included with 704 Social ($30/mo)
+                    Included with 704 Social ($35/mo)
                   </p>
 
                   {[
@@ -1531,7 +1533,7 @@ export default async function Home() {
                   className="btn-primary"
                   style={{ padding: "16px 36px", fontSize: "0.9375rem" }}
                 >
-                  Join 704 Social - $30/mo
+                  Join 704 Social - $35/mo
                 </Link>
                 <Link
                   href="/business#apply"

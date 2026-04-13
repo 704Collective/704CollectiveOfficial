@@ -10,7 +10,7 @@ const VALUE_CARDS = [
   {
     category: 'Social',
     item: 'Appetizer & Entry',
-    publicPrice: '$30',
+    publicPrice: '$35',
     memberPrice: 'Included Free',
   },
   {

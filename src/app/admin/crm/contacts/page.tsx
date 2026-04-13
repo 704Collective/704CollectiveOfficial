@@ -37,6 +37,34 @@ interface Contact {
   last_activity_at: string | null;
   created_at: string | null;
   tags?: string[];
+  /** which DB table this record originated from */
+  source_table?: string;
+}
+
+type TypeTab = 'all' | 'member' | 'prospect' | 'guest' | 'applicant' | 'sponsor' | 'vendor' | 'partner';
+
+const TYPE_TABS: { key: TypeTab; label: string }[] = [
+  { key: 'all',       label: 'All' },
+  { key: 'member',    label: 'Members' },
+  { key: 'prospect',  label: 'Prospects' },
+  { key: 'guest',     label: 'Guests' },
+  { key: 'applicant', label: 'Applicants' },
+  { key: 'sponsor',   label: 'Sponsors' },
+  { key: 'vendor',    label: 'Vendors' },
+  { key: 'partner',   label: 'Partners' },
+];
+
+const TYPE_PRIORITY: Record<string, number> = {
+  guest: 1, prospect: 2, vendor: 3, partner: 4,
+  sponsor: 5, applicant: 6, member: 7,
+};
+
+function deriveStatus(row: { subscription_status?: string | null; membership_override?: boolean | null; status?: string | null }): string {
+  if (row.membership_override) return 'active';
+  if (row.subscription_status === 'active') return 'active';
+  if (row.subscription_status === 'canceled') return 'canceled';
+  if (row.status) return row.status;
+  return 'inactive';
 }
 
 interface Drip {
@@ -439,10 +467,13 @@ function FilterPanel({
 
 /* ─── Page ─── */
 export default function CrmContactsPage() {
+  const [allContacts, setAllContacts] = useState<Contact[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
+  const [typeTab, setTypeTab] = useState<TypeTab>('all');
+  const [typeCounts, setTypeCounts] = useState<Record<string, number>>({});
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -467,37 +498,179 @@ export default function CrmContactsPage() {
     });
   }, []);
 
-  // Load contacts
+  // Unified load — merges profiles, contacts, applications, sponsors_vendors, partners
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from('contacts')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+      const LIMIT = 2000;
+      const merged = new Map<string, Contact>();
 
-      if (search) {
-        query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%,company.ilike.%${search}%`);
+      const add = (row: Contact) => {
+        const key = row.email.toLowerCase().trim();
+        const existing = merged.get(key);
+        const newPriority = TYPE_PRIORITY[row.contact_type ?? ''] ?? 0;
+        const existingPriority = existing ? (TYPE_PRIORITY[existing.contact_type ?? ''] ?? 0) : -1;
+        if (!existing || newPriority > existingPriority) {
+          merged.set(key, { ...row, email: key });
+        }
+      };
+
+      // 1 — profiles (members)
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, email, full_name, phone, subscription_status, membership_override, created_at')
+        .is('deleted_at', null)
+        .not('email', 'is', null)
+        .limit(LIMIT);
+      for (const p of profiles ?? []) {
+        if (!p.email) continue;
+        add({
+          id: p.id,
+          email: p.email,
+          full_name: p.full_name ?? null,
+          phone: p.phone ?? null,
+          company: null,
+          contact_type: 'member',
+          status: deriveStatus(p as any),
+          source: 'profiles',
+          lead_score: null,
+          last_activity_at: null,
+          created_at: p.created_at ?? null,
+          source_table: 'profiles',
+        });
       }
-      if (filters.contact_type) query = query.eq('contact_type', filters.contact_type);
-      if (filters.status)       query = query.eq('status', filters.status);
-      if (filters.source)       query = query.eq('source', filters.source);
-      if (filters.lead_score_min) query = query.gte('lead_score', parseInt(filters.lead_score_min));
-      if (filters.lead_score_max) query = query.lte('lead_score', parseInt(filters.lead_score_max));
-      if (filters.date_from) query = query.gte('created_at', filters.date_from);
-      if (filters.date_to)   query = query.lte('created_at', filters.date_to + 'T23:59:59');
 
-      const { data, count, error } = await query;
-      if (error) throw error;
-      setContacts(data ?? []);
-      setTotal(count ?? 0);
+      // 2 — contacts table
+      const { data: contactRows } = await supabase
+        .from('contacts')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(LIMIT);
+      for (const c of contactRows ?? []) {
+        if (!c.email) continue;
+        const guestTypes = ['guest', 'guest_pass', 'event_guest'];
+        const resolvedType = guestTypes.includes(c.contact_type ?? '') ? 'guest' : (c.contact_type ?? 'prospect');
+        add({ ...c, contact_type: resolvedType, source_table: 'contacts' });
+      }
+
+      // 3 — business_applications (applicants)
+      const { data: apps } = await supabase
+        .from('business_applications')
+        .select('id, email, first_name, last_name, phone, company, created_at, status')
+        .limit(LIMIT);
+      for (const a of apps ?? []) {
+        if (!a.email) continue;
+        add({
+          id: a.id,
+          email: a.email,
+          full_name: [a.first_name, a.last_name].filter(Boolean).join(' ') || null,
+          phone: a.phone ?? null,
+          company: a.company ?? null,
+          contact_type: 'applicant',
+          status: a.status ?? 'pending',
+          source: 'application',
+          lead_score: null,
+          last_activity_at: null,
+          created_at: a.created_at ?? null,
+          source_table: 'business_applications',
+        });
+      }
+
+      // 4 — sponsors_vendors
+      const { data: sv } = await supabase
+        .from('sponsors_vendors')
+        .select('id, email, contact_name, company_name, created_at, partnership_type, status')
+        .limit(LIMIT);
+      for (const s of sv ?? []) {
+        if (!s.email) continue;
+        const svType = s.partnership_type === 'partner' ? 'partner' : s.partnership_type === 'vendor' ? 'vendor' : 'sponsor';
+        add({
+          id: s.id,
+          email: s.email,
+          full_name: s.contact_name ?? null,
+          phone: null,
+          company: s.company_name ?? null,
+          contact_type: svType,
+          status: s.status ?? 'active',
+          source: 'sponsors_vendors',
+          lead_score: null,
+          last_activity_at: null,
+          created_at: s.created_at ?? null,
+          source_table: 'sponsors_vendors',
+        });
+      }
+
+      // 5 — partners table
+      const { data: partners } = await supabase
+        .from('partners')
+        .select('id, email, full_name, phone, company, created_at, status')
+        .limit(LIMIT);
+      for (const p of partners ?? []) {
+        if (!p.email) continue;
+        add({
+          id: p.id,
+          email: p.email,
+          full_name: (p as any).full_name ?? (p as any).name ?? null,
+          phone: (p as any).phone ?? null,
+          company: (p as any).company ?? null,
+          contact_type: 'partner',
+          status: (p as any).status ?? 'active',
+          source: 'partners',
+          lead_score: null,
+          last_activity_at: null,
+          created_at: p.created_at ?? null,
+          source_table: 'partners',
+        });
+      }
+
+      const all = Array.from(merged.values()).sort((a, b) => {
+        const da = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const db = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return db - da;
+      });
+
+      // Compute type counts
+      const counts: Record<string, number> = {};
+      for (const c of all) {
+        const t = c.contact_type ?? 'prospect';
+        counts[t] = (counts[t] ?? 0) + 1;
+      }
+      setTypeCounts(counts);
+      setAllContacts(all);
+
     } catch (err) {
-      console.error(err);
+      console.error('[CRM] unified load error:', err);
     } finally {
       setLoading(false);
     }
-  }, [page, search, filters]);
+  }, []);
+
+  // Apply search + typeTab + filters client-side
+  useEffect(() => {
+    let filtered = allContacts;
+
+    if (typeTab !== 'all') {
+      filtered = filtered.filter(c => c.contact_type === typeTab);
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      filtered = filtered.filter(c =>
+        (c.full_name?.toLowerCase().includes(q)) ||
+        c.email.toLowerCase().includes(q) ||
+        (c.company?.toLowerCase().includes(q))
+      );
+    }
+    if (filters.contact_type) filtered = filtered.filter(c => c.contact_type === filters.contact_type);
+    if (filters.status)        filtered = filtered.filter(c => c.status === filters.status);
+    if (filters.source)        filtered = filtered.filter(c => c.source === filters.source);
+    if (filters.lead_score_min) filtered = filtered.filter(c => (c.lead_score ?? 0) >= parseInt(filters.lead_score_min));
+    if (filters.lead_score_max) filtered = filtered.filter(c => (c.lead_score ?? 0) <= parseInt(filters.lead_score_max));
+    if (filters.date_from) filtered = filtered.filter(c => c.created_at && c.created_at >= filters.date_from);
+    if (filters.date_to)   filtered = filtered.filter(c => c.created_at && c.created_at <= filters.date_to + 'T23:59:59');
+
+    setTotal(filtered.length);
+    setContacts(filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE));
+  }, [allContacts, typeTab, search, filters, page]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -581,6 +754,35 @@ export default function CrmContactsPage() {
             <Plus className="w-4 h-4" /> Add Contact
           </Button>
         </div>
+      </div>
+
+      {/* Type tabs */}
+      <div className="flex gap-1.5 flex-wrap">
+        {TYPE_TABS.map(({ key, label }) => {
+          const count = key === 'all'
+            ? Object.values(typeCounts).reduce((a, b) => a + b, 0)
+            : (typeCounts[key] ?? 0);
+          const active = typeTab === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => { setTypeTab(key); setPage(0); }}
+              className={active
+                ? 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-primary text-primary-foreground transition-colors whitespace-nowrap'
+                : 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors whitespace-nowrap'
+              }
+            >
+              {label}
+              {count > 0 && (
+                <span className={active
+                  ? 'bg-primary-foreground/20 text-primary-foreground ml-0.5 px-1.5 py-0 text-[11px] leading-5 font-normal rounded-full'
+                  : 'bg-muted text-muted-foreground ml-0.5 px-1.5 py-0 text-[11px] leading-5 font-normal rounded-full'
+                }>{count}</span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Search + Filter bar */}

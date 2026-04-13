@@ -143,7 +143,7 @@ export default function Settings() {
                     Redirecting...
                   </>
                 ) : (
-                  'Subscribe - $30/month'
+                  'Subscribe - $35/month'
                 )}
               </Button>
             </div>
@@ -250,7 +250,7 @@ export default function Settings() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-4 rounded-lg bg-muted/50">
                 <div>
                   <p className="font-medium">
-                    {isActiveMember ? 'Social - $30/month' : 'No active membership'}
+                    {isActiveMember ? 'Social - $35/month' : 'No active membership'}
                   </p>
                   {p.member_since && (
                     <p className="text-sm text-muted-foreground">

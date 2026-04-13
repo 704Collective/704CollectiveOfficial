@@ -88,7 +88,7 @@ export default function CheckoutPage() {
               Join 704 Collective
             </h1>
             <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.45)' }}>
-              $30/month · Cancel anytime · Instant access
+              $35/month · Cancel anytime · Instant access
             </p>
           </div>
 

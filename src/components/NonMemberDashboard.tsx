@@ -111,7 +111,7 @@ function StatusOnlyCard({
       </p>
       {(appStatus === 'denied' || appStatus === 'waitlisted') && (
         <Button size="sm" className="mt-3" onClick={onJoinSocial}>
-          Join as Social Member - $30/mo
+          Join as Social Member - $35/mo
         </Button>
       )}
     </div>
@@ -219,12 +219,12 @@ export function NonMemberDashboard({ profile, application }: NonMemberDashboardP
               {isSocialNonMember && (
                 <>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    You're in the system but haven't activated your membership yet. Join Social for $30/mo to unlock everything.
+                    You're in the system but haven't activated your membership yet. Join Social for $35/mo to unlock everything.
                   </p>
                   <div className="flex flex-col sm:flex-row gap-3">
                     <Button className="flex-1" onClick={handleJoinSocial}>
                       <Crown className="w-4 h-4 mr-2" />
-                      Join Social - $30/mo
+                      Join Social - $35/mo
                     </Button>
                     <Button variant="outline" className="flex-1" onClick={handleApplyBusiness}>
                       <Briefcase className="w-4 h-4 mr-2" />
@@ -256,7 +256,7 @@ export function NonMemberDashboard({ profile, application }: NonMemberDashboardP
               </ul>
               {isSocialNonMember && (
                 <Button variant="outline" size="sm" className="w-full" onClick={handleJoinSocial}>
-                  Get access for $30/mo
+                  Get access for $35/mo
                 </Button>
               )}
             </div>

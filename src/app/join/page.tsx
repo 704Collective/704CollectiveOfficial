@@ -7,9 +7,10 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { addDays, format } from 'date-fns';
-import { Calendar, MapPin, Users, ArrowRight } from 'lucide-react';
+import { Calendar, MapPin, Users, ArrowRight, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import Nav from '@/components/Nav';
+import { PromoBanner } from '@/components/PromoBanner';
 import { Footer } from '@/components/Footer';
 import {
   FadeUp,
@@ -42,12 +43,34 @@ const benefits = [
   'Cancel anytime - no contracts',
 ];
 
+const GOAL_OPTIONS = [
+  { label: 'Connections and referrals', value: 'connections_referrals' },
+  { label: 'Events and experiences',   value: 'events_experiences'    },
+  { label: 'Community and friendships', value: 'community_friendships' },
+  { label: 'Growing my network',        value: 'growing_network'       },
+];
+
+function formatPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 10);
+  if (digits.length < 4) return digits;
+  if (digits.length < 7) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
 export default function Join() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   usePageTitle("Join 704 Collective - Charlotte's Young Professionals Community");
   const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [eventsLoading, setEventsLoading] = useState(true);
+
+  // Form state
+  const [fullName, setFullName]     = useState('');
+  const [email, setEmail]           = useState('');
+  const [phone, setPhone]           = useState('');
+  const [goal, setGoal]             = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError]   = useState<string | null>(null);
 
   // If already an active member, redirect to dashboard
   useEffect(() => {
@@ -68,140 +91,239 @@ export default function Join() {
         .order('start_time', { ascending: true })
         .limit(6);
       if (!error && data) setEvents(data);
-      setLoading(false);
+      setEventsLoading(false);
     }
     fetchEvents();
   }, []);
 
+  const isFormValid = fullName.trim().length > 0 && email.trim().length > 0 && phone.trim().length > 0 && goal !== '';
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isFormValid || submitting) return;
+    setSubmitting(true);
+    setFormError(null);
+
+    const cleanPhone = phone.replace(/\D/g, '');
+
+    // Fire-and-forget: capture prospect
+    try {
+      await supabase.functions.invoke('capture-prospect', {
+        body: { email: email.trim(), full_name: fullName.trim(), phone: cleanPhone },
+      });
+    } catch {
+      // Non-blocking - do not abort checkout
+    }
+
+    // Call create-checkout
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: {
+          email: email.trim(),
+          name: fullName.trim(),
+          phone: cleanPhone,
+          primary_goal: goal,
+        },
+      });
+      if (error) throw error;
+      const url = (data as { url?: string })?.url;
+      if (!url) throw new Error('No checkout URL returned');
+      window.location.href = url;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      setFormError(msg);
+      setSubmitting(false);
+    }
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '12px 14px',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: '10px',
+    color: '#FFFFFF',
+    fontSize: '0.9375rem',
+    outline: 'none',
+    boxSizing: 'border-box',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    display: 'block',
+    fontSize: '0.8125rem',
+    fontWeight: 600,
+    color: 'rgba(255,255,255,0.6)',
+    marginBottom: '6px',
+    letterSpacing: '0.01em',
+  };
+
   return (
     <>
+      <PromoBanner />
       <Nav />
       <main id="main-content" style={{ paddingTop: '64px', backgroundColor: '#000', minHeight: '100dvh' }}>
         <MarketingPageRoot>
         <div style={{ maxWidth: '960px', margin: '0 auto', padding: '48px 24px 80px' }}>
 
-          {/* Hero CTA */}
+          {/* Checkout Form */}
           <FadeUp>
-            <section
-              style={{
-                maxWidth: '480px',
-                margin: '0 auto 64px',
+            <section style={{ maxWidth: '460px', margin: '0 auto 64px' }}>
+              <p style={{
+                fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.15em',
+                textTransform: 'uppercase', color: '#C6A664', marginBottom: '16px',
                 textAlign: 'center',
-              }}
-            >
-              <p
-                style={{
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.15em',
-                  textTransform: 'uppercase',
-                  color: '#C6A664',
-                  marginBottom: '16px',
-                }}
-              >
+              }}>
                 Social Membership
               </p>
-              <h1
-                style={{
-                  fontSize: 'clamp(2rem, 5vw, 2.75rem)',
-                  fontWeight: 700,
-                  color: '#FFFFFF',
-                  letterSpacing: '-0.02em',
-                  marginBottom: '16px',
-                  lineHeight: 1.15,
-                }}
-              >
+              <h1 style={{
+                fontSize: 'clamp(1.75rem, 5vw, 2.5rem)', fontWeight: 700, color: '#FFFFFF',
+                letterSpacing: '-0.02em', marginBottom: '8px', lineHeight: 1.15, textAlign: 'center',
+              }}>
                 Your people are already here.
               </h1>
-              <p
-                style={{
-                  fontSize: '1rem',
-                  color: 'rgba(255,255,255,0.5)',
-                  lineHeight: 1.6,
-                  marginBottom: '32px',
-                }}
-              >
-                Join Charlotte's most curated social club for $30/month.
-                Cancel anytime.
+              <p style={{
+                fontSize: '1rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6,
+                marginBottom: '32px', textAlign: 'center',
+              }}>
+                Join Charlotte{"'"}s most curated social club for $35/month. Cancel anytime.
               </p>
 
-              <Link
-                href="/signup"
-                style={{
-                  width: '100%', maxWidth: '320px', justifyContent: 'center',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '14px 32px',
-                  backgroundColor: '#FFFFFF',
-                  color: '#000000',
-                  borderRadius: '10px',
-                  fontSize: '0.9375rem',
-                  fontWeight: 700,
-                  textDecoration: 'none',
-                  letterSpacing: '0.01em',
-                  transition: 'all 200ms ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(255,255,255,0.15)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                Join Now - $30/mo
-                <ArrowRight style={{ width: '16px', height: '16px' }} />
-              </Link>
+              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {/* Full Name */}
+                <div>
+                  <label style={labelStyle}>Full Name <span style={{ color: '#C6A664' }}>*</span></label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={100}
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Jane Smith"
+                    style={inputStyle}
+                  />
+                </div>
 
-              <p
-                style={{
-                  marginTop: '12px',
-                  fontSize: '0.8125rem',
-                  color: 'rgba(255,255,255,0.25)',
-                }}
-              >
-                Already a member?{' '}
-                <Link
-                  href="/login"
-                  style={{ color: 'rgba(255,255,255,0.45)', textDecoration: 'underline' }}
+                {/* Email */}
+                <div>
+                  <label style={labelStyle}>Email <span style={{ color: '#C6A664' }}>*</span></label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    style={inputStyle}
+                  />
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label style={labelStyle}>Phone Number <span style={{ color: '#C6A664' }}>*</span></label>
+                  <input
+                    type="tel"
+                    required
+                    value={phone}
+                    onChange={(e) => setPhone(formatPhone(e.target.value))}
+                    placeholder="(704) 555-1234"
+                    style={inputStyle}
+                  />
+                </div>
+
+                {/* Goal pills */}
+                <div>
+                  <label style={labelStyle}>
+                    What are you most looking for? <span style={{ color: '#C6A664' }}>*</span>
+                  </label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '2px' }}>
+                    {GOAL_OPTIONS.map((opt) => {
+                      const active = goal === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setGoal(opt.value)}
+                          style={{
+                            padding: '8px 14px',
+                            borderRadius: '100px',
+                            fontSize: '0.875rem',
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                            border: active ? '1px solid #C6A664' : '1px solid rgba(255,255,255,0.15)',
+                            backgroundColor: active ? '#C6A664' : 'transparent',
+                            color: active ? '#1A1A1A' : 'rgba(255,255,255,0.7)',
+                            transition: 'all 150ms ease',
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {formError && (
+                  <p style={{ fontSize: '0.875rem', color: '#ef4444', margin: 0 }}>{formError}</p>
+                )}
+
+                {/* Submit */}
+                <button
+                  type="submit"
+                  disabled={submitting || !isFormValid}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    padding: '14px 32px',
+                    backgroundColor: submitting || !isFormValid ? 'rgba(255,255,255,0.3)' : '#FFFFFF',
+                    color: '#000000',
+                    borderRadius: '10px',
+                    fontSize: '0.9375rem',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: submitting || !isFormValid ? 'not-allowed' : 'pointer',
+                    letterSpacing: '0.01em',
+                    transition: 'all 200ms ease',
+                    marginTop: '4px',
+                  }}
                 >
-                  Sign in
-                </Link>
-              </p>
+                  {submitting ? (
+                    <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> Redirecting to checkout...</>
+                  ) : (
+                    <>Continue to Checkout <ArrowRight style={{ width: '16px', height: '16px' }} /></>
+                  )}
+                </button>
+
+                <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', textAlign: 'center', margin: 0 }}>
+                  You{"'"}ll be redirected to Stripe for secure payment. By continuing, you agree to our{' '}
+                  <Link href="/terms" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'underline' }}>Terms</Link>
+                  {' '}and{' '}
+                  <Link href="/privacy" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'underline' }}>Privacy Policy</Link>.
+                </p>
+
+                <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.25)', textAlign: 'center', margin: 0 }}>
+                  Already a member?{' '}
+                  <Link href="/login" style={{ color: 'rgba(255,255,255,0.45)', textDecoration: 'underline' }}>
+                    Sign in
+                  </Link>
+                </p>
+              </form>
             </section>
           </FadeUp>
 
           {/* Benefits */}
           <section style={{ maxWidth: '420px', margin: '0 auto 64px' }}>
             <FadeUp>
-              <h2
-                style={{
-                  fontSize: '1.25rem',
-                  fontWeight: 700,
-                  color: '#FFFFFF',
-                  marginBottom: '20px',
-                }}
-              >
-                Here's what you'll get:
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '20px' }}>
+                Here{"'"}s what you{"'"}ll get:
               </h2>
             </FadeUp>
             <StaggerContainer staggerDelay={0.06}>
               {benefits.map((b) => (
-                <StaggerItem
-                  key={b}
-                  style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '8px 0' }}
-                >
-                  <span
-                    style={{ color: '#C6A664', fontSize: '0.875rem', marginTop: '2px', flexShrink: 0 }}
-                  >
-                    ✓
-                  </span>
-                  <span
-                    style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.55)', lineHeight: 1.5 }}
-                  >
-                    {b}
-                  </span>
+                <StaggerItem key={b} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '8px 0' }}>
+                  <span style={{ color: '#C6A664', fontSize: '0.875rem', marginTop: '2px', flexShrink: 0 }}>✓</span>
+                  <span style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.55)', lineHeight: 1.5 }}>{b}</span>
                 </StaggerItem>
               ))}
             </StaggerContainer>
@@ -210,175 +332,60 @@ export default function Join() {
           {/* Upcoming Events */}
           <section>
             <FadeUp>
-              <h2
-                style={{ fontSize: '1.25rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '24px' }}
-              >
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '24px' }}>
                 Upcoming Events
               </h2>
             </FadeUp>
 
-            {loading ? (
-              <div
-                style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}
-                className="events-grid"
-              >
+            {eventsLoading ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }} className="events-grid">
                 {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    style={{
-                      borderRadius: '14px',
-                      overflow: 'hidden',
-                      border: '1px solid rgba(255,255,255,0.06)',
-                      backgroundColor: '#1A1A1A',
-                    }}
-                  >
-                    <div
-                      style={{
-                        aspectRatio: '16/9',
-                        backgroundColor: '#2E2E2E',
-                        animation: 'pulse 2s infinite',
-                      }}
-                    />
+                  <div key={i} style={{ borderRadius: '14px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)', backgroundColor: '#1A1A1A' }}>
+                    <div style={{ aspectRatio: '16/9', backgroundColor: '#2E2E2E', animation: 'pulse 2s infinite' }} />
                     <div style={{ padding: '16px' }}>
-                      <div
-                        style={{
-                          height: '16px',
-                          width: '70%',
-                          backgroundColor: '#2E2E2E',
-                          borderRadius: '4px',
-                          marginBottom: '10px',
-                        }}
-                      />
-                      <div
-                        style={{ height: '14px', width: '50%', backgroundColor: '#2E2E2E', borderRadius: '4px' }}
-                      />
+                      <div style={{ height: '16px', width: '70%', backgroundColor: '#2E2E2E', borderRadius: '4px', marginBottom: '10px' }} />
+                      <div style={{ height: '14px', width: '50%', backgroundColor: '#2E2E2E', borderRadius: '4px' }} />
                     </div>
                   </div>
                 ))}
               </div>
             ) : events.length > 0 ? (
-              <StaggerContainer
-                staggerDelay={0.1}
-                style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}
-                className="events-grid"
-              >
+              <StaggerContainer staggerDelay={0.1} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }} className="events-grid">
                 {events.map((event) => (
-                  <StaggerItem
-                    key={event.id}
-                    style={{
-                      borderRadius: '14px',
-                      overflow: 'hidden',
-                      border: '1px solid rgba(255,255,255,0.06)',
-                      backgroundColor: '#1A1A1A',
-                      transition: 'border-color 200ms ease, transform 200ms ease',
-                    }}
-                    className="card-hover"
-                  >
-                    <div
-                      style={{
-                        aspectRatio: '16/9',
-                        overflow: 'hidden',
-                        backgroundColor: '#2E2E2E',
-                        position: 'relative',
-                      }}
-                    >
+                  <StaggerItem key={event.id} style={{ borderRadius: '14px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)', backgroundColor: '#1A1A1A', transition: 'border-color 200ms ease, transform 200ms ease' }} className="card-hover">
+                    <div style={{ aspectRatio: '16/9', overflow: 'hidden', backgroundColor: '#2E2E2E', position: 'relative' }}>
                       {event.image_url ? (
-                        <Image
-                          src={event.image_url}
-                          alt={event.title}
-                          fill
-                          style={{ objectFit: 'cover' }}
-                          unoptimized={!event.image_url?.includes('supabase')}
-                        />
+                        <Image src={event.image_url} alt={event.title} fill style={{ objectFit: 'cover' }} unoptimized={!event.image_url?.includes('supabase')} />
                       ) : (
-                        <div
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          <Calendar
-                            style={{ width: '32px', height: '32px', color: 'rgba(255,255,255,0.15)' }}
-                          />
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Calendar style={{ width: '32px', height: '32px', color: 'rgba(255,255,255,0.15)' }} />
                         </div>
                       )}
                     </div>
                     <div style={{ padding: '16px' }}>
-                      <h3
-                        style={{
-                          fontSize: '0.9375rem',
-                          fontWeight: 600,
-                          color: '#FFFFFF',
-                          marginBottom: '10px',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
+                      <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {event.title}
                       </h3>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            fontSize: '0.8125rem',
-                            color: 'rgba(255,255,255,0.4)',
-                          }}
-                        >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)' }}>
                           <Calendar style={{ width: '14px', height: '14px', flexShrink: 0 }} />
                           <span>{format(new Date(event.start_time), 'EEE, MMM d · h:mm a')}</span>
                         </div>
                         {event.location_name && (
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              fontSize: '0.8125rem',
-                              color: 'rgba(255,255,255,0.35)',
-                            }}
-                          >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)' }}>
                             <MapPin style={{ width: '14px', height: '14px', flexShrink: 0 }} />
-                            <span
-                              style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                            >
-                              {event.location_name}
-                            </span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.location_name}</span>
                           </div>
                         )}
                         {event.capacity && (
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              fontSize: '0.8125rem',
-                              color: 'rgba(255,255,255,0.35)',
-                            }}
-                          >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)' }}>
                             <Users style={{ width: '14px', height: '14px', flexShrink: 0 }} />
                             <span>{event.capacity} spots</span>
                           </div>
                         )}
                       </div>
                       {event.is_members_only && (
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            marginTop: '10px',
-                            fontSize: '0.6875rem',
-                            fontWeight: 600,
-                            color: '#C6A664',
-                            backgroundColor: 'rgba(198,166,100,0.08)',
-                            padding: '4px 10px',
-                            borderRadius: '100px',
-                          }}
-                        >
+                        <span style={{ display: 'inline-block', marginTop: '10px', fontSize: '0.6875rem', fontWeight: 600, color: '#C6A664', backgroundColor: 'rgba(198,166,100,0.08)', padding: '4px 10px', borderRadius: '100px' }}>
                           Members Only
                         </span>
                       )}
@@ -403,6 +410,7 @@ export default function Join() {
 
       <style>{`
         @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
+        @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
         @media (max-width: 768px) {
           .events-grid { grid-template-columns: 1fr !important; }
         }

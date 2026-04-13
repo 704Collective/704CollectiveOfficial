@@ -10,7 +10,7 @@ import { startOfMonth } from 'date-fns';
 // ─── Hardcoded Stripe membership config ───────────────────────────────────────
 // UPDATE THESE if the Stripe product or price changes.
 const STRIPE_PRODUCT_ID = 'prod_S7hFqQl2k4qgvC';
-const MEMBERSHIP_PRICE = '$30/month';
+const MEMBERSHIP_PRICE = '$35/month';
 const MEMBERSHIP_BILLING = 'Monthly recurring';
 const STRIPE_CHECKOUT_URL = 'https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04';
 const STRIPE_COUPONS_URL = 'https://dashboard.stripe.com/coupons';

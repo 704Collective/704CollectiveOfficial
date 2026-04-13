@@ -229,7 +229,7 @@ export default function SignupPage() {
                   <Crown className="w-6 h-6 text-primary" />
                 </div>
                 <div className="text-center">
-                  <p className="font-semibold text-foreground mb-1">Join Now - $30/mo</p>
+                  <p className="font-semibold text-foreground mb-1">Join Now - $35/mo</p>
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     Unlock free RSVPs, guest passes, member-only events, and full community access.
                   </p>

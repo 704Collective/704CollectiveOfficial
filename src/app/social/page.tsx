@@ -21,6 +21,7 @@ import GradientShift from '@/components/GradientShift';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import JsonLd from '@/components/JsonLd';
 import { socialServiceSchema704 } from '@/lib/jsonLdSchemas';
+import { PromoBanner } from '@/components/PromoBanner';
 
 /* ─── Types ─── */
 
@@ -75,7 +76,7 @@ const rightForYou = [
 
 const valueItems = [
   { category: 'Wellness', example: 'Sauna & Cold Plunge Social', publicPrice: '$45', memberPrice: 'Free' },
-  { category: 'Social', example: 'Tap-In Social Happy Hour', publicPrice: '$30', memberPrice: 'Free' },
+  { category: 'Social', example: 'Tap-In Social Happy Hour', publicPrice: '$35', memberPrice: 'Free' },
   { category: 'Pickle Ball', example: 'Court time & play', publicPrice: '$25/hr', memberPrice: 'Free' },
 ];
 
@@ -125,6 +126,7 @@ export default function SocialPage() {
   return (
     <>
       <JsonLd schema={socialServiceSchema704} />
+      <PromoBanner />
       <Nav />
       <main id="main-content" style={{ paddingTop: '64px' }}>
         <MarketingPageRoot>
@@ -291,7 +293,7 @@ export default function SocialPage() {
                 {
                   num: '1',
                   title: 'Sign Up',
-                  desc: 'Join for $30/month. No application, no waitlist. You\'re in immediately.',
+                  desc: 'Join for $35/month. No application, no waitlist. You\'re in immediately.',
                 },
                 {
                   num: '2',
@@ -729,7 +731,7 @@ export default function SocialPage() {
                 </h3>
                 <div style={{ marginBottom: '28px', marginTop: '8px' }}>
                   <span style={{ fontSize: '2.75rem', fontWeight: 700, color: '#C6A664' }}>
-                    $30
+                    $35
                   </span>
                   <span style={{ fontSize: '1rem', color: 'rgba(255, 255, 255, 0.4)', marginLeft: '4px' }}>
                     / month
@@ -961,7 +963,7 @@ export default function SocialPage() {
                   margin: '0 auto',
                 }}
               >
-                Join Charlotte{"'"}s premier community for young professionals. $30/month. Cancel anytime.
+                Join Charlotte{"'"}s premier community for young professionals. $35/month. Cancel anytime.
               </p>
             </FadeUp>
 

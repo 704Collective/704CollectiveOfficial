@@ -24,7 +24,7 @@ export function MembershipCtaSection() {
           <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-2">Membership</p>
           <h2 id="membership-heading" className="text-3xl md:text-4xl font-semibold mb-2">704 Social</h2>
           <p className="text-4xl md:text-5xl font-bold mt-4 mb-8" style={{ color: '#C6A664' }}>
-            $30 <span className="text-lg font-medium text-muted-foreground">/ month</span>
+            $35 <span className="text-lg font-medium text-muted-foreground">/ month</span>
           </p>
 
           <ul className="space-y-3 text-left max-w-sm mx-auto mb-10">
