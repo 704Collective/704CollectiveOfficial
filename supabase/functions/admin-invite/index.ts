@@ -22,18 +22,26 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization") || "";
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    // Note: SUPABASE_ANON_KEY not needed — all calls use service role client
+
+    // Require Authorization header — supabase.functions.invoke must pass it explicitly
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const token = authHeader.replace("Bearer ", "");
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    // Verify caller is authenticated
+    // Verify token and get caller identity
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
     const { data: { user: callerUser }, error: authError } = await adminClient.auth.getUser(token);
     if (authError || !callerUser) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      log("Auth failed", { error: authError?.message });
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

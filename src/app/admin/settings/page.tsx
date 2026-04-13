@@ -344,12 +344,16 @@ function AdminSettings() {
     }
     setInviteSubmitting(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke('admin-invite', {
         body: {
           firstName: inviteFirstName.trim(),
           lastName: inviteLastName.trim(),
           email: inviteEmail.trim(),
           origin: window.location.origin,
+        },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
         },
       });
       if (error) throw new Error(error.message);
