@@ -20,7 +20,6 @@ export type AdminSection =
   | 'financials'
   | 'feed-moderation'
   | 'applications'
-  | 'non-members'
   | 'suggestions';
 
 interface AdminLayoutProps {

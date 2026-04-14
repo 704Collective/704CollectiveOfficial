@@ -13,14 +13,12 @@ import dynamic from 'next/dynamic';
 // Dynamically loaded tab components — code split per tab
 const AdminOverviewTab    = dynamic(() => import('@/components/admin/AdminOverviewTab').then(m => ({ default: m.AdminOverviewTab })), { loading: () => <TabSkeleton /> });
 const AdminEventsTab      = dynamic(() => import('@/components/admin/AdminEventsTab').then(m => ({ default: m.AdminEventsTab })), { loading: () => <TabSkeleton /> });
-const AdminMembersTab     = dynamic(() => import('@/components/admin/AdminMembersTab').then(m => ({ default: m.AdminMembersTab })), { loading: () => <TabSkeleton /> });
 const AdminProspectsTab   = dynamic(() => import('@/components/admin/AdminProspectsTab').then(m => ({ default: m.AdminProspectsTab })), { loading: () => <TabSkeleton /> });
 const AdminSponsorsTab    = dynamic(() => import('@/components/admin/AdminSponsorsTab').then(m => ({ default: m.AdminSponsorsTab })), { loading: () => <TabSkeleton /> });
 const AdminCheckIn        = dynamic(() => import('@/components/AdminCheckIn').then(m => ({ default: m.AdminCheckIn })), { loading: () => <TabSkeleton /> });
 const TaskBoard           = dynamic(() => import('@/components/admin/TaskBoard').then(m => ({ default: m.TaskBoard })), { loading: () => <TabSkeleton /> });
 const AdminFinancialsTab  = dynamic(() => import('@/components/admin/AdminFinancialsTab').then(m => ({ default: m.AdminFinancialsTab })), { loading: () => <TabSkeleton /> });
 const AdminApplicationsTab = dynamic(() => import('@/components/admin/AdminApplicationsTab').then(m => ({ default: m.AdminApplicationsTab })), { loading: () => <TabSkeleton /> });
-const AdminNonMembersTab  = dynamic(() => import('@/components/admin/AdminNonMembersTab').then(m => ({ default: m.AdminNonMembersTab })), { loading: () => <TabSkeleton /> });
 const AdminSuggestionsTab = dynamic(() => import('@/components/admin/AdminSuggestionsTab').then(m => ({ default: m.AdminSuggestionsTab })), { loading: () => <TabSkeleton /> });
 const AdminFeedModerationTab = dynamic(() => import('@/components/admin/AdminFeedModerationTab').then(m => ({ default: m.AdminFeedModerationTab })), { loading: () => <TabSkeleton /> });
 
@@ -41,9 +39,9 @@ function TabSkeleton() {
 }
 
 const VALID_SECTIONS: AdminSection[] = [
-  'dashboard', 'events', 'members', 'checkin', 'tasks',
+  'dashboard', 'events', 'checkin', 'tasks',
   'prospects', 'sponsors', 'financials', 'feed-moderation',
-  'applications', 'non-members', 'suggestions',
+  'applications', 'suggestions',
 ];
 
 export default function AdminPage() {
@@ -83,16 +81,22 @@ function AdminDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally once on mount
   }, []);
 
-  const sectionFromUrl = searchParams.get('section') as AdminSection | null;
+  const secRaw = searchParams.get('section');
 
-  const [activeSection, setActiveSection] = useState<AdminSection>(
-    sectionFromUrl && VALID_SECTIONS.includes(sectionFromUrl) ? sectionFromUrl : 'dashboard'
-  );
+  const [activeSection, setActiveSection] = useState<AdminSection>(() => {
+    if (secRaw === 'members' || secRaw === 'non-members') return 'dashboard';
+    return secRaw && VALID_SECTIONS.includes(secRaw as AdminSection) ? (secRaw as AdminSection) : 'dashboard';
+  });
 
   useEffect(() => {
-    const s = searchParams.get('section') as AdminSection | null;
-    if (s && VALID_SECTIONS.includes(s)) setActiveSection(s);
-  }, [searchParams]);
+    const s = searchParams.get('section');
+    if (s === 'members' || s === 'non-members') {
+      router.replace('/admin/contacts');
+      return;
+    }
+    const sec = s as AdminSection | null;
+    if (sec && VALID_SECTIONS.includes(sec)) setActiveSection(sec);
+  }, [searchParams, router]);
 
   useEffect(() => {
     if (!authLoading && (!user || !isAdmin)) router.push("/admin/login");
@@ -136,20 +140,20 @@ function AdminDashboard() {
 
         {activeSection === 'dashboard' && (
           <SectionErrorBoundary>
-            <AdminOverviewTab onSectionChange={setActiveSection} onFilterChange={handleFilterChange} />
+            <AdminOverviewTab
+              onSectionChange={setActiveSection}
+              onFilterChange={handleFilterChange}
+              isSuperAdmin={isSuperAdmin}
+            />
           </SectionErrorBoundary>
         )}
 
         {activeSection === 'events' && (
-          <SectionErrorBoundary>
-            <AdminEventsTab onNavigateToDashboard={goToDashboard} />
-          </SectionErrorBoundary>
-        )}
-
-        {activeSection === 'members' && (
-          <SectionErrorBoundary>
-            <AdminMembersTab onNavigateToDashboard={goToDashboard} />
-          </SectionErrorBoundary>
+          <Suspense fallback={<TabSkeleton />}>
+            <SectionErrorBoundary>
+              <AdminEventsTab onNavigateToDashboard={goToDashboard} />
+            </SectionErrorBoundary>
+          </Suspense>
         )}
 
         {activeSection === 'checkin' && (
@@ -207,12 +211,6 @@ function AdminDashboard() {
         {activeSection === 'applications' && isAdminOrSuper && (
           <SectionErrorBoundary>
             <AdminApplicationsTab onNavigateToDashboard={goToDashboard} />
-          </SectionErrorBoundary>
-        )}
-
-        {activeSection === 'non-members' && isAdminOrSuper && (
-          <SectionErrorBoundary>
-            <AdminNonMembersTab onNavigateToDashboard={goToDashboard} />
           </SectionErrorBoundary>
         )}
 

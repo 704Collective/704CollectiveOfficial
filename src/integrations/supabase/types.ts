@@ -176,14 +176,19 @@ export type Database = {
       }
       events: {
         Row: {
+          access_level: string | null
+          access_type: string | null
           allows_guest_passes: boolean
+          business_member_price: number | null
           capacity: number | null
           category: string | null
           created_at: string | null
           description: string | null
           end_time: string
+          event_type: string | null
           id: string
           image_url: string | null
+          is_business_only: boolean | null
           is_published: boolean
           is_members_only: boolean | null
           location_address: string | null
@@ -194,22 +199,31 @@ export type Database = {
           parent_event_id: string | null
           recurrence_end_date: string | null
           recurrence_rule: string | null
+          social_member_price: number | null
           start_time: string
           tags: string[] | null
           ticket_price: number | null
           title: string
           updated_at: string | null
           vendor_booth_spots_available: number | null
+          eventbrite_event_id: string | null
+          eventbrite_published: boolean | null
+          eventbrite_url: string | null
         }
         Insert: {
+          access_level?: string | null
+          access_type?: string | null
           allows_guest_passes?: boolean
+          business_member_price?: number | null
           capacity?: number | null
           category?: string | null
           created_at?: string | null
           description?: string | null
           end_time: string
+          event_type?: string | null
           id?: string
           image_url?: string | null
+          is_business_only?: boolean | null
           is_published?: boolean
           is_members_only?: boolean | null
           location_address?: string | null
@@ -220,22 +234,31 @@ export type Database = {
           parent_event_id?: string | null
           recurrence_end_date?: string | null
           recurrence_rule?: string | null
+          social_member_price?: number | null
           start_time: string
           tags?: string[] | null
           ticket_price?: number | null
           title: string
           updated_at?: string | null
           vendor_booth_spots_available?: number | null
+          eventbrite_event_id?: string | null
+          eventbrite_published?: boolean | null
+          eventbrite_url?: string | null
         }
         Update: {
+          access_level?: string | null
+          access_type?: string | null
           allows_guest_passes?: boolean
+          business_member_price?: number | null
           capacity?: number | null
           category?: string | null
           created_at?: string | null
           description?: string | null
           end_time?: string
+          event_type?: string | null
           id?: string
           image_url?: string | null
+          is_business_only?: boolean | null
           is_published?: boolean
           is_members_only?: boolean | null
           location_address?: string | null
@@ -246,12 +269,16 @@ export type Database = {
           parent_event_id?: string | null
           recurrence_end_date?: string | null
           recurrence_rule?: string | null
+          social_member_price?: number | null
           start_time?: string
           tags?: string[] | null
           ticket_price?: number | null
           title?: string
           updated_at?: string | null
           vendor_booth_spots_available?: number | null
+          eventbrite_event_id?: string | null
+          eventbrite_published?: boolean | null
+          eventbrite_url?: string | null
         }
         Relationships: [
           {

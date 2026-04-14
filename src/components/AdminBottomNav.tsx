@@ -22,7 +22,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { icon: LayoutDashboard, label: 'Overview', section: 'dashboard'      },
   { icon: Calendar,        label: 'Events',   section: 'events'         },
-  { icon: Users,           label: 'Members',  section: 'members'        },
+  { icon: Users,           label: 'Members',  href: '/admin/contacts'   },
   { icon: Layers,          label: 'CRM',      href: '/admin/crm'        },
   { icon: ScanLine,        label: 'Check-in', section: 'checkin'        },
   { icon: CheckSquare,     label: 'Tasks',    section: 'tasks'          },
@@ -35,6 +35,7 @@ export function AdminBottomNav({ activeSection, onSectionChange }: AdminBottomNa
   const isOnDashboard = pathname === '/admin';
   const isOnSettings  = pathname === '/admin/settings';
   const isOnCrm       = pathname.startsWith('/admin/crm');
+  const isOnContacts  = pathname.startsWith('/admin/contacts');
 
   const handleTap = (item: NavItem) => {
     if (item.href) {
@@ -51,6 +52,7 @@ export function AdminBottomNav({ activeSection, onSectionChange }: AdminBottomNa
   const isActive = (item: NavItem) => {
     if (item.href === '/admin/settings') return isOnSettings;
     if (item.href === '/admin/crm')      return isOnCrm;
+    if (item.href === '/admin/contacts') return isOnContacts;
     return isOnDashboard && activeSection === item.section;
   };
 

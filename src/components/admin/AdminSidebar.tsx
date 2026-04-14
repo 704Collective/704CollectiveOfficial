@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  LayoutDashboard, Calendar, Users, UserX, FileText, DollarSign, Mail,
+  LayoutDashboard, Calendar, Users, FileText, DollarSign, Mail,
   MessageSquare, QrCode, Layers, GitPullRequest, Handshake, Receipt,
   Newspaper, Shield, Lightbulb, BookOpen, Inbox, Upload, Lock, Database,
   AlertTriangle, ClipboardList, Settings, BarChart2,
@@ -135,8 +135,7 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose }: Ad
         <div className="space-y-0.5">
           {sectionBtn({ icon: LayoutDashboard, label: 'Dashboard',    section: 'dashboard'    })}
           {sectionBtn({ icon: Calendar,        label: 'Events',       section: 'events'       })}
-          {sectionBtn({ icon: Users,           label: 'Members',      section: 'members'      })}
-          {sectionBtn({ icon: UserX,           label: 'Non-Members',  section: 'non-members'  })}
+          {linkBtn('/admin/contacts', Users, 'Members')}
           {sectionBtn({ icon: FileText,        label: 'Applications', section: 'applications' })}
           {isSuperAdmin && sectionBtn({ icon: DollarSign, label: 'Financials', section: 'financials' })}
           {linkBtn('/admin/crm/campaigns', Mail, 'Email')}

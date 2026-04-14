@@ -1,7 +1,8 @@
 'use client';
 
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
@@ -26,8 +27,9 @@ import { AddMembersToEventDialog } from '@/components/admin/AddMembersToEventDia
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { format, getDay, getDate } from 'date-fns';
+import { format, getDay, getDate, addHours } from 'date-fns';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 import {
   Calendar, Plus, Pencil, Trash2, Search, Copy, Lock,
   ChevronLeft, ChevronRight, MoreHorizontal, ArrowLeft, Upload, X as XIcon, Gift, Mail, Check, UserPlus, Bell, ExternalLink, Send, Loader2,
@@ -56,9 +58,18 @@ interface Event {
   eventbrite_event_id: string | null;
   eventbrite_published: boolean | null;
   eventbrite_url: string | null;
+  event_type?: string | null;
+  access_type?: string | null;
+  access_level?: string | null;
+  social_member_price?: number | null;
+  business_member_price?: number | null;
 }
 
+type AccessType = 'members_only' | 'public_ticketed' | 'public_free';
+type AccessLevel = 'all' | 'social_only' | 'business_only';
+
 interface EventForm {
+  membership_tier: 'social' | 'business';
   title: string;
   description: string;
   start_time: Date | undefined;
@@ -67,8 +78,11 @@ interface EventForm {
   location_address: string;
   image_url: string;
   capacity: string;
-  visibility: 'public' | 'members_only' | 'business_only';
-  ticket_price: string;
+  access_type: AccessType;
+  access_level: AccessLevel;
+  public_ticket_price: string;
+  social_member_price: string;
+  business_member_price: string;
   category: EventCategory;
   recurrence_rule: RecurrenceRule;
   recurrence_end_type: 'occurrences' | 'date';
@@ -82,8 +96,11 @@ interface EventForm {
 const getDefaultStartTime = (): Date => { const d = new Date(); d.setHours(18, 0, 0, 0); return d; };
 const getDefaultEndTime = (s: Date): Date => { const e = new Date(s); e.setHours(e.getHours() + 2); return e; };
 const getDefaultEventForm = (): EventForm => ({
+  membership_tier: 'social',
   title: '', description: '', start_time: getDefaultStartTime(), end_time: getDefaultEndTime(getDefaultStartTime()),
-  location_name: '', location_address: '', image_url: '', capacity: '', visibility: 'members_only' as const, ticket_price: '0',
+  location_name: '', location_address: '', image_url: '', capacity: '',
+  access_type: 'members_only', access_level: 'all',
+  public_ticket_price: '0', social_member_price: '0', business_member_price: '0',
   category: 'other', recurrence_rule: 'none', recurrence_end_type: 'occurrences', recurrence_occurrences: 4,
   recurrence_end_date: '', tags: [], allows_guest_passes: true,
 });
@@ -112,7 +129,7 @@ async function fetchEventsData(page: number, filter: 'all' | 'upcoming' | 'past'
   if (ids.length > 0) {
     const [ticketsRes, followupsRes] = await Promise.all([
       supabase.from('tickets').select('event_id').in('event_id', ids).in('status', ['confirmed', 'rsvp']),
-      supabase.from('guest_passes').select('event_id').in('event_id', ids).eq('status', 'used').is('followup_sent_at' as any, null),
+      supabase.from('guest_passes').select('event_id').in('event_id', ids).eq('status', 'used').is('followup_sent_at', null),
     ]);
     (ticketsRes.data || []).forEach(t => { if (t.event_id) rsvpCounts[t.event_id] = (rsvpCounts[t.event_id] || 0) + 1; });
     (followupsRes.data || []).forEach(g => { if (g.event_id) followupCounts[g.event_id] = (followupCounts[g.event_id] || 0) + 1; });
@@ -128,6 +145,8 @@ interface AdminEventsTabProps {
 export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   // UI state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -151,6 +170,9 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   const [messageSubject, setMessageSubject] = useState('');
   const [messageBody, setMessageBody] = useState('');
   const [messageSending, setMessageSending] = useState(false);
+  const [reuseOpen, setReuseOpen] = useState(false);
+  const [previousImages, setPreviousImages] = useState<string[]>([]);
+  const [deleteMenuEvent, setDeleteMenuEvent] = useState<Event | null>(null);
 
   // ── React Query ──────────────────────────────────────────────────────────
   const { data, isLoading, isError } = useQuery({
@@ -220,7 +242,12 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       setDialogOpen(false);
     },
     onError: () => toast.error('Failed to delete event'),
-    onSettled: () => { setDeleteDialogOpen(false); setDeleteInEditOpen(false); setDeleteId(null); },
+    onSettled: () => {
+      setDeleteDialogOpen(false);
+      setDeleteInEditOpen(false);
+      setDeleteId(null);
+      setDeleteMenuEvent(null);
+    },
   });
 
   const submitMutation = useMutation({
@@ -330,8 +357,10 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
 
   const reminderMutation = useMutation({
     mutationFn: async (event: Event) => {
-      const res = await supabase.functions.invoke('notify-event-change', {
-        body: { event_id: event.id, type: 'reminder', origin: window.location.origin },
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke('event-reminder', {
+        body: { event_id: event.id },
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
       });
       if (res.error) throw res.error;
       return res.data as { sent: number };
@@ -342,6 +371,13 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
     },
     onError: () => toast.error('Failed to send reminders'),
   });
+
+  const loadPreviousImages = async () => {
+    const { data } = await supabase.from('events').select('image_url').not('image_url', 'is', null).limit(400);
+    const urls = [...new Set((data || []).map((r: { image_url: string | null }) => r.image_url).filter(Boolean))] as string[];
+    setPreviousImages(urls);
+    setReuseOpen(true);
+  };
 
   const handleSendMessage = async () => {
     if (!messageEvent || !messageSubject.trim() || !messageBody.trim()) {
@@ -376,16 +412,36 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   // ── Form helpers ─────────────────────────────────────────────────────────
   const openCreate = () => { setEditingEvent(null); setForm(getDefaultEventForm()); setDialogOpen(true); };
 
+  useEffect(() => {
+    if (searchParams.get('create_event') !== '1') return;
+    setEditingEvent(null);
+    setForm(getDefaultEventForm());
+    setDialogOpen(true);
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete('create_event');
+    const q = next.toString();
+    router.replace(q ? `/admin?${q}` : '/admin');
+  }, [searchParams, router]);
+
   const openEdit = (event: Event) => {
     setEditingEvent(event);
-    const price = event.ticket_price != null ? (event.ticket_price / 100).toString() : '0';
+    const pub = event.ticket_price != null ? (event.ticket_price / 100).toString() : '0';
+    const soc = event.social_member_price != null ? (event.social_member_price / 100).toString() : '0';
+    const bus = event.business_member_price != null ? (event.business_member_price / 100).toString() : '0';
+    const tier = event.event_type === 'business' || event.is_business_only ? 'business' : 'social';
+    const accessType = (event.access_type as AccessType) || (event.is_members_only ? 'members_only' : 'public_ticketed');
+    const accessLevel = (event.access_level as AccessLevel) || (event.is_business_only ? 'business_only' : 'all');
     setForm({
+      membership_tier: tier,
       title: event.title, description: event.description || '', start_time: new Date(event.start_time),
       end_time: event.end_time ? new Date(event.end_time) : undefined, location_name: event.location_name || '',
       location_address: event.location_address || '', image_url: event.image_url || '',
       capacity: event.capacity?.toString() || '',
-      visibility: event.is_business_only ? 'business_only' : event.is_members_only ? 'members_only' : 'public' as const,
-      ticket_price: price,
+      access_type: accessType === 'public_free' || accessType === 'public_ticketed' ? accessType : 'members_only',
+      access_level: accessLevel,
+      public_ticket_price: pub,
+      social_member_price: soc,
+      business_member_price: bus,
       category: (event.category && event.category !== 'other') ? event.category as EventCategory : detectCategoryFromTitle(event.title) || 'other',
       recurrence_rule: (event.recurrence_rule as RecurrenceRule) || 'none',
       recurrence_end_type: 'occurrences', recurrence_occurrences: 4, recurrence_end_date: '', tags: event.tags || [],
@@ -396,19 +452,28 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
 
   const handleStartTimeChange = (d: Date | undefined) => {
     if (!d) return;
-    setForm(prev => ({ ...prev, start_time: d, end_time: getDefaultEndTime(d) }));
+    setForm(prev => ({ ...prev, start_time: d, end_time: addHours(d, 2) }));
   };
 
   const duplicate = (event: Event) => {
-    const price = event.ticket_price ? (event.ticket_price / 100).toString() : '0';
+    const pub = event.ticket_price ? (event.ticket_price / 100).toString() : '0';
+    const soc = event.social_member_price != null ? (event.social_member_price / 100).toString() : '0';
+    const bus = event.business_member_price != null ? (event.business_member_price / 100).toString() : '0';
+    const tier = event.event_type === 'business' || event.is_business_only ? 'business' : 'social';
+    const accessType = (event.access_type as AccessType) || (event.is_members_only ? 'members_only' : 'public_ticketed');
+    const accessLevel = (event.access_level as AccessLevel) || (event.is_business_only ? 'business_only' : 'all');
     setEditingEvent(null);
     setForm({
+      membership_tier: tier,
       title: event.title, description: event.description || '', start_time: getDefaultStartTime(),
       end_time: getDefaultEndTime(getDefaultStartTime()), location_name: event.location_name || '',
       location_address: event.location_address || '', image_url: event.image_url || '',
       capacity: event.capacity?.toString() || '',
-      visibility: event.is_business_only ? 'business_only' : event.is_members_only ? 'members_only' : 'public' as const,
-      ticket_price: price,
+      access_type: accessType,
+      access_level: accessLevel,
+      public_ticket_price: pub,
+      social_member_price: soc,
+      business_member_price: bus,
       category: (event.category as EventCategory) || 'other', recurrence_rule: 'none',
       recurrence_end_type: 'occurrences', recurrence_occurrences: 4, recurrence_end_date: '', tags: event.tags || [],
       allows_guest_passes: event.allows_guest_passes ?? true,
@@ -418,9 +483,12 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
 
   // ── Build data ───────────────────────────────────────────────────────────
   const buildEventData = () => {
-    const priceInCents = Math.round((parseFloat(form.ticket_price) || 0) * 100);
-    const is_business_only = form.visibility === 'business_only';
-    const is_members_only = form.visibility === 'members_only' || is_business_only;
+    const pubCents = Math.round((parseFloat(form.public_ticket_price) || 0) * 100);
+    const socCents = Math.round((parseFloat(form.social_member_price) || 0) * 100);
+    const busCents = Math.round((parseFloat(form.business_member_price) || 0) * 100);
+    const is_members_only = form.access_type === 'members_only';
+    const is_business_only = is_members_only && form.access_level === 'business_only';
+    const event_type = form.membership_tier === 'business' ? 'business' : 'social';
     return {
       title: form.title.trim(), description: form.description.trim() || null,
       start_time: form.start_time ? form.start_time.toISOString() : new Date().toISOString(),
@@ -428,7 +496,14 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       location_name: form.location_name.trim() || null, location_address: form.location_address.trim() || null,
       image_url: form.image_url.trim() || null,
       capacity: form.capacity ? Math.min(Math.max(parseInt(form.capacity, 10), 0), 10000) : null,
-      is_members_only, is_business_only, ticket_price: priceInCents,
+      is_members_only,
+      is_business_only,
+      event_type,
+      access_type: form.access_type,
+      access_level: form.access_type === 'members_only' ? form.access_level : 'all',
+      ticket_price: form.access_type === 'public_free' ? 0 : pubCents,
+      social_member_price: form.access_type === 'public_free' ? null : socCents,
+      business_member_price: form.access_type === 'public_free' ? null : busCents,
       category: form.category, recurrence_rule: form.recurrence_rule === 'none' ? null : form.recurrence_rule,
       tags: form.tags.length > 0 ? form.tags : null,
       allows_guest_passes: form.allows_guest_passes,
@@ -436,15 +511,23 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   };
 
   const buildBulkUpdateFields = () => {
-    const priceInCents = Math.round((parseFloat(form.ticket_price) || 0) * 100);
-    const is_business_only = form.visibility === 'business_only';
-    const is_members_only = form.visibility === 'members_only' || is_business_only;
+    const pubCents = Math.round((parseFloat(form.public_ticket_price) || 0) * 100);
+    const socCents = Math.round((parseFloat(form.social_member_price) || 0) * 100);
+    const busCents = Math.round((parseFloat(form.business_member_price) || 0) * 100);
+    const is_members_only = form.access_type === 'members_only';
+    const is_business_only = is_members_only && form.access_level === 'business_only';
+    const event_type = form.membership_tier === 'business' ? 'business' : 'social';
     return {
       title: form.title.trim(), description: form.description.trim() || null,
       location_name: form.location_name.trim() || null, location_address: form.location_address.trim() || null,
       image_url: form.image_url.trim() || null,
       capacity: form.capacity ? Math.min(Math.max(parseInt(form.capacity, 10), 0), 10000) : null,
-      is_members_only, is_business_only, ticket_price: priceInCents,
+      is_members_only, is_business_only, event_type,
+      access_type: form.access_type,
+      access_level: form.access_type === 'members_only' ? form.access_level : 'all',
+      ticket_price: form.access_type === 'public_free' ? 0 : pubCents,
+      social_member_price: form.access_type === 'public_free' ? null : socCents,
+      business_member_price: form.access_type === 'public_free' ? null : busCents,
       category: form.category, tags: form.tags.length > 0 ? form.tags : null,
       allows_guest_passes: form.allows_guest_passes,
     };
@@ -536,8 +619,15 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
     if (form.title.trim().length > 200) { toast.error('Event title must be under 200 characters'); return; }
     if (!form.start_time) { toast.error('Start time is required'); return; }
     if (form.end_time && form.start_time && form.end_time <= form.start_time) { toast.error('End time must be after start time'); return; }
-    const price = parseFloat(form.ticket_price);
-    if (isNaN(price) || price < 0) { toast.error('Ticket price cannot be negative'); return; }
+    if (form.access_type !== 'public_free') {
+      const pp = parseFloat(form.public_ticket_price);
+      const sp = parseFloat(form.social_member_price);
+      const bp = parseFloat(form.business_member_price);
+      if ([pp, sp, bp].some(v => isNaN(v) || v < 0)) {
+        toast.error('Prices cannot be negative');
+        return;
+      }
+    }
     if (form.image_url.trim() && !/^https?:\/\/.+/i.test(form.image_url.trim())) { toast.error('Image URL must be a valid URL'); return; }
 
     if (editingEvent && isPartOfSeries(editingEvent)) { setRecurringDialogOpen(true); return; }
@@ -636,8 +726,9 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                             {isUpcoming
                             ? <span className="bg-green-500/20 text-green-400 border border-green-500/30 rounded-full px-2 py-0.5 text-xs font-medium">Upcoming</span>
                             : <span className="bg-muted text-muted-foreground border border-border rounded-full px-2 py-0.5 text-xs">Past</span>}
-                            {event.is_business_only && <Badge className="bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 text-xs">Business</Badge>}
-                            {event.is_members_only && !event.is_business_only && <Lock className="w-3 h-3 text-muted-foreground" aria-label="Members only" />}
+                            {(event.event_type === 'business' || event.is_business_only) && (
+                              <Lock className="w-4 h-4 text-amber-400" aria-label="Business event" />
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="py-3" onClick={e => e.stopPropagation()}>
@@ -666,29 +757,32 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={e => { e.stopPropagation(); openEdit(event); }}><Pencil className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
                               <DropdownMenuItem onClick={e => { e.stopPropagation(); duplicate(event); }}><Copy className="w-4 h-4 mr-2" /> Duplicate</DropdownMenuItem>
-                              <DropdownMenuItem onClick={e => { e.stopPropagation(); setAddMembersEvent(event); }}><UserPlus className="w-4 h-4 mr-2" /> Add Members</DropdownMenuItem>
-                              <DropdownMenuItem onClick={e => { e.stopPropagation(); setMessageEvent(event); setMessageSubject(''); setMessageBody(''); }}><Send className="w-4 h-4 mr-2" /> Message Attendees</DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={e => { e.stopPropagation(); setDeleteMenuEvent(event); }}>
+                                <Trash2 className="w-4 h-4 mr-2" /> Delete
+                              </DropdownMenuItem>
+                              {!isUpcoming && rsvpCount > 0 && (
+                                <DropdownMenuItem
+                                  disabled={sentFollowups[event.id] || followupMutation.isPending}
+                                  onClick={e => { e.stopPropagation(); followupMutation.mutate(event.id); }}
+                                >
+                                  {sentFollowups[event.id] ? <Check className="w-4 h-4 mr-2 text-green-400" /> : <Mail className="w-4 h-4 mr-2" />}
+                                  Send Follow-Ups ({followupCounts[event.id] || rsvpCount})
+                                </DropdownMenuItem>
+                              )}
                               {isUpcoming && (
                                 <DropdownMenuItem
                                   disabled={sentReminders[event.id] || reminderMutation.isPending}
                                   onClick={e => { e.stopPropagation(); reminderMutation.mutate(event); }}
                                 >
-                                  {sentReminders[event.id] ? <Check className="w-4 h-4 mr-2" /> : <Bell className="w-4 h-4 mr-2" />}
-                                  {sentReminders[event.id] ? 'Reminder Sent' : 'Send Reminder'}
+                                  {sentReminders[event.id] ? <Check className="w-4 h-4 mr-2 text-green-400" /> : <Bell className="w-4 h-4 mr-2" />}
+                                  Send Reminder to All
                                 </DropdownMenuItem>
                               )}
-                              {!isUpcoming && (followupCounts[event.id] || 0) > 0 && (
-                                <DropdownMenuItem
-                                  disabled={sentFollowups[event.id] || followupMutation.isPending}
-                                  onClick={e => { e.stopPropagation(); followupMutation.mutate(event.id); }}
-                                >
-                                  {sentFollowups[event.id] ? <Check className="w-4 h-4 mr-2" /> : <Mail className="w-4 h-4 mr-2" />}
-                                  {sentFollowups[event.id] ? 'Follow-Ups Sent' : `Send Follow-Ups (${followupCounts[event.id]})`}
+                              {rsvpCount > 0 && (
+                                <DropdownMenuItem onClick={e => { e.stopPropagation(); setMessageEvent(event); setMessageSubject(''); setMessageBody(''); }}>
+                                  <Send className="w-4 h-4 mr-2" /> Message Attendees
                                 </DropdownMenuItem>
                               )}
-                              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={e => { e.stopPropagation(); setDeleteId(event.id); setDeleteDialogOpen(true); }}>
-                                <Trash2 className="w-4 h-4 mr-2" /> Delete
-                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -725,34 +819,62 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                             : <span className="bg-muted text-muted-foreground border border-border rounded-full px-2 py-0.5 text-xs">Past</span>}
                         </div>
                       </div>
-                      <div className="flex items-center justify-between mt-3">
-                        {/* Eventbrite toggle on mobile */}
-                        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center justify-between mt-3 gap-2" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-2 min-w-0">
                           <Switch
                             checked={ebPublished}
                             disabled={ebLoading}
                             onCheckedChange={() => handleEventbriteToggle(event, { stopPropagation: () => {} } as React.MouseEvent)}
                           />
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-muted-foreground truncate">
                             {ebLoading ? 'Updating...' : ebPublished ? 'On Eventbrite' : 'Eventbrite off'}
                           </span>
                           {ebPublished && event.eventbrite_url && (
                             <a href={event.eventbrite_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
-                              <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                              <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0" />
                             </a>
                           )}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); openEdit(event); }}><Pencil className="w-3 h-3 mr-1" /> Edit</Button>
-                          <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setAddMembersEvent(event); }}><UserPlus className="w-3 h-3 mr-1" /> Add</Button>
-                          <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setMessageEvent(event); setMessageSubject(''); setMessageBody(''); }}><Send className="w-3 h-3 mr-1" /> Msg</Button>
-                          {isUpcoming && (
-                            <Button variant="ghost" size="sm" disabled={sentReminders[event.id]} onClick={e => { e.stopPropagation(); reminderMutation.mutate(event); }}>
-                              <Bell className="w-3 h-3 mr-1" /> {sentReminders[event.id] ? 'Sent' : 'Remind'}
-                            </Button>
+                          {(event.event_type === 'business' || event.is_business_only) && (
+                            <Lock className="w-4 h-4 text-amber-400 shrink-0" aria-label="Business event" />
                           )}
-                          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={e => { e.stopPropagation(); setDeleteId(event.id); setDeleteDialogOpen(true); }}><Trash2 className="w-3 h-3 mr-1" /> Delete</Button>
                         </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" aria-label="Event actions">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEdit(event)}><Pencil className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => duplicate(event)}><Copy className="w-4 h-4 mr-2" /> Duplicate</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteMenuEvent(event)}>
+                              <Trash2 className="w-4 h-4 mr-2" /> Delete
+                            </DropdownMenuItem>
+                            {!isUpcoming && rsvpCount > 0 && (
+                              <DropdownMenuItem
+                                disabled={sentFollowups[event.id] || followupMutation.isPending}
+                                onClick={() => followupMutation.mutate(event.id)}
+                              >
+                                {sentFollowups[event.id] ? <Check className="w-4 h-4 mr-2 text-green-400" /> : <Mail className="w-4 h-4 mr-2" />}
+                                Send Follow-Ups ({followupCounts[event.id] || rsvpCount})
+                              </DropdownMenuItem>
+                            )}
+                            {isUpcoming && (
+                              <DropdownMenuItem
+                                disabled={sentReminders[event.id] || reminderMutation.isPending}
+                                onClick={() => reminderMutation.mutate(event)}
+                              >
+                                {sentReminders[event.id] ? <Check className="w-4 h-4 mr-2 text-green-400" /> : <Bell className="w-4 h-4 mr-2" />}
+                                Send Reminder to All
+                              </DropdownMenuItem>
+                            )}
+                            {rsvpCount > 0 && (
+                              <DropdownMenuItem onClick={() => { setMessageEvent(event); setMessageSubject(''); setMessageBody(''); }}>
+                                <Send className="w-4 h-4 mr-2" /> Message Attendees
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </CardContent>
                   </Card>
@@ -782,6 +904,35 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
             <DialogDescription>{editingEvent ? 'Update the event details below.' : 'Fill in the details to create a new event.'}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Membership Tier</Label>
+              <div className="flex rounded-lg border border-border overflow-hidden">
+                <button
+                  type="button"
+                  className={cn(
+                    'flex-1 px-4 py-2.5 text-sm font-medium transition-colors',
+                    form.membership_tier === 'social'
+                      ? 'bg-muted text-foreground'
+                      : 'bg-transparent text-muted-foreground hover:bg-muted/50',
+                  )}
+                  onClick={() => setForm((p) => ({ ...p, membership_tier: 'social' }))}
+                >
+                  Social
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    'flex-1 px-4 py-2.5 text-sm font-medium transition-colors border-l border-border',
+                    form.membership_tier === 'business'
+                      ? 'bg-[hsl(42,45%,58%)] text-[hsl(42,15%,12%)] font-semibold'
+                      : 'bg-transparent text-muted-foreground hover:bg-muted/50',
+                  )}
+                  onClick={() => setForm((p) => ({ ...p, membership_tier: 'business' }))}
+                >
+                  Business
+                </button>
+              </div>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="title">Title *</Label>
               <Input id="title" value={form.title} onChange={e => {
@@ -829,41 +980,79 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                   </div>
                 </div>
               ) : (
-                <label className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors ${imageUploading ? 'opacity-50 pointer-events-none' : ''}`}>
-                  <Upload className="w-6 h-6 text-muted-foreground mb-2" />
-                  <span className="text-sm text-muted-foreground">{imageUploading ? 'Uploading...' : 'Click to upload image'}</span>
-                  <span className="text-xs text-muted-foreground mt-1">JPG, PNG, WebP up to 5MB</span>
-                  <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp,image/gif" onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5MB'); return; }
-                    setImageUploading(true);
-                    const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-                    const { error } = await supabase.storage.from('public-assets').upload(filename, file, { contentType: file.type });
-                    if (error) { toast.error('Upload failed: ' + error.message); setImageUploading(false); return; }
-                    const { data: urlData } = supabase.storage.from('public-assets').getPublicUrl(filename);
-                    setForm(prev => ({ ...prev, image_url: urlData.publicUrl }));
-                    setImageUploading(false);
-                    toast.success('Image uploaded');
-                  }} />
-                </label>
+                <div className="space-y-2">
+                  <label className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors ${imageUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <Upload className="w-6 h-6 text-muted-foreground mb-2" />
+                    <span className="text-sm text-muted-foreground">{imageUploading ? 'Uploading...' : 'Click to upload image'}</span>
+                    <span className="text-xs text-muted-foreground mt-1">JPG, PNG, WebP up to 5MB</span>
+                    <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp,image/gif" onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5MB'); return; }
+                      setImageUploading(true);
+                      const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+                      const { error } = await supabase.storage.from('public-assets').upload(filename, file, { contentType: file.type });
+                      if (error) { toast.error('Upload failed: ' + error.message); setImageUploading(false); return; }
+                      const { data: urlData } = supabase.storage.from('public-assets').getPublicUrl(filename);
+                      setForm(prev => ({ ...prev, image_url: urlData.publicUrl }));
+                      setImageUploading(false);
+                      toast.success('Image uploaded');
+                    }} />
+                  </label>
+                  <Button type="button" variant="link" className="text-sm h-auto p-0 text-primary" onClick={() => void loadPreviousImages()}>
+                    Reuse a previous image
+                  </Button>
+                </div>
               )}
             </div>
-            <div className="grid grid-cols-1 gap-4">
-              <div className="space-y-2"><Label htmlFor="capacity">Capacity</Label><Input id="capacity" type="number" value={form.capacity} onChange={e => setForm(prev => ({ ...prev, capacity: e.target.value }))} placeholder="Leave empty for unlimited" /></div>
-              <div className="space-y-2"><Label htmlFor="ticket_price">Ticket Price ($)</Label><Input id="ticket_price" type="number" step="0.01" value={form.ticket_price} onChange={e => setForm(prev => ({ ...prev, ticket_price: e.target.value }))} /></div>
-            </div>
             <div className="space-y-2">
-              <Label>Event Visibility</Label>
-              <Select value={form.visibility} onValueChange={v => setForm(prev => ({ ...prev, visibility: v as 'public' | 'members_only' | 'business_only' }))}>
-                <SelectTrigger><SelectValue placeholder="Select visibility" /></SelectTrigger>
+              <Label>Access Type</Label>
+              <Select value={form.access_type} onValueChange={v => setForm(prev => ({ ...prev, access_type: v as AccessType }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="public">Public - Anyone can see and attend</SelectItem>
-                  <SelectItem value="members_only">Members Only - Social + Business members</SelectItem>
-                  <SelectItem value="business_only">Business Only - Business members only</SelectItem>
+                  <SelectItem value="members_only">Members Only - Free for members</SelectItem>
+                  <SelectItem value="public_ticketed">Public Ticketed - Anyone can buy</SelectItem>
+                  <SelectItem value="public_free">Public Free - Open to everyone, no account needed</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            {form.access_type === 'members_only' && (
+              <div className="space-y-2">
+                <Label>Access Level</Label>
+                <Select value={form.access_level} onValueChange={v => setForm(prev => ({ ...prev, access_level: v as AccessLevel }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Members</SelectItem>
+                    <SelectItem value="social_only">Social Members Only</SelectItem>
+                    <SelectItem value="business_only">Business Members Only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="capacity">Capacity</Label>
+              <Input id="capacity" type="number" value={form.capacity} onChange={e => setForm(prev => ({ ...prev, capacity: e.target.value }))} placeholder="Leave empty for unlimited" />
+            </div>
+            {form.access_type === 'public_free' ? (
+              <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                Free events have no ticket price. Anyone can RSVP without an account.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="pub_price">Public Ticket Price ($)</Label>
+                  <Input id="pub_price" type="number" step="0.01" value={form.public_ticket_price} onChange={e => setForm(prev => ({ ...prev, public_ticket_price: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="soc_price">Social Member Price ($)</Label>
+                  <Input id="soc_price" type="number" step="0.01" value={form.social_member_price} onChange={e => setForm(prev => ({ ...prev, social_member_price: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bus_price">Business Member Price ($)</Label>
+                  <Input id="bus_price" type="number" step="0.01" value={form.business_member_price} onChange={e => setForm(prev => ({ ...prev, business_member_price: e.target.value }))} />
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-3">
               <Switch id="allows_guest_passes" checked={form.allows_guest_passes} onCheckedChange={c => setForm(prev => ({ ...prev, allows_guest_passes: c }))} />
               <Label htmlFor="allows_guest_passes" className="flex items-center gap-2"><Gift className="w-4 h-4" /> Allow Guest Passes</Label>
@@ -879,13 +1068,20 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
               />
             )}
           </div>
-          <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between gap-2">
-            {editingEvent ? (
-              <Button variant="destructive" onClick={() => setDeleteInEditOpen(true)} disabled={submitting || deleteMutation.isPending} className="w-full sm:w-auto">
-                <Trash2 className="w-4 h-4 mr-2" /> Delete Event
-              </Button>
-            ) : <div />}
-            <div className="flex gap-2 w-full sm:w-auto">
+          <DialogFooter className="flex flex-col-reverse sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-2">
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+              {editingEvent && (
+                <Button variant="destructive" onClick={() => setDeleteInEditOpen(true)} disabled={submitting || deleteMutation.isPending} className="flex-1 sm:flex-none">
+                  <Trash2 className="w-4 h-4 mr-2" /> Delete Event
+                </Button>
+              )}
+              {editingEvent && (
+                <Button type="button" variant="outline" onClick={() => setAddMembersEvent(editingEvent)} className="flex-1 sm:flex-none">
+                  <UserPlus className="w-4 h-4 mr-2" /> Add Members
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto sm:justify-end">
               <Button variant="outline" onClick={() => setDialogOpen(false)} className="flex-1 sm:flex-none">Cancel</Button>
               <Button onClick={handleSubmit} disabled={submitting} className="flex-1 sm:flex-none">
                 {submitting ? 'Saving...' : editingEvent ? 'Update' : 'Create'}
@@ -985,6 +1181,48 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={reuseOpen} onOpenChange={setReuseOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Reuse a previous image</DialogTitle>
+            <DialogDescription>Select an image from past events.</DialogDescription>
+          </DialogHeader>
+          {previousImages.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">No saved event images yet.</p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[min(60vh,360px)] overflow-y-auto pr-1">
+              {previousImages.map((url) => (
+                <button
+                  key={url}
+                  type="button"
+                  className="relative aspect-video rounded-md border border-border overflow-hidden bg-muted hover:ring-2 hover:ring-primary/50 transition-all"
+                  onClick={() => {
+                    setForm((prev) => ({ ...prev, image_url: url }));
+                    setReuseOpen(false);
+                    toast.success('Image selected');
+                  }}
+                >
+                  <Image src={url} alt="" fill className="object-cover" sizes="200px" unoptimized={!url.includes('supabase')} />
+                </button>
+              ))}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReuseOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <DeleteConfirmDialog
+        open={!!deleteMenuEvent}
+        onOpenChange={(open) => { if (!open) setDeleteMenuEvent(null); }}
+        onConfirm={() => { if (deleteMenuEvent) deleteMutation.mutate(deleteMenuEvent.id); }}
+        title="Delete event"
+        description="This permanently removes the event. This action cannot be undone."
+        destructive
+        loading={deleteMutation.isPending}
+      />
     </div>
   );
 }

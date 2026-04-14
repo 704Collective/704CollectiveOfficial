@@ -18,6 +18,8 @@ interface DeleteConfirmDialogProps {
   onConfirm: () => void;
   title: string;
   description: string;
+  /** When true, description uses destructive styling (e.g. overflow menu delete). */
+  destructive?: boolean;
   loading?: boolean;
 }
 
@@ -27,6 +29,7 @@ export function DeleteConfirmDialog({
   onConfirm,
   title,
   description,
+  destructive = false,
   loading = false,
 }: DeleteConfirmDialogProps) {
   return (
@@ -34,7 +37,7 @@ export function DeleteConfirmDialog({
       <AlertDialogContent className="bg-card border-border">
         <AlertDialogHeader>
           <AlertDialogTitle className="text-foreground">{title}</AlertDialogTitle>
-          <AlertDialogDescription className="text-muted-foreground">
+          <AlertDialogDescription className={destructive ? 'text-destructive' : 'text-muted-foreground'}>
             {description}
           </AlertDialogDescription>
         </AlertDialogHeader>
