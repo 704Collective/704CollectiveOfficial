@@ -93,22 +93,20 @@ serve(async (req) => {
       });
     }
 
-    // ── Send magic link via Supabase Auth REST (avoids admin generateLink) ───
-    const authBase = supabaseUrl.replace(/\/+$/, "");
+    // ── Send magic link via Supabase Auth REST (redirect_to must be a query param) ───
+    const otpUrl = new URL(`${supabaseUrl.replace(/\/+$/, "")}/auth/v1/otp`);
+    otpUrl.searchParams.set("redirect_to", redirectTo);
 
-    const authResponse = await fetch(`${authBase}/auth/v1/otp`, {
+    const authResponse = await fetch(otpUrl.toString(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        apikey: serviceRoleKey,
-        Authorization: `Bearer ${serviceRoleKey}`,
+        apikey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "",
+        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""}`,
       },
       body: JSON.stringify({
         email,
         create_user: false,
-        options: {
-          redirect_to: redirectTo,
-        },
       }),
     });
 
