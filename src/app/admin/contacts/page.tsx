@@ -1,7 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Users, UserPlus, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
@@ -211,7 +210,7 @@ function AddContactDialog({
   );
 }
 
-export default function AdminContactsPage() {
+function ContactsPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [all, setAll] = useState<UnifiedContact[]>([]);
@@ -405,5 +404,13 @@ export default function AdminContactsPage() {
 
       <AddContactDialog open={addOpen} onClose={() => setAddOpen(false)} onSaved={load} />
     </div>
+  );
+}
+
+export default function ContactsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <ContactsPageInner />
+    </Suspense>
   );
 }
