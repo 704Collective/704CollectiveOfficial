@@ -23,10 +23,8 @@ serve(async (req) => {
     return new Response("Method not allowed", { status: 405, headers: corsHeaders });
   }
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseUrl = (Deno.env.get("SUPABASE_URL") || "").trim().replace(/\/+$/, "");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const siteBase = (Deno.env.get("SITE_URL") || "https://704collective.com").trim().replace(/\/+$/, "");
-  const redirectTo = `${siteBase}/auth/callback?source=magic`;
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
@@ -93,11 +91,8 @@ serve(async (req) => {
       });
     }
 
-    // ── Send magic link via Supabase Auth REST (redirect_to must be a query param) ───
-    const otpUrl = new URL(`${supabaseUrl.replace(/\/+$/, "")}/auth/v1/otp`);
-    otpUrl.searchParams.set("redirect_to", redirectTo);
-
-    const authResponse = await fetch(otpUrl.toString(), {
+    // ── Send magic link via Supabase Auth REST (redirect uses dashboard Site / Redirect URLs) ───
+    const authResponse = await fetch(`${supabaseUrl}/auth/v1/otp`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
