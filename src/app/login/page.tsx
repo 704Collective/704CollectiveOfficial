@@ -200,10 +200,7 @@ function Login() {
     setMagicLinkLoading(true);
     try {
       const { error } = await supabase.functions.invoke('request-magic-link', {
-        body: {
-          email: emailToUse,
-          redirectTo: `${window.location.origin}/auth/callback?source=magic`,
-        },
+        body: { email: emailToUse },
       });
       if (error) {
         setMagicLinkError('Something went wrong. Please try again.');
@@ -233,10 +230,7 @@ function Login() {
     setMagicLinkLoading(true);
     try {
       const { error } = await supabase.functions.invoke('request-magic-link', {
-        body: {
-          email: magicLinkEmail.trim(),
-          redirectTo: `${window.location.origin}/auth/callback?source=magic`,
-        },
+        body: { email: magicLinkEmail.trim() },
       });
       if (error) {
         setMagicLinkError('Something went wrong. Please try again.');

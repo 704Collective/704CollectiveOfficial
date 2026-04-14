@@ -84,28 +84,14 @@ serve(async (req) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const resendKey = Deno.env.get("RESEND_API_KEY")!;
   const siteBase = (Deno.env.get("SITE_URL") ?? "https://704collective.com").trim().replace(/\/+$/, "");
-  const defaultMagicRedirect = `${siteBase}/auth/callback?source=magic`;
+  /** Plain URL only — Supabase encodes this internally; do not encode here. */
+  const redirectTo = `${siteBase}/auth/callback?source=magic`;
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
   try {
     const body = await req.json();
     const email = (body?.email ?? "").trim().toLowerCase();
-
-    /** Optional client-provided redirect; must match SITE_URL origin and path /auth/callback. */
-    let redirectTo = defaultMagicRedirect;
-    const requested = typeof body?.redirectTo === "string" ? body.redirectTo.trim() : "";
-    if (requested) {
-      try {
-        const u = new URL(requested);
-        const site = new URL(siteBase);
-        if (u.origin === site.origin && u.pathname === "/auth/callback") {
-          redirectTo = requested;
-        }
-      } catch {
-        /* keep default */
-      }
-    }
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return new Response(JSON.stringify({ error: "Invalid email" }), {
