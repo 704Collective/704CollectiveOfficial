@@ -6,9 +6,17 @@ import { postAuthDestination } from '@/lib/postAuthRedirect';
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
+  const token_hash = searchParams.get('token_hash');
+  const linkType = searchParams.get('type');
+  const source = searchParams.get('source');
 
-  if (!code) {
-    console.error('[auth/callback] No code in request — redirecting to login');
+  const isMagicLinkQuery =
+    linkType === 'magiclink' &&
+    !!token_hash &&
+    !code;
+
+  if (!code && !isMagicLinkQuery) {
+    console.error('[auth/callback] No code or magiclink token_hash — redirecting to login');
     return NextResponse.redirect(new URL('/login?error=oauth', origin));
   }
 
@@ -46,10 +54,26 @@ export async function GET(request: NextRequest) {
     }
   );
 
-  const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+  let sessionError: Error | { message: string } | null = null;
 
-  if (exchangeError) {
-    console.error('[auth/callback] exchangeCodeForSession error:', exchangeError.message);
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    sessionError = error;
+    if (error) {
+      console.error('[auth/callback] exchangeCodeForSession error:', error.message);
+    }
+  } else if (isMagicLinkQuery && token_hash) {
+    const { error } = await supabase.auth.verifyOtp({
+      type: 'magiclink',
+      token_hash,
+    });
+    sessionError = error;
+    if (error) {
+      console.error('[auth/callback] verifyOtp (magiclink) error:', error.message);
+    }
+  }
+
+  if (sessionError) {
     return NextResponse.redirect(new URL('/login?error=oauth', origin));
   }
 
@@ -99,7 +123,15 @@ export async function GET(request: NextRequest) {
     return noAccessRedirect;
   }
 
-  const redirectResponse = NextResponse.redirect(new URL(postAuthDestination(profile), origin));
+  let destination = postAuthDestination(profile);
+  if (source === 'login' && destination === '/signup') {
+    destination = '/signup?error=no_account';
+  }
+  if (source === 'magic' && destination === '/signup') {
+    destination = '/login?error=no_account';
+  }
+
+  const redirectResponse = NextResponse.redirect(new URL(destination, origin));
 
   // Forward the session cookies onto the redirect response so the browser
   // stores them and the proxy (session refresh) can verify the session on the next request.
