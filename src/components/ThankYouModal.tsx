@@ -50,7 +50,8 @@ export function ThankYouModal({ open, onOpenChange, type, event }: ThankYouModal
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-      <div onClick={() => onOpenChange(false)} style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }} />
+      {/* Backdrop — intentionally not click-to-dismiss so modal persists until user makes a choice */}
+      <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }} />
       <div role="dialog" aria-modal="true" style={{ position: 'relative', backgroundColor: '#1A1A1A', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', padding: '44px 36px', maxWidth: '420px', width: '100%', textAlign: 'center', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }}>
         {/* Icon */}
         <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: type === 'member' ? 'rgba(76,175,80,0.08)' : 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
@@ -74,9 +75,9 @@ export function ThankYouModal({ open, onOpenChange, type, event }: ThankYouModal
             <button onClick={() => nav('/events')} style={btn(false)}>Browse Upcoming Events</button>
           </>}
           {type === 'member' && <>
-            <button onClick={() => nav('/events')} style={btn(true)}>Browse More Events</button>
+            <button onClick={() => nav('/events')} style={btn(true)}>Browse Other Events</button>
             <button onClick={() => nav('/dashboard')} style={btn(false)}>Go to Member Portal</button>
-            <button onClick={() => onOpenChange(false)} style={{ ...btn(false), border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: '0.8125rem' }}>Done</button>
+            <button onClick={() => onOpenChange(false)} style={{ ...btn(false), border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: '0.8125rem' }}>Close</button>
           </>}
           {type === 'guest' && <>
             <button onClick={() => nav('/events')} style={btn(true)}>Browse More Events</button>
