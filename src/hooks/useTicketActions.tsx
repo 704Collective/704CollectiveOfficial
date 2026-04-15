@@ -17,6 +17,7 @@ export interface TicketActionEvent {
   start_time: string;
   end_time: string;
   location_name: string | null;
+  location_address?: string | null;
   is_members_only: boolean | null;
 }
 
@@ -105,14 +106,18 @@ export function useTicketActions(): UseTicketActionsReturn {
       setRsvpLoadingId(event.id);
 
       try {
-        // Insert member's own ticket
-        const { error } = await supabase.from('tickets').insert({
-          event_id: event.id,
-          user_id: user.id,
-          ticket_type: 'member_free',
-          status: 'confirmed',
-          source: 'member_rsvp',
-        });
+        // Insert member's own ticket (select id for confirmation email)
+        const { data: insertedTicket, error } = await supabase
+          .from('tickets')
+          .insert({
+            event_id: event.id,
+            user_id: user.id,
+            ticket_type: 'member_free',
+            status: 'confirmed',
+            source: 'member_rsvp',
+          })
+          .select('id')
+          .single();
 
         if (error) {
           if (error.code === '23505') {
@@ -156,61 +161,87 @@ export function useTicketActions(): UseTicketActionsReturn {
           toast.success('RSVP confirmed! Your +1 guest ticket is included.', { duration: 4000 });
         }
 
-        // Fire-and-forget confirmation email
-        if (p?.email) {
-          const eventDate = new Date(event.start_time);
-          const endDate = new Date(event.end_time);
-          supabase.functions
-            .invoke('send-email', {
-              body: {
-                to: p.email,
-                template: 'rsvp-confirmation',
-                data: {
-                  name: p.full_name || 'there',
-                  eventName: event.title,
-                  eventDate: format(eventDate, 'EEEE, MMMM d, yyyy'),
-                  eventTime: `${format(eventDate, 'h:mm a')} - ${format(endDate, 'h:mm a')}`,
-                  eventLocation: event.location_name || 'TBA',
-                  eventUrl: `${window.location.origin}/events/${event.id}`,
-                  plusOne: isBusinessMember,
+        // ── Fire-and-forget confirmation email ─────────────────────────────
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const session = sessionData?.session;
+          if (session) {
+            const eventDate = new Date(event.start_time);
+            const endDate = new Date(event.end_time);
+            supabase.functions
+              .invoke('send-email', {
+                body: {
+                  template: 'rsvp-confirmation',
+                  to: session.user.email,
+                  data: {
+                    name: p?.full_name || 'there',
+                    event_id: event.id,
+                    event_title: event.title,
+                    event_date: event.start_time,
+                    eventDate: format(eventDate, 'EEEE, MMMM d, yyyy'),
+                    eventTime: `${format(eventDate, 'h:mm a')} - ${format(endDate, 'h:mm a')}`,
+                    event_location: event.location_name || '',
+                    event_address: event.location_address || '',
+                    eventLocation: event.location_name || 'TBA',
+                    eventUrl: `${window.location.origin}/events/${event.id}`,
+                    ticket_id: insertedTicket?.id ?? null,
+                    calendar_token: p?.calendar_token ?? null,
+                    plusOne: isBusinessMember,
+                  },
                 },
-              },
-            })
-            .catch(() => {
-              // Silently fail — RSVP already confirmed
-            });
+                headers: {
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+              })
+              .catch((emailErr) => {
+                console.warn('[useTicketActions] Confirmation email failed:', emailErr);
+              });
+          }
+        } catch (emailErr) {
+          console.warn('[useTicketActions] Could not send confirmation email:', emailErr);
         }
 
-        // Prompt calendar subscribe only if member has not set up a feed token yet
-        if (!p?.calendar_token?.trim()) {
-          const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-          void (async () => {
-            try {
-              const res = await fetch('/api/calendar/ensure-token', {
-                method: 'POST',
-                credentials: 'include',
-              });
-              const data = (await res.json()) as { token?: string; error?: string };
-              if (!res.ok || !data.token) return;
-              await refreshProfile();
-              toast.custom(
-                (tid) => (
-                  <CalendarConnectPrompt
-                    calendarToken={data.token!}
-                    baseUrl={base}
-                    title="Add this event to your calendar"
-                    compact
-                    userId={user.id}
-                    onDismiss={() => toast.dismiss(tid)}
-                  />
-                ),
-                { duration: 60000 }
-              );
-            } catch {
-              /* non-blocking */
-            }
-          })();
-        }
+        // ── Calendar connect prompt ─────────────────────────────────────────
+        // Fetch a fresh profile so calendar_token reflects any recent changes
+        void (async () => {
+          try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const session = sessionData?.session;
+            if (!session) return;
+
+            const { data: freshProfile } = await supabase
+              .from('profiles')
+              .select('calendar_token')
+              .eq('id', session.user.id)
+              .single();
+
+            if (freshProfile?.calendar_token) return; // already connected
+
+            const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+            const res = await fetch('/api/calendar/ensure-token', {
+              method: 'POST',
+              credentials: 'include',
+            });
+            const tokenData = (await res.json()) as { token?: string; error?: string };
+            if (!res.ok || !tokenData.token) return;
+            await refreshProfile();
+            toast.custom(
+              (tid) => (
+                <CalendarConnectPrompt
+                  calendarToken={tokenData.token!}
+                  baseUrl={base}
+                  title="Add this event to your calendar"
+                  compact
+                  userId={user.id}
+                  onDismiss={() => toast.dismiss(tid)}
+                />
+              ),
+              { duration: 60000 }
+            );
+          } catch {
+            /* non-blocking */
+          }
+        })();
 
         return true;
       } catch (err: unknown) {
