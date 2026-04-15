@@ -11,7 +11,50 @@ export default function AuthConfirmPage() {
   useEffect(() => {
     const supabase = createClient();
 
-    const handleHashTokens = async () => {
+    const handleTokens = async () => {
+      // %% Check query params first (token_hash flow from Supabase PKCE) %%%%%%%
+      const searchParams = new URLSearchParams(window.location.search);
+      const tokenHash = searchParams.get('token_hash');
+      const qType = searchParams.get('type');
+
+      if (tokenHash && qType) {
+        if (qType === 'recovery') {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: 'recovery',
+          });
+          if (error) {
+            router.replace('/login?error=invalid_link');
+            return;
+          }
+          router.replace('/reset-password');
+          return;
+        }
+
+        // Magic link or other email OTP
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: qType as 'magiclink' | 'signup' | 'recovery' | 'invite' | 'email_change' | 'email',
+        });
+        if (error) {
+          router.replace('/login?error=invalid_link');
+          return;
+        }
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          router.replace('/login?error=invalid_link');
+          return;
+        }
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role, member_type, subscription_status, membership_override')
+          .eq('id', user.id)
+          .maybeSingle();
+        router.replace(profile ? postAuthDestination(profile) : '/signup');
+        return;
+      }
+
+      // %% Hash fragment tokens (Supabase implicit flow) %%%%%%%%%%%%%%%%%%%%%%%
       const hash = window.location.hash;
       if (!hash) {
         router.replace('/login?error=invalid_link');
@@ -21,12 +64,27 @@ export default function AuthConfirmPage() {
       const params = new URLSearchParams(hash.substring(1));
       const accessToken = params.get('access_token');
       const refreshToken = params.get('refresh_token');
+      const hType = params.get('type');
 
       if (!accessToken || !refreshToken) {
         router.replace('/login?error=invalid_link');
         return;
       }
 
+      if (hType === 'recovery') {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (error) {
+          router.replace('/login?error=invalid_link');
+          return;
+        }
+        router.replace('/reset-password');
+        return;
+      }
+
+      // Magic link / sign-in
       const { data, error } = await supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken,
@@ -43,15 +101,10 @@ export default function AuthConfirmPage() {
         .eq('id', data.session.user.id)
         .maybeSingle();
 
-      if (!profile) {
-        router.replace('/signup');
-        return;
-      }
-
-      router.replace(postAuthDestination(profile));
+      router.replace(profile ? postAuthDestination(profile) : '/signup');
     };
 
-    handleHashTokens();
+    handleTokens();
   }, [router]);
 
   return (
