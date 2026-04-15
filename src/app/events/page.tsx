@@ -73,6 +73,7 @@ export default function Events() {
     showThankYou,
     setShowThankYou,
     thankYouType,
+    thankYouEvent,
     registerMemberTicket,
   } = useTicketActions();
 
@@ -381,7 +382,7 @@ export default function Events() {
           </MarketingPageRoot>
         </main>
 
-        <ThankYouModal open={showThankYou} onOpenChange={setShowThankYou} type={thankYouType} />
+        <ThankYouModal open={showThankYou} onOpenChange={setShowThankYou} type={thankYouType} event={thankYouEvent ?? undefined} />
       </div>
       <Footer />
 

@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CalendarConnectPrompt } from '@/components/CalendarConnectPrompt';
+import type { ThankYouEvent } from '@/components/ThankYouModal';
 
 /**
  * Minimal event shape needed by ticket actions.
@@ -31,6 +32,8 @@ interface UseTicketActionsReturn {
   setShowThankYou: (v: boolean) => void;
   /** 'member' or 'guest' — controls thank-you modal copy */
   thankYouType: 'member' | 'guest';
+  /** Event details for the thank-you modal calendar buttons */
+  thankYouEvent: ThankYouEvent | null;
   /** Register (RSVP) for an event as a member. Handles insert + email. */
   registerMemberTicket: (event: TicketActionEvent) => Promise<boolean>;
   /** Refresh the user's ticket set (e.g. after external changes) */
@@ -50,6 +53,7 @@ export function useTicketActions(): UseTicketActionsReturn {
   const [rsvpLoadingId, setRsvpLoadingId] = useState<string | null>(null);
   const [showThankYou, setShowThankYou] = useState(false);
   const [thankYouType, setThankYouType] = useState<'member' | 'guest'>('member');
+  const [thankYouEvent, setThankYouEvent] = useState<ThankYouEvent | null>(null);
 
   const p = profile as any;
 
@@ -154,6 +158,12 @@ export function useTicketActions(): UseTicketActionsReturn {
         // Optimistic update
         setUserTicketIds(prev => new Set([...prev, event.id]));
         setThankYouType('member');
+        setThankYouEvent({
+          title: event.title,
+          startTime: event.start_time,
+          endTime: event.end_time,
+          location: event.location_name || '',
+        });
         setShowThankYou(true);
 
         // Toast for business +1
@@ -166,6 +176,7 @@ export function useTicketActions(): UseTicketActionsReturn {
           const { data: sessionData } = await supabase.auth.getSession();
           const session = sessionData?.session;
           if (session) {
+            console.log('Sending RSVP confirmation email for event:', event.id, 'to:', session.user.email);
             const eventDate = new Date(event.start_time);
             const endDate = new Date(event.end_time);
             supabase.functions
@@ -175,17 +186,16 @@ export function useTicketActions(): UseTicketActionsReturn {
                   to: session.user.email,
                   data: {
                     name: p?.full_name || 'there',
-                    event_id: event.id,
-                    event_title: event.title,
-                    event_date: event.start_time,
+                    eventName: event.title,
                     eventDate: format(eventDate, 'EEEE, MMMM d, yyyy'),
                     eventTime: `${format(eventDate, 'h:mm a')} - ${format(endDate, 'h:mm a')}`,
-                    event_location: event.location_name || '',
-                    event_address: event.location_address || '',
                     eventLocation: event.location_name || 'TBA',
                     eventUrl: `${window.location.origin}/events/${event.id}`,
+                    startTimeIso: event.start_time,
+                    endTimeIso: event.end_time,
+                    calendarToken: p?.calendar_token ?? null,
+                    origin: window.location.origin,
                     ticket_id: insertedTicket?.id ?? null,
-                    calendar_token: p?.calendar_token ?? null,
                     plusOne: isBusinessMember,
                   },
                 },
@@ -261,6 +271,7 @@ export function useTicketActions(): UseTicketActionsReturn {
     showThankYou,
     setShowThankYou,
     thankYouType,
+    thankYouEvent,
     registerMemberTicket,
     refreshUserTickets,
     hasTicket,

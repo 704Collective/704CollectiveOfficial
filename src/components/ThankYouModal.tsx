@@ -5,17 +5,46 @@ import { useEffect } from 'react';
 
 type ThankYouType = 'new_member' | 'member' | 'guest';
 
+export interface ThankYouEvent {
+  title: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  description?: string;
+}
+
 interface ThankYouModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   type: ThankYouType;
-  event?: {
-    title: string;
-    description: string;
-    startTime: string;
-    endTime: string;
-    location: string;
-  };
+  event?: ThankYouEvent;
+}
+
+function toGCalTime(iso: string): string {
+  return iso.replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+}
+
+function downloadIcs(title: string, startTime: string, endTime: string, location: string) {
+  const fmt = (iso: string) => iso.replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//704 Collective//NONSGML v1.0//EN',
+    'BEGIN:VEVENT',
+    `DTSTART:${fmt(startTime)}`,
+    `DTEND:${fmt(endTime)}`,
+    `SUMMARY:${title}`,
+    `LOCATION:${location}`,
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n');
+  const blob = new Blob([ics], { type: 'text/calendar' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${title.replace(/\s+/g, '-')}.ics`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export function ThankYouModal({ open, onOpenChange, type, event }: ThankYouModalProps) {
@@ -48,6 +77,21 @@ export function ThankYouModal({ open, onOpenChange, type, event }: ThankYouModal
     color: primary ? '#000000' : 'rgba(255,255,255,0.6)',
   });
 
+  const outlineBtn: React.CSSProperties = {
+    flex: 1, padding: '10px 14px', borderRadius: '8px', fontSize: '0.8125rem',
+    fontWeight: 600, textAlign: 'center', cursor: 'pointer', transition: 'all 200ms ease',
+    textDecoration: 'none', border: '1px solid rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.7)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+  };
+
+  const gcalUrl = event
+    ? `https://calendar.google.com/calendar/render?action=TEMPLATE` +
+      `&text=${encodeURIComponent(event.title)}` +
+      `&dates=${toGCalTime(event.startTime)}/${toGCalTime(event.endTime)}` +
+      `&location=${encodeURIComponent(event.location)}`
+    : '#';
+
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       {/* Backdrop — intentionally not click-to-dismiss so modal persists until user makes a choice */}
@@ -75,6 +119,29 @@ export function ThankYouModal({ open, onOpenChange, type, event }: ThankYouModal
             <button onClick={() => nav('/events')} style={btn(false)}>Browse Upcoming Events</button>
           </>}
           {type === 'member' && <>
+            {event && (
+              <div style={{ marginBottom: '4px' }}>
+                <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Add to your calendar:</p>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <a
+                    href={gcalUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={outlineBtn}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+                    Google Calendar
+                  </a>
+                  <button
+                    onClick={() => downloadIcs(event.title, event.startTime, event.endTime, event.location)}
+                    style={outlineBtn as React.CSSProperties}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                    Apple / ICS
+                  </button>
+                </div>
+              </div>
+            )}
             <button onClick={() => nav('/events')} style={btn(true)}>Browse Other Events</button>
             <button onClick={() => nav('/dashboard')} style={btn(false)}>Go to Member Portal</button>
             <button onClick={() => onOpenChange(false)} style={{ ...btn(false), border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: '0.8125rem' }}>Close</button>

@@ -75,6 +75,7 @@ export default function BrowseEventsPage() {
     showThankYou,
     setShowThankYou,
     thankYouType,
+    thankYouEvent,
     registerMemberTicket,
   } = useTicketActions();
 
@@ -380,7 +381,7 @@ export default function BrowseEventsPage() {
         )}
       </main>
 
-      <ThankYouModal open={showThankYou} onOpenChange={setShowThankYou} type={thankYouType} />
+      <ThankYouModal open={showThankYou} onOpenChange={setShowThankYou} type={thankYouType} event={thankYouEvent ?? undefined} />
     </div>
   );
 }

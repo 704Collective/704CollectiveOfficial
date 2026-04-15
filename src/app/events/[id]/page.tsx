@@ -42,7 +42,7 @@ export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { user, profile, isActiveMember, isAdmin, isSuperAdmin, loading: authLoading } = useAuth();
-  const { hasTicket: checkHasTicket, rsvpLoadingId, showThankYou, setShowThankYou, thankYouType, registerMemberTicket, refreshUserTickets } = useTicketActions();
+  const { hasTicket: checkHasTicket, rsvpLoadingId, showThankYou, setShowThankYou, thankYouType, thankYouEvent, registerMemberTicket, refreshUserTickets } = useTicketActions();
 
   const [event, setEvent] = useState<Event | null>(null);
   usePageTitle(event ? event.title : 'Event Details');
@@ -347,7 +347,7 @@ export default function EventDetail() {
         )}
         {!hasTicket && !waitlistPosition && <div className="mobile-spacer" style={{ height: '80px', display: 'none' }} />}
 
-        <ThankYouModal open={showThankYou} onOpenChange={setShowThankYou} type={thankYouType} />
+        <ThankYouModal open={showThankYou} onOpenChange={setShowThankYou} type={thankYouType} event={thankYouEvent ?? undefined} />
         </MarketingPageRoot>
       </div>
       <Footer />

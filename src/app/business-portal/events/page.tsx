@@ -68,7 +68,7 @@ export default function BusinessEventsPage() {
   const { user } = useAuth();
   const {
     userTicketIds, rsvpLoadingId, showThankYou, setShowThankYou,
-    thankYouType, registerMemberTicket,
+    thankYouType, thankYouEvent, registerMemberTicket,
   } = useTicketActions();
 
   const [view, setView] = useState<ViewMode>('grid');
@@ -445,6 +445,7 @@ export default function BusinessEventsPage() {
         open={showThankYou}
         onOpenChange={setShowThankYou}
         type={thankYouType}
+        event={thankYouEvent ?? undefined}
       />
     </>
   );
