@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AlertTriangle, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +38,7 @@ const CANCEL_REASONS = [
 ] as const;
 
 export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscription, membershipOverride = false }: MembershipDangerZoneProps) {
+  const router = useRouter();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [step, setStep] = useState<SurveyStep>('confirm');
   const [cancelConfirmation, setCancelConfirmation] = useState('');
@@ -93,7 +95,6 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
         const { data, error } = await supabase.functions.invoke('cancel-subscription');
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
-        toast.success('Membership cancelled. You will retain access until the end of your billing period.');
       } else {
         // Admin-override membership — cancel by updating profile directly (no Stripe involved)
         const { error } = await supabase
@@ -105,10 +106,9 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
           })
           .eq('id', userId);
         if (error) throw error;
-        toast.success('Membership cancelled. Your access has been removed.');
       }
 
-      closeDialog();
+      router.push('/membership-ended');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to cancel membership';
       toast.error(msg);

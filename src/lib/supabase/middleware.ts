@@ -211,17 +211,22 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    // ── Subscription gate for dashboard ──────────────────────────────────────
-    // Non-members (social/business applicants) land on NonMemberDashboard — let them through
-    if (
-      (path.startsWith('/dashboard') || path.startsWith('/partner-portal')) &&
-      !isActive &&
-      !isAdmin &&
-      !isNonMember &&
-      !isPartner
-    ) {
+    // ── Subscription gate for member-only routes ─────────────────────────────
+    // Non-members (social/business applicants) land on NonMemberDashboard — let through.
+    // Canceled/lapsed members → /membership-ended so they can rejoin.
+    // Everyone else without a valid membership → /signup.
+    const isMemberOnlyPath =
+      path.startsWith('/dashboard') ||
+      path.startsWith('/partner-portal') ||
+      path.startsWith('/business-portal') ||
+      path.startsWith('/settings');
+
+    if (isMemberOnlyPath && !isActive && !isAdmin && !isNonMember && !isPartner) {
+      const isCanceled =
+        profile?.subscription_status === 'canceled' ||
+        profile?.subscription_status === 'cancelled';
       const url = request.nextUrl.clone();
-      url.pathname = '/signup';
+      url.pathname = isCanceled ? '/membership-ended' : '/signup';
       return NextResponse.redirect(url);
     }
   }
