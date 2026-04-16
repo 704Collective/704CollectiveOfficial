@@ -31,10 +31,37 @@ export default function AuthConfirmPage() {
           return;
         }
 
+        if (qType === 'signup') {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: 'signup',
+          });
+          if (error) {
+            router.replace('/login?error=invalid_link');
+            return;
+          }
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) {
+            router.replace('/login?error=invalid_link');
+            return;
+          }
+          // New signups go to /welcome for the onboarding experience.
+          // If the profile already exists and has an active membership, route
+          // them to their normal destination instead.
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role, member_type, subscription_status, membership_override')
+            .eq('id', user.id)
+            .maybeSingle();
+          const destination = profile ? postAuthDestination(profile) : '/welcome';
+          router.replace(destination);
+          return;
+        }
+
         // Magic link or other email OTP
         const { error } = await supabase.auth.verifyOtp({
           token_hash: tokenHash,
-          type: qType as 'magiclink' | 'signup' | 'recovery' | 'invite' | 'email_change' | 'email',
+          type: qType as 'magiclink' | 'invite' | 'email_change' | 'email',
         });
         if (error) {
           router.replace('/login?error=invalid_link');
@@ -81,6 +108,26 @@ export default function AuthConfirmPage() {
           return;
         }
         router.replace('/reset-password');
+        return;
+      }
+
+      if (hType === 'signup') {
+        const { data, error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (error || !data.session) {
+          router.replace('/login?error=invalid_link');
+          return;
+        }
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role, member_type, subscription_status, membership_override')
+          .eq('id', data.session.user.id)
+          .maybeSingle();
+        // New signups land on /welcome; existing profiles follow normal routing.
+        const destination = profile ? postAuthDestination(profile) : '/welcome';
+        router.replace(destination);
         return;
       }
 
