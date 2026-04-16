@@ -213,21 +213,37 @@ export async function updateSession(request: NextRequest) {
 
     // ── Subscription gate for member-only routes ─────────────────────────────
     // Non-members (social/business applicants) land on NonMemberDashboard — let through.
-    // Canceled/lapsed members → /membership-ended so they can rejoin.
+    // Canceled members are allowed into /dashboard (they see NonMemberDashboard there),
+    // but blocked from /dashboard/settings and other portals.
     // Everyone else without a valid membership → /signup.
-    const isMemberOnlyPath =
-      path.startsWith('/dashboard') ||
+    const isCanceled =
+      profile?.subscription_status === 'canceled' ||
+      profile?.subscription_status === 'cancelled';
+
+    // Routes that require an active membership even for canceled members.
+    const isHardGatedPath =
+      path.startsWith('/dashboard/settings') ||
       path.startsWith('/partner-portal') ||
       path.startsWith('/business-portal') ||
       path.startsWith('/settings');
 
-    if (isMemberOnlyPath && !isActive && !isAdmin && !isNonMember && !isPartner) {
-      const isCanceled =
-        profile?.subscription_status === 'canceled' ||
-        profile?.subscription_status === 'cancelled';
-      const url = request.nextUrl.clone();
-      url.pathname = isCanceled ? '/membership-ended' : '/signup';
-      return NextResponse.redirect(url);
+    // /dashboard (root and sub-pages except settings) — canceled members are allowed through.
+    const isDashboardOnly =
+      path.startsWith('/dashboard') && !path.startsWith('/dashboard/settings');
+
+    if (!isActive && !isAdmin && !isNonMember && !isPartner) {
+      if (isHardGatedPath) {
+        const url = request.nextUrl.clone();
+        url.pathname = isCanceled ? '/membership-ended' : '/signup';
+        return NextResponse.redirect(url);
+      }
+      if (isDashboardOnly && !isCanceled) {
+        // Non-canceled, non-active users without a valid membership → signup.
+        const url = request.nextUrl.clone();
+        url.pathname = '/signup';
+        return NextResponse.redirect(url);
+      }
+      // Canceled members hitting /dashboard are let through — page shows NonMemberDashboard.
     }
   }
 

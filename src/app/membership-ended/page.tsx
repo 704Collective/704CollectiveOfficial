@@ -123,6 +123,19 @@ export default function MembershipEndedPage() {
         >
           Contact us
         </Link>
+
+        <Link
+          href="/"
+          style={{
+            display: 'block',
+            fontSize: '0.875rem',
+            color: 'rgba(255,255,255,0.25)',
+            textDecoration: 'none',
+            padding: '8px',
+          }}
+        >
+          Go to Homepage
+        </Link>
       </div>
     </div>
   );

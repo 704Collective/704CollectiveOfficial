@@ -317,7 +317,12 @@ export default function Dashboard() {
     p.member_type === 'business_non_member' ||
     (p.member_type === 'non_member' && !isActiveMember);
 
-  if (isNonMember) {
+  // ── Canceled member view ─────────────────────────────────────────
+  const isCanceledMember =
+    (p.subscription_status === 'canceled' || p.subscription_status === 'cancelled') &&
+    !p.membership_override;
+
+  if (isNonMember || isCanceledMember) {
     return (
       <>
         <Header />
@@ -326,7 +331,8 @@ export default function Dashboard() {
             id: user.id,
             email: p.email,
             full_name: p.full_name,
-            member_type: p.member_type,
+            // Use 'non_member' so the component shows the rejoin CTA
+            member_type: isCanceledMember ? 'non_member' : p.member_type,
             application_status: p.application_status,
           }}
           application={application}
