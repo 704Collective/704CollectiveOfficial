@@ -223,6 +223,7 @@ export function CheckInFullScreen({
     }
 
     try {
+      // ── Legacy guest_passes table (old GP-XXXXXX format) ──────────────────
       if (scannedText.startsWith("GP-")) {
         if (!isOnline) {
           toast.error('Cannot verify guest passes while offline');
@@ -281,6 +282,60 @@ export function CheckInFullScreen({
         toast.success(`Guest pass valid! Welcome ${pass.guest_name}, invited by ${memberName}`);
         addRecentCheckIn(`${pass.guest_name} (Guest)`, false, false);
         return;
+      }
+
+      // ── New guest pass flow — UUID guest_pass_code stored in ticket metadata ─
+      // Try matching a guest_pass ticket by its metadata.guest_pass_code before
+      // falling through to the regular member user-ID lookup.
+      if (!scannedText.includes('@') && scannedText.length >= 32) {
+        if (!isOnline) {
+          toast.error('Cannot verify guest passes while offline');
+          return;
+        }
+
+        const { data: guestTicket } = await supabase
+          .from('tickets')
+          .select('id, guest_name, guest_email, status, checked_in_at, metadata')
+          .eq('source', 'guest_pass')
+          .eq('event_id', eventId)
+          .filter('metadata->>guest_pass_code', 'eq', scannedText)
+          .maybeSingle();
+
+        if (guestTicket) {
+          if (guestTicket.checked_in_at) {
+            toast.info(`${guestTicket.guest_name || 'Guest'} is already checked in`);
+            return;
+          }
+
+          const { error: ciError } = await supabase
+            .from('tickets')
+            .update({ checked_in_at: new Date().toISOString(), checked_in_by: adminId })
+            .eq('id', guestTicket.id);
+
+          if (ciError) {
+            toast.error('Failed to check in guest');
+            return;
+          }
+
+          // Look up inviter name for the success message
+          const inviterUserId = (guestTicket.metadata as Record<string, unknown> | null)?.inviter_user_id as string | undefined;
+          let inviterName = 'a member';
+          if (inviterUserId) {
+            const { data: inviter } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', inviterUserId)
+              .is('deleted_at', null)
+              .single();
+            if (inviter?.full_name) inviterName = inviter.full_name;
+          }
+
+          const guestDisplayName = guestTicket.guest_name || 'Guest';
+          toast.success(`Guest pass valid! Welcome ${guestDisplayName}, invited by ${inviterName}`);
+          addRecentCheckIn(`${guestDisplayName} (Guest)`, false, false);
+          fetchAttendees();
+          return;
+        }
       }
 
       const scannedUserId = scannedText;

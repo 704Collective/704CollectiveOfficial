@@ -102,6 +102,77 @@ export function useGuestPasses(userId: string) {
   });
 }
 
+// ─── Guest pass tickets (new flow — sourced from tickets table) ───────────────
+
+export interface GuestPassTicket {
+  id: string;
+  guest_email: string | null;
+  guest_name: string | null;
+  status: string;
+  checked_in_at: string | null;
+  created_at: string;
+  event_id: string | null;
+  metadata: Record<string, unknown> | null;
+}
+
+export function useGuestPassTickets(userId: string) {
+  return useQuery({
+    queryKey: ['guestPassTickets', userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tickets')
+        .select('id, guest_email, guest_name, status, checked_in_at, created_at, event_id, metadata')
+        .eq('source', 'guest_pass')
+        .filter('metadata->>inviter_user_id', 'eq', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (data ?? []) as GuestPassTicket[];
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: !!userId,
+  });
+}
+
+// ─── Member's RSVPd upcoming events (for guest pass invite dropdown) ─────────
+
+export interface RsvpdEvent {
+  id: string;
+  title: string;
+  start_time: string;
+  location_name: string | null;
+}
+
+export function useMyRsvpdEvents(userId: string) {
+  return useQuery({
+    queryKey: ['myRsvpdEvents', userId],
+    queryFn: async () => {
+      const { data: tickets, error: ticketErr } = await supabase
+        .from('tickets')
+        .select('event_id')
+        .eq('user_id', userId)
+        .in('status', ['confirmed', 'rsvp']);
+
+      if (ticketErr || !tickets?.length) return [] as RsvpdEvent[];
+
+      const eventIds = tickets.map(t => t.event_id).filter(Boolean) as string[];
+
+      const { data, error } = await supabase
+        .from('events')
+        .select('id, title, start_time, location_name')
+        .in('id', eventIds)
+        .gte('start_time', new Date().toISOString())
+        .eq('is_published', true)
+        .order('start_time', { ascending: true });
+
+      if (error) throw error;
+      return (data ?? []) as RsvpdEvent[];
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: !!userId,
+  });
+}
+
 // ─── Upcoming events (for guest pass dropdown) ───────────────────────────────
 
 export function useUpcomingEvents() {

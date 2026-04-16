@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Calendar, Gift, Mail, DollarSign } from 'lucide-react';
+import { ArrowLeft, Calendar, Gift, Mail, DollarSign, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { parseContactRouteId } from '@/lib/admin/unified-contacts';
@@ -13,6 +13,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
+
+interface GuestPassEventRow {
+  id: string;
+  guest_pass_code: string;
+  event_id: string | null;
+  inviter_user_id: string | null;
+  created_at: string;
+  eventTitle?: string;
+  eventDate?: string;
+  inviterName?: string;
+}
 
 function initials(name: string | null, email: string) {
   const s = (name || email).trim();
@@ -42,6 +53,7 @@ export default function AdminContactDetailPage() {
   const [notes, setNotes] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
   const [rsvpCount, setRsvpCount] = useState(0);
+  const [guestPassEvents, setGuestPassEvents] = useState<GuestPassEventRow[]>([]);
 
   const load = useCallback(async () => {
     if (!parsed) {
@@ -88,6 +100,57 @@ export default function AdminContactDetailPage() {
         setRsvpCount(0);
         setPayments([]);
         setEmails([]);
+
+        // Load guest pass event lead sources for non-member contacts
+        if (parsed.id) {
+          try {
+            const { data: gpeRows } = await (supabase as any)
+              .from('guest_pass_events')
+              .select('id, guest_pass_code, event_id, inviter_user_id, created_at')
+              .eq('contact_id', parsed.id)
+              .order('created_at', { ascending: false });
+
+            if (gpeRows && gpeRows.length > 0) {
+              // Enrich with event + inviter names
+              const enriched = await Promise.all(
+                (gpeRows as GuestPassEventRow[]).map(async (row) => {
+                  let eventTitle = '—';
+                  let eventDate = '';
+                  let inviterName = '—';
+
+                  if (row.event_id) {
+                    const { data: ev } = await supabase
+                      .from('events')
+                      .select('title, start_time')
+                      .eq('id', row.event_id)
+                      .single();
+                    if (ev) {
+                      eventTitle = ev.title;
+                      eventDate = format(new Date(ev.start_time), 'MMM d, yyyy');
+                    }
+                  }
+
+                  if (row.inviter_user_id) {
+                    const { data: inv } = await supabase
+                      .from('profiles')
+                      .select('full_name')
+                      .eq('id', row.inviter_user_id)
+                      .is('deleted_at', null)
+                      .single();
+                    if (inv?.full_name) inviterName = inv.full_name;
+                  }
+
+                  return { ...row, eventTitle, eventDate, inviterName };
+                })
+              );
+              setGuestPassEvents(enriched);
+            } else {
+              setGuestPassEvents([]);
+            }
+          } catch {
+            setGuestPassEvents([]);
+          }
+        }
       }
     } catch (e) {
       console.error(e);
@@ -231,19 +294,53 @@ export default function AdminContactDetailPage() {
                 <Card>
                   <CardContent className="p-5 space-y-2 text-sm">
                     <p className="text-xs uppercase tracking-wider text-muted-foreground/70 mb-2">Portal Status</p>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Account Created</span><span className="font-medium">Yes</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Account Created</span><span className="font-medium">{isMember ? 'Yes' : 'No'}</span></div>
                     <div className="flex justify-between gap-2"><span className="text-muted-foreground">Last Login</span><span className="font-medium">—</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Source</span><span className="font-medium">{(row as { source?: string }).source || '—'}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Source</span><span className="font-medium capitalize">{(row as { source?: string }).source?.replace(/_/g, ' ') || '—'}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Source Detail</span><span className="font-medium capitalize">{(row as { source_detail?: string }).source_detail?.replace(/_/g, ' ') || '—'}</span></div>
                     <div className="flex justify-between gap-2"><span className="text-muted-foreground">Created</span><span className="font-medium">{(row as { created_at?: string }).created_at ? format(new Date((row as { created_at?: string }).created_at!), 'MMM d, yyyy') : '—'}</span></div>
                   </CardContent>
                 </Card>
+
+                {/* Lead Sources — guest pass event tracking */}
+                {(!isMember && guestPassEvents.length > 0) && (
+                  <Card className="md:col-span-2">
+                    <CardContent className="p-5">
+                      <div className="flex justify-between items-start mb-3">
+                        <p className="text-xs uppercase tracking-wider text-muted-foreground/70">Lead Sources</p>
+                        <MapPin className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                      <div className="space-y-3">
+                        {guestPassEvents.map((gpe) => (
+                          <div key={gpe.id} className="flex flex-col gap-0.5 text-sm border-b border-border last:border-0 pb-3 last:pb-0">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium">{gpe.eventTitle}</span>
+                              <span className="text-xs text-muted-foreground">{gpe.eventDate}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Gift className="w-3 h-3 shrink-0" />
+                              <span>Invited by <span className="text-foreground font-medium">{gpe.inviterName}</span></span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span>Source: guest_pass · Pass: <span className="font-mono">{gpe.guest_pass_code.slice(0, 8)}…</span></span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 <Card>
                   <CardContent className="p-5">
                     <div className="flex justify-between items-start mb-3">
                       <p className="text-xs uppercase tracking-wider text-muted-foreground/70">Guest Passes</p>
                       <Gift className="w-4 h-4 text-muted-foreground" />
                     </div>
-                    <p className="text-lg font-semibold">—</p>
+                    <p className="text-lg font-semibold">{guestPassEvents.length > 0 ? guestPassEvents.length : '—'}</p>
+                    {guestPassEvents.length > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">event{guestPassEvents.length !== 1 ? 's' : ''} sourced via guest pass</p>
+                    )}
                   </CardContent>
                 </Card>
               </div>

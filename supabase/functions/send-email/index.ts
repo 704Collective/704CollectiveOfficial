@@ -225,51 +225,72 @@ ${ctaButton("View Event Details", data.eventUrl)}
 
 function guestPassTemplate(data: {
   guestName: string;
-  memberName: string;
-  eventName?: string | null;
-  eventDate?: string | null;
-  eventTime?: string | null;
-  eventLocation?: string | null;
-  passCode: string;
-  expiresDate: string;
+  eventTitle: string;
+  eventDate: string;
+  eventTime: string;
+  eventLocation: string;
+  inviterName: string;
+  personalMessage?: string | null;
+  qrCodeUrl: string;
+  guestPassCode: string;
   origin?: string;
+  // Legacy fields (backward compat — ignored in new flow)
+  memberName?: string;
+  eventName?: string | null;
+  passCode?: string;
+  expiresDate?: string;
 }): { subject: string; html: string } {
   const guestName = data.guestName || "there";
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.passCode)}`;
+  const inviterName = data.inviterName || data.memberName || "A member";
+  const eventTitle = data.eventTitle || data.eventName || "an upcoming event";
+  const qrUrl = data.qrCodeUrl ||
+    (data.passCode ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(data.passCode)}` : "");
+  const passCode = data.guestPassCode || data.passCode || "";
+  const base = data.origin || "https://704collective.com";
 
-  let eventBlock = `<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Use this pass at any upcoming 704 Collective event this month.</p>`;
-  if (data.eventName) {
-    eventBlock = `
-<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">You're invited to:</p>
-<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:${BRAND.color};border-radius:8px;border:1px solid ${BRAND.border};">
-<tr><td style="padding:20px 24px;">
-<p style="margin:0 0 8px;font-size:17px;font-weight:600;color:${BRAND.text};">${data.eventName}</p>
-<table role="presentation" cellpadding="0" cellspacing="0">
-${data.eventDate ? `<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">📅&nbsp;&nbsp;${data.eventDate}</td></tr>` : ""}
-${data.eventTime ? `<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">⏰&nbsp;&nbsp;${data.eventTime}</td></tr>` : ""}
-${data.eventLocation ? `<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">📍&nbsp;&nbsp;${data.eventLocation}</td></tr>` : ""}
-</table>
+  const personalMessageBlock = data.personalMessage
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;">
+<tr><td style="padding:16px 20px;background-color:${BRAND.color};border-left:3px solid ${BRAND.accent};border-radius:0 6px 6px 0;">
+<p style="margin:0;font-size:14px;font-style:italic;color:${BRAND.textSecondary};">"${escapeHtml(data.personalMessage)}"</p>
+<p style="margin:8px 0 0;font-size:13px;color:${BRAND.textMuted};">— ${escapeHtml(inviterName)}</p>
 </td></tr>
-</table>`;
-  }
+</table>`
+    : "";
 
   return {
-    subject: `${data.memberName} invited you to 704 Collective!`,
+    subject: `You've been invited to ${eventTitle} by ${inviterName}`,
     html: baseLayout(`
-<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${guestName}!</p>
-<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};"><strong>${data.memberName}</strong> invited you to check out 704 Collective — Charlotte's community for young professionals!</p>
-${eventBlock}
-<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;">
-<tr><td align="center" style="padding:24px 0;">
-<img src="${qrUrl}" alt="Guest Pass QR Code" width="200" height="200" style="display:block;border-radius:8px;" />
-</td></tr>
-<tr><td align="center">
-<p style="margin:0;font-size:18px;font-weight:600;color:${BRAND.text};letter-spacing:2px;">${data.passCode}</p>
-<p style="margin:8px 0 0;font-size:13px;color:${BRAND.textMuted};">Show this QR code or pass code at check-in</p>
+<p style="margin:0 0 8px;font-size:22px;font-weight:700;color:${BRAND.accent};text-align:center;">You're Invited!</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};text-align:center;">
+  <strong style="color:${BRAND.text};">${escapeHtml(inviterName)}</strong> has invited you to join them at
+  <strong style="color:${BRAND.text};">${escapeHtml(eventTitle)}</strong>
+</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:${BRAND.color};border-radius:8px;border:1px solid ${BRAND.border};">
+<tr><td style="padding:20px 24px;">
+<p style="margin:0 0 12px;font-size:17px;font-weight:600;color:${BRAND.text};">${escapeHtml(eventTitle)}</p>
+<table role="presentation" cellpadding="0" cellspacing="0">
+${data.eventDate ? `<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">📅&nbsp;&nbsp;${escapeHtml(data.eventDate)}</td></tr>` : ""}
+${data.eventTime ? `<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">⏰&nbsp;&nbsp;${escapeHtml(data.eventTime)}</td></tr>` : ""}
+${data.eventLocation ? `<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">📍&nbsp;&nbsp;${escapeHtml(data.eventLocation)}</td></tr>` : ""}
+</table>
 </td></tr>
 </table>
-<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">This pass expires ${data.expiresDate}. Questions? Contact <a href="mailto:hello@704collective.com" style="color:${BRAND.accent};">hello@704collective.com</a></p>
-`, data.origin),
+${personalMessageBlock}
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 8px;">
+<tr><td align="center">
+<p style="margin:0 0 16px;font-size:14px;font-weight:600;color:${BRAND.text};">Show this QR code at the door for entry</p>
+${qrUrl ? `<img src="${qrUrl}" alt="Guest Pass QR Code" width="220" height="220" style="display:block;border-radius:8px;margin:0 auto;" />` : ""}
+</td></tr>
+<tr><td align="center" style="padding:16px 0 8px;">
+<p style="margin:0 0 4px;font-size:13px;color:${BRAND.textMuted};">Pass Code</p>
+<p style="margin:0;font-size:16px;font-weight:700;color:${BRAND.text};font-family:monospace;letter-spacing:2px;">${escapeHtml(passCode)}</p>
+</td></tr>
+</table>
+${ctaButton("Learn More About 704 Collective", base)}
+<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};text-align:center;">
+Questions? Contact <a href="mailto:hello@704collective.com" style="color:${BRAND.accent};">hello@704collective.com</a>
+</p>
+`, base),
   };
 }
 
@@ -782,9 +803,20 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
       return adminInviteTemplate(data as { name: string; setupLink?: string | null; loginUrl?: string });
     case "guest-pass":
       return guestPassTemplate(data as {
-        guestName: string; memberName: string; eventName?: string | null;
-        eventDate?: string | null; eventTime?: string | null; eventLocation?: string | null;
-        passCode: string; expiresDate: string;
+        guestName: string;
+        eventTitle: string;
+        eventDate: string;
+        eventTime: string;
+        eventLocation: string;
+        inviterName: string;
+        personalMessage?: string | null;
+        qrCodeUrl: string;
+        guestPassCode: string;
+        origin?: string;
+        memberName?: string;
+        eventName?: string | null;
+        passCode?: string;
+        expiresDate?: string;
       });
     case "new-message":
       return newMessageTemplate(data as { name: string; senderName: string; messagesUrl: string });
