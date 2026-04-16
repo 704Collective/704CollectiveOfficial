@@ -95,21 +95,18 @@ export async function GET(request: NextRequest) {
 
     if (!allowed) {
       await supabase.auth.signOut();
-      const noAccessRedirect = NextResponse.redirect(new URL('/signup', origin));
+      const isCanceled =
+        profile?.subscription_status === 'canceled' ||
+        profile?.subscription_status === 'cancelled';
+      const noAccessPath = isCanceled ? '/membership-ended' : '/signup';
+      const noAccessRedirect = NextResponse.redirect(new URL(noAccessPath, origin));
       pendingCookies.forEach(({ name, value, options }) => {
         noAccessRedirect.cookies.set(name, value, options as Parameters<typeof noAccessRedirect.cookies.set>[2]);
       });
       return noAccessRedirect;
     }
 
-    let destination = postAuthDestination(profile);
-    if (source === 'login' && destination === '/signup') {
-      destination = '/signup?error=no_account';
-    }
-    if (source === 'magic' && destination === '/signup') {
-      destination = '/login?error=no_account';
-    }
-
+    const destination = postAuthDestination(profile);
     const redirectResponse = NextResponse.redirect(new URL(destination, origin));
     pendingCookies.forEach(({ name, value, options }) => {
       redirectResponse.cookies.set(name, value, options as Parameters<typeof redirectResponse.cookies.set>[2]);
@@ -173,21 +170,18 @@ export async function GET(request: NextRequest) {
     await supabase.auth.signOut();
     // pendingCookies now contains the sign-out clear operations after the
     // session-set operations, so applying them in order wipes the session.
-    const noAccessRedirect = NextResponse.redirect(new URL('/signup', origin));
+    const isCanceled =
+      profile?.subscription_status === 'canceled' ||
+      profile?.subscription_status === 'cancelled';
+    const noAccessPath = isCanceled ? '/membership-ended' : '/signup';
+    const noAccessRedirect = NextResponse.redirect(new URL(noAccessPath, origin));
     pendingCookies.forEach(({ name, value, options }) => {
       noAccessRedirect.cookies.set(name, value, options as Parameters<typeof noAccessRedirect.cookies.set>[2]);
     });
     return noAccessRedirect;
   }
 
-  let destination = postAuthDestination(profile);
-  if (source === 'login' && destination === '/signup') {
-    destination = '/signup?error=no_account';
-  }
-  if (source === 'magic' && destination === '/signup') {
-    destination = '/login?error=no_account';
-  }
-
+  const destination = postAuthDestination(profile);
   const redirectResponse = NextResponse.redirect(new URL(destination, origin));
 
   // Forward the session cookies onto the redirect response so the browser
