@@ -153,7 +153,7 @@ export default function SettingsPage() {
 
       <DashboardNav />
 
-      <main id="main-content" className="container py-8 max-w-2xl space-y-6">
+      <main id="main-content" className="max-w-2xl mx-auto px-4 py-8 space-y-6">
         <h1 className="text-2xl font-semibold">Account Settings</h1>
 
         {/* Profile */}
@@ -331,13 +331,14 @@ export default function SettingsPage() {
           )}
         </section>
 
-        {/* Danger Zone */}
-        {isActiveMember && hasStripeSubscription && user && (
+        {/* Danger Zone — shown for Stripe subscribers AND override members */}
+        {isActiveMember && user && (hasStripeSubscription || !!p?.membership_override) && (
           <section className="card-elevated p-6 border-destructive/30 bg-destructive/5">
             <MembershipDangerZone
               userId={user.id}
               isActiveMember={isActiveMember}
               hasStripeSubscription={hasStripeSubscription}
+              membershipOverride={!!p?.membership_override}
             />
           </section>
         )}

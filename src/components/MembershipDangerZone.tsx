@@ -21,6 +21,8 @@ interface MembershipDangerZoneProps {
   userId: string;
   isActiveMember: boolean;
   hasStripeSubscription: boolean;
+  /** True when the member's access is granted via admin override (no real Stripe sub). */
+  membershipOverride?: boolean;
 }
 
 type SurveyStep = 'confirm' | 'survey';
@@ -34,7 +36,7 @@ const CANCEL_REASONS = [
   'Other',
 ] as const;
 
-export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscription }: MembershipDangerZoneProps) {
+export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscription, membershipOverride = false }: MembershipDangerZoneProps) {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [step, setStep] = useState<SurveyStep>('confirm');
   const [cancelConfirmation, setCancelConfirmation] = useState('');
@@ -86,11 +88,26 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
     try {
       await saveSurvey(withSurvey);
 
-      const { data, error } = await supabase.functions.invoke('cancel-subscription');
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (hasStripeSubscription && !membershipOverride) {
+        // Real Stripe subscription — cancel via edge function
+        const { data, error } = await supabase.functions.invoke('cancel-subscription');
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        toast.success('Membership cancelled. You will retain access until the end of your billing period.');
+      } else {
+        // Admin-override membership — cancel by updating profile directly (no Stripe involved)
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            subscription_status: 'canceled',
+            membership_override: false,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', userId);
+        if (error) throw error;
+        toast.success('Membership cancelled. Your access has been removed.');
+      }
 
-      toast.success('Membership cancelled. You will retain access until the end of your billing period.');
       closeDialog();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to cancel membership';
@@ -111,7 +128,8 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
   const handleSurveySubmit = () => executeCancellation(true);
   const handleSkipSurvey   = () => executeCancellation(false);
 
-  if (!isActiveMember || !hasStripeSubscription) return null;
+  // Show for active Stripe subscribers OR admin-override members
+  if (!isActiveMember || (!hasStripeSubscription && !membershipOverride)) return null;
 
   return (
     <div className="space-y-4">
