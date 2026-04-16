@@ -265,13 +265,13 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
               <DialogFooter className="flex-col sm:flex-row gap-2">
                 <Button variant="outline" onClick={handleSkipSurvey} disabled={loading} className="w-full sm:w-auto">
                   {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                  Skip &amp; Cancel
+                  Skip & Cancel
                 </Button>
                 <Button variant="destructive" onClick={handleSurveySubmit} disabled={loading} className="w-full sm:w-auto">
                   {loading ? (
                     <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Cancelling…</>
                   ) : (
-                    'Submit &amp; Cancel'
+                    'Submit & Cancel'
                   )}
                 </Button>
               </DialogFooter>
