@@ -209,6 +209,13 @@ export default function Dashboard() {
   const [suggestModalOpen, setSuggestModalOpen] = useState(false);
   const openSuggestFromQuery = useCallback(() => setSuggestModalOpen(true), []);
 
+  // Re-fetch profile on every mount so that membership status changes (e.g.
+  // cancellation) are reflected immediately without a manual page refresh.
+  useEffect(() => {
+    refreshProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally once on mount
+  }, []);
+
   // Self-healing fallback: wait 800 ms then check whether a session exists but
   // the profile never loaded. This catches the case where SIGNED_IN was
   // deduplicated across the OAuth callback → dashboard redirect and the
