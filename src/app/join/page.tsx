@@ -74,6 +74,9 @@ function JoinInner() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError]   = useState<string | null>(null);
 
+  // Tier picker Social card loading state
+  const [socialLoading, setSocialLoading] = useState(false);
+
   // Only redirect away if the user already has an active membership.
   // Non-members, canceled members, and new signups should stay on /join.
   useEffect(() => {
@@ -135,6 +138,32 @@ function JoinInner() {
       const msg = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
       setFormError(msg);
       setSubmitting(false);
+    }
+  };
+
+  // Logged-in non-members bypass the form and go straight to Stripe.
+  // Everyone else lands on /join?plan=social to fill in their details first.
+  const handleSocialClick = async () => {
+    if (user && !isActiveMember) {
+      setSocialLoading(true);
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData?.session?.access_token;
+        const { data, error } = await supabase.functions.invoke('create-checkout', {
+          body: { email: user.email },
+          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        });
+        if (error) throw error;
+        const url = (data as { url?: string })?.url;
+        if (!url) throw new Error('No checkout URL returned');
+        window.location.href = url;
+      } catch {
+        router.push('/join?plan=social');
+      } finally {
+        setSocialLoading(false);
+      }
+    } else {
+      router.push('/join?plan=social');
     }
   };
 
@@ -357,22 +386,31 @@ function JoinInner() {
                     </p>
                     <button
                       type="button"
-                      onClick={() => router.push('/join?plan=social')}
+                      onClick={handleSocialClick}
+                      disabled={socialLoading}
                       style={{
                         width: '100%',
                         padding: '12px 24px',
-                        backgroundColor: '#C6A664',
+                        backgroundColor: socialLoading ? 'rgba(198,166,100,0.6)' : '#C6A664',
                         color: '#1A1A1A',
                         borderRadius: '10px',
                         fontSize: '0.9375rem',
                         fontWeight: 700,
                         border: 'none',
-                        cursor: 'pointer',
+                        cursor: socialLoading ? 'not-allowed' : 'pointer',
                         letterSpacing: '0.01em',
                         transition: 'all 200ms ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
                       }}
                     >
-                      Get Started
+                      {socialLoading ? (
+                        <><Loader2 style={{ width: '15px', height: '15px', animation: 'spin 1s linear infinite' }} /> Redirecting...</>
+                      ) : (
+                        'Get Started'
+                      )}
                     </button>
                   </div>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { sendBusinessApplicationSubmittedEmails } from '@/app/actions/transactionalEmails';
 import { toast } from 'sonner';
 import { Loader2, ChevronRight } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 type Step = 'account' | 'verify' | 'application' | 'done';
 
@@ -59,6 +60,7 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
 
 export default function BusinessApplicationPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [step, setStep] = useState<Step>('account');
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<FormData>(INITIAL_FORM);
@@ -67,6 +69,42 @@ export default function BusinessApplicationPage() {
   const set = (key: keyof FormData) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => setForm(prev => ({ ...prev, [key]: e.target.value }));
+
+  // If the user is already logged in, skip account creation and pre-fill the form.
+  useEffect(() => {
+    if (authLoading || !user || step !== 'account') return;
+
+    async function prefillFromProfile() {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, email, phone')
+        .eq('id', user!.id)
+        .maybeSingle();
+
+      if (profile) {
+        const nameParts = (profile.full_name ?? '').trim().split(' ');
+        const firstName = nameParts[0] ?? '';
+        const lastName = nameParts.slice(1).join(' ');
+        setForm(prev => ({
+          ...prev,
+          firstName,
+          lastName,
+          email: profile.email ?? user!.email ?? '',
+          phone: profile.phone ?? '',
+        }));
+      } else {
+        setForm(prev => ({
+          ...prev,
+          email: user!.email ?? '',
+        }));
+      }
+
+      setUserId(user!.id);
+      setStep('application');
+    }
+
+    prefillFromProfile();
+  }, [authLoading, user, step]);
 
   // ── Step 1: Create account ──────────────────────────────────────
   const handleCreateAccount = async (e: React.FormEvent) => {
