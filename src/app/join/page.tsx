@@ -59,7 +59,7 @@ function formatPhone(raw: string): string {
 
 export default function Join() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, isActiveMember, loading: authLoading } = useAuth();
   usePageTitle("Join 704 Collective - Charlotte's Young Professionals Community");
   const [events, setEvents] = useState<Event[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
@@ -72,12 +72,13 @@ export default function Join() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError]   = useState<string | null>(null);
 
-  // If already an active member, redirect to dashboard
+  // Only redirect away if the user already has an active membership.
+  // Non-members, canceled members, and new signups should stay on /join.
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!authLoading && user && isActiveMember) {
       router.push('/dashboard');
     }
-  }, [authLoading, user, router]);
+  }, [authLoading, user, isActiveMember, router]);
 
   useEffect(() => {
     async function fetchEvents() {
