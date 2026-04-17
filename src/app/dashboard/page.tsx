@@ -413,10 +413,10 @@ export default function Dashboard() {
               </p>
             </div>
             <Button variant="hero" asChild>
-              <a href="https://buy.stripe.com/704collective" target="_blank" rel="noopener noreferrer">
+              <Link href="/join">
                 <Crown className="w-4 h-4 mr-2" />
                 Reactivate Membership
-              </a>
+              </Link>
             </Button>
           </div>
         )}

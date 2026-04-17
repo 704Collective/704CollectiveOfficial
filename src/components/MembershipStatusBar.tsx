@@ -44,10 +44,10 @@ export function MembershipStatusBar({
           </div>
         </div>
         <Button variant="hero" size="sm" asChild>
-          <a href="https://buy.stripe.com/704collective" target="_blank" rel="noopener noreferrer">
+          <Link href="/join">
             <Crown className="w-3.5 h-3.5" />
             Become a Member
-          </a>
+          </Link>
         </Button>
       </div>
     );
@@ -89,10 +89,10 @@ export function MembershipStatusBar({
             <>
               {isCanceling ? (
                 <Button variant="hero" size="sm" asChild>
-                  <a href="https://buy.stripe.com/704collective" target="_blank" rel="noopener noreferrer">
+                  <Link href="/join">
                     <Crown className="w-3.5 h-3.5" />
                     Reactivate
-                  </a>
+                  </Link>
                 </Button>
               ) : (
                 <Button variant="outline" size="sm" onClick={onManageBilling} disabled={isPortalLoading}>
