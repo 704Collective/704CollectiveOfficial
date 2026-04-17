@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { addDays, format } from 'date-fns';
 import { Calendar, MapPin, Users, ArrowRight, Loader2 } from 'lucide-react';
@@ -57,7 +57,7 @@ function formatPhone(raw: string): string {
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
-export default function Join() {
+function JoinInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const plan = searchParams.get('plan');
@@ -542,5 +542,13 @@ export default function Join() {
         }
       `}</style>
     </>
+  );
+}
+
+export default function Join() {
+  return (
+    <Suspense>
+      <JoinInner />
+    </Suspense>
   );
 }
