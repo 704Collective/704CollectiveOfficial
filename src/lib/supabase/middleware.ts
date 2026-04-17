@@ -62,7 +62,7 @@ export async function updateSession(request: NextRequest) {
     p.startsWith('/partners/login') ||
     p.startsWith('/partners/signup');
 
-  const openAuthPrefixes = ['/join/checkout', '/welcome', '/apply/business', '/signup'];
+  const openAuthPrefixes = ['/join', '/welcome', '/apply/business', '/signup'];
   const authPaths = ['/login'];
   const signupPaths: string[] = [];
 
