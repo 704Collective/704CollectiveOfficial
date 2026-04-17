@@ -165,7 +165,7 @@ export default function Nav() {
             </Link>
           ) : (
             <>
-              <Link href="/signup"
+              <Link href="/join"
                 style={{ backgroundColor: "#FFFFFF", color: "#000000", fontWeight: 600, fontSize: "0.8125rem", padding: "10px 24px", borderRadius: "8px", textDecoration: "none", letterSpacing: "0.02em", transition: "all 200ms ease" }}
                 onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(255, 255, 255, 0.15)"; }}
                 onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
@@ -272,9 +272,9 @@ export default function Nav() {
                 </Link>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                  <Link href="/signup" onClick={() => setMobileOpen(false)}
+                  <Link href="/join" onClick={() => setMobileOpen(false)}
                     style={{ backgroundColor: "#FFFFFF", color: "#000000", fontWeight: 600, fontSize: "0.9375rem", padding: "14px 24px", borderRadius: "8px", textDecoration: "none", textAlign: "center", display: "block" }}>
-                    Join Now - $35/mo
+                    Join Now
                   </Link>
                   <Link href="/login" onClick={() => setMobileOpen(false)}
                     style={{ backgroundColor: "transparent", color: "#FFFFFF", fontWeight: 600, fontSize: "0.9375rem", padding: "14px 24px", borderRadius: "8px", textDecoration: "none", textAlign: "center", display: "block", border: "1px solid rgba(255, 255, 255, 0.25)" }}>

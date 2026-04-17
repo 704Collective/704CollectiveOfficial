@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { addDays, format } from 'date-fns';
@@ -59,6 +59,8 @@ function formatPhone(raw: string): string {
 
 export default function Join() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const plan = searchParams.get('plan');
   const { user, isActiveMember, loading: authLoading } = useAuth();
   usePageTitle("Join 704 Collective - Charlotte's Young Professionals Community");
   const [events, setEvents] = useState<Event[]>([]);
@@ -99,8 +101,7 @@ export default function Join() {
 
   const isFormValid = fullName.trim().length > 0 && email.trim().length > 0 && phone.trim().length > 0 && goal !== '';
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     if (!isFormValid || submitting) return;
     setSubmitting(true);
     setFormError(null);
@@ -166,152 +167,272 @@ export default function Join() {
         <MarketingPageRoot>
         <div style={{ maxWidth: '960px', margin: '0 auto', padding: '48px 24px 80px' }}>
 
-          {/* Checkout Form */}
-          <FadeUp>
-            <section style={{ maxWidth: '460px', margin: '0 auto 64px' }}>
-              <p style={{
-                fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.15em',
-                textTransform: 'uppercase', color: '#C6A664', marginBottom: '16px',
-                textAlign: 'center',
-              }}>
-                Social Membership
-              </p>
-              <h1 style={{
-                fontSize: 'clamp(1.75rem, 5vw, 2.5rem)', fontWeight: 700, color: '#FFFFFF',
-                letterSpacing: '-0.02em', marginBottom: '8px', lineHeight: 1.15, textAlign: 'center',
-              }}>
-                Your people are already here.
-              </h1>
-              <p style={{
-                fontSize: '1rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6,
-                marginBottom: '32px', textAlign: 'center',
-              }}>
-                Join Charlotte{"'"}s most curated social club for $35/month. Cancel anytime.
-              </p>
+          {plan === 'social' ? (
+            /* ── Social checkout form ────────────────────────────────────── */
+            <FadeUp>
+              <section style={{ maxWidth: '460px', margin: '0 auto 64px' }}>
+                <p style={{
+                  fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.15em',
+                  textTransform: 'uppercase', color: '#C6A664', marginBottom: '16px',
+                  textAlign: 'center',
+                }}>
+                  Social Membership
+                </p>
+                <h1 style={{
+                  fontSize: 'clamp(1.75rem, 5vw, 2.5rem)', fontWeight: 700, color: '#FFFFFF',
+                  letterSpacing: '-0.02em', marginBottom: '8px', lineHeight: 1.15, textAlign: 'center',
+                }}>
+                  Your people are already here.
+                </h1>
+                <p style={{
+                  fontSize: '1rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6,
+                  marginBottom: '32px', textAlign: 'center',
+                }}>
+                  Join Charlotte{"'"}s most curated social club for $35/month. Cancel anytime.
+                </p>
 
-              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {/* Full Name */}
-                <div>
-                  <label style={labelStyle}>Full Name <span style={{ color: '#C6A664' }}>*</span></label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={100}
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Jane Smith"
-                    style={inputStyle}
-                  />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {/* Full Name */}
+                  <div>
+                    <label style={labelStyle}>Full Name <span style={{ color: '#C6A664' }}>*</span></label>
+                    <input
+                      type="text"
+                      maxLength={100}
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Jane Smith"
+                      style={inputStyle}
+                    />
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label style={labelStyle}>Email <span style={{ color: '#C6A664' }}>*</span></label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      style={inputStyle}
+                    />
+                  </div>
+
+                  {/* Phone */}
+                  <div>
+                    <label style={labelStyle}>Phone Number <span style={{ color: '#C6A664' }}>*</span></label>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(formatPhone(e.target.value))}
+                      placeholder="(704) 555-1234"
+                      style={inputStyle}
+                    />
+                  </div>
+
+                  {/* Goal pills */}
+                  <div>
+                    <label style={labelStyle}>
+                      What are you most looking for? <span style={{ color: '#C6A664' }}>*</span>
+                    </label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '2px' }}>
+                      {GOAL_OPTIONS.map((opt) => {
+                        const active = goal === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setGoal(opt.value)}
+                            style={{
+                              padding: '8px 14px',
+                              borderRadius: '100px',
+                              fontSize: '0.875rem',
+                              fontWeight: 500,
+                              cursor: 'pointer',
+                              border: active ? '1px solid #C6A664' : '1px solid rgba(255,255,255,0.15)',
+                              backgroundColor: active ? '#C6A664' : 'transparent',
+                              color: active ? '#1A1A1A' : 'rgba(255,255,255,0.7)',
+                              transition: 'all 150ms ease',
+                            }}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {formError && (
+                    <p style={{ fontSize: '0.875rem', color: '#ef4444', margin: 0 }}>{formError}</p>
+                  )}
+
+                  {/* Submit */}
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={submitting || !isFormValid}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      padding: '14px 32px',
+                      backgroundColor: submitting || !isFormValid ? 'rgba(255,255,255,0.3)' : '#FFFFFF',
+                      color: '#000000',
+                      borderRadius: '10px',
+                      fontSize: '0.9375rem',
+                      fontWeight: 700,
+                      border: 'none',
+                      cursor: submitting || !isFormValid ? 'not-allowed' : 'pointer',
+                      letterSpacing: '0.01em',
+                      transition: 'all 200ms ease',
+                      marginTop: '4px',
+                    }}
+                  >
+                    {submitting ? (
+                      <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> Redirecting to checkout...</>
+                    ) : (
+                      <>Continue to Checkout <ArrowRight style={{ width: '16px', height: '16px' }} /></>
+                    )}
+                  </button>
+
+                  <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', textAlign: 'center', margin: 0 }}>
+                    You{"'"}ll be redirected to Stripe for secure payment. By continuing, you agree to our{' '}
+                    <Link href="/terms" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'underline' }}>Terms</Link>
+                    {' '}and{' '}
+                    <Link href="/privacy" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'underline' }}>Privacy Policy</Link>.
+                  </p>
+
+                  <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.25)', textAlign: 'center', margin: 0 }}>
+                    Already a member?{' '}
+                    <Link href="/login" style={{ color: 'rgba(255,255,255,0.45)', textDecoration: 'underline' }}>
+                      Sign in
+                    </Link>
+                  </p>
                 </div>
+              </section>
+            </FadeUp>
+          ) : (
+            /* ── Tier picker ─────────────────────────────────────────────── */
+            <FadeUp>
+              <section style={{ maxWidth: '600px', margin: '0 auto 64px', textAlign: 'center' }}>
+                <p style={{
+                  fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.15em',
+                  textTransform: 'uppercase', color: '#C6A664', marginBottom: '16px',
+                }}>
+                  Membership
+                </p>
+                <h1 style={{
+                  fontSize: 'clamp(1.75rem, 5vw, 2.5rem)', fontWeight: 700, color: '#FFFFFF',
+                  letterSpacing: '-0.02em', marginBottom: '40px', lineHeight: 1.15,
+                }}>
+                  Choose your membership
+                </h1>
 
-                {/* Email */}
-                <div>
-                  <label style={labelStyle}>Email <span style={{ color: '#C6A664' }}>*</span></label>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    style={inputStyle}
-                  />
-                </div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: '20px',
+                }} className="tier-grid">
 
-                {/* Phone */}
-                <div>
-                  <label style={labelStyle}>Phone Number <span style={{ color: '#C6A664' }}>*</span></label>
-                  <input
-                    type="tel"
-                    required
-                    value={phone}
-                    onChange={(e) => setPhone(formatPhone(e.target.value))}
-                    placeholder="(704) 555-1234"
-                    style={inputStyle}
-                  />
-                </div>
+                  {/* Social Card */}
+                  <div style={{
+                    backgroundColor: '#1A1A1A',
+                    border: '1px solid rgba(198,166,100,0.35)',
+                    borderRadius: '16px',
+                    padding: '32px 24px',
+                    textAlign: 'center',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                  }}>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
+                      704 Social
+                    </h2>
+                    <p style={{ fontSize: '2rem', fontWeight: 700, color: '#C6A664', margin: 0 }}>
+                      $35<span style={{ fontSize: '1rem', fontWeight: 400, color: 'rgba(255,255,255,0.45)' }}>/month</span>
+                    </p>
+                    <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', margin: '0 0 16px' }}>
+                      Cancel anytime
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => router.push('/join?plan=social')}
+                      style={{
+                        width: '100%',
+                        padding: '12px 24px',
+                        backgroundColor: '#C6A664',
+                        color: '#1A1A1A',
+                        borderRadius: '10px',
+                        fontSize: '0.9375rem',
+                        fontWeight: 700,
+                        border: 'none',
+                        cursor: 'pointer',
+                        letterSpacing: '0.01em',
+                        transition: 'all 200ms ease',
+                      }}
+                    >
+                      Get Started
+                    </button>
+                  </div>
 
-                {/* Goal pills */}
-                <div>
-                  <label style={labelStyle}>
-                    What are you most looking for? <span style={{ color: '#C6A664' }}>*</span>
-                  </label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '2px' }}>
-                    {GOAL_OPTIONS.map((opt) => {
-                      const active = goal === opt.value;
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setGoal(opt.value)}
-                          style={{
-                            padding: '8px 14px',
-                            borderRadius: '100px',
-                            fontSize: '0.875rem',
-                            fontWeight: 500,
-                            cursor: 'pointer',
-                            border: active ? '1px solid #C6A664' : '1px solid rgba(255,255,255,0.15)',
-                            backgroundColor: active ? '#C6A664' : 'transparent',
-                            color: active ? '#1A1A1A' : 'rgba(255,255,255,0.7)',
-                            transition: 'all 150ms ease',
-                          }}
-                        >
-                          {opt.label}
-                        </button>
-                      );
-                    })}
+                  {/* Business Card */}
+                  <div style={{
+                    backgroundColor: '#1A1A1A',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '16px',
+                    padding: '32px 24px',
+                    textAlign: 'center',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                  }}>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
+                      704 Business
+                    </h2>
+                    <p style={{ fontSize: '2rem', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
+                      $300<span style={{ fontSize: '1rem', fontWeight: 400, color: 'rgba(255,255,255,0.45)' }}>/month</span>
+                    </p>
+                    <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', margin: '0 0 16px' }}>
+                      Application required
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => router.push('/apply/business')}
+                      style={{
+                        width: '100%',
+                        padding: '12px 24px',
+                        backgroundColor: 'rgba(255,255,255,0.08)',
+                        color: '#FFFFFF',
+                        borderRadius: '10px',
+                        fontSize: '0.9375rem',
+                        fontWeight: 700,
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        cursor: 'pointer',
+                        letterSpacing: '0.01em',
+                        transition: 'all 200ms ease',
+                      }}
+                    >
+                      Apply Now
+                    </button>
                   </div>
                 </div>
 
-                {formError && (
-                  <p style={{ fontSize: '0.875rem', color: '#ef4444', margin: 0 }}>{formError}</p>
-                )}
-
-                {/* Submit */}
-                <button
-                  type="submit"
-                  disabled={submitting || !isFormValid}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    padding: '14px 32px',
-                    backgroundColor: submitting || !isFormValid ? 'rgba(255,255,255,0.3)' : '#FFFFFF',
-                    color: '#000000',
-                    borderRadius: '10px',
-                    fontSize: '0.9375rem',
-                    fontWeight: 700,
-                    border: 'none',
-                    cursor: submitting || !isFormValid ? 'not-allowed' : 'pointer',
-                    letterSpacing: '0.01em',
-                    transition: 'all 200ms ease',
-                    marginTop: '4px',
-                  }}
-                >
-                  {submitting ? (
-                    <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> Redirecting to checkout...</>
-                  ) : (
-                    <>Continue to Checkout <ArrowRight style={{ width: '16px', height: '16px' }} /></>
-                  )}
-                </button>
-
-                <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', textAlign: 'center', margin: 0 }}>
-                  You{"'"}ll be redirected to Stripe for secure payment. By continuing, you agree to our{' '}
-                  <Link href="/terms" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'underline' }}>Terms</Link>
-                  {' '}and{' '}
-                  <Link href="/privacy" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'underline' }}>Privacy Policy</Link>.
-                </p>
-
-                <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.25)', textAlign: 'center', margin: 0 }}>
-                  Already a member?{' '}
-                  <Link href="/login" style={{ color: 'rgba(255,255,255,0.45)', textDecoration: 'underline' }}>
-                    Sign in
+                <div style={{ marginTop: '24px' }}>
+                  <Link
+                    href="/dashboard"
+                    style={{
+                      fontSize: '0.875rem',
+                      color: 'rgba(255,255,255,0.35)',
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    Continue as non-member
                   </Link>
-                </p>
-              </form>
-            </section>
-          </FadeUp>
+                </div>
+              </section>
+            </FadeUp>
+          )}
 
           {/* Benefits */}
           <section style={{ maxWidth: '420px', margin: '0 auto 64px' }}>
@@ -414,6 +535,7 @@ export default function Join() {
         @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
         @media (max-width: 768px) {
           .events-grid { grid-template-columns: 1fr !important; }
+          .tier-grid { grid-template-columns: 1fr !important; }
         }
         @media (min-width: 769px) and (max-width: 1024px) {
           .events-grid { grid-template-columns: repeat(2, 1fr) !important; }

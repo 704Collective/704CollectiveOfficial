@@ -757,7 +757,7 @@ export default function SocialPage() {
                 </div>
 
                 <Link
-                  href={isActiveMember ? '/dashboard' : '/signup'}
+                  href={isActiveMember ? '/dashboard' : '/join?plan=social'}
                   className="btn-primary"
                   style={{ display: 'block', textAlign: 'center', padding: '16px 36px', fontSize: '0.9375rem' }}
                 >
@@ -970,7 +970,7 @@ export default function SocialPage() {
             <ScaleUp delay={0.2}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'center', marginTop: '40px' }}>
                 <Link
-                  href={isActiveMember ? '/dashboard' : '/signup'}
+                  href={isActiveMember ? '/dashboard' : '/join?plan=social'}
                   className="btn-primary"
                   style={{ padding: '16px 36px', fontSize: '0.9375rem' }}
                 >
