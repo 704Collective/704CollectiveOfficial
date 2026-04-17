@@ -39,11 +39,22 @@ export function postAuthDestination(
 
   if (isActive || isNonMember) return "/dashboard";
 
-  // Explicitly canceled — show the membership-ended page so they can rejoin
-  if (profile.subscription_status === "canceled" || profile.subscription_status === "cancelled") {
+  // Explicitly canceled — had a membership, canceled it → show membership-ended
+  if (
+    profile.subscription_status === "canceled" ||
+    profile.subscription_status === "cancelled"
+  ) {
     return "/membership-ended";
   }
 
-  // Any other inactive state (past_due, unpaid, etc.) also lands on membership-ended
+  // Never had a membership (null / undefined / 'inactive' status, no override)
+  // → send to /dashboard where NonMemberDashboard renders
+  const isNeverMember =
+    (!profile.subscription_status || profile.subscription_status === "inactive") &&
+    !profile.membership_override;
+
+  if (isNeverMember) return "/dashboard";
+
+  // Any other explicitly bad state (past_due, unpaid, etc.) → membership-ended
   return options?.fallbackNoAccess ?? "/membership-ended";
 }
