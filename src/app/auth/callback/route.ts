@@ -64,6 +64,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/login?error=invalid_link', origin));
     }
 
+    // Recovery: always land on /reset-password so the user can set a new password.
+    // Must run before postAuthDestination, which would send admins to /admin.
+    if (type === 'recovery') {
+      const recoveryRedirect = NextResponse.redirect(new URL('/reset-password', origin));
+      pendingCookies.forEach(({ name, value, options }) => {
+        recoveryRedirect.cookies.set(name, value, options as Parameters<typeof recoveryRedirect.cookies.set>[2]);
+      });
+      return recoveryRedirect;
+    }
+
     // Signup confirmations: profile may not exist yet (async DB trigger) or was
     // just created. In both cases send the user to /welcome for onboarding.
     if (type === 'signup') {
@@ -161,6 +171,16 @@ export async function GET(request: NextRequest) {
   if (!user) {
     console.error('[auth/callback] No user after successful code exchange');
     return NextResponse.redirect(new URL('/login?error=oauth', origin));
+  }
+
+  // Recovery: always land on /reset-password before any profile / access check.
+  // Admins would otherwise be redirected to /admin via postAuthDestination.
+  if (type === 'recovery') {
+    const recoveryRedirect = NextResponse.redirect(new URL('/reset-password', origin));
+    pendingCookies.forEach(({ name, value, options }) => {
+      recoveryRedirect.cookies.set(name, value, options as Parameters<typeof recoveryRedirect.cookies.set>[2]);
+    });
+    return recoveryRedirect;
   }
 
   const { data: profile } = await supabase
