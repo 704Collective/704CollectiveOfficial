@@ -96,7 +96,7 @@ export default function SignupPage() {
             full_name: `${firstName.trim()} ${lastName.trim()}`,
             phone: phone.trim(),
           },
-          emailRedirectTo: `${window.location.origin}/auth/callback?source=signup`,
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
 
