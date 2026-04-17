@@ -64,6 +64,31 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/login?error=invalid_link', origin));
     }
 
+    // Signup confirmations: profile may not exist yet (async DB trigger) or was
+    // just created. In both cases send the user to /welcome for onboarding.
+    if (type === 'signup') {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role, member_type, subscription_status, membership_override, created_at')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const isNewProfile =
+        !profile ||
+        (profile.created_at &&
+          Date.now() - new Date(profile.created_at).getTime() < 60_000);
+
+      const destination = isNewProfile
+        ? '/welcome'
+        : postAuthDestination(profile);
+
+      const signupRedirect = NextResponse.redirect(new URL(destination, origin));
+      pendingCookies.forEach(({ name, value, options }) => {
+        signupRedirect.cookies.set(name, value, options as Parameters<typeof signupRedirect.cookies.set>[2]);
+      });
+      return signupRedirect;
+    }
+
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
@@ -140,9 +165,25 @@ export async function GET(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, subscription_status, membership_override, member_type')
+    .select('role, subscription_status, membership_override, member_type, created_at')
     .eq('id', user.id)
     .maybeSingle();
+
+  // Signup flow: profile may not exist yet (async trigger) or was just created.
+  // Skip the access check and send the user to /welcome for onboarding.
+  const isSignupType = type === 'signup';
+  const isNewProfile =
+    !profile ||
+    (profile?.created_at &&
+      Date.now() - new Date(profile.created_at).getTime() < 60_000);
+
+  if (isSignupType || isNewProfile) {
+    const welcomeRedirect = NextResponse.redirect(new URL('/welcome', origin));
+    pendingCookies.forEach(({ name, value, options }) => {
+      welcomeRedirect.cookies.set(name, value, options as Parameters<typeof welcomeRedirect.cookies.set>[2]);
+    });
+    return welcomeRedirect;
+  }
 
   const isActive =
     profile?.subscription_status === 'active' ||
