@@ -167,20 +167,30 @@ export async function GET(request: NextRequest) {
     return recoveryRedirect;
   }
 
-  // Signup flow: redirect to /join to pick a plan and complete checkout.
-  if (type === 'signup') {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, subscription_status, membership_override, member_type, created_at')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  // Signup flow: Supabase's PKCE email confirmation does not include `type`
+  // in the redirect URL, so isSignupType will be false for real signups.
+  // isNewProfile catches that case — a profile created within the last 60s
+  // (or no profile yet due to async trigger) is treated as a new signup and
+  // sent to /join to pick a plan and complete checkout.
+  const isSignupType = type === 'signup';
+  const isNewProfile =
+    !profile ||
+    (profile?.created_at &&
+      Date.now() - new Date(profile.created_at).getTime() < 60_000);
+
+  if (isSignupType || isNewProfile) {
     const joinRedirect = NextResponse.redirect(new URL('/join', origin));
     pendingCookies.forEach(({ name, value, options }) => {
       joinRedirect.cookies.set(name, value, options as Parameters<typeof joinRedirect.cookies.set>[2]);
     });
     return joinRedirect;
   }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, subscription_status, membership_override, member_type')
-    .eq('id', user.id)
-    .maybeSingle();
 
   const isActive =
     profile?.subscription_status === 'active' ||
