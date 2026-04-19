@@ -156,7 +156,7 @@ export default function Nav() {
           {/* Desktop Auth CTAs */}
           {loading ? (
             <div style={{ width: "120px" }} />
-          ) : user && (isActiveMember || isAdmin) ? (
+          ) : user ? (
             <Link href="/dashboard"
               style={{ backgroundColor: "#FFFFFF", color: "#000000", fontWeight: 600, fontSize: "0.8125rem", padding: "10px 24px", borderRadius: "8px", textDecoration: "none", letterSpacing: "0.02em", transition: "all 200ms ease" }}
               onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(255, 255, 255, 0.15)"; }}
