@@ -390,7 +390,14 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       toast.success(`Sent reminder to ${result?.sent ?? 0} member${result?.sent !== 1 ? 's' : ''}`);
       setSentReminders(prev => ({ ...prev, [event.id]: true }));
     },
-    onError: () => toast.error('Failed to send reminders'),
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.toLowerCase().includes('no attendees') || msg.toLowerCase().includes('no recipients') || msg.toLowerCase().includes('no confirmed')) {
+        toast.info('No attendees to remind for this event.');
+      } else {
+        toast.error('Failed to send reminders');
+      }
+    },
   });
 
   const loadPreviousImages = async () => {

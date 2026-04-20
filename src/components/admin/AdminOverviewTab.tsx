@@ -327,7 +327,7 @@ export function AdminOverviewTab({
             <button
               type="button"
               onClick={() => onSectionChange('financials')}
-              className="mt-auto pt-4 text-sm text-primary hover:underline inline-flex items-center gap-0.5"
+              className="mt-auto pt-4 text-sm text-muted-foreground hover:underline inline-flex items-center gap-0.5"
             >
               View full financials <ArrowRight className="w-4 h-4" />
             </button>
@@ -362,7 +362,7 @@ export function AdminOverviewTab({
           <button
             type="button"
             onClick={() => onSectionChange('events')}
-            className="mt-auto pt-4 text-sm text-primary hover:underline inline-flex items-center gap-0.5"
+            className="mt-auto pt-4 text-sm text-muted-foreground hover:underline inline-flex items-center gap-0.5"
           >
             View all events <ArrowRight className="w-4 h-4" />
           </button>
@@ -408,7 +408,7 @@ export function AdminOverviewTab({
           </ul>
           <Link
             href="/admin/contacts"
-            className="mt-auto pt-4 text-sm text-primary hover:underline inline-flex items-center gap-0.5"
+            className="mt-auto pt-4 text-sm text-muted-foreground hover:underline inline-flex items-center gap-0.5"
           >
             View all contacts <ArrowRight className="w-4 h-4" />
           </Link>

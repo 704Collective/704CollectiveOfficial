@@ -305,7 +305,6 @@ export default function UserSecurityPage() {
               <Shield className="h-5 w-5 text-red-400" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">User Security</h1>
               <p className="text-sm text-muted-foreground">Review member conversations and moderate messages</p>
             </div>
           </div>

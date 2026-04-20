@@ -45,7 +45,7 @@ export default function AdminUpstashPage() {
       try {
         const res = await fetch('/api/admin/upstash-metrics');
         if (!res.ok) {
-          if (!cancelled) setErr('Could not load status');
+          if (!cancelled) setErr('Upstash metrics unavailable — will activate after DNS cutover.');
           return;
         }
         const j = (await res.json()) as Metrics;
@@ -54,7 +54,7 @@ export default function AdminUpstashPage() {
           setErr(null);
         }
       } catch {
-        if (!cancelled) setErr('Could not load status');
+        if (!cancelled) setErr('Upstash metrics unavailable — will activate after DNS cutover.');
       } finally {
         if (!cancelled) setFetching(false);
       }
@@ -92,7 +92,7 @@ export default function AdminUpstashPage() {
           </div>
         ) : null}
 
-        {err && <p className="text-sm text-destructive">{err}</p>}
+        {err && <p className="text-sm text-muted-foreground">{err}</p>}
 
         {notConfigured && (
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-6 py-8 text-center space-y-2">
