@@ -87,7 +87,7 @@ export default async function Home() {
       <PromoBanner />
       <Nav />
 
-      <main id="main-content" style={{ paddingTop: "64px" }}>
+      <main id="main-content" style={{ paddingTop: "calc(64px + var(--banner-height, 0px))" }}>
         <MarketingPageRoot>
         {/* ════════════════════════════════════════════
             SECTION 1: HERO

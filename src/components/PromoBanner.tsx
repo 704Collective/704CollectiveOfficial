@@ -1,13 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { X } from 'lucide-react';
 
 const STORAGE_KEY = 'promo_banner_dismissed_may2025';
 
+function setBannerHeight(px: number) {
+  document.documentElement.style.setProperty('--banner-height', `${px}px`);
+}
+
 export function PromoBanner() {
   const [visible, setVisible] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     try {
@@ -18,6 +23,15 @@ export function PromoBanner() {
     }
   }, []);
 
+  useEffect(() => {
+    if (visible && ref.current) {
+      setBannerHeight(ref.current.offsetHeight);
+    } else {
+      setBannerHeight(0);
+    }
+    return () => setBannerHeight(0);
+  }, [visible]);
+
   const dismiss = () => {
     setVisible(false);
     try { sessionStorage.setItem(STORAGE_KEY, '1'); } catch { /* ignore */ }
@@ -27,6 +41,7 @@ export function PromoBanner() {
 
   return (
     <div
+      ref={ref}
       style={{
         backgroundColor: '#C6A664',
         color: '#1A1A1A',
@@ -38,8 +53,11 @@ export function PromoBanner() {
         fontSize: '0.8125rem',
         fontWeight: 500,
         lineHeight: 1.4,
-        position: 'relative',
-        zIndex: 60,
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 51,
       }}
     >
       <span>

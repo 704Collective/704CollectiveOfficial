@@ -97,7 +97,7 @@ export default function SocialPage() {
       <JsonLd schema={socialServiceSchema704} />
       <PromoBanner />
       <Nav />
-      <main id="main-content" style={{ paddingTop: '64px' }}>
+      <main id="main-content" style={{ paddingTop: 'calc(64px + var(--banner-height, 0px))' }}>
         <MarketingPageRoot>
 
         {/* ════════════════════════════════════════════
