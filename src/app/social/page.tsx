@@ -2,13 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import Nav from '@/components/Nav';
 import { Footer } from '@/components/Footer';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { format, addDays } from 'date-fns';
 import {
   FadeUp,
   StaggerContainer,
@@ -22,17 +19,6 @@ import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import JsonLd from '@/components/JsonLd';
 import { socialServiceSchema704 } from '@/lib/jsonLdSchemas';
 import { PromoBanner } from '@/components/PromoBanner';
-
-/* ─── Types ─── */
-
-interface Event {
-  id: string;
-  title: string;
-  start_time: string;
-  location_name: string | null;
-  ticket_price: number;
-  is_members_only: boolean;
-}
 
 /* ─── Helpers ─── */
 
@@ -56,72 +42,55 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 /* ─── Data ─── */
 
-const socialPerks = [
-  { title: 'Curated Social Events', desc: 'Mixers, happy hours, game nights, and themed socials every single week.' },
-  { title: 'Wellness & Adventure', desc: 'Cold plunge, sauna sessions, run clubs, cycling, and outdoor adventures.' },
-  { title: 'Priority Access', desc: 'RSVP before the public. Limited spots - members always come first.' },
-  { title: 'Real Community', desc: 'An exclusive co-ed group of people you actually want to spend time with.' },
-  { title: 'Charlotte Perks', desc: 'Special access and experiences across Charlotte, powered by CLTBucketlist.' },
-  { title: 'No Commitment', desc: 'Cancel anytime. No contracts, no cancellation fees, no questions asked.' },
+const communityPillars = [
+  {
+    title: 'Intentionally Small',
+    desc: 'Other Charlotte groups host 600-1,200 person events. We keep it to 20-40 people so you actually get to know someone.',
+  },
+  {
+    title: 'No Awkward Networking',
+    desc: 'No name tags. No elevator pitches. Just real conversations in great spaces with people you\'d actually want to grab a drink with.',
+  },
+  {
+    title: 'Charlotte-First',
+    desc: 'Born from CLTBucketlist — Charlotte\'s most trusted lifestyle brand with 500,000+ community members. We know this city.',
+  },
 ];
 
 const rightForYou = [
-  "You just moved to Charlotte and want to find your people fast",
-  "You're tired of surface-level apps and want real friendships",
-  "You love trying new things - happy hours, wellness, adventures",
-  "You want a built-in social circle without the awkward networking",
-  "You're anyone in the Charlotte region looking for friends to do things with, not LinkedIn connections",
-  "You want to actually enjoy your weekends and weeknights in Charlotte",
+  'Are new to Charlotte and don\'t have a solid friend group yet',
+  'Have friends but need things to actually do together',
+  'Are tired of surface-level bar conversations that go nowhere',
+  'Want to DO stuff, not just talk about doing stuff',
+  'Tried the free 600-person meetups and felt overwhelmed',
+  'Want real friends, not LinkedIn connections',
+  'Need variety more than just bars on a Friday night — coffee meetups, game nights, workouts, adventures',
+  'Most events in Charlotte cost $15-25. We\'re doing 10+ for $35',
 ];
 
 const valueItems = [
-  { category: 'Wellness', example: 'Sauna & Cold Plunge Social', publicPrice: '$45', memberPrice: 'Free' },
-  { category: 'Social', example: 'Tap-In Social Happy Hour', publicPrice: '$35', memberPrice: 'Free' },
-  { category: 'Pickle Ball', example: 'Court time & play', publicPrice: '$25/hr', memberPrice: 'Free' },
+  { category: 'WELLNESS', example: 'Cold Plunge & Sauna', publicPrice: '$45', memberPrice: 'Free' },
+  { category: 'SOCIAL', example: 'Appetizer & Entry', publicPrice: '$30', memberPrice: 'Free' },
+  { category: 'COMMUNITY', example: 'Coffee Meetup', publicPrice: '$5', memberPrice: 'Free' },
 ];
 
 const memberFeatures = [
-  '8+ curated events every month',
-  'Social mixers & happy hours',
-  'Wellness & adventure experiences',
+  '10+ events every month',
   'Priority RSVP access',
-  'Exclusive co-ed community',
+  'Happy hours & socials',
+  'Wellness & workout days',
   'Digital membership card',
-  'Charlotte perks via CLTBucketlist',
-  'Cancel anytime - no contracts',
+  'Cancel anytime',
 ];
 
 /* ─── Page ─── */
 
 export default function SocialPage() {
   usePageTitle('704 Social | Charlotte\'s Activity Club & Social Community');
-  const router = useRouter();
-  const { user, isActiveMember } = useAuth();
-  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
-  const [eventsLoading, setEventsLoading] = useState(true);
+  const { isActiveMember } = useAuth();
+  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    async function fetchEvents() {
-      try {
-        const now = new Date().toISOString();
-        const thirtyDays = addDays(new Date(), 30).toISOString();
-        const { data, error } = await supabase
-          .from('events')
-          .select('id, title, start_time, location_name, ticket_price, is_members_only')
-          .gte('start_time', now)
-          .lte('start_time', thirtyDays)
-          .order('start_time', { ascending: true })
-          .limit(6);
-        if (error) throw error;
-        setUpcomingEvents(data || []);
-      } catch (err) {
-        console.error('Error fetching events:', err);
-      } finally {
-        setEventsLoading(false);
-      }
-    }
-    fetchEvents();
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
   return (
     <>
@@ -157,7 +126,7 @@ export default function SocialPage() {
             }}
           />
 
-          {/* Dark overlay - slightly lighter than business, social is warmer */}
+          {/* Dark overlay */}
           <div
             style={{
               position: 'absolute',
@@ -187,6 +156,19 @@ export default function SocialPage() {
               textAlign: 'center',
             }}
           >
+            <p
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                letterSpacing: '0.2em',
+                textTransform: 'uppercase',
+                color: 'rgba(255,255,255,0.4)',
+                marginBottom: '24px',
+              }}
+            >
+              704 COLLECTIVE · SOCIAL MEMBERSHIP
+            </p>
+
             <h1
               style={{
                 fontSize: 'clamp(2.5rem, 7vw, 4.5rem)',
@@ -194,44 +176,41 @@ export default function SocialPage() {
                 letterSpacing: '-0.03em',
                 lineHeight: 1.05,
                 color: '#FFFFFF',
-                marginBottom: '24px',
+                marginBottom: '16px',
               }}
             >
-              <WordReveal text="704 Collective Social" />
+              <WordReveal text="YOUR SOCIAL LIFE, HANDLED." />
             </h1>
 
-            <FadeUp delay={0.6} duration={0.8}>
+            <FadeUp delay={0.5} duration={0.8}>
               <p
                 style={{
                   fontSize: '1.125rem',
                   color: 'rgba(255, 255, 255, 0.55)',
-                  lineHeight: 1.6,
-                  maxWidth: '540px',
-                  margin: '0 auto 12px auto',
+                  marginBottom: '12px',
                 }}
               >
-                Your city. Your people.
+                Charlotte&apos;s Community for Young Professionals
               </p>
               <p
                 style={{
                   fontSize: '1rem',
-                  color: 'rgba(255, 255, 255, 0.4)',
-                  lineHeight: 1.6,
+                  color: 'rgba(255, 255, 255, 0.45)',
                   maxWidth: '520px',
                   margin: '0 auto 40px auto',
                 }}
               >
-                Real friends. Real events. Real connections. No awkward mixers.
+                10+ curated events every month. Happy hours, dinners, wellness days, outdoor adventures, and member-only experiences — all planned for you. No application needed. Just join, show up, and meet your people.
               </p>
             </FadeUp>
 
             <FadeUp delay={0.9} duration={0.7}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'center' }}>
-                <Link href="#join" className="btn-primary">
-                  Become a Member
+                <Link href="/join?plan=social" className="btn-primary">
+                  BECOME A MEMBER
                 </Link>
-                <Link href="#how-it-works" className="btn-ghost">
-                  See How It Works
+                <Link href="/events" className="btn-ghost">
+                  VIEW EVENTS
                 </Link>
               </div>
             </FadeUp>
@@ -247,7 +226,7 @@ export default function SocialPage() {
         >
           <div style={{ maxWidth: '900px', margin: '0 auto', textAlign: 'center' }}>
             <FadeUp>
-              <SectionLabel>How It Works</SectionLabel>
+              <SectionLabel>HOW IT WORKS</SectionLabel>
             </FadeUp>
 
             <FadeUp delay={0.1}>
@@ -261,7 +240,7 @@ export default function SocialPage() {
                   marginBottom: '16px',
                 }}
               >
-                Three simple steps
+                THREE SIMPLE STEPS
               </h2>
             </FadeUp>
 
@@ -275,7 +254,7 @@ export default function SocialPage() {
                   margin: '0 auto',
                 }}
               >
-                No application. No interview. Just sign up and you{"'"}re in.
+                No application. No interviews. Just sign up and you&apos;re in.
               </p>
             </FadeUp>
 
@@ -292,18 +271,18 @@ export default function SocialPage() {
               {[
                 {
                   num: '1',
-                  title: 'Sign Up',
-                  desc: 'Join for $35/month. No application, no waitlist. You\'re in immediately.',
+                  title: 'Join',
+                  desc: 'No application. No interviews. Just sign up and you\'re in.',
                 },
                 {
                   num: '2',
                   title: 'Show Up',
-                  desc: '8+ events per month. Social mixers, coffee and connects, group trips to White Water Center, pickle ball adventures - we plan everything so you just walk in.',
+                  desc: '10+ events per month. Happy hours, dinners, adventures — we plan everything so you just walk in.',
                 },
                 {
                   num: '3',
-                  title: 'Feel at home',
-                  desc: 'The people you meet become the friends you text and the groups you want to go out with.',
+                  title: 'Build Your Circle',
+                  desc: 'The people you meet become the friends you text and the network that opens doors.',
                 },
               ].map((item, i) => (
                 <StaggerItem
@@ -354,14 +333,14 @@ export default function SocialPage() {
         </section>
 
         {/* ════════════════════════════════════════════
-            WHY 704 COLLECTIVE
+            THE COMMUNITY
         ════════════════════════════════════════════ */}
         <section
           style={{ backgroundColor: '#000000', padding: '96px 24px' }}
         >
           <div style={{ maxWidth: '1000px', margin: '0 auto', textAlign: 'center' }}>
             <FadeUp>
-              <SectionLabel>Why 704 Collective</SectionLabel>
+              <SectionLabel>THE COMMUNITY</SectionLabel>
             </FadeUp>
 
             <FadeUp delay={0.1}>
@@ -375,7 +354,7 @@ export default function SocialPage() {
                   marginBottom: '16px',
                 }}
               >
-                More than events
+                REAL PEOPLE. REAL FRIENDSHIPS.
               </h2>
             </FadeUp>
 
@@ -385,11 +364,11 @@ export default function SocialPage() {
                   fontSize: '1.0625rem',
                   color: 'rgba(255, 255, 255, 0.55)',
                   lineHeight: 1.65,
-                  maxWidth: '520px',
-                  margin: '0 auto',
+                  maxWidth: '600px',
+                  margin: '0 auto 48px auto',
                 }}
               >
-                We built the community we wished existed in Charlotte. Here{"'"}s what makes it different.
+                Founders, creatives, tech professionals, finance people, stay-at-home parents, couples, bartenders — and everything in between. Some are Charlotte natives, some moved here last year. What they have in common: they&apos;re intentional about building real relationships.
               </p>
             </FadeUp>
 
@@ -399,11 +378,10 @@ export default function SocialPage() {
                 display: 'grid',
                 gridTemplateColumns: 'repeat(3, 1fr)',
                 gap: '16px',
-                marginTop: '56px',
               }}
               className="perks-grid"
             >
-              {socialPerks.map((item, i) => (
+              {communityPillars.map((item, i) => (
                 <StaggerItem
                   key={i}
                   style={{
@@ -449,7 +427,7 @@ export default function SocialPage() {
         >
           <div style={{ maxWidth: '720px', margin: '0 auto', textAlign: 'center' }}>
             <FadeUp>
-              <SectionLabel>Is This You?</SectionLabel>
+              <SectionLabel>IS 704 RIGHT FOR YOU?</SectionLabel>
             </FadeUp>
 
             <FadeUp delay={0.1}>
@@ -463,7 +441,7 @@ export default function SocialPage() {
                   marginBottom: '16px',
                 }}
               >
-                Join 704 If You…
+                JOIN 704 IF YOU...
               </h2>
             </FadeUp>
 
@@ -501,11 +479,11 @@ export default function SocialPage() {
 
             <FadeUp delay={0.4}>
               <Link
-                href="#join"
+                href="/join?plan=social"
                 className="btn-primary"
                 style={{ display: 'inline-block', marginTop: '40px', padding: '14px 32px' }}
               >
-                Become a Member
+                BECOME A MEMBER
               </Link>
             </FadeUp>
           </div>
@@ -519,7 +497,7 @@ export default function SocialPage() {
         >
           <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'center' }}>
             <FadeUp>
-              <SectionLabel>Value</SectionLabel>
+              <SectionLabel>IS IT WORTH IT?</SectionLabel>
             </FadeUp>
 
             <FadeUp delay={0.1}>
@@ -533,7 +511,7 @@ export default function SocialPage() {
                   marginBottom: '12px',
                 }}
               >
-                Your membership pays for itself
+                YOUR MEMBERSHIP PAYS FOR ITSELF
               </h2>
             </FadeUp>
 
@@ -547,7 +525,7 @@ export default function SocialPage() {
                   margin: '0 auto',
                 }}
               >
-                Between the wellness perks and the people you{"'"}ll meet, yes. Attending just one event a month justifies the price.
+                Between the wellness perks and the people you&apos;ll meet, yes. Attending just one event a month justifies the price.
               </p>
             </FadeUp>
 
@@ -590,7 +568,7 @@ export default function SocialPage() {
 
             <FadeUp delay={0.4}>
               <p style={{ fontSize: '0.8125rem', color: 'rgba(255, 255, 255, 0.3)', fontStyle: 'italic', marginTop: '24px' }}>
-                {'"'}Even if you only make it to Cold Plunge & Sauna night, your membership has already paid for itself.{'"'}
+                &ldquo;Even if you only make it to Cold Plunge &amp; Sauna night, your membership has already paid for itself.&rdquo;
               </p>
             </FadeUp>
           </div>
@@ -599,13 +577,12 @@ export default function SocialPage() {
         {/* ════════════════════════════════════════════
             TESTIMONIALS
         ════════════════════════════════════════════ */}
-        <div style={{ display: 'none' }}>
         <section
           style={{ backgroundColor: '#000000', padding: '96px 24px' }}
         >
           <div style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
             <FadeUp>
-              <SectionLabel>What Members Say</SectionLabel>
+              <SectionLabel>WHAT MEMBERS SAY</SectionLabel>
             </FadeUp>
 
             <FadeUp delay={0.1}>
@@ -619,7 +596,7 @@ export default function SocialPage() {
                   marginBottom: '16px',
                 }}
               >
-                Don{"'"}t Take Our Word For It
+                DON&apos;T TAKE OUR WORD FOR IT
               </h2>
             </FadeUp>
 
@@ -627,13 +604,24 @@ export default function SocialPage() {
               staggerDelay={0.15}
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
+                gridTemplateColumns: 'repeat(2, 1fr)',
                 gap: '20px',
                 marginTop: '48px',
               }}
               className="testimonial-grid"
             >
-              {[1, 2, 3].map((i) => (
+              {[
+                {
+                  quote: '704 makes it so easy to hit fun events — especially the health and wellness ones, my personal fave — and I get to meet so many new people every time!!',
+                  name: 'Sydney',
+                  role: 'Social Member',
+                },
+                {
+                  quote: "Joining 704 was a great decision, there's so many events and everyone I've met has been great.",
+                  name: 'Nick',
+                  role: 'Social Member',
+                },
+              ].map((item, i) => (
                 <StaggerItem
                   key={i}
                   style={{
@@ -647,13 +635,13 @@ export default function SocialPage() {
                   <p
                     style={{
                       fontSize: '0.875rem',
-                      color: 'rgba(255, 255, 255, 0.5)',
-                      lineHeight: 1.6,
+                      color: 'rgba(255, 255, 255, 0.65)',
+                      lineHeight: 1.65,
                       fontStyle: 'italic',
                       marginBottom: '20px',
                     }}
                   >
-                    {'"'}Member testimonial coming soon.{'"'}
+                    &ldquo;{item.quote}&rdquo;
                   </p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div
@@ -662,14 +650,16 @@ export default function SocialPage() {
                         height: '36px',
                         borderRadius: '50%',
                         backgroundColor: '#2E2E2E',
+                        border: '1px solid rgba(198,166,100,0.2)',
+                        flexShrink: 0,
                       }}
                     />
                     <div>
-                      <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.6)' }}>
-                        Member Name
+                      <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#FFFFFF' }}>
+                        {item.name}
                       </p>
                       <p style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.3)' }}>
-                        Social Member
+                        {item.role}
                       </p>
                     </div>
                   </div>
@@ -678,7 +668,6 @@ export default function SocialPage() {
             </StaggerContainer>
           </div>
         </section>
-        </div>
 
         {/* ════════════════════════════════════════════
             MEMBERSHIP PRICING
@@ -690,7 +679,7 @@ export default function SocialPage() {
           <div style={{ maxWidth: '480px', margin: '0 auto' }}>
             <div style={{ textAlign: 'center', marginBottom: '40px' }}>
               <FadeUp>
-                <SectionLabel>Join</SectionLabel>
+                <SectionLabel>MEMBERSHIP INVESTMENT</SectionLabel>
               </FadeUp>
 
               <FadeUp delay={0.1}>
@@ -701,10 +690,17 @@ export default function SocialPage() {
                     letterSpacing: '-0.02em',
                     lineHeight: 1.15,
                     color: '#FFFFFF',
+                    marginBottom: '8px',
                   }}
                 >
-                  Ready to find your people?
+                  SIMPLE, TRANSPARENT PRICING
                 </h2>
+              </FadeUp>
+
+              <FadeUp delay={0.15}>
+                <p style={{ fontSize: '1.0625rem', color: 'rgba(255,255,255,0.55)', marginBottom: '40px' }}>
+                  One membership. Full access. No commitments.
+                </p>
               </FadeUp>
             </div>
 
@@ -719,6 +715,18 @@ export default function SocialPage() {
                   textAlign: 'center',
                 }}
               >
+                <p
+                  style={{
+                    fontSize: '0.6875rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    color: 'rgba(255,255,255,0.35)',
+                    marginBottom: '8px',
+                  }}
+                >
+                  MONTHLY
+                </p>
                 <h3
                   style={{
                     fontSize: '1.5rem',
@@ -729,7 +737,7 @@ export default function SocialPage() {
                 >
                   704 Social
                 </h3>
-                <div style={{ marginBottom: '28px', marginTop: '8px' }}>
+                <div style={{ marginBottom: '4px', marginTop: '8px' }}>
                   <span style={{ fontSize: '2.75rem', fontWeight: 700, color: '#C6A664' }}>
                     $35
                   </span>
@@ -737,6 +745,12 @@ export default function SocialPage() {
                     / month
                   </span>
                 </div>
+                <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', marginBottom: '4px' }}>
+                  Cancel anytime
+                </p>
+                <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.25)', marginBottom: '28px' }}>
+                  Full access, no commitments
+                </p>
 
                 <div
                   style={{
@@ -757,177 +771,18 @@ export default function SocialPage() {
                 </div>
 
                 <Link
-                  href={isActiveMember ? '/dashboard' : '/join?plan=social'}
+                  href={mounted && isActiveMember ? '/dashboard' : '/join?plan=social'}
                   className="btn-primary"
                   style={{ display: 'block', textAlign: 'center', padding: '16px 36px', fontSize: '0.9375rem' }}
                 >
-                  Become a Member
+                  BECOME A MEMBER
                 </Link>
 
                 <p style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.25)', marginTop: '16px' }}>
-                  No app required. Cancel anytime.
+                  No application required.
                 </p>
               </TiltCard>
             </ScaleUp>
-          </div>
-        </section>
-
-        {/* ════════════════════════════════════════════
-            UPCOMING EVENTS
-        ════════════════════════════════════════════ */}
-        <section
-          style={{ backgroundColor: '#2E2E2E', padding: '96px 24px' }}
-        >
-          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-              <FadeUp>
-                <SectionLabel>Events</SectionLabel>
-              </FadeUp>
-
-              <FadeUp delay={0.1}>
-                <h2
-                  style={{
-                    fontSize: 'clamp(1.75rem, 4vw, 2.75rem)',
-                    fontWeight: 700,
-                    letterSpacing: '-0.02em',
-                    lineHeight: 1.15,
-                    color: '#FFFFFF',
-                    marginBottom: '12px',
-                  }}
-                >
-                  {format(new Date(), 'MMMM')} Events
-                </h2>
-              </FadeUp>
-            </div>
-
-            {eventsLoading ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {[1, 2, 3].map(i => (
-                  <div key={i} style={{ height: '80px', backgroundColor: '#1A1A1A', borderRadius: '12px', animation: 'pulse 2s infinite' }} />
-                ))}
-              </div>
-            ) : upcomingEvents.length === 0 ? (
-              <FadeUp>
-                <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                  <p style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.9375rem' }}>
-                    No upcoming events right now. Check back soon!
-                  </p>
-                </div>
-              </FadeUp>
-            ) : (
-              <StaggerContainer staggerDelay={0.08}>
-                {upcomingEvents.map((event) => {
-                  const date = new Date(event.start_time);
-                  const dayNum = format(date, 'd');
-                  const dayAbbr = format(date, 'EEE');
-                  const monthAbbr = format(date, 'MMM').toUpperCase();
-                  const time = format(date, 'h:mm a');
-                  const isFree = event.ticket_price === 0;
-
-                  return (
-                    <StaggerItem
-                      key={event.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '12px',
-                        padding: 'clamp(14px, 3vw, 20px) clamp(16px, 4vw, 24px)',
-                        flexWrap: 'wrap' as const,
-                        backgroundColor: '#1A1A1A',
-                        border: '1px solid rgba(255, 255, 255, 0.06)',
-                        borderRadius: '12px',
-                        marginBottom: '10px',
-                        cursor: 'pointer',
-                        transition: 'all 200ms ease',
-                      }}
-                      className="card-hover"
-                      onClick={() => router.push(`/events/${event.id}`)}
-                    >
-                      {/* Date block */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flex: 1, minWidth: 0 }}>
-                        <div
-                          style={{
-                            textAlign: 'center',
-                            minWidth: '44px',
-                            flexShrink: 0,
-                          }}
-                        >
-                          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>
-                            {dayNum}
-                          </div>
-                          <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.35)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            {monthAbbr}
-                          </div>
-                        </div>
-
-                        {/* Event info */}
-                        <div style={{ minWidth: 0 }}>
-                          <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {event.title}
-                          </h3>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.4)' }}>
-                              {dayAbbr}, {monthAbbr.charAt(0) + monthAbbr.slice(1).toLowerCase()} {dayNum} • {time}
-                            </span>
-                            {event.location_name && (
-                              <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.35)' }}>
-                                📍 {event.location_name}
-                              </span>
-                            )}
-                          </div>
-                          <div style={{ marginTop: '6px' }}>
-                            {isFree ? (
-                              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#C6A664' }}>Free</span>
-                            ) : (
-                              <>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.6)' }}>
-                                  Non-Member: ${(event.ticket_price / 100).toFixed(0)}
-                                </span>
-                                <span style={{ fontSize: '0.75rem', color: '#C6A664', fontWeight: 600, marginLeft: '12px' }}>
-                                  Free for Members
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* RSVP button */}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); router.push(`/events/${event.id}`); }}
-                        style={{
-                          padding: '8px 20px',
-                          backgroundColor: '#2E2E2E',
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          borderRadius: '8px',
-                          color: '#FFFFFF',
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          flexShrink: 0,
-                          transition: 'all 200ms ease',
-                        }}
-                      >
-                        RSVP
-                      </button>
-                    </StaggerItem>
-                  );
-                })}
-              </StaggerContainer>
-            )}
-
-            <FadeUp delay={0.3}>
-              <div style={{ textAlign: 'center', marginTop: '32px' }}>
-                <Link
-                  href="/events"
-                  className="btn-ghost"
-                  style={{ display: 'inline-block', padding: '12px 28px', fontSize: '0.8125rem' }}
-                >
-                  View All Events →
-                </Link>
-              </div>
-            </FadeUp>
           </div>
         </section>
 
@@ -939,6 +794,10 @@ export default function SocialPage() {
         >
           <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'center' }}>
             <FadeUp>
+              <SectionLabel>READY?</SectionLabel>
+            </FadeUp>
+
+            <FadeUp delay={0.05}>
               <h2
                 style={{
                   fontSize: 'clamp(1.75rem, 4vw, 2.75rem)',
@@ -949,7 +808,7 @@ export default function SocialPage() {
                   marginBottom: '16px',
                 }}
               >
-                Ready to find your people?
+                YOUR CITY. YOUR PEOPLE.
               </h2>
             </FadeUp>
 
@@ -963,46 +822,29 @@ export default function SocialPage() {
                   margin: '0 auto',
                 }}
               >
-                Join Charlotte{"'"}s premier community for young professionals. $35/month. Cancel anytime.
+                Stop scrolling. Start showing up.
               </p>
             </FadeUp>
 
             <ScaleUp delay={0.2}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'center', marginTop: '40px' }}>
                 <Link
-                  href={isActiveMember ? '/dashboard' : '/join?plan=social'}
+                  href={mounted && isActiveMember ? '/dashboard' : '/join?plan=social'}
                   className="btn-primary"
                   style={{ padding: '16px 36px', fontSize: '0.9375rem' }}
                 >
-                  Become a Member
+                  BECOME A MEMBER
                 </Link>
-                <a
-                  href="mailto:hello@704collective.com"
-                  className="btn-ghost"
-                  style={{ padding: '16px 36px', fontSize: '0.9375rem' }}
-                >
-                  Questions? Email Us
-                </a>
               </div>
-            </ScaleUp>
-
-            <FadeUp delay={0.3}>
-              <p style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.2)', marginTop: '24px' }}>
+              <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.25)', marginTop: '16px' }}>
                 Questions? hello@704collective.com
               </p>
-            </FadeUp>
+            </ScaleUp>
           </div>
         </GradientShift>
         </MarketingPageRoot>
       </main>
       <Footer />
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-      `}</style>
     </>
   );
 }
