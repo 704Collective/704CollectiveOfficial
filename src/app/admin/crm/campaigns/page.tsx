@@ -532,6 +532,10 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
   const [sending, setSending] = useState(false);
   const [activeTab, setActiveTab] = useState<'design' | 'settings'>('design');
   const [senderNames, setSenderNames] = useState<string[]>(['704 Collective Team']);
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testEmail, setTestEmail] = useState('');
+  const [showTestDialog, setShowTestDialog] = useState(false);
+  const [audienceCounts, setAudienceCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     supabase
@@ -545,6 +549,29 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
           .filter((n): n is string => !!n);
         setSenderNames(['704 Collective Team', ...names]);
       });
+  }, []);
+
+  useEffect(() => {
+    async function fetchCounts() {
+      const [activeQ, socialQ, businessQ, nonMemberQ, cancelledQ, guestsQ] = await Promise.all([
+        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').is('deleted_at', null),
+        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').eq('member_type', 'social').is('deleted_at', null),
+        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').eq('member_type', 'business').is('deleted_at', null),
+        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('member_type', 'non_member').is('deleted_at', null),
+        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'canceled').is('deleted_at', null),
+        supabase.from('contacts').select('*', { count: 'exact', head: true }).eq('contact_type', 'guest'),
+      ]);
+      setAudienceCounts({
+        all_active: activeQ.count ?? 0,
+        social: socialQ.count ?? 0,
+        business: businessQ.count ?? 0,
+        non_member: nonMemberQ.count ?? 0,
+        all_contacts: (activeQ.count ?? 0) + (nonMemberQ.count ?? 0),
+        cancelled: cancelledQ.count ?? 0,
+        event_guests: guestsQ.count ?? 0,
+      });
+    }
+    void fetchCounts();
   }, []);
 
   const addBlock = (type: BlockType) => {
@@ -626,6 +653,9 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowTestDialog(true)} className="gap-2">
+            <Send className="w-4 h-4" /> Send Test
+          </Button>
           <Button variant="outline" size="sm" onClick={() => handleSave('draft')} disabled={saving} className="gap-2">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             Save Draft
@@ -694,10 +724,23 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
               <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {AUDIENCE_OPTIONS.map(o => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  <SelectItem key={o.value} value={o.value}>
+                    <span className="flex items-center justify-between gap-3 w-full">
+                      <span>{o.label}</span>
+                      {audienceCounts[o.value] !== undefined && (
+                        <span className="text-xs text-muted-foreground ml-2">{audienceCounts[o.value]}</span>
+                      )}
+                    </span>
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {audienceCounts[audience] !== undefined && (
+              <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+                <Users className="w-3 h-3" />
+                {audienceCounts[audience]} recipient{audienceCounts[audience] === 1 ? '' : 's'}
+              </p>
+            )}
           </div>
         </div>
       ) : (
@@ -760,6 +803,58 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
       )}
 
       <ScheduleDialog open={showSchedule} onClose={() => setShowSchedule(false)} campaign={campaign} onScheduled={onSaved} />
+
+      <Dialog open={showTestDialog} onOpenChange={setShowTestDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send Test Email</DialogTitle>
+            <DialogDescription>Send a test version of this campaign to an email address.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label className="text-xs text-muted-foreground">Send test to</Label>
+            <Input
+              type="email"
+              placeholder="you@example.com"
+              value={testEmail}
+              onChange={e => setTestEmail(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTestDialog(false)}>Cancel</Button>
+            <Button
+              disabled={sendingTest || !testEmail}
+              onClick={async () => {
+                setSendingTest(true);
+                try {
+                  const { data: { session } } = await supabase.auth.getSession();
+                  const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-campaign`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: `Bearer ${session?.access_token}`,
+                      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+                    },
+                    body: JSON.stringify({ campaignId: campaign?.id, testEmail }),
+                  });
+                  if (res.ok) {
+                    toast.success(`Test sent to ${testEmail}`);
+                    setShowTestDialog(false);
+                  } else {
+                    toast.error('Failed to send test email');
+                  }
+                } catch {
+                  toast.error('Failed to send test email');
+                } finally {
+                  setSendingTest(false);
+                }
+              }}
+            >
+              {sendingTest ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+              Send Test
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
