@@ -41,6 +41,7 @@ interface FinancialsPayload {
 
 export interface DashboardSnapshot {
   lowCapacityEventCount: number;
+  pastDueCount: number;
   mrr: number | null;
   last30RevenueDollars: number | null;
   momPercent: number | null;
@@ -103,6 +104,7 @@ async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
     recentList,
     upcomingList,
     weekUpcomingEvents,
+    pastDueQ,
   ] = await Promise.all([
     supabase.from('events').select('*', { count: 'exact', head: true })
       .gte('start_time', sod.toISOString())
@@ -143,6 +145,10 @@ async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
       .gte('start_time', nowIso)
       .lte('start_time', we.toISOString())
       .limit(200),
+    supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('subscription_status', 'past_due'),
   ]);
 
   const financials = await financialsP;
@@ -197,6 +203,7 @@ async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
 
   return {
     lowCapacityEventCount,
+    pastDueCount: pastDueQ.count || 0,
     mrr,
     last30RevenueDollars,
     momPercent,
@@ -268,6 +275,24 @@ export function AdminOverviewTab({
         <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">OVERVIEW</p>
         <h2 className="text-3xl font-bold text-foreground">Dashboard</h2>
       </div>
+
+      {data.pastDueCount > 0 && (
+        <button
+          type="button"
+          onClick={() => onSectionChange('contacts')}
+          className="w-full text-left rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 flex items-center justify-between gap-3 hover:bg-red-500/15 transition-colors"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <DollarSign className="w-5 h-5 text-red-400 shrink-0" aria-hidden />
+            <p className="text-sm text-foreground">
+              <span className="font-semibold text-red-400">{data.pastDueCount}</span> past-due subscription{data.pastDueCount === 1 ? '' : 's'} — billing failed
+            </p>
+          </div>
+          <span className="text-sm font-medium text-red-400 shrink-0 inline-flex items-center gap-0.5">
+            View <ArrowRight className="w-4 h-4" />
+          </span>
+        </button>
+      )}
 
       {data.lowCapacityEventCount > 0 && (
         <button

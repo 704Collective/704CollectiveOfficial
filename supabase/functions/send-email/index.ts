@@ -94,26 +94,18 @@ function welcomeTemplate(data: { name: string; calendarUrl: string; origin?: str
   const base = data.origin;
   if (!base) throw new Error("[welcome] origin is required but was not provided. Ensure the calling function passes origin in the email data payload.");
   return {
-    subject: "Welcome to 704 Collective! 🎉",
+    subject: "You're back - welcome home",
     html: baseLayout(`
-<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name}!</p>
-<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Welcome to 704 Collective — Charlotte's community for young professionals. Your membership is active and you're officially part of the crew.</p>
-<p style="margin:0 0 12px;font-size:15px;font-weight:600;color:${BRAND.text};">Get started:</p>
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name},</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Welcome back. We kept the lights on for you.</p>
+<p style="margin:0 0 12px;font-size:15px;font-weight:600;color:${BRAND.text};">A few things to get you rolling again:</p>
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
-<tr><td style="padding:8px 0;font-size:15px;color:${BRAND.textSecondary};">
-<span style="color:${BRAND.accent};font-weight:600;">1.</span>&nbsp;
-<a href="${base}/events" style="color:${BRAND.accent};text-decoration:underline;">RSVP to an upcoming event</a>
-</td></tr>
-<tr><td style="padding:8px 0;font-size:15px;color:${BRAND.textSecondary};">
-<span style="color:${BRAND.accent};font-weight:600;">2.</span>&nbsp;
-<a href="${data.calendarUrl}" style="color:${BRAND.accent};text-decoration:underline;">Subscribe to the event calendar</a>
-</td></tr>
-<tr><td style="padding:8px 0;font-size:15px;color:${BRAND.textSecondary};">
-<span style="color:${BRAND.accent};font-weight:600;">3.</span>&nbsp;
-<a href="${base}/settings" style="color:${BRAND.accent};text-decoration:underline;">Set up your profile</a>
-</td></tr>
+<tr><td style="padding:8px 0;font-size:15px;color:${BRAND.textSecondary};">-> <a href="${base}/events" style="color:${BRAND.accent};text-decoration:underline;">Check out what's coming up and RSVP</a></td></tr>
+<tr><td style="padding:8px 0;font-size:15px;color:${BRAND.textSecondary};">-> Subscribe to the calendar so you never miss one</td></tr>
+<tr><td style="padding:8px 0;font-size:15px;color:${BRAND.textSecondary};">-> Make sure your profile is up to date</td></tr>
 </table>
-${ctaButton("View Your Dashboard", `${base}/dashboard`)}
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Good to have you back in the room.</p>
+${ctaButton("See Upcoming Events", `${base}/events`)}
 `, base),
   };
 }
@@ -123,10 +115,12 @@ function passwordSetupTemplate(data: { name: string; setupLink: string; origin?:
   return {
     subject: "Set up your 704 Collective account",
     html: baseLayout(`
-<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name}!</p>
-<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Your 704 Collective membership has been set up. Click the button below to create your password and access your account.</p>
-${ctaButton("Set Your Password", data.setupLink)}
-<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">This link expires in 1 hour. If it's expired, you can request a new one instantly from the setup page.</p>
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name},</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Your 704 Collective account is ready - you just need to set a password.</p>
+${ctaButton("Set Up Your Account", data.setupLink)}
+<p style="margin:0 0 24px;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">This link expires in 1 hour.</p>
+<p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Once you're in, you can RSVP to events, access your membership QR code, and connect with other members.</p>
+<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">Questions? Just reply here.</p>
 `, data.origin),
   };
 }
@@ -338,28 +332,20 @@ function welcomeSetupTemplate(data: { name: string; setupLink: string; calendarU
   const name = data.name || "there";
   const base = data.origin || "#";
   return {
-    subject: "Welcome to 704 Collective! 🎉",
+    subject: "You're in. Let's get you set up.",
     html: baseLayout(`
-<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name}!</p>
-<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Welcome to 704 Collective — Charlotte's community for young professionals. Your membership is active!</p>
-<p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">First things first — set up your password so you can access your account:</p>
-${ctaButton("Set Your Password", data.setupLink)}
-<p style="margin:0 0 28px;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">This link expires in 1 hour. If it's expired, you can request a new one from the setup page.</p>
-<p style="margin:0 0 12px;font-size:15px;font-weight:600;color:${BRAND.text};">Once you're set up, here's how to get started:</p>
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name},</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Welcome to 704 Collective. You just joined a room full of people who are actually worth knowing in Charlotte.</p>
+<p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">First thing — set up your account so you can RSVP to events, get your member QR code, and see who else is in here.</p>
+${ctaButton("Set Up Your Account", data.setupLink)}
+<p style="margin:0 0 28px;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">This link expires in 1 hour, so handle it now.</p>
+<p style="margin:0 0 12px;font-size:15px;font-weight:600;color:${BRAND.text};">Once you're in:</p>
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
-<tr><td style="padding:8px 0;font-size:15px;color:${BRAND.textSecondary};">
-<span style="color:${BRAND.accent};font-weight:600;">1.</span>&nbsp;
-<a href="${base}/events" style="color:${BRAND.accent};text-decoration:underline;">RSVP to an upcoming event</a>
-</td></tr>
-${data.calendarUrl ? `<tr><td style="padding:8px 0;font-size:15px;color:${BRAND.textSecondary};">
-<span style="color:${BRAND.accent};font-weight:600;">2.</span>&nbsp;
-<a href="${data.calendarUrl}" style="color:${BRAND.accent};text-decoration:underline;">Subscribe to the event calendar</a>
-</td></tr>` : ""}
-<tr><td style="padding:8px 0;font-size:15px;color:${BRAND.textSecondary};">
-<span style="color:${BRAND.accent};font-weight:600;">${data.calendarUrl ? "3" : "2"}.</span>&nbsp;
-<a href="${base}/settings" style="color:${BRAND.accent};text-decoration:underline;">Set up your profile</a>
-</td></tr>
+<tr><td style="padding:8px 0;font-size:15px;color:${BRAND.textSecondary};">-> Browse upcoming events and grab your spot</td></tr>
+<tr><td style="padding:8px 0;font-size:15px;color:${BRAND.textSecondary};">-> Subscribe to the member calendar</td></tr>
+<tr><td style="padding:8px 0;font-size:15px;color:${BRAND.textSecondary};">-> Fill out your profile so people know who you are</td></tr>
 </table>
+<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">If you need anything, reply to this email. A real person reads it.</p>
 `, base),
   };
 }
