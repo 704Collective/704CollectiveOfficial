@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import Nav from '@/components/Nav';
 import { Footer } from '@/components/Footer';
@@ -615,11 +616,13 @@ export default function SocialPage() {
                   quote: '704 makes it so easy to hit fun events — especially the health and wellness ones, my personal fave — and I get to meet so many new people every time!!',
                   name: 'Sydney',
                   role: 'Social Member',
+                  avatar: 'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/Sydney.jpg',
                 },
                 {
                   quote: "Joining 704 was a great decision, there's so many events and everyone I've met has been great.",
                   name: 'Nick',
                   role: 'Social Member',
+                  avatar: 'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/Nick.jpg',
                 },
               ].map((item, i) => (
                 <StaggerItem
@@ -644,15 +647,13 @@ export default function SocialPage() {
                     &ldquo;{item.quote}&rdquo;
                   </p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div
-                      style={{
-                        width: '36px',
-                        height: '36px',
-                        borderRadius: '50%',
-                        backgroundColor: '#2E2E2E',
-                        border: '1px solid rgba(198,166,100,0.2)',
-                        flexShrink: 0,
-                      }}
+                    <Image
+                      src={item.avatar}
+                      alt={item.name}
+                      width={36}
+                      height={36}
+                      style={{ borderRadius: '50%', objectFit: 'cover', width: '36px', height: '36px', flexShrink: 0 }}
+                      unoptimized
                     />
                     <div>
                       <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#FFFFFF' }}>
