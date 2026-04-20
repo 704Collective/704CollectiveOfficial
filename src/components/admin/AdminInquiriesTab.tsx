@@ -101,8 +101,8 @@ export function AdminInquiriesTab({ onNavigateToDashboard }: Props) {
       if (!invoiceResult.ok) throw new Error(invoiceResult.error);
 
       // Send invoice via Stripe immediately
-      if (invoiceResult.invoiceId) {
-        const sendResult = await sendPartnerStripeInvoice(invoiceResult.invoiceId);
+      if (invoiceResult.id) {
+        const sendResult = await sendPartnerStripeInvoice(invoiceResult.id);
         if (!sendResult.ok) {
           toast.warning('Inquiry approved and invoice created, but Stripe send failed - send manually from Invoices.');
         } else {
