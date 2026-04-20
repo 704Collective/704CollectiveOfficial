@@ -4,6 +4,7 @@ import { ReactNode, useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { AdminBottomNav } from '@/components/AdminBottomNav';
+import { AdminGlobalSearch } from '@/components/admin/AdminGlobalSearch';
 import {
   Sheet,
   SheetContent,
@@ -54,6 +55,7 @@ export function AdminLayout({
         <AdminSidebar
           activeSection={activeSection}
           onSectionChange={onSectionChange}
+          globalSearch={<AdminGlobalSearch />}
         />
       </aside>
 
@@ -88,7 +90,9 @@ export function AdminLayout({
               <line x1="2" y1="13.5" x2="16" y2="13.5" />
             </svg>
           </button>
-          <span className="text-sm font-semibold text-foreground">704 Collective</span>
+          <div style={{ flex: 1, padding: '0 12px' }}>
+            <AdminGlobalSearch />
+          </div>
           <div className="min-w-11" aria-hidden />
         </header>
 

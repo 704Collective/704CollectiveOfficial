@@ -20,6 +20,7 @@ interface AdminSidebarProps {
   activeSection?: AdminSection;
   onSectionChange?: (section: AdminSection) => void;
   onMobileClose?: () => void;
+  globalSearch?: React.ReactNode;
 }
 
 // Always render border-l-2 on all items — use transparent colour when inactive
@@ -28,7 +29,7 @@ const NAV_BASE = 'flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm fo
 const NAV_ACTIVE   = 'bg-accent text-foreground border-primary';
 const NAV_INACTIVE = 'text-muted-foreground hover:text-foreground hover:bg-accent/50 border-transparent';
 
-function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose }: AdminSidebarProps) {
+function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, globalSearch }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { isSuperAdmin, isAdmin } = useAuth();
@@ -128,8 +129,18 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose }: Ad
 
       <div className="mx-4 border-t border-border shrink-0" />
 
+      {/* Global search */}
+      {globalSearch && (
+        <div style={{ padding: '8px 12px 4px' }}>
+          {globalSearch}
+        </div>
+      )}
+
       {/* Main nav — fixed height scroll container so it never recalculates */}
-      <nav className="flex-1 min-h-0 px-3 py-3 overflow-y-auto">
+      <nav
+        className="flex-1 min-h-0 px-3 py-3 overflow-y-auto"
+        style={{ overscrollBehavior: 'contain', willChange: 'transform' }}
+      >
 
         {/* ── Group 1 — no heading ── */}
         <div className="space-y-0.5">
