@@ -507,6 +507,15 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       category: (event.category as EventCategory) || 'other', recurrence_rule: 'none',
       recurrence_end_type: 'occurrences', recurrence_occurrences: 4, recurrence_end_date: '', tags: event.tags || [],
       allows_guest_passes: event.allows_guest_passes ?? true,
+      sponsor_slots_enabled: event.sponsor_slots_enabled ?? false,
+      sponsor_slots_count: event.sponsor_slots_count ? String(event.sponsor_slots_count) : '',
+      sponsor_slot_price: event.sponsor_slot_price ? String(event.sponsor_slot_price) : '',
+      vendor_slots_enabled: event.vendor_slots_enabled ?? false,
+      vendor_slots_count: event.vendor_slots_count ? String(event.vendor_slots_count) : '',
+      vendor_slot_price: event.vendor_slot_price ? String(event.vendor_slot_price) : '',
+      host_slots_enabled: event.host_slots_enabled ?? false,
+      host_slots_count: event.host_slots_count ? String(event.host_slots_count) : '',
+      host_slot_price: event.host_slot_price ? String(event.host_slot_price) : '',
     });
     setDialogOpen(true);
   };
