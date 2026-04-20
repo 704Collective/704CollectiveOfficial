@@ -82,7 +82,7 @@ export default function ResetPassword() {
 
     setSending(true);
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?source=recovery`,
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
     });
     setSending(false);
 

@@ -157,9 +157,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/login?error=oauth', origin));
   }
 
+  // Detect recovery via Supabase session metadata when type param is absent
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user?.recovery_sent_at && !type) {
+    const recoveryRedirect = NextResponse.redirect(new URL('/reset-password', origin));
+    pendingCookies.forEach(({ name, value, options }) => {
+      recoveryRedirect.cookies.set(name, value, options as Parameters<typeof recoveryRedirect.cookies.set>[2]);
+    });
+    return recoveryRedirect;
+  }
+
   // Recovery: always land on /reset-password before any profile / access check.
   // Admins would otherwise be redirected to /admin via postAuthDestination.
-  if (type === 'recovery' || source === 'recovery') {
+  if (type === 'recovery') {
     const recoveryRedirect = NextResponse.redirect(new URL('/reset-password', origin));
     pendingCookies.forEach(({ name, value, options }) => {
       recoveryRedirect.cookies.set(name, value, options as Parameters<typeof recoveryRedirect.cookies.set>[2]);
@@ -169,7 +179,7 @@ export async function GET(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, subscription_status, membership_override, member_type, created_at')
+    .select('email, role, subscription_status, membership_override, member_type, created_at')
     .eq('id', user.id)
     .maybeSingle();
 
