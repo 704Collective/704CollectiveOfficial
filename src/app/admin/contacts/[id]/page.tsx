@@ -195,11 +195,11 @@ export default function AdminContactDetailPage() {
   const email = String(row?.email ?? '');
   const name = (row?.full_name as string | null) ?? null;
   const isMember = parsed.table === 'profiles';
-  const type = isMember ? 'member' : String((contactRow as { contact_type?: string })?.contact_type ?? 'prospect');
+  const type = isMember ? 'member' : String((contactRow as { contact_type?: string } | null)?.contact_type ?? 'prospect');
   const active = isMember
-    ? Boolean((row as { membership_override?: boolean }).membership_override
-      || (row as { subscription_status?: string }).subscription_status === 'active')
-    : String((row as { status?: string }).status ?? '') === 'active';
+    ? Boolean((row as { membership_override?: boolean } | null)?.membership_override
+      || (row as { subscription_status?: string } | null)?.subscription_status === 'active')
+    : String((row as { status?: string } | null)?.status ?? '') === 'active';
 
   return (
     <div className="space-y-6 pb-10 max-w-4xl">
