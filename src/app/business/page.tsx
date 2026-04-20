@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Nav from "@/components/Nav";
-import { Footer } from "@/components/Footer"
-;
+import { Footer } from "@/components/Footer";
+import Link from "next/link";
 import {
   FadeUp,
   FadeIn,
@@ -10,7 +10,6 @@ import {
   ScaleUp,
   WordReveal,
 } from "@/components/Animations";
-import TiltCard from "@/components/TiltCard";
 import { MarketingPageRoot } from "@/components/MarketingPageRoot";
 import JsonLd from "@/components/JsonLd";
 import { businessServiceSchema704 } from "@/lib/jsonLdSchemas";
@@ -32,78 +31,53 @@ export const metadata: Metadata = {
 const pillars = [
   {
     num: "01",
-    title: "Scaling with Purpose",
-    body: "704 Collective is growing fast, but never at the expense of what makes it worth being part of. Every new member, event, and partnership is added with intention, because the moment we sacrifice quality for size is the moment we become everything we set out to replace.",
+    title: "Curated — Not Open Door",
+    body: "Every member is reviewed. You're not joining a room full of strangers — you're joining a room where everyone belongs there.",
   },
   {
     num: "02",
-    title: "Powered by Credibility",
-    body: "CLTBucketlist connects millions of locals with business and experiences every month. That is the foundation 704 Collective was built on and how we've been able to power strong events and connections.",
+    title: "Built-In Reach",
+    body: "Your membership connects you to 500,000+ CLTBucketlist followers across Instagram, TikTok, and beyond — real Charlotte visibility.",
   },
   {
     num: "03",
-    title: "Relationships Over Transactions",
-    body: "No pitch competitions. No forced introductions. Just real conversations between people who are serious about building something.",
+    title: "Real Relationships",
+    body: "Monthly member events, mastermind sessions, and a private community designed for genuine connection — not card collecting.",
+  },
+  {
+    num: "04",
+    title: "Your Brand, Elevated",
+    body: "Members get featured placements, collaborative opportunities, and marketing support that amplifies who you are in Charlotte.",
   },
 ];
 
 const benefits = [
-  {
-    title: "Monthly Business Meetings",
-    body: "Structured sessions with Charlotte's top professionals. Real strategy, real accountability.",
-  },
-  {
-    title: "Exclusive Workshops",
-    body: "Deep-dive sessions on growth, leadership, marketing, and finance - led by people who have done it.",
-  },
-  {
-    title: "Strategic Introductions",
-    body: "We connect members with the right people - investors, partners, clients, mentors.",
-  },
-  {
-    title: "Business Resources",
-    body: "Templates, frameworks, and tools shared exclusively within the business community.",
-  },
-  {
-    title: "Full 704 Social Access",
-    body: "Complete Social pass included - all social events, wellness days, and community perks.",
-  },
-  {
-    title: "Priority Everything",
-    body: "First access to limited events, new programs, and partnership opportunities.",
-  },
-  {
-    title: "Charlotte Insider Access",
-    body: "Powered by CLTBucketlist - exclusive deals, early access, and connections to the city's best.",
-  },
-  {
-    title: "Guest Speaker Series",
-    body: "Hear from Charlotte business leaders and industry experts in intimate, members-only settings.",
-  },
-  {
-    title: "Cross-Community Exposure",
-    body: "Visibility across the 704 Collective ecosystem - social members, partners, and local businesses.",
-  },
+  { title: "Access to exclusive member-only events and mixers" },
+  { title: "Mastermind roundtables and accountability sessions" },
+  { title: "Private Slack community with vetted members" },
+  { title: "Collaborative referrals within the member network" },
+  { title: "Featured placement in 704 Collective content and channels" },
+  { title: "Member spotlight opportunities across CLTBucketlist platforms" },
+  { title: "Early access to events, partnerships, and announcements" },
+  { title: "Direct introductions to founders, investors, and key players in Charlotte" },
 ];
 
-const audienceItems = [
-  "Founders and entrepreneurs building in Charlotte",
-  "Professionals who want strategic relationships, not small talk",
-  "Executives tired of generic networking events",
-  "Creatives and freelancers looking for real collaboration",
-  "Anyone serious about growing their business and network",
-  "Leaders who know their network is their net worth",
-];
-
-const pricingFeatures = [
-  "Monthly business meetings",
-  "Exclusive workshops and speakers",
-  "Private dinners",
-  "Strategic introductions",
-  "Full 704 Social access",
-  "Priority to all events",
-  "Business resource library",
-  "Cancel anytime",
+const stats = [
+  {
+    number: "500K+",
+    label: "COMMUNITY REACH",
+    desc: "Built on CLTBucketlist's audience — real Charlotte people who trust this brand across Instagram, TikTok, and beyond.",
+  },
+  {
+    number: "Curated",
+    label: "EVERY MEMBER",
+    desc: "This isn't open enrollment. Every 704 Business member is reviewed. You're joining a room where everyone belongs there.",
+  },
+  {
+    number: "704",
+    label: "ROOTED HERE",
+    desc: "We're not another national chamber chapter. We're Charlotte-first, Charlotte-built, and exclusively focused on growth in the 704.",
+  },
 ];
 
 function SectionLabel({ text }: { text: string }) {
@@ -153,6 +127,7 @@ export default function BusinessPage() {
       <Nav />
       <main id="main-content" style={{ paddingTop: "64px" }}>
         <MarketingPageRoot>
+
         {/* ════════════════════════════════════════════
             HERO
         ════════════════════════════════════════════ */}
@@ -179,7 +154,7 @@ export default function BusinessPage() {
             }}
           />
 
-          {/* Dark overlay - heavier than homepage, befitting the business tone */}
+          {/* Dark overlay */}
           <div
             style={{
               position: "absolute",
@@ -212,6 +187,7 @@ export default function BusinessPage() {
                 "linear-gradient(to right, transparent, rgba(198,166,100,0.25), transparent)",
             }}
           />
+
           <div
             style={{
               position: "relative",
@@ -223,37 +199,18 @@ export default function BusinessPage() {
             }}
           >
             <FadeIn delay={0.2} duration={0.8}>
-              <div
+              <p
                 style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  border: "1px solid rgba(198,166,100,0.25)",
-                  borderRadius: "9999px",
-                  padding: "8px 20px",
-                  marginBottom: "36px",
+                  fontSize: "0.75rem",
+                  fontWeight: 700,
+                  letterSpacing: "0.2em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.4)",
+                  marginBottom: "24px",
                 }}
               >
-                <div
-                  style={{
-                    width: "6px",
-                    height: "6px",
-                    borderRadius: "50%",
-                    backgroundColor: "#C6A664",
-                  }}
-                />
-                <span
-                  style={{
-                    color: "#C6A664",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.2em",
-                  }}
-                >
-                  704 Business
-                </span>
-              </div>
+                704 COLLECTIVE · BUSINESS MEMBERSHIP
+              </p>
             </FadeIn>
 
             <h1
@@ -262,18 +219,23 @@ export default function BusinessPage() {
                 fontWeight: 700,
                 lineHeight: 1.05,
                 letterSpacing: "-0.03em",
-                marginBottom: "24px",
+                marginBottom: "20px",
                 color: "#FAF6F0",
               }}
             >
-              <WordReveal text="Where Charlotte's Leaders" />
-              <br />
-              <span style={{ color: "#C6A664", fontStyle: "italic" }}>
-                <WordReveal text="Connect" />
-              </span>
+              <WordReveal text="SCALE YOUR IMPACT. OWN YOUR NETWORK." />
             </h1>
 
-            <FadeUp delay={0.6} duration={0.8}>
+            <FadeUp delay={0.5} duration={0.8}>
+              <p
+                style={{
+                  fontSize: "1.125rem",
+                  color: "#A0A0A0",
+                  marginBottom: "16px",
+                }}
+              >
+                Charlotte&apos;s Premier Business Membership
+              </p>
               <p
                 style={{
                   color: "#A0A0A0",
@@ -283,9 +245,7 @@ export default function BusinessPage() {
                   lineHeight: 1.7,
                 }}
               >
-                Strategic networking, exclusive workshops, and a curated
-                community of ambitious professionals building something bigger
-                than themselves.
+                704 Business is the high-performance division of the Collective — built for entrepreneurs, founders, and elite professionals who are serious about growth in the Queen City.
               </p>
             </FadeUp>
 
@@ -303,14 +263,14 @@ export default function BusinessPage() {
                   className="btn-gold"
                   style={{ padding: "16px 36px", fontSize: "0.875rem" }}
                 >
-                  Apply for Membership
+                  APPLY NOW
                 </a>
                 <a
-                  href="#benefits"
+                  href="#pricing"
                   className="btn-ghost-gold"
                   style={{ padding: "16px 36px", fontSize: "0.875rem" }}
                 >
-                  See What{"'"}s Included
+                  VIEW PRICING
                 </a>
               </div>
             </FadeUp>
@@ -323,13 +283,13 @@ export default function BusinessPage() {
         <section style={{ backgroundColor: "#1A1A1A", padding: "80px 24px" }}>
           <div
             style={{
-              maxWidth: "600px",
+              maxWidth: "800px",
               margin: "0 auto",
               textAlign: "center",
             }}
           >
             <FadeUp>
-              <SectionLabel text="Who We Are" />
+              <SectionLabel text="WHO WE ARE" />
             </FadeUp>
 
             <FadeUp delay={0.1}>
@@ -338,60 +298,84 @@ export default function BusinessPage() {
                   fontSize: "clamp(1.75rem, 4vw, 2.25rem)",
                   fontWeight: 700,
                   letterSpacing: "-0.025em",
-                  marginBottom: "32px",
+                  marginBottom: "24px",
                   color: "#FAF6F0",
                 }}
               >
-                Built for the people building Charlotte.
+                BUILT FROM CHARLOTTE&apos;S HEARTBEAT
               </h2>
             </FadeUp>
 
-            <div
+            <FadeUp delay={0.2}>
+              <p
+                style={{
+                  color: "#A0A0A0",
+                  fontSize: "1rem",
+                  lineHeight: 1.8,
+                  textAlign: "center",
+                  marginBottom: "0",
+                }}
+              >
+                704 Business was born from CLTBucketlist — Charlotte&apos;s most trusted lifestyle brand with over 500,000 community members. We built something the city was missing: a curated professional network where trust is built before the meeting happens.
+              </p>
+            </FadeUp>
+
+            <StaggerContainer
+              staggerDelay={0.1}
               style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "16px",
-                color: "#A0A0A0",
-                fontSize: "1rem",
-                lineHeight: 1.8,
-                textAlign: "center",
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 1fr)",
+                gap: "24px",
+                marginTop: "48px",
               }}
+              className="stats-grid"
             >
-              <FadeUp delay={0.2}>
-                <p>
-                  Charlotte is full of ambitious, talented people. The problem has
-                  never been finding them. It{"'"}s been finding a real way to
-                  connect with them.
-                </p>
-              </FadeUp>
-
-              <FadeUp delay={0.3}>
-                <p>
-                  Not at a 600-person mixer where you leave with a stack of cards
-                  you{"'"}ll never use. Not at a networking lunch that{"'"}s really
-                  just a sales pitch with a salad. Not through a cold LinkedIn
-                  message that gets ignored.
-                </p>
-              </FadeUp>
-
-              <FadeUp delay={0.4}>
-                <p>
-                  704 Business was built for professionals who are serious about
-                  growth. The ones building companies, leading teams, creating real
-                  relationships, and looking for a room that{"'"}s actually worth
-                  being in. Monthly member meetings, mastermind sessions,
-                  relevant local speakers, closed-door networking, and direct
-                  introductions to the people who can move the needle for you.
-                </p>
-              </FadeUp>
-
-              <FadeUp delay={0.5}>
-                <p>
-                  This isn{"'"}t another business group. It{"'"}s the business
-                  community Charlotte has always needed and never had.
-                </p>
-              </FadeUp>
-            </div>
+              {stats.map((s, i) => (
+                <StaggerItem
+                  key={i}
+                  style={{
+                    backgroundColor: "#2E2E2E",
+                    borderRadius: "12px",
+                    padding: "28px 20px",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    textAlign: "center",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: "2rem",
+                      fontWeight: 700,
+                      color: "#C6A664",
+                      marginBottom: "8px",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {s.number}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "0.6875rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase",
+                      color: "rgba(255,255,255,0.35)",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    {s.label}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "0.8125rem",
+                      color: "#A0A0A0",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {s.desc}
+                  </p>
+                </StaggerItem>
+              ))}
+            </StaggerContainer>
           </div>
         </section>
 
@@ -402,7 +386,7 @@ export default function BusinessPage() {
           <div style={{ maxWidth: "960px", margin: "0 auto" }}>
             <div style={{ textAlign: "center", marginBottom: "48px" }}>
               <FadeUp>
-                <SectionLabel text="How We're Different" />
+                <SectionLabel text="HOW WE'RE DIFFERENT" />
               </FadeUp>
 
               <FadeUp delay={0.1}>
@@ -415,7 +399,7 @@ export default function BusinessPage() {
                     color: "#FAF6F0",
                   }}
                 >
-                  Not another networking group.
+                  NOT ANOTHER NETWORKING CLUB
                 </h2>
               </FadeUp>
 
@@ -423,33 +407,22 @@ export default function BusinessPage() {
                 <p
                   style={{
                     color: "#A0A0A0",
-                    maxWidth: "480px",
+                    maxWidth: "520px",
                     margin: "0 auto",
                     fontSize: "0.95rem",
                     lineHeight: 1.7,
                   }}
                 >
-                  Our leadership team includes the founders who built{" "}
-                  <a
-                    href="https://cltbucketlist.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: "#C6A664", textDecoration: "none" }}
-                  >
-                    CLTBucketlist.com
-                  </a>{" "}
-                  - Charlotte{"'"}s #1 official city guide platform and spent years
-                  learning what this city actually needs, and who runs what in
-                  Charlotte.
+                  We&apos;re not a chamber. We&apos;re not a coworking space. We&apos;re a collective of Charlotte&apos;s most driven founders, entrepreneurs, and professionals — people who move fast, think big, and actually show up.
                 </p>
               </FadeUp>
             </div>
 
             <StaggerContainer
-              staggerDelay={0.12}
+              staggerDelay={0.1}
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(3, 1fr)",
+                gridTemplateColumns: "repeat(2, 1fr)",
                 gap: "16px",
               }}
               className="pillars-grid"
@@ -463,7 +436,7 @@ export default function BusinessPage() {
                     border: "1px solid rgba(255,255,255,0.06)",
                     borderRadius: "12px",
                     padding: "36px 28px",
-                    textAlign: "center",
+                    textAlign: "left",
                   }}
                 >
                   <div
@@ -512,7 +485,7 @@ export default function BusinessPage() {
           <div style={{ maxWidth: "960px", margin: "0 auto" }}>
             <div style={{ textAlign: "center", marginBottom: "48px" }}>
               <FadeUp>
-                <SectionLabel text="Membership" />
+                <SectionLabel text="MEMBERSHIP BENEFITS" />
               </FadeUp>
 
               <FadeUp delay={0.1}>
@@ -525,7 +498,7 @@ export default function BusinessPage() {
                     color: "#FAF6F0",
                   }}
                 >
-                  What Members Get
+                  WHAT MEMBERS GET
                 </h2>
               </FadeUp>
 
@@ -533,12 +506,13 @@ export default function BusinessPage() {
                 <p
                   style={{
                     color: "#A0A0A0",
-                    maxWidth: "420px",
+                    maxWidth: "480px",
                     margin: "0 auto",
                     fontSize: "0.95rem",
+                    lineHeight: 1.6,
                   }}
                 >
-                  Everything in 704 Social, plus business-exclusive access.
+                  Every benefit is designed to give you visibility, access, and real connections — nothing filler.
                 </p>
               </FadeUp>
             </div>
@@ -547,7 +521,7 @@ export default function BusinessPage() {
               staggerDelay={0.06}
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(3, 1fr)",
+                gridTemplateColumns: "repeat(2, 1fr)",
                 gap: "12px",
               }}
               className="benefits-grid"
@@ -560,136 +534,30 @@ export default function BusinessPage() {
                     backgroundColor: "#2E2E2E",
                     border: "1px solid rgba(255,255,255,0.06)",
                     borderRadius: "10px",
-                    padding: "24px 20px",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      marginBottom: "10px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "28px",
-                        height: "28px",
-                        borderRadius: "6px",
-                        backgroundColor: "rgba(198,166,100,0.1)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <span
-                        style={{
-                          color: "#C6A664",
-                          fontSize: "10px",
-                          fontWeight: 700,
-                        }}
-                      >
-                        {String(i + 1).padStart(2, "0")}
-                      </span>
-                    </div>
-                    <h3
-                      style={{
-                        color: "#FAF6F0",
-                        fontWeight: 600,
-                        fontSize: "0.85rem",
-                      }}
-                    >
-                      {b.title}
-                    </h3>
-                  </div>
-                  <p
-                    style={{
-                      color: "#A0A0A0",
-                      fontSize: "0.8rem",
-                      lineHeight: 1.65,
-                      paddingLeft: "38px",
-                    }}
-                  >
-                    {b.body}
-                  </p>
-                </StaggerItem>
-              ))}
-            </StaggerContainer>
-          </div>
-        </section>
-
-        {/* ════════════════════════════════════════════
-            WHO THIS IS FOR
-        ════════════════════════════════════════════ */}
-        <section style={{ backgroundColor: "#2E2E2E", padding: "80px 24px" }}>
-          <div
-            style={{
-              maxWidth: "720px",
-              margin: "0 auto",
-              textAlign: "center",
-            }}
-          >
-            <FadeUp>
-              <SectionLabel text="Is This You?" />
-            </FadeUp>
-
-            <FadeUp delay={0.1}>
-              <h2
-                style={{
-                  fontSize: "clamp(1.75rem, 4vw, 2.25rem)",
-                  fontWeight: 700,
-                  letterSpacing: "-0.025em",
-                  marginBottom: "40px",
-                  color: "#FAF6F0",
-                }}
-              >
-                Who This Is For
-              </h2>
-            </FadeUp>
-
-            <StaggerContainer
-              staggerDelay={0.08}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(2, 1fr)",
-                gap: "10px",
-                textAlign: "left",
-              }}
-              className="audience-grid"
-            >
-              {audienceItems.map((item, i) => (
-                <StaggerItem
-                  key={i}
-                  style={{
+                    padding: "20px 20px",
                     display: "flex",
                     alignItems: "flex-start",
-                    gap: "12px",
-                    padding: "14px 18px",
-                    backgroundColor: "rgba(26,26,26,0.6)",
-                    borderRadius: "8px",
-                    border: "1px solid rgba(255,255,255,0.04)",
+                    gap: "10px",
                   }}
                 >
                   <span
                     style={{
                       color: "#C6A664",
-                      fontSize: "0.8rem",
-                      marginTop: "2px",
+                      fontSize: "0.875rem",
                       flexShrink: 0,
-                      fontWeight: 600,
+                      marginTop: "1px",
                     }}
                   >
-                    {"->"}
+                    ✓
                   </span>
                   <span
                     style={{
-                      color: "#A0A0A0",
-                      fontSize: "0.85rem",
-                      lineHeight: 1.6,
+                      color: "#FAF6F0",
+                      fontSize: "0.875rem",
+                      lineHeight: 1.5,
                     }}
                   >
-                    {item}
+                    {b.title}
                   </span>
                 </StaggerItem>
               ))}
@@ -702,9 +570,9 @@ export default function BusinessPage() {
         ════════════════════════════════════════════ */}
         <section
           id="pricing"
-          style={{ backgroundColor: "#1A1A1A", padding: "80px 24px" }}
+          style={{ backgroundColor: "#2E2E2E", padding: "80px 24px" }}
         >
-          <div style={{ maxWidth: "560px", margin: "0 auto" }}>
+          <div style={{ maxWidth: "760px", margin: "0 auto" }}>
             <div style={{ textAlign: "center", marginBottom: "40px" }}>
               <FadeUp>
                 <SectionLabel text="Pricing" />
@@ -725,327 +593,233 @@ export default function BusinessPage() {
             </div>
 
             <ScaleUp delay={0.2}>
-              <TiltCard
+              <div
                 style={{
-                  backgroundColor: "#111111",
-                  border: "1px solid rgba(198,166,100,0.15)",
-                  borderRadius: "16px",
-                  overflow: "hidden",
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "24px",
                 }}
+                className="pricing-grid"
               >
+                {/* Monthly Card */}
                 <div
                   style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: "1px",
-                    background:
-                      "linear-gradient(to right, transparent, rgba(198,166,100,0.4), transparent)",
+                    backgroundColor: "#111111",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: "16px",
+                    padding: "36px 28px",
+                    textAlign: "center",
                   }}
-                />
-                <div
-                  className="pricing-inner"
-                  style={{ padding: "44px 36px", textAlign: "center" }}
                 >
-                  <div
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      border: "1px solid rgba(198,166,100,0.2)",
-                      borderRadius: "9999px",
-                      padding: "6px 16px",
-                      marginBottom: "28px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "4px",
-                        height: "4px",
-                        borderRadius: "50%",
-                        backgroundColor: "#C6A664",
-                      }}
-                    />
-                    <span
-                      style={{
-                        color: "#C6A664",
-                        fontSize: "10px",
-                        fontWeight: 600,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.2em",
-                      }}
-                    >
-                      Business Membership
-                    </span>
-                  </div>
-
-                  <h3
-                    style={{
-                      fontSize: "clamp(1.75rem, 4vw, 2.25rem)",
-                      fontWeight: 700,
-                      color: "#FAF6F0",
-                      letterSpacing: "-0.025em",
-                      marginBottom: "28px",
-                    }}
-                  >
-                    704 Business
-                  </h3>
-
-                  <div
-                    className="pricing-prices"
-                    style={{
-                      display: "flex",
-                      alignItems: "baseline",
-                      justifyContent: "center",
-                      gap: "20px",
-                      marginBottom: "6px",
-                    }}
-                  >
-                    <div>
-                      <span
-                        style={{
-                          fontSize: "clamp(2rem, 5vw, 2.75rem)",
-                          fontWeight: 700,
-                          color: "#FAF6F0",
-                          letterSpacing: "-0.03em",
-                        }}
-                      >
-                        $300
-                      </span>
-                      <span
-                        style={{
-                          color: "rgba(250,246,240,0.3)",
-                          fontSize: "0.9rem",
-                          marginLeft: "4px",
-                        }}
-                      >
-                        /mo
-                      </span>
-                    </div>
-                    <div
-                      className="pricing-divider"
-                      style={{
-                        color: "rgba(255,255,255,0.1)",
-                        fontSize: "1.25rem",
-                      }}
-                    >
-                      |
-                    </div>
-                    <div>
-                      <span
-                        style={{
-                          fontSize: "clamp(2rem, 5vw, 2.75rem)",
-                          fontWeight: 700,
-                          color: "#FAF6F0",
-                          letterSpacing: "-0.03em",
-                        }}
-                      >
-                        $3,600
-                      </span>
-                      <span
-                        style={{
-                          color: "rgba(250,246,240,0.3)",
-                          fontSize: "0.9rem",
-                          marginLeft: "4px",
-                        }}
-                      >
-                        /yr
-                      </span>
-                    </div>
-                  </div>
-
                   <p
                     style={{
-                      color: "rgba(250,246,240,0.25)",
-                      fontSize: "11px",
+                      fontSize: "0.6875rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.12em",
                       textTransform: "uppercase",
-                      letterSpacing: "0.1em",
-                      marginBottom: "32px",
+                      color: "rgba(255,255,255,0.35)",
+                      marginBottom: "20px",
                     }}
                   >
-                    Annual saves $600 - Both include full Social access
+                    MONTHLY
                   </p>
-
-                  <div
-                    className="pricing-features"
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: "6px 20px",
-                      maxWidth: "380px",
-                      margin: "0 auto 32px auto",
-                      textAlign: "left",
-                    }}
-                  >
-                    {pricingFeatures.map((f, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          padding: "5px 0",
-                        }}
-                      >
-                        <span
-                          style={{ color: "#C6A664", fontSize: "11px" }}
-                        >
-                          {"-"}
-                        </span>
-                        <span
-                          style={{ color: "#A0A0A0", fontSize: "0.8rem" }}
-                        >
-                          {f}
-                        </span>
-                      </div>
-                    ))}
+                  <div style={{ marginBottom: "8px" }}>
+                    <span
+                      style={{
+                        fontSize: "clamp(2rem, 5vw, 2.75rem)",
+                        fontWeight: 700,
+                        color: "#FAF6F0",
+                        letterSpacing: "-0.03em",
+                      }}
+                    >
+                      $300
+                    </span>
+                    <span
+                      style={{
+                        color: "rgba(250,246,240,0.3)",
+                        fontSize: "0.9rem",
+                        marginLeft: "4px",
+                      }}
+                    >
+                      /month
+                    </span>
                   </div>
-
+                  <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.8125rem", marginBottom: "4px" }}>
+                    Cancel anytime
+                  </p>
+                  <p style={{ color: "rgba(255,255,255,0.25)", fontSize: "0.75rem", marginBottom: "32px" }}>
+                    Full access, no commitments
+                  </p>
                   <a
                     href="/apply/business"
                     className="btn-gold"
-                    style={{
-                      padding: "16px 40px",
-                      fontSize: "0.875rem",
-                    }}
+                    style={{ padding: "14px 28px", fontSize: "0.875rem", display: "inline-block", width: "100%", boxSizing: "border-box" }}
                   >
-                    Apply Now
+                    START MONTHLY
                   </a>
                 </div>
-              </TiltCard>
+
+                {/* Annual Card */}
+                <div
+                  style={{
+                    backgroundColor: "#111111",
+                    border: "1px solid rgba(198,166,100,0.3)",
+                    borderRadius: "16px",
+                    padding: "36px 28px",
+                    textAlign: "center",
+                    position: "relative",
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "inline-block",
+                      fontSize: "0.625rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.15em",
+                      color: "#C6A664",
+                      border: "1px solid rgba(198,166,100,0.4)",
+                      borderRadius: "100px",
+                      padding: "4px 10px",
+                      marginBottom: "12px",
+                    }}
+                  >
+                    BEST VALUE
+                  </span>
+                  <p
+                    style={{
+                      fontSize: "0.6875rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase",
+                      color: "rgba(255,255,255,0.35)",
+                      marginBottom: "20px",
+                    }}
+                  >
+                    ANNUAL
+                  </p>
+                  <div style={{ marginBottom: "8px" }}>
+                    <span
+                      style={{
+                        fontSize: "clamp(2rem, 5vw, 2.75rem)",
+                        fontWeight: 700,
+                        color: "#FAF6F0",
+                        letterSpacing: "-0.03em",
+                      }}
+                    >
+                      $3,600
+                    </span>
+                    <span
+                      style={{
+                        color: "rgba(250,246,240,0.3)",
+                        fontSize: "0.9rem",
+                        marginLeft: "4px",
+                      }}
+                    >
+                      /year
+                    </span>
+                  </div>
+                  <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.8125rem", marginBottom: "4px" }}>
+                    Save $600 vs monthly
+                  </p>
+                  <p style={{ color: "rgba(255,255,255,0.25)", fontSize: "0.75rem", marginBottom: "32px" }}>
+                    Rate locked for 1 year
+                  </p>
+                  <a
+                    href="/apply/business"
+                    className="btn-gold"
+                    style={{ padding: "14px 28px", fontSize: "0.875rem", display: "inline-block", width: "100%", boxSizing: "border-box" }}
+                  >
+                    JOIN ANNUAL
+                  </a>
+                </div>
+              </div>
+
+              <p
+                style={{
+                  fontSize: "0.8125rem",
+                  color: "rgba(255,255,255,0.3)",
+                  textAlign: "center",
+                  marginTop: "24px",
+                  fontStyle: "italic",
+                }}
+              >
+                Joining at the annual rate locks your rate for the full year. Prices will increase as the community grows.
+              </p>
             </ScaleUp>
           </div>
         </section>
 
         {/* ════════════════════════════════════════════
-            APPLICATION
+            FINAL CTA
         ════════════════════════════════════════════ */}
         <section
           id="apply"
-          style={{ backgroundColor: "#2E2E2E", padding: "80px 24px" }}
+          style={{ backgroundColor: "#1A1A1A", padding: "80px 24px" }}
         >
-          <div style={{ maxWidth: "600px", margin: "0 auto" }}>
-            <div style={{ textAlign: "center", marginBottom: "20px" }}>
-              <FadeUp>
-                <SectionLabel text="Get Started" />
-              </FadeUp>
-
-              <FadeUp delay={0.1}>
-                <h2
-                  style={{
-                    fontSize: "clamp(1.75rem, 4vw, 2.25rem)",
-                    fontWeight: 700,
-                    letterSpacing: "-0.025em",
-                    marginBottom: "12px",
-                    color: "#FAF6F0",
-                  }}
-                >
-                  Apply for 704 Business
-                </h2>
-              </FadeUp>
-
-              <FadeUp delay={0.15}>
-                <p
-                  style={{
-                    color: "#A0A0A0",
-                    maxWidth: "400px",
-                    margin: "0 auto",
-                    fontSize: "0.95rem",
-                  }}
-                >
-                  Takes about 5 minutes. We review every application personally.
-                </p>
-              </FadeUp>
-            </div>
-
-            <FadeUp delay={0.2}>
-              <div
-                className="apply-steps"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "16px",
-                  marginBottom: "40px",
-                }}
-              >
-                {[
-                  { n: "1", t: "Apply" },
-                  { n: "2", t: "Review (24-48 hrs)" },
-                  { n: "3", t: "Welcome" },
-                ].map((step, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
-                  >
-                    {i > 0 && (
-                      <div
-                        style={{
-                          width: "20px",
-                          height: "1px",
-                          backgroundColor: "rgba(255,255,255,0.1)",
-                        }}
-                      />
-                    )}
-                    <span
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        width: "22px",
-                        height: "22px",
-                        borderRadius: "50%",
-                        backgroundColor: "rgba(198,166,100,0.1)",
-                        color: "#C6A664",
-                        fontSize: "10px",
-                        fontWeight: 700,
-                      }}
-                    >
-                      {step.n}
-                    </span>
-                    <span
-                      style={{ color: "#A0A0A0", fontSize: "12px" }}
-                    >
-                      {step.t}
-                    </span>
-                  </div>
-                ))}
-              </div>
+          <div
+            style={{
+              maxWidth: "560px",
+              margin: "0 auto",
+              textAlign: "center",
+            }}
+          >
+            <FadeUp>
+              <SectionLabel text="READY TO JOIN" />
             </FadeUp>
 
-            <ScaleUp delay={0.3}>
-              <div
+            <FadeUp delay={0.1}>
+              <h2
                 style={{
-                  backgroundColor: "#1A1A1A",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  borderRadius: "12px",
-                  padding: "56px 32px",
-                  textAlign: "center",
-                  minHeight: "260px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  fontSize: "clamp(1.75rem, 4vw, 2.25rem)",
+                  fontWeight: 700,
+                  color: "#FAF6F0",
+                  letterSpacing: "-0.025em",
+                  marginBottom: "16px",
                 }}
               >
-                <div>
-                  <p style={{ color: "#A0A0A0", fontSize: "0.95rem", lineHeight: 1.7, marginBottom: "16px" }}>
-                    Application-only. 16 questions. ~5 minutes. Reviewed personally within 48 hours.
-                  </p>
-                  <a href="/apply/business" className="btn-gold" style={{ padding: "16px 40px", fontSize: "0.875rem", display: "inline-block" }}>
-                    Start Your Application
-                  </a>
-                </div>
-              </div>
+                THIS IS YOUR CITY. OWN IT.
+              </h2>
+            </FadeUp>
+
+            <FadeUp delay={0.15}>
+              <p
+                style={{
+                  color: "#A0A0A0",
+                  fontSize: "1rem",
+                  lineHeight: 1.7,
+                  maxWidth: "480px",
+                  margin: "0 auto 8px auto",
+                }}
+              >
+                704 Business is a curated community of Charlotte&apos;s most ambitious professionals who are serious about growth — personally and professionally.
+              </p>
+            </FadeUp>
+
+            <FadeUp delay={0.2}>
+              <p
+                style={{
+                  fontSize: "0.8125rem",
+                  color: "rgba(255,255,255,0.3)",
+                  marginBottom: "32px",
+                }}
+              >
+                Takes about 3 minutes.
+              </p>
+            </FadeUp>
+
+            <ScaleUp delay={0.25}>
+              <a
+                href="/apply/business"
+                className="btn-gold"
+                style={{ padding: "16px 40px", fontSize: "0.9375rem", display: "inline-block" }}
+              >
+                APPLY FOR 704 BUSINESS →
+              </a>
             </ScaleUp>
           </div>
         </section>
-        </MarketingPageRoot>
 
+        </MarketingPageRoot>
       </main>
       <Footer />
     </>
