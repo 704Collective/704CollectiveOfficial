@@ -228,14 +228,12 @@ export async function updateSession(request: NextRequest) {
 
     // Routes that require an active membership even for canceled / never-members.
     const isHardGatedPath =
-      path.startsWith('/dashboard/settings') ||
       path.startsWith('/partner-portal') ||
       path.startsWith('/business-portal') ||
       path.startsWith('/settings');
 
-    // /dashboard (root and sub-pages except settings) — canceled + never-members allowed through.
-    const isDashboardOnly =
-      path.startsWith('/dashboard') && !path.startsWith('/dashboard/settings');
+    // /dashboard (root and sub-pages) — canceled + never-members allowed through.
+    const isDashboardOnly = path.startsWith('/dashboard');
 
     if (!isActive && !isAdmin && !isNonMember && !isPartner) {
       if (isHardGatedPath) {
