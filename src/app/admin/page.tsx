@@ -21,6 +21,7 @@ const AdminFinancialsTab  = dynamic(() => import('@/components/admin/AdminFinanc
 const AdminApplicationsTab = dynamic(() => import('@/components/admin/AdminApplicationsTab').then(m => ({ default: m.AdminApplicationsTab })), { loading: () => <TabSkeleton /> });
 const AdminSuggestionsTab = dynamic(() => import('@/components/admin/AdminSuggestionsTab').then(m => ({ default: m.AdminSuggestionsTab })), { loading: () => <TabSkeleton /> });
 const AdminFeedModerationTab = dynamic(() => import('@/components/admin/AdminFeedModerationTab').then(m => ({ default: m.AdminFeedModerationTab })), { loading: () => <TabSkeleton /> });
+const AdminInquiriesTab = dynamic(() => import('@/components/admin/AdminInquiriesTab').then(m => ({ default: m.AdminInquiriesTab })), { loading: () => <TabSkeleton /> });
 
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -41,7 +42,7 @@ function TabSkeleton() {
 const VALID_SECTIONS: AdminSection[] = [
   'dashboard', 'events', 'checkin', 'tasks',
   'prospects', 'sponsors', 'financials', 'feed-moderation',
-  'applications', 'suggestions',
+  'applications', 'suggestions', 'inquiries',
 ];
 
 export default function AdminPage() {
@@ -217,6 +218,12 @@ function AdminDashboard() {
         {activeSection === 'suggestions' && isAdminOrSuper && (
           <SectionErrorBoundary>
             <AdminSuggestionsTab onNavigateToDashboard={goToDashboard} />
+          </SectionErrorBoundary>
+        )}
+
+        {activeSection === 'inquiries' && isAdminOrSuper && (
+          <SectionErrorBoundary>
+            <AdminInquiriesTab onNavigateToDashboard={goToDashboard} />
           </SectionErrorBoundary>
         )}
 

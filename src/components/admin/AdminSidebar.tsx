@@ -151,6 +151,7 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose }: Ad
             {linkBtn('/admin/hubs',       Layers,        'Hubs')}
             {linkBtn('/admin/referrals',  GitPullRequest, 'Referrals')}
             {isAdminOrSuper && linkBtn('/admin/partners', Handshake, 'Partners')}
+            {isAdminOrSuper && sectionBtn({ icon: ClipboardList, label: 'Inquiries', section: 'inquiries' })}
             {isAdminOrSuper && linkBtn('/admin/invoices', Receipt,   'Invoices')}
           </div>
         </div>

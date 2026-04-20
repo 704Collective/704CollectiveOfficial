@@ -20,7 +20,8 @@ export type AdminSection =
   | 'financials'
   | 'feed-moderation'
   | 'applications'
-  | 'suggestions';
+  | 'suggestions'
+  | 'inquiries';
 
 interface AdminLayoutProps {
   children: ReactNode;
