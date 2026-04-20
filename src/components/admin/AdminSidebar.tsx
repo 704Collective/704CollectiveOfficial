@@ -139,7 +139,7 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose }: Ad
           {sectionBtn({ icon: FileText,        label: 'Applications', section: 'applications' })}
           {isSuperAdmin && sectionBtn({ icon: DollarSign, label: 'Financials', section: 'financials' })}
           {linkBtn('/admin/crm/campaigns', Mail, 'Email')}
-          {disabledBtn(MessageSquare, 'Messages', 'Coming soon - SMS via Twilio')}
+          {disabledBtn(MessageSquare, 'Texting', 'Coming soon - SMS via Twilio')}
           {sectionBtn({ icon: QrCode, label: 'Check-in', section: 'checkin' })}
           {linkBtn('/admin/crm', BarChart2, 'CRM')}
         </div>
