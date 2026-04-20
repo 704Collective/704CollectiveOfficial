@@ -108,6 +108,29 @@ export function Footer() {
               </svg>
             </a>
 
+            {/* Facebook */}
+            <a
+              href="https://www.facebook.com/704collectiveclt/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="704 Collective on Facebook"
+              style={{
+                color: 'rgba(255, 255, 255, 0.35)',
+                transition: 'color 200ms ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: '44px',
+                minHeight: '44px',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = '#FFFFFF'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255, 255, 255, 0.35)'; }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+              </svg>
+            </a>
+
             {/* TikTok */}
             <a
               href="https://www.tiktok.com/@704_collective"

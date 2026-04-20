@@ -68,14 +68,11 @@ export default function Nav() {
       >
         {/* Logo */}
         <Link href="/" style={{ display: "flex", alignItems: "center" }}>
-          <Image src="/logo-nav.png" alt="704 Collective" width={40} height={40} priority />
+          <Image src="/logo-nav.png" alt="704 Collective" width={56} height={56} priority />
         </Link>
 
         {/* Desktop Links */}
         <div style={{ display: "flex", alignItems: "center", gap: "32px" }} className="desktop-nav">
-          <Link href="/about" className="nav-link">About</Link>
-          <Link href="/#how-it-works" className="nav-link">How It Works</Link>
-
           {/* Membership Dropdown */}
           <div
             style={{ position: "relative" }}
@@ -140,19 +137,6 @@ export default function Nav() {
           <Link href="/partners" className="nav-link">Partners</Link>
           <Link href="/blog" className="nav-link">Blog</Link>
 
-          {/* Social Icons */}
-          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            <a href="https://www.instagram.com/704_collective" target="_blank" rel="noopener noreferrer" className="nav-link" aria-label="Instagram" style={{ display: "flex", alignItems: "center" }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><circle cx="12" cy="12" r="5" /><circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" /></svg>
-            </a>
-            <a href="https://www.facebook.com/704collectiveclt/" target="_blank" rel="noopener noreferrer" className="nav-link" aria-label="Facebook" style={{ display: "flex", alignItems: "center" }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" /></svg>
-            </a>
-            <a href="https://www.tiktok.com/@704_collective" target="_blank" rel="noopener noreferrer" className="nav-link" aria-label="TikTok" style={{ display: "flex", alignItems: "center" }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.71a8.21 8.21 0 0 0 4.76 1.52V6.78a4.86 4.86 0 0 1-1-.09z" /></svg>
-            </a>
-          </div>
-
           {/* Desktop Auth CTAs */}
           {loading ? (
             <div style={{ width: "120px" }} />
@@ -215,15 +199,6 @@ export default function Nav() {
           }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
 
-            <Link href="/about" role="menuitem" onClick={() => setMobileOpen(false)}
-              style={{ color: "rgba(255, 255, 255, 0.7)", textDecoration: "none", padding: "16px 0", fontSize: "1rem", borderBottom: "1px solid rgba(255, 255, 255, 0.06)", display: "flex", alignItems: "center", minHeight: "56px" }}>
-              About
-            </Link>
-            <Link href="/#how-it-works" role="menuitem" onClick={() => setMobileOpen(false)}
-              style={{ color: "rgba(255, 255, 255, 0.7)", textDecoration: "none", padding: "16px 0", fontSize: "1rem", borderBottom: "1px solid rgba(255, 255, 255, 0.06)", display: "flex", alignItems: "center", minHeight: "56px" }}>
-              How It Works
-            </Link>
-
             {/* Membership group — EXCEPTION: 704 Social stays as /social */}
             <div style={{ padding: "16px 0", borderBottom: "1px solid rgba(255, 255, 255, 0.06)" }}>
               <span style={{ color: "rgba(255, 255, 255, 0.4)", fontSize: "0.6875rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em" }}>
@@ -253,18 +228,6 @@ export default function Nav() {
             </Link>
 
             <div style={{ paddingTop: "24px", display: "flex", flexDirection: "column", gap: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-                <a href="https://www.instagram.com/704_collective" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255, 255, 255, 0.5)", minWidth: "44px", minHeight: "44px", display: "flex", alignItems: "center", justifyContent: "center" }} aria-label="Instagram">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><circle cx="12" cy="12" r="5" /><circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" /></svg>
-                </a>
-                <a href="https://www.facebook.com/704collectiveclt/" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255, 255, 255, 0.5)", minWidth: "44px", minHeight: "44px", display: "flex", alignItems: "center", justifyContent: "center" }} aria-label="Facebook">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" /></svg>
-                </a>
-                <a href="https://www.tiktok.com/@704_collective" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255, 255, 255, 0.5)", minWidth: "44px", minHeight: "44px", display: "flex", alignItems: "center", justifyContent: "center" }} aria-label="TikTok">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.71a8.21 8.21 0 0 0 4.76 1.52V6.78a4.86 4.86 0 0 1-1-.09z" /></svg>
-                </a>
-              </div>
-
               {user ? (
                 <Link href="/dashboard" onClick={() => setMobileOpen(false)}
                   style={{ backgroundColor: "#FFFFFF", color: "#000000", fontWeight: 600, fontSize: "0.9375rem", padding: "14px 24px", borderRadius: "8px", textDecoration: "none", textAlign: "center", display: "block" }}>

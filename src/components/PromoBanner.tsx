@@ -43,8 +43,8 @@ export function PromoBanner() {
     <div
       ref={ref}
       style={{
-        backgroundColor: '#C6A664',
-        color: '#1A1A1A',
+        backgroundColor: '#2E2E2E',
+        color: '#FFFFFF',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -58,13 +58,14 @@ export function PromoBanner() {
         left: 0,
         right: 0,
         zIndex: 51,
+        textAlign: 'center' as const,
       }}
     >
-      <span>
+      <span className="promo-banner-inner">
         Social rate ends May 1st — join at $35/mo before it{"'"}s $49.{' '}
         <Link
           href="/social"
-          style={{ fontWeight: 700, textDecoration: 'underline', color: '#1A1A1A' }}
+          style={{ fontWeight: 700, textDecoration: 'underline', color: '#C6A664' }}
         >
           Join Now
         </Link>
@@ -80,7 +81,7 @@ export function PromoBanner() {
           background: 'none',
           border: 'none',
           cursor: 'pointer',
-          color: '#1A1A1A',
+          color: 'rgba(255,255,255,0.7)',
           display: 'flex',
           alignItems: 'center',
           opacity: 0.7,
@@ -89,6 +90,11 @@ export function PromoBanner() {
       >
         <X size={16} />
       </button>
+      <style>{`
+        @media (max-width: 640px) {
+          .promo-banner-inner { justify-content: center; text-align: center; }
+        }
+      `}</style>
     </div>
   );
 }

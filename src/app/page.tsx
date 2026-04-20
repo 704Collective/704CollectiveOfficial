@@ -95,7 +95,7 @@ export default async function Home() {
         <section
           id="hero"
           style={{
-            minHeight: "calc(100dvh - 64px)",
+            minHeight: "70vh",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -151,7 +151,7 @@ export default async function Home() {
               position: "relative",
               maxWidth: "800px",
               margin: "0 auto",
-              padding: "80px 24px",
+              padding: "64px 24px",
               textAlign: "center",
             }}
           >
@@ -201,9 +201,9 @@ export default async function Home() {
               <div
                 style={{
                   display: "flex",
-                  flexWrap: "wrap",
-                  gap: "16px",
-                  justifyContent: "center",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "12px",
                 }}
               >
                 <Link href="#about" className="btn-primary">
@@ -224,7 +224,7 @@ export default async function Home() {
           id="about"
           style={{
             backgroundColor: "#1A1A1A",
-            padding: "96px 24px",
+            padding: "72px 24px",
           }}
         >
           <div
@@ -293,6 +293,53 @@ export default async function Home() {
                 </p>
               </FadeUp>
             </div>
+
+            {/* Photo Slideshow — photos to be added pre-launch */}
+            <div
+              style={{
+                marginTop: '56px',
+                width: '100%',
+                maxWidth: '900px',
+                margin: '56px auto 0',
+              }}
+            >
+              <div
+                className="photo-slideshow"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: '12px',
+                  width: '100%',
+                }}
+              >
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    style={{
+                      aspectRatio: '4/3',
+                      backgroundColor: '#2E2E2E',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(255,255,255,0.06)',
+                      overflow: 'hidden',
+                      position: 'relative',
+                    }}
+                  >
+                    {/* Photo slot — replace with Image component pre-launch */}
+                    <div style={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.15)', fontWeight: 500 }}>
+                        Photo {i}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
 
@@ -343,7 +390,7 @@ export default async function Home() {
           id="membership"
           style={{
             backgroundColor: "#000000",
-            padding: "96px 24px",
+            padding: "72px 24px",
           }}
         >
           <div
@@ -679,7 +726,7 @@ export default async function Home() {
           id="perks"
           style={{
             backgroundColor: "#1A1A1A",
-            padding: "96px 24px",
+            padding: "72px 24px",
           }}
         >
           <div
@@ -913,7 +960,7 @@ export default async function Home() {
           id="why"
           style={{
             backgroundColor: "#2E2E2E",
-            padding: "96px 24px",
+            padding: "72px 24px",
           }}
         >
           <div
@@ -1037,7 +1084,7 @@ export default async function Home() {
         <section
           style={{
             backgroundColor: "#000000",
-            padding: "96px 24px",
+            padding: "72px 24px",
           }}
         >
           <div
@@ -1165,7 +1212,7 @@ export default async function Home() {
         <GradientShift
           style={{
             backgroundColor: "#1A1A1A",
-            padding: "96px 24px",
+            padding: "72px 24px",
           }}
         >
           <div
@@ -1249,7 +1296,7 @@ export default async function Home() {
           id="faq"
           style={{
             backgroundColor: "#2E2E2E",
-            padding: "96px 24px",
+            padding: "72px 24px",
           }}
         >
           <div
@@ -1378,6 +1425,14 @@ export default async function Home() {
         </MarketingPageRoot>
       </main>
 
+      <style>{`
+        @media (max-width: 640px) {
+          .photo-slideshow { grid-template-columns: 1fr !important; }
+        }
+        @media (min-width: 641px) and (max-width: 900px) {
+          .photo-slideshow { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+      `}</style>
       <Footer />
     </>
   );
