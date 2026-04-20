@@ -63,6 +63,15 @@ interface Event {
   access_level?: string | null;
   social_member_price?: number | null;
   business_member_price?: number | null;
+  sponsor_slots_enabled?: boolean | null;
+  sponsor_slots_count?: number | null;
+  sponsor_slot_price?: number | null;
+  vendor_slots_enabled?: boolean | null;
+  vendor_slots_count?: number | null;
+  vendor_slot_price?: number | null;
+  host_slots_enabled?: boolean | null;
+  host_slots_count?: number | null;
+  host_slot_price?: number | null;
 }
 
 type AccessType = 'members_only' | 'public_ticketed' | 'public_free';
@@ -90,6 +99,15 @@ interface EventForm {
   recurrence_end_date: string;
   tags: string[];
   allows_guest_passes: boolean;
+  sponsor_slots_enabled: boolean;
+  sponsor_slots_count: string;
+  sponsor_slot_price: string;
+  vendor_slots_enabled: boolean;
+  vendor_slots_count: string;
+  vendor_slot_price: string;
+  host_slots_enabled: boolean;
+  host_slots_count: string;
+  host_slot_price: string;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -103,6 +121,9 @@ const getDefaultEventForm = (): EventForm => ({
   public_ticket_price: '0', social_member_price: '0', business_member_price: '0',
   category: 'other', recurrence_rule: 'none', recurrence_end_type: 'occurrences', recurrence_occurrences: 4,
   recurrence_end_date: '', tags: [], allows_guest_passes: true,
+  sponsor_slots_enabled: false, sponsor_slots_count: '', sponsor_slot_price: '',
+  vendor_slots_enabled: false, vendor_slots_count: '', vendor_slot_price: '',
+  host_slots_enabled: false, host_slots_count: '', host_slot_price: '',
 });
 
 const PAGE_SIZE = 20;
@@ -446,6 +467,15 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       recurrence_rule: (event.recurrence_rule as RecurrenceRule) || 'none',
       recurrence_end_type: 'occurrences', recurrence_occurrences: 4, recurrence_end_date: '', tags: event.tags || [],
       allows_guest_passes: event.allows_guest_passes ?? true,
+      sponsor_slots_enabled: event.sponsor_slots_enabled ?? false,
+      sponsor_slots_count: event.sponsor_slots_count ? String(event.sponsor_slots_count) : '',
+      sponsor_slot_price: event.sponsor_slot_price ? String(event.sponsor_slot_price) : '',
+      vendor_slots_enabled: event.vendor_slots_enabled ?? false,
+      vendor_slots_count: event.vendor_slots_count ? String(event.vendor_slots_count) : '',
+      vendor_slot_price: event.vendor_slot_price ? String(event.vendor_slot_price) : '',
+      host_slots_enabled: event.host_slots_enabled ?? false,
+      host_slots_count: event.host_slots_count ? String(event.host_slots_count) : '',
+      host_slot_price: event.host_slot_price ? String(event.host_slot_price) : '',
     });
     setDialogOpen(true);
   };
@@ -507,6 +537,15 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       category: form.category, recurrence_rule: form.recurrence_rule === 'none' ? null : form.recurrence_rule,
       tags: form.tags.length > 0 ? form.tags : null,
       allows_guest_passes: form.allows_guest_passes,
+      sponsor_slots_enabled: form.sponsor_slots_enabled,
+      sponsor_slots_count: form.sponsor_slots_count ? parseInt(form.sponsor_slots_count) : 0,
+      sponsor_slot_price: form.sponsor_slot_price ? parseFloat(form.sponsor_slot_price) : null,
+      vendor_slots_enabled: form.vendor_slots_enabled,
+      vendor_slots_count: form.vendor_slots_count ? parseInt(form.vendor_slots_count) : 0,
+      vendor_slot_price: form.vendor_slot_price ? parseFloat(form.vendor_slot_price) : null,
+      host_slots_enabled: form.host_slots_enabled,
+      host_slots_count: form.host_slots_count ? parseInt(form.host_slots_count) : 0,
+      host_slot_price: form.host_slot_price ? parseFloat(form.host_slot_price) : null,
     };
   };
 
@@ -1056,6 +1095,71 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
             <div className="flex items-center gap-3">
               <Switch id="allows_guest_passes" checked={form.allows_guest_passes} onCheckedChange={c => setForm(prev => ({ ...prev, allows_guest_passes: c }))} />
               <Label htmlFor="allows_guest_passes" className="flex items-center gap-2"><Gift className="w-4 h-4" /> Allow Guest Passes</Label>
+            </div>
+            {/* Partner Opportunities */}
+            <div className="space-y-3 pt-2">
+              <Label className="text-sm font-semibold">Partner Opportunities</Label>
+              <p className="text-xs text-muted-foreground">Enable slot types that partners can inquire and pay for.</p>
+
+              {/* Sponsor slots */}
+              <div className="rounded-lg border border-border p-3 space-y-3">
+                <div className="flex items-center gap-3">
+                  <Switch id="sponsor_slots_enabled" checked={form.sponsor_slots_enabled} onCheckedChange={c => setForm(prev => ({ ...prev, sponsor_slots_enabled: c }))} />
+                  <Label htmlFor="sponsor_slots_enabled">Sponsor slots</Label>
+                </div>
+                {form.sponsor_slots_enabled && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="sponsor_slots_count">Number of slots</Label>
+                      <Input id="sponsor_slots_count" type="number" min="1" value={form.sponsor_slots_count} onChange={e => setForm(prev => ({ ...prev, sponsor_slots_count: e.target.value }))} placeholder="e.g. 2" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="sponsor_slot_price">Price per slot ($)</Label>
+                      <Input id="sponsor_slot_price" type="number" step="0.01" min="0" value={form.sponsor_slot_price} onChange={e => setForm(prev => ({ ...prev, sponsor_slot_price: e.target.value }))} placeholder="e.g. 500" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Vendor slots */}
+              <div className="rounded-lg border border-border p-3 space-y-3">
+                <div className="flex items-center gap-3">
+                  <Switch id="vendor_slots_enabled" checked={form.vendor_slots_enabled} onCheckedChange={c => setForm(prev => ({ ...prev, vendor_slots_enabled: c }))} />
+                  <Label htmlFor="vendor_slots_enabled">Vendor slots</Label>
+                </div>
+                {form.vendor_slots_enabled && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="vendor_slots_count">Number of slots</Label>
+                      <Input id="vendor_slots_count" type="number" min="1" value={form.vendor_slots_count} onChange={e => setForm(prev => ({ ...prev, vendor_slots_count: e.target.value }))} placeholder="e.g. 5" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="vendor_slot_price">Price per slot ($)</Label>
+                      <Input id="vendor_slot_price" type="number" step="0.01" min="0" value={form.vendor_slot_price} onChange={e => setForm(prev => ({ ...prev, vendor_slot_price: e.target.value }))} placeholder="e.g. 150" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Host slots */}
+              <div className="rounded-lg border border-border p-3 space-y-3">
+                <div className="flex items-center gap-3">
+                  <Switch id="host_slots_enabled" checked={form.host_slots_enabled} onCheckedChange={c => setForm(prev => ({ ...prev, host_slots_enabled: c }))} />
+                  <Label htmlFor="host_slots_enabled">Host/venue slots</Label>
+                </div>
+                {form.host_slots_enabled && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="host_slots_count">Number of slots</Label>
+                      <Input id="host_slots_count" type="number" min="1" value={form.host_slots_count} onChange={e => setForm(prev => ({ ...prev, host_slots_count: e.target.value }))} placeholder="e.g. 1" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="host_slot_price">Price per slot ($)</Label>
+                      <Input id="host_slot_price" type="number" step="0.01" min="0" value={form.host_slot_price} onChange={e => setForm(prev => ({ ...prev, host_slot_price: e.target.value }))} placeholder="e.g. 0" />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             {!editingEvent && (
               <RecurrenceSelector
