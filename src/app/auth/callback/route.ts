@@ -159,7 +159,7 @@ export async function GET(request: NextRequest) {
 
   // Recovery: always land on /reset-password before any profile / access check.
   // Admins would otherwise be redirected to /admin via postAuthDestination.
-  if (type === 'recovery') {
+  if (type === 'recovery' || source === 'recovery') {
     const recoveryRedirect = NextResponse.redirect(new URL('/reset-password', origin));
     pendingCookies.forEach(({ name, value, options }) => {
       recoveryRedirect.cookies.set(name, value, options as Parameters<typeof recoveryRedirect.cookies.set>[2]);
