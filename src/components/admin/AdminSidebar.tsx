@@ -146,7 +146,7 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
         <div className="space-y-0.5">
           {sectionBtn({ icon: LayoutDashboard, label: 'Dashboard',    section: 'dashboard'    })}
           {sectionBtn({ icon: Calendar,        label: 'Events',       section: 'events'       })}
-          {linkBtn('/admin/contacts', Users, 'Members')}
+          {linkBtn('/admin/contacts', Users, 'Contacts')}
           {sectionBtn({ icon: FileText,        label: 'Applications', section: 'applications' })}
           {isSuperAdmin && sectionBtn({ icon: DollarSign, label: 'Financials', section: 'financials' })}
           {linkBtn('/admin/crm/campaigns', Mail, 'Email')}
