@@ -20,6 +20,7 @@ import { CommunityStatsWidget } from '@/components/CommunityStatsWidget';
 import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
 import { OnboardingCard } from '@/components/OnboardingCard';
 import { NonMemberDashboard } from '@/components/NonMemberDashboard';
+import { HubsPreviewWidget } from '@/components/HubsPreviewWidget';
 import { SuggestEventModal } from '@/components/SuggestEventModal';
 import { Crown, AlertCircle, CreditCard, Loader2, Lightbulb, Heart, ArrowRight, Rss, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -475,6 +476,13 @@ export default function Dashboard() {
               </SectionErrorBoundary>
             </div>
           </div>
+        )}
+
+        {/* Hubs preview — business members and admins only */}
+        {isActiveMember && (p.member_type === 'business' || isAdmin) && (
+          <SectionErrorBoundary>
+            <HubsPreviewWidget userId={user.id} />
+          </SectionErrorBoundary>
         )}
 
         {/* Feed previews — shown for active members only */}
