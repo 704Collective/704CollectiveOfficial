@@ -34,6 +34,17 @@ export function OnboardingCard({ userId }: OnboardingCardProps) {
     setHydrated(true);
   }, [userId]);
 
+  // Auto-dismiss when all steps complete
+  useEffect(() => {
+    if (!hydrated) return;
+    if (hasUpcomingRsvp && calendarLocal && walletLocal) {
+      try {
+        localStorage.setItem(dismissedKey(userId), '1');
+      } catch {}
+      setDismissed(true);
+    }
+  }, [hydrated, hasUpcomingRsvp, calendarLocal, walletLocal, userId]);
+
   const handleDismiss = () => {
     try {
       localStorage.setItem(dismissedKey(userId), '1');
