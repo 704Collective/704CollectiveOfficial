@@ -312,7 +312,7 @@ export default async function Home() {
                 }
                 .carousel-slide {
                   width: 400px;
-                  height: 300px;
+                  height: 267px;
                   border-radius: 12px;
                   overflow: hidden;
                   flex-shrink: 0;
@@ -323,18 +323,48 @@ export default async function Home() {
                   justify-content: center;
                 }
                 @media (max-width: 640px) {
-                  .carousel-slide { width: 280px; height: 210px; }
+                  .carousel-slide { width: 280px; height: 187px; }
                 }
               `}</style>
               <div className="carousel-track">
-                {[1, 2, 3, 4, 5].map((i) => (
+                {/* Original set */}
+                {[
+                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9737%20(1).jpg',
+                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9805%20(1).jpg',
+                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9841%20(1).jpg',
+                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9875%20(1).jpg',
+                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/IMG_1534%20(1).jpg',
+                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/Tezza-4591%20(1)%20(1).jpg',
+                ].map((src, i) => (
                   <div key={i} className="carousel-slide">
-                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.15)', fontWeight: 500 }}>Photo {i}</span>
+                    <Image
+                      src={src}
+                      alt={`704 Collective community photo ${i + 1}`}
+                      width={1893}
+                      height={1262}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      unoptimized
+                    />
                   </div>
                 ))}
-                {[1, 2, 3, 4, 5].map((i) => (
+                {/* Duplicate set for seamless loop */}
+                {[
+                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9737%20(1).jpg',
+                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9805%20(1).jpg',
+                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9841%20(1).jpg',
+                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9875%20(1).jpg',
+                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/IMG_1534%20(1).jpg',
+                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/Tezza-4591%20(1)%20(1).jpg',
+                ].map((src, i) => (
                   <div key={`dup-${i}`} className="carousel-slide">
-                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.15)', fontWeight: 500 }}>Photo {i}</span>
+                    <Image
+                      src={src}
+                      alt={`704 Collective community photo ${i + 1}`}
+                      width={1893}
+                      height={1262}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      unoptimized
+                    />
                   </div>
                 ))}
               </div>
