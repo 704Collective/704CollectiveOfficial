@@ -294,48 +294,47 @@ export default async function Home() {
               </FadeUp>
             </div>
 
-            {/* Photo Slideshow — photos to be added pre-launch */}
-            <div
-              style={{
-                marginTop: '56px',
-                width: '100%',
-                maxWidth: '900px',
-                margin: '56px auto 0',
-              }}
-            >
-              <div
-                className="photo-slideshow"
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: '12px',
-                  width: '100%',
-                }}
-              >
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    style={{
-                      aspectRatio: '4/3',
-                      backgroundColor: '#2E2E2E',
-                      borderRadius: '12px',
-                      border: '1px solid rgba(255,255,255,0.06)',
-                      overflow: 'hidden',
-                      position: 'relative',
-                    }}
-                  >
-                    {/* Photo slot — replace with Image component pre-launch */}
-                    <div style={{
-                      position: 'absolute',
-                      inset: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}>
-                      <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.15)', fontWeight: 500 }}>
-                        Photo {i}
-                      </span>
-                    </div>
+            {/* Photo Carousel — add photos pre-launch */}
+            <div style={{ marginTop: '48px', width: '100%', maxWidth: '900px', margin: '48px auto 0', overflow: 'hidden', borderRadius: '16px' }}>
+              <style>{`
+                @keyframes carousel-scroll {
+                  0% { transform: translateX(0); }
+                  100% { transform: translateX(-50%); }
+                }
+                .carousel-track {
+                  display: flex;
+                  gap: 12px;
+                  animation: carousel-scroll 20s linear infinite;
+                  width: max-content;
+                }
+                .carousel-track:hover {
+                  animation-play-state: paused;
+                }
+                .carousel-slide {
+                  width: 400px;
+                  height: 300px;
+                  border-radius: 12px;
+                  overflow: hidden;
+                  flex-shrink: 0;
+                  background-color: #2E2E2E;
+                  border: 1px solid rgba(255,255,255,0.06);
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                }
+                @media (max-width: 640px) {
+                  .carousel-slide { width: 280px; height: 210px; }
+                }
+              `}</style>
+              <div className="carousel-track">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="carousel-slide">
+                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.15)', fontWeight: 500 }}>Photo {i}</span>
+                  </div>
+                ))}
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={`dup-${i}`} className="carousel-slide">
+                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.15)', fontWeight: 500 }}>Photo {i}</span>
                   </div>
                 ))}
               </div>
@@ -1425,14 +1424,6 @@ export default async function Home() {
         </MarketingPageRoot>
       </main>
 
-      <style>{`
-        @media (max-width: 640px) {
-          .photo-slideshow { grid-template-columns: 1fr !important; }
-        }
-        @media (min-width: 641px) and (max-width: 900px) {
-          .photo-slideshow { grid-template-columns: repeat(2, 1fr) !important; }
-        }
-      `}</style>
       <Footer />
     </>
   );
