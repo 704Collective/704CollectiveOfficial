@@ -22,6 +22,7 @@ import { MarketingPageRoot } from "@/components/MarketingPageRoot";
 import JsonLd from "@/components/JsonLd";
 import { websiteSchema704, organizationSchema704 } from "@/lib/jsonLdSchemas";
 import { PromoBanner } from "@/components/PromoBanner";
+import { SlideshowWidget } from "@/components/SlideshowWidget";
 
 export const dynamic = "force-static";
 
@@ -294,80 +295,78 @@ export default async function Home() {
               </FadeUp>
             </div>
 
-            {/* Photo Carousel — add photos pre-launch */}
-            <div style={{ marginTop: '48px', width: '100%', maxWidth: '900px', margin: '48px auto 0', overflow: 'hidden', borderRadius: '16px' }}>
+            {/* Photo Slideshow — crossfade */}
+            <div style={{ marginTop: '48px', width: '100%', maxWidth: '900px', margin: '48px auto 0', position: 'relative', borderRadius: '16px', overflow: 'hidden' }}>
               <style>{`
-                @keyframes carousel-scroll {
-                  0% { transform: translateX(0); }
-                  100% { transform: translateX(-50%); }
+                .slide-img {
+                  position: absolute;
+                  inset: 0;
+                  width: 100%;
+                  height: 100%;
+                  object-fit: cover;
+                  opacity: 0;
+                  transition: opacity 0.8s ease-in-out;
                 }
-                .carousel-track {
-                  display: flex;
-                  gap: 12px;
-                  animation: carousel-scroll 20s linear infinite;
-                  width: max-content;
+                .slide-img.active {
+                  opacity: 1;
                 }
-                .carousel-track:hover {
-                  animation-play-state: paused;
-                }
-                .carousel-slide {
-                  width: 400px;
-                  height: 267px;
-                  border-radius: 12px;
+                .slideshow-container {
+                  position: relative;
+                  width: 100%;
+                  aspect-ratio: 3/2;
+                  background: #2E2E2E;
+                  border-radius: 16px;
                   overflow: hidden;
-                  flex-shrink: 0;
-                  background-color: #2E2E2E;
-                  border: 1px solid rgba(255,255,255,0.06);
+                }
+                .slideshow-arrow {
+                  position: absolute;
+                  top: 50%;
+                  transform: translateY(-50%);
+                  background: rgba(0,0,0,0.45);
+                  border: none;
+                  border-radius: 50%;
+                  width: 40px;
+                  height: 40px;
                   display: flex;
                   align-items: center;
                   justify-content: center;
+                  cursor: pointer;
+                  z-index: 10;
+                  color: #FFFFFF;
+                  transition: background 200ms ease;
                 }
-                @media (max-width: 640px) {
-                  .carousel-slide { width: 280px; height: 187px; }
+                .slideshow-arrow:hover { background: rgba(0,0,0,0.7); }
+                .slideshow-arrow.prev { left: 12px; }
+                .slideshow-arrow.next { right: 12px; }
+                .slideshow-dots {
+                  position: absolute;
+                  bottom: 12px;
+                  left: 50%;
+                  transform: translateX(-50%);
+                  display: flex;
+                  gap: 6px;
+                  z-index: 10;
                 }
+                .slideshow-dot {
+                  width: 6px;
+                  height: 6px;
+                  border-radius: 50%;
+                  background: rgba(255,255,255,0.4);
+                  border: none;
+                  cursor: pointer;
+                  padding: 0;
+                  transition: background 200ms ease;
+                }
+                .slideshow-dot.active { background: #FFFFFF; }
               `}</style>
-              <div className="carousel-track">
-                {/* Original set */}
-                {[
-                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9737%20(1).jpg',
-                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9805%20(1).jpg',
-                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9841%20(1).jpg',
-                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9875%20(1).jpg',
-                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/IMG_1534%20(1).jpg',
-                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/Tezza-4591%20(1)%20(1).jpg',
-                ].map((src, i) => (
-                  <div key={i} className="carousel-slide">
-                    <Image
-                      src={src}
-                      alt={`704 Collective community photo ${i + 1}`}
-                      width={1893}
-                      height={1262}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      unoptimized
-                    />
-                  </div>
-                ))}
-                {/* Duplicate set for seamless loop */}
-                {[
-                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9737%20(1).jpg',
-                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9805%20(1).jpg',
-                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9841%20(1).jpg',
-                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9875%20(1).jpg',
-                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/IMG_1534%20(1).jpg',
-                  'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/Tezza-4591%20(1)%20(1).jpg',
-                ].map((src, i) => (
-                  <div key={`dup-${i}`} className="carousel-slide">
-                    <Image
-                      src={src}
-                      alt={`704 Collective community photo ${i + 1}`}
-                      width={1893}
-                      height={1262}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      unoptimized
-                    />
-                  </div>
-                ))}
-              </div>
+              <SlideshowWidget photos={[
+                'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9737%20(1).jpg',
+                'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9805%20(1).jpg',
+                'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9841%20(1).jpg',
+                'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9875%20(1).jpg',
+                'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/IMG_1534%20(1).jpg',
+                'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/Tezza-4591%20(1)%20(1).jpg',
+              ]} />
             </div>
           </div>
         </section>
