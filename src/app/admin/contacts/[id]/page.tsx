@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Calendar, Gift, Mail, DollarSign, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
@@ -43,7 +43,7 @@ export default function AdminContactDetailPage() {
   const params = useParams();
   const router = useRouter();
   const raw = typeof params.id === 'string' ? params.id : '';
-  const parsed = parseContactRouteId(raw);
+  const parsed = useMemo(() => parseContactRouteId(raw), [raw]);
 
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
@@ -56,6 +56,7 @@ export default function AdminContactDetailPage() {
   const [guestPassEvents, setGuestPassEvents] = useState<GuestPassEventRow[]>([]);
 
   const load = useCallback(async () => {
+    const parsed = parseContactRouteId(raw);
     if (!parsed) {
       setLoading(false);
       return;
@@ -158,7 +159,7 @@ export default function AdminContactDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [parsed]);
+  }, [raw]);
 
   useEffect(() => { void load(); }, [load]);
 
