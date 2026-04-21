@@ -426,45 +426,55 @@ export default function Dashboard() {
           Welcome back, {firstName}
         </h1>
 
-        {/* Business membership nudge for active social members — hidden from admins */}
-        {isActiveMember && p.member_type === 'social' && !isAdmin && (
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex items-center justify-between gap-4">
-            <p className="text-sm text-foreground">
-              Think you're a fit for <strong>704 Business</strong>?
+        {/* Next Event */}
+        {(isActiveMember || isPastDue) && (
+          <div>
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-2">
+              Your Next Event
             </p>
-            <Button variant="outline" size="sm" asChild>
-              <a href="/business">Learn more</a>
-            </Button>
+            <SectionErrorBoundary>
+              <NextEventHero userId={user.id} onEventLoaded={setHeroEventId} />
+            </SectionErrorBoundary>
           </div>
         )}
 
-        {/* Membership card + wallet — stacked and centered on all breakpoints (desktop included) */}
-        {isActiveMember && (
-          <div
-            id="wallet-section"
-            className="mx-auto flex w-full max-w-lg flex-col items-center gap-5 scroll-mt-28"
-          >
-            <div className="w-full">
-              <MembershipCard
-                name={p.full_name || 'Member'}
-                memberId={user.id}
-                memberSince={memberSince}
-                memberType={p.member_type === 'business' ? 'business' : 'social'}
-                memberLabel={
-                  p.member_type === 'business' ? 'Business Member' : 'Social Member'
-                }
-                brandSubtitle={p.member_type === 'business' ? 'Business' : 'Social'}
-              />
-            </div>
-            <WalletButtons compact />
-          </div>
-        )}
-
-        {/* Onboarding checklist */}
+        {/* Community stats widget */}
         {isActiveMember && (
           <SectionErrorBoundary>
-            <OnboardingCard userId={user.id} />
+            <CommunityStatsWidget />
           </SectionErrorBoundary>
+        )}
+
+        {/* Two-column grid */}
+        {(isActiveMember || isPastDue) && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-2">
+                My Schedule
+              </p>
+              <SectionErrorBoundary>
+                <MyEventsSection userId={user.id} excludeEventId={heroEventId} />
+              </SectionErrorBoundary>
+            </div>
+
+            <div className="space-y-5">
+              {isActiveMember && (
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-2">
+                    Grow The Community
+                  </p>
+                  <SectionErrorBoundary>
+                    <GuestPassSection userId={user.id} />
+                  </SectionErrorBoundary>
+                </div>
+              )}
+              <SectionErrorBoundary>
+                <div className="card-elevated p-4 sm:p-5">
+                  <NotificationsFeed userId={user.id} />
+                </div>
+              </SectionErrorBoundary>
+            </div>
+          </div>
         )}
 
         {/* Feed previews — shown for active members only */}
@@ -482,18 +492,6 @@ export default function Dashboard() {
               </SectionErrorBoundary>
             )}
           </>
-        )}
-
-        {/* Next Event */}
-        {(isActiveMember || isPastDue) && (
-          <div>
-            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-2">
-              Your Next Event
-            </p>
-            <SectionErrorBoundary>
-              <NextEventHero userId={user.id} onEventLoaded={setHeroEventId} />
-            </SectionErrorBoundary>
-          </div>
         )}
 
         {/* Calendar sync — RSVPed events only; prompt setup if no token yet */}
@@ -531,43 +529,45 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Two-column grid */}
-        {(isActiveMember || isPastDue) && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-2">
-                My Schedule
-              </p>
-              <SectionErrorBoundary>
-                <MyEventsSection userId={user.id} excludeEventId={heroEventId} />
-              </SectionErrorBoundary>
-            </div>
+        {/* Onboarding checklist */}
+        {isActiveMember && (
+          <SectionErrorBoundary>
+            <OnboardingCard userId={user.id} />
+          </SectionErrorBoundary>
+        )}
 
-            <div className="space-y-5">
-              {isActiveMember && (
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-2">
-                    Grow The Community
-                  </p>
-                  <SectionErrorBoundary>
-                    <GuestPassSection userId={user.id} />
-                  </SectionErrorBoundary>
-                </div>
-              )}
-              <SectionErrorBoundary>
-                <div className="card-elevated p-4 sm:p-5">
-                  <NotificationsFeed userId={user.id} />
-                </div>
-              </SectionErrorBoundary>
+        {/* Membership card + wallet — stacked and centered on all breakpoints (desktop included) */}
+        {isActiveMember && (
+          <div
+            id="wallet-section"
+            className="mx-auto flex w-full max-w-lg flex-col items-center gap-5 scroll-mt-28"
+          >
+            <div className="w-full">
+              <MembershipCard
+                name={p.full_name || 'Member'}
+                memberId={user.id}
+                memberSince={memberSince}
+                memberType={p.member_type === 'business' ? 'business' : 'social'}
+                memberLabel={
+                  p.member_type === 'business' ? 'Business Member' : 'Social Member'
+                }
+                brandSubtitle={p.member_type === 'business' ? 'Business' : 'Social'}
+              />
             </div>
+            <WalletButtons compact />
           </div>
         )}
 
-        {/* Community stats widget */}
-        {isActiveMember && (
-          <SectionErrorBoundary>
-            <CommunityStatsWidget />
-          </SectionErrorBoundary>
+        {/* Business membership nudge for active social members — hidden from admins */}
+        {isActiveMember && p.member_type === 'social' && !isAdmin && (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex items-center justify-between gap-4">
+            <p className="text-sm text-foreground">
+              Think you're a fit for <strong>704 Business</strong>?
+            </p>
+            <Button variant="outline" size="sm" asChild>
+              <a href="/business">Learn more</a>
+            </Button>
+          </div>
         )}
 
         {/* Membership status bar */}
