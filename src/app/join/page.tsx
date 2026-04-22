@@ -67,12 +67,14 @@ function JoinInner() {
   const [eventsLoading, setEventsLoading] = useState(true);
 
   // Form state
-  const [fullName, setFullName]     = useState('');
-  const [email, setEmail]           = useState('');
-  const [phone, setPhone]           = useState('');
-  const [goal, setGoal]             = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError]   = useState<string | null>(null);
+  const [fullName, setFullName]             = useState('');
+  const [email, setEmail]                   = useState('');
+  const [phone, setPhone]                   = useState('');
+  const [goal, setGoal]                     = useState('');
+  const [password, setPassword]             = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [submitting, setSubmitting]         = useState(false);
+  const [formError, setFormError]           = useState<string | null>(null);
 
   // Tier picker Social card loading state
   const [socialLoading, setSocialLoading] = useState(false);
@@ -102,7 +104,13 @@ function JoinInner() {
     fetchEvents();
   }, []);
 
-  const isFormValid = fullName.trim().length > 0 && email.trim().length > 0 && phone.trim().length > 0 && goal !== '';
+  const isFormValid =
+    fullName.trim().length > 0 &&
+    email.trim().length > 0 &&
+    phone.trim().length > 0 &&
+    goal !== '' &&
+    password.length >= 8 &&
+    password === confirmPassword;
 
   const handleSubmit = async () => {
     if (!isFormValid || submitting) return;
@@ -118,6 +126,20 @@ function JoinInner() {
       });
     } catch {
       // Non-blocking - do not abort checkout
+    }
+
+    // Create Supabase account with password
+    const { error: signUpError } = await supabase.auth.signUp({
+      email: email.trim(),
+      password: password,
+      options: {
+        data: { full_name: fullName.trim() },
+      },
+    });
+    if (signUpError && signUpError.message !== 'User already registered') {
+      setFormError(signUpError.message);
+      setSubmitting(false);
+      return;
     }
 
     // Call create-checkout
@@ -256,6 +278,40 @@ function JoinInner() {
                       placeholder="(704) 555-1234"
                       style={inputStyle}
                     />
+                  </div>
+
+                  {/* Password */}
+                  <div>
+                    <label style={labelStyle}>Password <span style={{ color: '#C6A664' }}>*</span></label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="At least 8 characters"
+                      style={inputStyle}
+                    />
+                    {password.length > 0 && password.length < 8 && (
+                      <p style={{ fontSize: '0.8125rem', color: '#ef4444', margin: '4px 0 0' }}>
+                        Password must be at least 8 characters
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Confirm Password */}
+                  <div>
+                    <label style={labelStyle}>Confirm Password <span style={{ color: '#C6A664' }}>*</span></label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Repeat your password"
+                      style={inputStyle}
+                    />
+                    {confirmPassword.length > 0 && password !== confirmPassword && (
+                      <p style={{ fontSize: '0.8125rem', color: '#ef4444', margin: '4px 0 0' }}>
+                        Passwords don&apos;t match
+                      </p>
+                    )}
                   </div>
 
                   {/* Goal pills */}
