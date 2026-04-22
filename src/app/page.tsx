@@ -412,6 +412,368 @@ export default async function Home() {
         )}
 
         {/* ════════════════════════════════════════════
+            SECTION 5: WHAT MEMBERS GET
+        ════════════════════════════════════════════ */}
+        <section
+          id="perks"
+          style={{
+            backgroundColor: "#1A1A1A",
+            padding: "72px 24px",
+          }}
+        >
+          <div
+            style={{
+              maxWidth: "1000px",
+              margin: "0 auto",
+              textAlign: "center",
+            }}
+          >
+            <FadeUp>
+              <SectionLabel>WHAT YOU GET</SectionLabel>
+            </FadeUp>
+
+            <FadeUp delay={0.1}>
+              <h2
+                style={{
+                  fontSize: "clamp(1.75rem, 4vw, 2.75rem)",
+                  fontWeight: 700,
+                  letterSpacing: "-0.02em",
+                  lineHeight: 1.15,
+                  color: "#FFFFFF",
+                  marginBottom: "16px",
+                }}
+              >
+                More than a membership.
+              </h2>
+            </FadeUp>
+
+            <FadeUp delay={0.15}>
+              <p
+                style={{
+                  fontSize: "1.0625rem",
+                  color: "rgba(255, 255, 255, 0.55)",
+                  lineHeight: 1.65,
+                  maxWidth: "600px",
+                  margin: "0 auto",
+                }}
+              >
+                Here&apos;s what&apos;s waiting inside.
+              </p>
+            </FadeUp>
+
+            {/* Social Perks */}
+            <div style={{ marginTop: "56px", marginBottom: "56px" }}>
+              <FadeIn>
+                <h3
+                  style={{
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    color: "rgba(255, 255, 255, 0.35)",
+                    marginBottom: "24px",
+                  }}
+                >
+                  704 Social Perks
+                </h3>
+              </FadeIn>
+
+              <StaggerContainer
+                staggerDelay={0.08}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                  gap: "16px",
+                }}
+                className="perks-grid"
+              >
+                {[
+                  {
+                    title: "Curated Social Events",
+                    desc: "10 planned events every month — happy hours, dinners, rooftop nights, and more.",
+                  },
+                  {
+                    title: "Wellness & Adventure",
+                    desc: "Cold plunge, hot yoga, hikes, pickleball — activities that actually get you moving.",
+                  },
+                  {
+                    title: "Priority Access",
+                    desc: "RSVP before anyone else. Members always get first pick on limited-capacity events.",
+                  },
+                  {
+                    title: "Real Community",
+                    desc: "A group chat, familiar faces, and people who actually remember your name.",
+                  },
+                  {
+                    title: "Member Perks",
+                    desc: "Exclusive discounts and deals through our CLTBucketlist partner network.",
+                  },
+                  {
+                    title: "No Commitment",
+                    desc: "Cancel anytime. No contracts, no cancellation fees, no guilt trips.",
+                  },
+                ].map((item, i) => (
+                  <StaggerItem
+                    key={i}
+                    style={{
+                      backgroundColor: "#2E2E2E",
+                      border: "1px solid rgba(255, 255, 255, 0.06)",
+                      borderRadius: "12px",
+                      padding: "28px 24px",
+                      textAlign: "left",
+                      transition: "all 200ms ease",
+                    }}
+                    className="card-hover"
+                  >
+                    <h4
+                      style={{
+                        fontSize: "0.9375rem",
+                        fontWeight: 700,
+                        color: "#FFFFFF",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      {item.title}
+                    </h4>
+                    <p
+                      style={{
+                        fontSize: "0.8125rem",
+                        color: "rgba(255, 255, 255, 0.5)",
+                        lineHeight: 1.55,
+                      }}
+                    >
+                      {item.desc}
+                    </p>
+                  </StaggerItem>
+                ))}
+              </StaggerContainer>
+            </div>
+
+            {/* Divider */}
+            <DrawLine
+              direction="horizontal"
+              color="linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)"
+            />
+
+            {/* Business Perks */}
+            <div style={{ marginTop: "56px" }}>
+              <FadeIn>
+                <h3
+                  style={{
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    color: "#C6A664",
+                    marginBottom: "24px",
+                  }}
+                >
+                  704 Business Adds
+                </h3>
+              </FadeIn>
+
+              <StaggerContainer
+                staggerDelay={0.08}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                  gap: "16px",
+                }}
+                className="perks-grid"
+              >
+                {[
+                  {
+                    title: "Monthly Member Meetings",
+                    desc: "Structured mastermind sessions with Charlotte's most driven professionals.",
+                  },
+                  {
+                    title: "Keynote Speakers",
+                    desc: "Exclusive access to industry leaders and founders sharing real playbooks.",
+                  },
+                  {
+                    title: "Closed-Door Networking",
+                    desc: "Invite-only rooms. No cold intros — just warm, curated connections.",
+                  },
+                  {
+                    title: "Referral Network",
+                    desc: "A built-in system for sending and receiving business between members.",
+                  },
+                  {
+                    title: "Economic Development Access",
+                    desc: "Direct lines to Charlotte's growth ecosystem and decision-makers.",
+                  },
+                  {
+                    title: "Full Social Access + Guest",
+                    desc: "Everything in Social included, plus a guest pass every month.",
+                  },
+                ].map((item, i) => (
+                  <StaggerItem
+                    key={i}
+                    style={{
+                      backgroundColor: "#2E2E2E",
+                      border: "1px solid rgba(198, 166, 100, 0.08)",
+                      borderRadius: "12px",
+                      padding: "28px 24px",
+                      textAlign: "left",
+                      transition: "all 200ms ease",
+                    }}
+                    className="card-hover"
+                  >
+                    <h4
+                      style={{
+                        fontSize: "0.9375rem",
+                        fontWeight: 700,
+                        color: "#FFFFFF",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      {item.title}
+                    </h4>
+                    <p
+                      style={{
+                        fontSize: "0.8125rem",
+                        color: "rgba(255, 255, 255, 0.5)",
+                        lineHeight: 1.55,
+                      }}
+                    >
+                      {item.desc}
+                    </p>
+                  </StaggerItem>
+                ))}
+              </StaggerContainer>
+            </div>
+          </div>
+        </section>
+
+        {/* ════════════════════════════════════════════
+            SECTION 7: TESTIMONIALS
+        ════════════════════════════════════════════ */}
+        <section
+          style={{
+            backgroundColor: "#000000",
+            padding: "72px 24px",
+          }}
+        >
+          <div
+            style={{ maxWidth: "800px", margin: "0 auto", textAlign: "center" }}
+          >
+            <FadeUp>
+              <SectionLabel>WHAT MEMBERS SAY</SectionLabel>
+            </FadeUp>
+
+            <FadeUp delay={0.1}>
+              <h2
+                style={{
+                  fontSize: "clamp(1.75rem, 4vw, 2.75rem)",
+                  fontWeight: 700,
+                  letterSpacing: "-0.02em",
+                  lineHeight: 1.15,
+                  color: "#FFFFFF",
+                  marginBottom: "16px",
+                }}
+              >
+                Don&apos;t take our word for it.
+              </h2>
+            </FadeUp>
+
+            <FadeUp delay={0.15}>
+              <p
+                style={{
+                  fontSize: "1rem",
+                  color: "rgba(255,255,255,0.45)",
+                  marginBottom: "48px",
+                }}
+              >
+                100 members in. Zero regrets reported.
+              </p>
+            </FadeUp>
+
+            <StaggerContainer
+              staggerDelay={0.15}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, 1fr)",
+                gap: "20px",
+              }}
+              className="testimonial-grid"
+            >
+              {[
+                {
+                  quote: "704 makes it so easy to hit fun events — especially the health and wellness ones, my personal fave — and I get to meet so many new people every time!!",
+                  name: "Sydney",
+                  role: "Member",
+                  avatar: "https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/Sydney.jpg",
+                },
+                {
+                  quote: "Joining 704 was a great decision, there's so many events and everyone I've met has been great.",
+                  name: "Nick",
+                  role: "Member",
+                  avatar: "https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/Nick.jpg",
+                },
+              ].map((item, i) => (
+                <StaggerItem
+                  key={i}
+                  style={{
+                    backgroundColor: "#1A1A1A",
+                    border: "1px solid rgba(255, 255, 255, 0.06)",
+                    borderRadius: "12px",
+                    padding: "28px 24px",
+                    textAlign: "left",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "rgba(255, 255, 255, 0.65)",
+                      lineHeight: 1.65,
+                      fontStyle: "italic",
+                      marginBottom: "20px",
+                    }}
+                  >
+                    &ldquo;{item.quote}&rdquo;
+                  </p>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                    }}
+                  >
+                    <Image
+                      src={item.avatar}
+                      alt={item.name}
+                      width={36}
+                      height={36}
+                      style={{ borderRadius: '50%', objectFit: 'cover', width: '36px', height: '36px', flexShrink: 0 }}
+                      unoptimized
+                    />
+                    <div>
+                      <p
+                        style={{
+                          fontSize: "0.8125rem",
+                          fontWeight: 600,
+                          color: "#FFFFFF",
+                        }}
+                      >
+                        {item.name}
+                      </p>
+                      <p
+                        style={{
+                          fontSize: "0.75rem",
+                          color: "rgba(255, 255, 255, 0.3)",
+                        }}
+                      >
+                        {item.role}
+                      </p>
+                    </div>
+                  </div>
+                </StaggerItem>
+              ))}
+            </StaggerContainer>
+          </div>
+        </section>
+
+        {/* ════════════════════════════════════════════
             SECTION 4: TWO MEMBERSHIP TIERS
         ════════════════════════════════════════════ */}
         <section
@@ -748,240 +1110,6 @@ export default async function Home() {
         </section>
 
         {/* ════════════════════════════════════════════
-            SECTION 5: WHAT MEMBERS GET
-        ════════════════════════════════════════════ */}
-        <section
-          id="perks"
-          style={{
-            backgroundColor: "#1A1A1A",
-            padding: "72px 24px",
-          }}
-        >
-          <div
-            style={{
-              maxWidth: "1000px",
-              margin: "0 auto",
-              textAlign: "center",
-            }}
-          >
-            <FadeUp>
-              <SectionLabel>WHAT YOU GET</SectionLabel>
-            </FadeUp>
-
-            <FadeUp delay={0.1}>
-              <h2
-                style={{
-                  fontSize: "clamp(1.75rem, 4vw, 2.75rem)",
-                  fontWeight: 700,
-                  letterSpacing: "-0.02em",
-                  lineHeight: 1.15,
-                  color: "#FFFFFF",
-                  marginBottom: "16px",
-                }}
-              >
-                More than a membership.
-              </h2>
-            </FadeUp>
-
-            <FadeUp delay={0.15}>
-              <p
-                style={{
-                  fontSize: "1.0625rem",
-                  color: "rgba(255, 255, 255, 0.55)",
-                  lineHeight: 1.65,
-                  maxWidth: "600px",
-                  margin: "0 auto",
-                }}
-              >
-                Here&apos;s what&apos;s waiting inside.
-              </p>
-            </FadeUp>
-
-            {/* Social Perks */}
-            <div style={{ marginTop: "56px", marginBottom: "56px" }}>
-              <FadeIn>
-                <h3
-                  style={{
-                    fontSize: "0.75rem",
-                    fontWeight: 700,
-                    letterSpacing: "0.12em",
-                    textTransform: "uppercase",
-                    color: "rgba(255, 255, 255, 0.35)",
-                    marginBottom: "24px",
-                  }}
-                >
-                  704 Social Perks
-                </h3>
-              </FadeIn>
-
-              <StaggerContainer
-                staggerDelay={0.08}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(3, 1fr)",
-                  gap: "16px",
-                }}
-                className="perks-grid"
-              >
-                {[
-                  {
-                    title: "Curated Social Events",
-                    desc: "10 planned events every month — happy hours, dinners, rooftop nights, and more.",
-                  },
-                  {
-                    title: "Wellness & Adventure",
-                    desc: "Cold plunge, hot yoga, hikes, pickleball — activities that actually get you moving.",
-                  },
-                  {
-                    title: "Priority Access",
-                    desc: "RSVP before anyone else. Members always get first pick on limited-capacity events.",
-                  },
-                  {
-                    title: "Real Community",
-                    desc: "A group chat, familiar faces, and people who actually remember your name.",
-                  },
-                  {
-                    title: "Member Perks",
-                    desc: "Exclusive discounts and deals through our CLTBucketlist partner network.",
-                  },
-                  {
-                    title: "No Commitment",
-                    desc: "Cancel anytime. No contracts, no cancellation fees, no guilt trips.",
-                  },
-                ].map((item, i) => (
-                  <StaggerItem
-                    key={i}
-                    style={{
-                      backgroundColor: "#2E2E2E",
-                      border: "1px solid rgba(255, 255, 255, 0.06)",
-                      borderRadius: "12px",
-                      padding: "28px 24px",
-                      textAlign: "left",
-                      transition: "all 200ms ease",
-                    }}
-                    className="card-hover"
-                  >
-                    <h4
-                      style={{
-                        fontSize: "0.9375rem",
-                        fontWeight: 700,
-                        color: "#FFFFFF",
-                        marginBottom: "8px",
-                      }}
-                    >
-                      {item.title}
-                    </h4>
-                    <p
-                      style={{
-                        fontSize: "0.8125rem",
-                        color: "rgba(255, 255, 255, 0.5)",
-                        lineHeight: 1.55,
-                      }}
-                    >
-                      {item.desc}
-                    </p>
-                  </StaggerItem>
-                ))}
-              </StaggerContainer>
-            </div>
-
-            {/* Divider */}
-            <DrawLine
-              direction="horizontal"
-              color="linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)"
-            />
-
-            {/* Business Perks */}
-            <div style={{ marginTop: "56px" }}>
-              <FadeIn>
-                <h3
-                  style={{
-                    fontSize: "0.75rem",
-                    fontWeight: 700,
-                    letterSpacing: "0.12em",
-                    textTransform: "uppercase",
-                    color: "#C6A664",
-                    marginBottom: "24px",
-                  }}
-                >
-                  704 Business Adds
-                </h3>
-              </FadeIn>
-
-              <StaggerContainer
-                staggerDelay={0.08}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(3, 1fr)",
-                  gap: "16px",
-                }}
-                className="perks-grid"
-              >
-                {[
-                  {
-                    title: "Monthly Member Meetings",
-                    desc: "Structured mastermind sessions with Charlotte's most driven professionals.",
-                  },
-                  {
-                    title: "Keynote Speakers",
-                    desc: "Exclusive access to industry leaders and founders sharing real playbooks.",
-                  },
-                  {
-                    title: "Closed-Door Networking",
-                    desc: "Invite-only rooms. No cold intros — just warm, curated connections.",
-                  },
-                  {
-                    title: "Referral Network",
-                    desc: "A built-in system for sending and receiving business between members.",
-                  },
-                  {
-                    title: "Economic Development Access",
-                    desc: "Direct lines to Charlotte's growth ecosystem and decision-makers.",
-                  },
-                  {
-                    title: "Full Social Access + Guest",
-                    desc: "Everything in Social included, plus a guest pass every month.",
-                  },
-                ].map((item, i) => (
-                  <StaggerItem
-                    key={i}
-                    style={{
-                      backgroundColor: "#2E2E2E",
-                      border: "1px solid rgba(198, 166, 100, 0.08)",
-                      borderRadius: "12px",
-                      padding: "28px 24px",
-                      textAlign: "left",
-                      transition: "all 200ms ease",
-                    }}
-                    className="card-hover"
-                  >
-                    <h4
-                      style={{
-                        fontSize: "0.9375rem",
-                        fontWeight: 700,
-                        color: "#FFFFFF",
-                        marginBottom: "8px",
-                      }}
-                    >
-                      {item.title}
-                    </h4>
-                    <p
-                      style={{
-                        fontSize: "0.8125rem",
-                        color: "rgba(255, 255, 255, 0.5)",
-                        lineHeight: 1.55,
-                      }}
-                    >
-                      {item.desc}
-                    </p>
-                  </StaggerItem>
-                ))}
-              </StaggerContainer>
-            </div>
-          </div>
-        </section>
-
-        {/* ════════════════════════════════════════════
             NEW SECTION: WHY 704 COLLECTIVE
         ════════════════════════════════════════════ */}
         <section
@@ -1105,217 +1233,6 @@ export default async function Home() {
             </StaggerContainer>
           </div>
         </section>
-
-        {/* ════════════════════════════════════════════
-            SECTION 7: TESTIMONIALS
-        ════════════════════════════════════════════ */}
-        <section
-          style={{
-            backgroundColor: "#000000",
-            padding: "72px 24px",
-          }}
-        >
-          <div
-            style={{ maxWidth: "800px", margin: "0 auto", textAlign: "center" }}
-          >
-            <FadeUp>
-              <SectionLabel>WHAT MEMBERS SAY</SectionLabel>
-            </FadeUp>
-
-            <FadeUp delay={0.1}>
-              <h2
-                style={{
-                  fontSize: "clamp(1.75rem, 4vw, 2.75rem)",
-                  fontWeight: 700,
-                  letterSpacing: "-0.02em",
-                  lineHeight: 1.15,
-                  color: "#FFFFFF",
-                  marginBottom: "16px",
-                }}
-              >
-                Don&apos;t take our word for it.
-              </h2>
-            </FadeUp>
-
-            <FadeUp delay={0.15}>
-              <p
-                style={{
-                  fontSize: "1rem",
-                  color: "rgba(255,255,255,0.45)",
-                  marginBottom: "48px",
-                }}
-              >
-                100 members in. Zero regrets reported.
-              </p>
-            </FadeUp>
-
-            <StaggerContainer
-              staggerDelay={0.15}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(2, 1fr)",
-                gap: "20px",
-              }}
-              className="testimonial-grid"
-            >
-              {[
-                {
-                  quote: "704 makes it so easy to hit fun events — especially the health and wellness ones, my personal fave — and I get to meet so many new people every time!!",
-                  name: "Sydney",
-                  role: "Member",
-                  avatar: "https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/Sydney.jpg",
-                },
-                {
-                  quote: "Joining 704 was a great decision, there's so many events and everyone I've met has been great.",
-                  name: "Nick",
-                  role: "Member",
-                  avatar: "https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/Nick.jpg",
-                },
-              ].map((item, i) => (
-                <StaggerItem
-                  key={i}
-                  style={{
-                    backgroundColor: "#1A1A1A",
-                    border: "1px solid rgba(255, 255, 255, 0.06)",
-                    borderRadius: "12px",
-                    padding: "28px 24px",
-                    textAlign: "left",
-                  }}
-                >
-                  <p
-                    style={{
-                      fontSize: "0.875rem",
-                      color: "rgba(255, 255, 255, 0.65)",
-                      lineHeight: 1.65,
-                      fontStyle: "italic",
-                      marginBottom: "20px",
-                    }}
-                  >
-                    &ldquo;{item.quote}&rdquo;
-                  </p>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                    }}
-                  >
-                    <Image
-                      src={item.avatar}
-                      alt={item.name}
-                      width={36}
-                      height={36}
-                      style={{ borderRadius: '50%', objectFit: 'cover', width: '36px', height: '36px', flexShrink: 0 }}
-                      unoptimized
-                    />
-                    <div>
-                      <p
-                        style={{
-                          fontSize: "0.8125rem",
-                          fontWeight: 600,
-                          color: "#FFFFFF",
-                        }}
-                      >
-                        {item.name}
-                      </p>
-                      <p
-                        style={{
-                          fontSize: "0.75rem",
-                          color: "rgba(255, 255, 255, 0.3)",
-                        }}
-                      >
-                        {item.role}
-                      </p>
-                    </div>
-                  </div>
-                </StaggerItem>
-              ))}
-            </StaggerContainer>
-          </div>
-        </section>
-
-        {/* ════════════════════════════════════════════
-            SECTION 8: FINAL CTA
-        ════════════════════════════════════════════ */}
-        <GradientShift
-          style={{
-            backgroundColor: "#1A1A1A",
-            padding: "72px 24px",
-          }}
-        >
-          <div
-            style={{ maxWidth: "800px", margin: "0 auto", textAlign: "center" }}
-          >
-            <FadeUp>
-              <SectionLabel>JOIN BEFORE MAY 1ST</SectionLabel>
-            </FadeUp>
-
-            <FadeUp delay={0.05}>
-              <h2
-                style={{
-                  fontSize: "clamp(1.75rem, 4vw, 2.75rem)",
-                  fontWeight: 700,
-                  letterSpacing: "-0.02em",
-                  lineHeight: 1.15,
-                  color: "#FFFFFF",
-                  marginBottom: "16px",
-                }}
-              >
-                Ready to find your people?
-              </h2>
-            </FadeUp>
-
-            <FadeUp delay={0.1}>
-              <p
-                style={{
-                  fontSize: "1.0625rem",
-                  color: "rgba(255, 255, 255, 0.55)",
-                  lineHeight: 1.65,
-                  maxWidth: "600px",
-                  margin: "0 auto",
-                }}
-              >
-                $35/month. 10 curated events. Charlotte&apos;s most intentional young professional community. Goes to $49/month on May 1st.
-              </p>
-            </FadeUp>
-
-            <ScaleUp delay={0.2}>
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "16px",
-                  justifyContent: "center",
-                  marginTop: "40px",
-                }}
-              >
-                <Link
-                  href="/join?plan=social"
-                  className="btn-primary"
-                  style={{ padding: "16px 36px", fontSize: "0.9375rem" }}
-                >
-                  Join Social
-                </Link>
-                <Link
-                  href="/business"
-                  className="btn-ghost"
-                  style={{ padding: "16px 36px", fontSize: "0.9375rem" }}
-                >
-                  Explore Business
-                </Link>
-              </div>
-              <p
-                style={{
-                  fontSize: "0.75rem",
-                  color: "rgba(255,255,255,0.25)",
-                  marginTop: "24px",
-                }}
-              >
-                Cancel anytime. No application for Social.
-              </p>
-            </ScaleUp>
-          </div>
-        </GradientShift>
 
         {/* ════════════════════════════════════════════
             SECTION 9: FAQ
@@ -1450,6 +1367,89 @@ export default async function Home() {
             </StaggerContainer>
           </div>
         </section>
+        {/* ════════════════════════════════════════════
+            SECTION 8: FINAL CTA
+        ════════════════════════════════════════════ */}
+        <GradientShift
+          style={{
+            backgroundColor: "#1A1A1A",
+            padding: "72px 24px",
+          }}
+        >
+          <div
+            style={{ maxWidth: "800px", margin: "0 auto", textAlign: "center" }}
+          >
+            <FadeUp>
+              <SectionLabel>JOIN BEFORE MAY 1ST</SectionLabel>
+            </FadeUp>
+
+            <FadeUp delay={0.05}>
+              <h2
+                style={{
+                  fontSize: "clamp(1.75rem, 4vw, 2.75rem)",
+                  fontWeight: 700,
+                  letterSpacing: "-0.02em",
+                  lineHeight: 1.15,
+                  color: "#FFFFFF",
+                  marginBottom: "16px",
+                }}
+              >
+                Ready to find your people?
+              </h2>
+            </FadeUp>
+
+            <FadeUp delay={0.1}>
+              <p
+                style={{
+                  fontSize: "1.0625rem",
+                  color: "rgba(255, 255, 255, 0.55)",
+                  lineHeight: 1.65,
+                  maxWidth: "600px",
+                  margin: "0 auto",
+                }}
+              >
+                $35/month. 10 curated events. Charlotte&apos;s most intentional young professional community. Goes to $49/month on May 1st.
+              </p>
+            </FadeUp>
+
+            <ScaleUp delay={0.2}>
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "16px",
+                  justifyContent: "center",
+                  marginTop: "40px",
+                }}
+              >
+                <Link
+                  href="/join?plan=social"
+                  className="btn-primary"
+                  style={{ padding: "16px 36px", fontSize: "0.9375rem" }}
+                >
+                  Join Social
+                </Link>
+                <Link
+                  href="/business"
+                  className="btn-ghost"
+                  style={{ padding: "16px 36px", fontSize: "0.9375rem" }}
+                >
+                  Explore Business
+                </Link>
+              </div>
+              <p
+                style={{
+                  fontSize: "0.75rem",
+                  color: "rgba(255,255,255,0.25)",
+                  marginTop: "24px",
+                }}
+              >
+                Cancel anytime. No application for Social.
+              </p>
+            </ScaleUp>
+          </div>
+        </GradientShift>
+
         </MarketingPageRoot>
       </main>
 
