@@ -74,9 +74,16 @@ export async function GET(request: NextRequest) {
       return recoveryRedirect;
     }
 
-    // Signup confirmations: always redirect to /join to pick a plan and complete checkout.
+    // Signup confirmations: user has already paid, send them to dashboard.
     if (type === 'signup') {
-      const signupRedirect = NextResponse.redirect(new URL('/join', origin));
+      const { data: { user: signupUser } } = await supabase.auth.getUser();
+      const { data: signupProfile } = await supabase
+        .from('profiles')
+        .select('role, subscription_status, membership_override, member_type')
+        .eq('id', signupUser?.id ?? '')
+        .maybeSingle();
+      const dest = signupProfile ? postAuthDestination(signupProfile) : '/join';
+      const signupRedirect = NextResponse.redirect(new URL(dest, origin));
       pendingCookies.forEach(({ name, value, options }) => {
         signupRedirect.cookies.set(name, value, options as Parameters<typeof signupRedirect.cookies.set>[2]);
       });
@@ -195,7 +202,9 @@ export async function GET(request: NextRequest) {
       Date.now() - new Date(profile.created_at).getTime() < 60_000);
 
   if (isSignupType || isNewProfile) {
-    const joinRedirect = NextResponse.redirect(new URL('/join', origin));
+    // User has already paid — send to dashboard if they have a profile, otherwise /join
+    const dest = profile ? postAuthDestination(profile) : '/join';
+    const joinRedirect = NextResponse.redirect(new URL(dest, origin));
     pendingCookies.forEach(({ name, value, options }) => {
       joinRedirect.cookies.set(name, value, options as Parameters<typeof joinRedirect.cookies.set>[2]);
     });
