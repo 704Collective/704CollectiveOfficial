@@ -74,9 +74,9 @@ function PaymentSuccess() {
             </Link>
           </div>
         </header>
-        <main id="main-content" className="container py-20">
+        <main id="main-content" className="w-full py-20">
           <MarketingPageRoot>
-          <div className="max-w-md mx-auto text-center space-y-8">
+          <div className="max-w-md mx-auto text-center space-y-8" style={{ margin: '0 auto', padding: '0 24px' }}>
             <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
               <XCircle className="w-10 h-10 text-destructive" />
             </div>
@@ -123,9 +123,9 @@ function PaymentSuccess() {
         </div>
       </header>
 
-      <main id="main-content" className="container py-20">
+      <main id="main-content" className="w-full py-20">
         <MarketingPageRoot>
-        <div className="max-w-md mx-auto text-center space-y-8">
+        <div className="max-w-md mx-auto text-center space-y-8" style={{ margin: '0 auto', padding: '0 24px' }}>
           <div className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
             <Check className="w-10 h-10 text-green-500" />
           </div>
