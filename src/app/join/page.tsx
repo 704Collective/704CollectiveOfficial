@@ -134,6 +134,7 @@ function JoinInner() {
       password: password,
       options: {
         data: { full_name: fullName.trim() },
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
     if (signUpError && signUpError.message !== 'User already registered') {
