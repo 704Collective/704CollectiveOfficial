@@ -374,7 +374,7 @@ export default async function Home() {
         {/* ════════════════════════════════════════════
             FEATURED PARTNERS
         ════════════════════════════════════════════ */}
-        {featuredPartners.length > 0 && (
+        {false && featuredPartners.length > 0 && (
           <section
             id="partners"
             style={{
