@@ -57,27 +57,18 @@ export function MembershipStatusBar({
     <div className="card-elevated p-4 sm:p-5 space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
         <div className="flex items-center gap-3 flex-wrap">
-          {isCanceling ? (
-            <span className="inline-flex items-center gap-1.5">
-              <AlertTriangle className="w-3.5 h-3.5 text-orange-400 shrink-0" aria-hidden />
-              <MemberStatusPill kind="canceled" />
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5">
-              <Check className="w-3.5 h-3.5 text-green-500 shrink-0" aria-hidden />
-              <MemberStatusPill kind={statusKind} />
-            </span>
-          )}
+          <span className="inline-flex items-center gap-1.5">
+            <Check className="w-3.5 h-3.5 text-green-500 shrink-0" aria-hidden />
+            <MemberStatusPill kind={statusKind} />
+          </span>
           {memberSince && (
             <span className="text-sm text-muted-foreground">
               Member since {format(new Date(memberSince), 'MMM yyyy')}
             </span>
           )}
-          {endDate && !membershipOverride && (
+          {endDate && !membershipOverride && !isCanceling && (
             <span className="text-xs text-muted-foreground">
-              {isCanceling
-                ? `Access until ${format(new Date(endDate), 'MMM d, yyyy')}`
-                : `Renews ${format(new Date(endDate), 'MMM d, yyyy')}`}
+              Renews {format(new Date(endDate), 'MMM d, yyyy')}
             </span>
           )}
           {membershipOverride && (
@@ -85,22 +76,11 @@ export function MembershipStatusBar({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {!membershipOverride && (
-            <>
-              {isCanceling ? (
-                <Button variant="hero" size="sm" asChild>
-                  <Link href="/join">
-                    <Crown className="w-3.5 h-3.5" />
-                    Reactivate
-                  </Link>
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" onClick={onManageBilling} disabled={isPortalLoading}>
-                  {isPortalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CreditCard className="w-3.5 h-3.5" />}
-                  Billing
-                </Button>
-              )}
-            </>
+          {!membershipOverride && !isCanceling && (
+            <Button variant="outline" size="sm" onClick={onManageBilling} disabled={isPortalLoading}>
+              {isPortalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CreditCard className="w-3.5 h-3.5" />}
+              Billing
+            </Button>
           )}
           <Button variant="outline" size="sm" asChild>
             <Link href="/dashboard/settings">
@@ -110,6 +90,20 @@ export function MembershipStatusBar({
           </Button>
         </div>
       </div>
+      {isCanceling && (
+        <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.5)', marginTop: '8px' }}>
+          Your membership ends{' '}
+          {subscriptionEndsAt ? format(new Date(subscriptionEndsAt), 'MMMM d, yyyy') : 'at the end of your billing period'}
+          {' — '}
+          <button
+            type="button"
+            onClick={onManageBilling}
+            style={{ color: '#C6A664', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', padding: 0, textDecoration: 'underline' }}
+          >
+            stay?
+          </button>
+        </p>
+      )}
     </div>
   );
 }
