@@ -568,13 +568,35 @@ export default function Dashboard() {
 
         {/* Business membership nudge for active social members — hidden from admins */}
         {isActiveMember && p.member_type === 'social' && !isAdmin && (
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex items-center justify-between gap-4">
-            <p className="text-sm text-foreground">
-              Think you're a fit for <strong>704 Business</strong>?
+          <div style={{
+            backgroundColor: '#1A1A1A',
+            border: '1px solid rgba(198,166,100,0.25)',
+            borderRadius: '12px',
+            padding: '20px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '16px',
+          }}>
+            <p style={{ fontSize: '0.9375rem', color: '#FAF6F0', margin: 0 }}>
+              Want your business in front of these members?
             </p>
-            <Button variant="outline" size="sm" asChild>
-              <a href="/business">Learn more</a>
-            </Button>
+            <a
+              href="/business"
+              style={{
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                color: '#C6A664',
+                textDecoration: 'none',
+                whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                flexShrink: 0,
+              }}
+            >
+              Explore 704 Business <ArrowRight className="w-4 h-4" />
+            </a>
           </div>
         )}
 
