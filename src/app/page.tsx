@@ -207,7 +207,7 @@ export default async function Home() {
                   gap: "12px",
                 }}
               >
-                <Link href="#about" className="btn-primary">
+                <Link href="#perks" className="btn-primary">
                   Explore the Community
                 </Link>
                 <Link href="/events" className="btn-ghost">
