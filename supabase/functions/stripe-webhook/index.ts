@@ -336,61 +336,36 @@ async function handleCheckoutCompleted(
     }
 
     // ── Welcome email (only for new or reactivated) ──
+    // New members now set their password during signup on /join, so we always
+    // send the regular welcome email — no recovery link generation needed.
     if (memberAction === "new" || memberAction === "reactivated") {
-      {
-        try {
-          const { data: profileForEmail } = await supabase
-            .from("profiles")
-            .select("calendar_token")
-            .eq("id", userId!)
-            .single();
+      try {
+        const { data: profileForEmail } = await supabase
+          .from("profiles")
+          .select("calendar_token")
+          .eq("id", userId!)
+          .single();
 
-          const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-          const calendarToken = profileForEmail?.calendar_token ?? "";
-          const calendarUrl = `webcal://${supabaseUrl.replace("https://", "")}/functions/v1/calendar-feed?token=${calendarToken}`;
+        const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+        const calendarToken = profileForEmail?.calendar_token ?? "";
+        const calendarUrl = `webcal://${supabaseUrl.replace("https://", "")}/functions/v1/calendar-feed?token=${calendarToken}`;
 
-          const PRODUCTION_URL = "https://704collective.com";
-          const sessionOrigin = session.metadata?.origin || PRODUCTION_URL;
-          if (!session.metadata?.origin) {
-            log("No origin in session metadata, using production URL fallback", { origin: sessionOrigin });
-          }
-
-          if (memberAction === "new") {
-            // New members need password setup — generate recovery link and send combined email
-            const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
-              type: "recovery",
-              email: customerEmail,
-              options: { redirectTo: `${sessionOrigin}/setup-password` },
-            });
-
-            if (linkErr || !linkData?.properties?.action_link) {
-              log("Failed to generate setup link for welcome-setup, falling back to welcome", { error: linkErr?.message });
-              // Fallback to regular welcome
-              await fetch(`${supabaseUrl}/functions/v1/send-email`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
-                body: JSON.stringify({ to: customerEmail, template: "welcome", data: { name: customerName || "there", calendarUrl, origin: sessionOrigin } }),
-              });
-            } else {
-              await fetch(`${supabaseUrl}/functions/v1/send-email`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
-                body: JSON.stringify({ to: customerEmail, template: "welcome-setup", data: { name: customerName || "there", setupLink: linkData.properties.action_link, calendarUrl, origin: sessionOrigin } }),
-              });
-            }
-          } else {
-            // Reactivated members already have passwords — send regular welcome
-            await fetch(`${supabaseUrl}/functions/v1/send-email`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
-              body: JSON.stringify({ to: customerEmail, template: "welcome", data: { name: customerName || "there", calendarUrl, origin: sessionOrigin } }),
-            });
-          }
-          log("Welcome email sent", { email: customerEmail, memberAction });
-        } catch (emailErr) {
-          const emailMsg = emailErr instanceof Error ? emailErr.message : String(emailErr);
-          log("Welcome email failed (non-blocking)", { error: emailMsg });
+        const PRODUCTION_URL = "https://704collective.com";
+        const sessionOrigin = session.metadata?.origin || PRODUCTION_URL;
+        if (!session.metadata?.origin) {
+          log("No origin in session metadata, using production URL fallback", { origin: sessionOrigin });
         }
+
+        await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+          body: JSON.stringify({ to: customerEmail, template: "welcome", data: { name: customerName || "there", calendarUrl, origin: sessionOrigin } }),
+        });
+
+        log("Welcome email sent", { email: customerEmail, memberAction });
+      } catch (emailErr) {
+        const emailMsg = emailErr instanceof Error ? emailErr.message : String(emailErr);
+        log("Welcome email failed (non-blocking)", { error: emailMsg });
       }
     } else {
       log("Skipping welcome email for existing active member", { userId });
