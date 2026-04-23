@@ -257,7 +257,7 @@ export function AdminFinancialsTab({ onNavigateToDashboard }: AdminFinancialsTab
               <div key={i} className="flex justify-between border-b border-border py-2 text-sm last:border-0">
                 <div className="min-w-0">
                   <p className="text-foreground font-medium truncate">{payment.name || payment.email}</p>
-                  <p className="text-xs text-muted-foreground">{format(new Date(payment.created * 1000), 'MMM d, yyyy')}</p>
+                  <p className="text-xs text-muted-foreground">{payment.created ? format(new Date(payment.created * 1000), 'MMM d, yyyy') : '—'}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-foreground font-medium">${(payment.amount / 100).toFixed(2)}</span>
