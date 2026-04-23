@@ -66,7 +66,7 @@ async function fetchFinancials(): Promise<FinancialsPayload | null> {
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     if (!baseUrl || !anonKey) return null;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    const timeout = setTimeout(() => controller.abort(), 30000);
     try {
       const res = await fetch(`${baseUrl.replace(/\/$/, '')}/functions/v1/admin-financials`, {
         method: 'POST',
