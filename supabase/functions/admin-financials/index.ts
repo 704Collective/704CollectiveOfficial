@@ -70,14 +70,13 @@ serve(async (req) => {
     if (!authHeader) throw new Error("No authorization header");
     const token = authHeader.replace("Bearer ", "");
 
-    const userRes = await fetch(`${Deno.env.get("SUPABASE_URL")}/auth/v1/user`, {
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "apikey": Deno.env.get("SUPABASE_ANON_KEY")!,
-      },
-    });
-    const userJson = await userRes.json();
-    if (!userJson?.id) throw new Error("Not authenticated");
+    const authClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false } }
+    );
+    const { data: { user: userJson }, error: authError } = await authClient.auth.getUser(token);
+    if (authError || !userJson?.id) throw new Error("Not authenticated");
 
     const { data: profileData } = await supabase
       .from("profiles")
