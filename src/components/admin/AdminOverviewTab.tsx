@@ -65,18 +65,27 @@ async function fetchFinancials(): Promise<FinancialsPayload | null> {
     const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     if (!baseUrl || !anonKey) return null;
-    const res = await fetch(`${baseUrl.replace(/\/$/, '')}/functions/v1/admin-financials`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        apikey: anonKey,
-      },
-      body: JSON.stringify({}),
-    });
-    const json = await res.json();
-    if (!res.ok || json?.error) return null;
-    return json as FinancialsPayload;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      const res = await fetch(`${baseUrl.replace(/\/$/, '')}/functions/v1/admin-financials`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          apikey: anonKey,
+        },
+        body: JSON.stringify({}),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      const json = await res.json();
+      if (!res.ok || json?.error) return null;
+      return json as FinancialsPayload;
+    } catch {
+      clearTimeout(timeout);
+      return null;
+    }
   } catch {
     return null;
   }
@@ -90,8 +99,6 @@ async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
   const we = endOfWeek(now, { weekStartsOn: 1 });
   const weekAgo = subDays(now, 7).toISOString();
   const nowIso = now.toISOString();
-
-  const financialsP = fetchFinancials();
 
   const [
     todayEv,
@@ -151,19 +158,6 @@ async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
       .eq('subscription_status', 'past_due'),
   ]);
 
-  const financials = await financialsP;
-  const financialsUnavailable = !financials;
-  const mrr = financials ? Math.round(financials.mrr.total) : null;
-  const last30 = financials?.revenue.last30.total ?? null;
-  const last60 = financials?.revenue.last60.total ?? null;
-  let momPercent: number | null = null;
-  if (last30 != null && last60 != null) {
-    const prev30 = last60 - last30;
-    if (prev30 > 0) momPercent = ((last30 - prev30) / prev30) * 100;
-    else if (last30 > 0) momPercent = 100;
-  }
-  const last30RevenueDollars = last30 != null ? Math.round(last30 / 100) : null;
-
   const upcoming = (upcomingList.data || []) as { id: string; title: string; start_time: string }[];
   const ids = upcoming.map((e) => e.id);
   const rsvpByEvent: Record<string, number> = {};
@@ -204,10 +198,10 @@ async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
   return {
     lowCapacityEventCount,
     pastDueCount: pastDueQ.count || 0,
-    mrr,
-    last30RevenueDollars,
-    momPercent,
-    financialsUnavailable,
+    mrr: null,
+    last30RevenueDollars: null,
+    momPercent: null,
+    financialsUnavailable: true,
     upcomingEvents,
     activeMembers: activeMembersQ.count || 0,
     payingMembers: payingQ.count || 0,
@@ -241,7 +235,29 @@ export function AdminOverviewTab({
     staleTime: STALE_TIME,
   });
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['admin-dashboard-overview'] });
+  const { data: financialsData, isLoading: finLoading } = useQuery({
+    queryKey: ['admin-dashboard-financials'],
+    queryFn: fetchFinancials,
+    staleTime: STALE_TIME,
+    retry: 1,
+  });
+
+  const mrr = financialsData ? Math.round(financialsData.mrr.total) : null;
+  const fin30 = financialsData?.revenue.last30.total ?? null;
+  const fin60 = financialsData?.revenue.last60.total ?? null;
+  let momPercent: number | null = null;
+  if (fin30 != null && fin60 != null) {
+    const prev30 = fin60 - fin30;
+    if (prev30 > 0) momPercent = ((fin30 - prev30) / prev30) * 100;
+    else if (fin30 > 0) momPercent = 100;
+  }
+  const last30RevenueDollars = fin30 != null ? Math.round(fin30 / 100) : null;
+  const financialsUnavailable = !finLoading && !financialsData;
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['admin-dashboard-overview'] });
+    queryClient.invalidateQueries({ queryKey: ['admin-dashboard-financials'] });
+  };
 
   if (isError) {
     return (
@@ -266,8 +282,8 @@ export function AdminOverviewTab({
     );
   }
 
-  const momUp = data.momPercent != null && data.momPercent >= 0;
-  const momDown = data.momPercent != null && data.momPercent < 0;
+  const momUp = momPercent != null && momPercent >= 0;
+  const momDown = momPercent != null && momPercent < 0;
 
   return (
     <div className="space-y-8">
@@ -319,20 +335,26 @@ export function AdminOverviewTab({
             <p className="text-xs uppercase tracking-wider text-muted-foreground">FINANCIALS</p>
             <DollarSign className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden />
           </div>
-          {data.financialsUnavailable ? (
+          {finLoading ? (
+            <div className="flex-1 space-y-2 pt-1">
+              <Skeleton className="h-8 w-28" />
+              <Skeleton className="h-3 w-40" />
+              <Skeleton className="h-4 w-52 mt-3" />
+            </div>
+          ) : financialsUnavailable ? (
             <p className="text-sm text-muted-foreground flex-1">Financial data unavailable.</p>
           ) : (
             <>
               <p className="text-3xl font-bold tabular-nums">
-                {data.mrr != null ? `$${data.mrr.toLocaleString()}` : '—'}
+                {mrr != null ? `$${mrr.toLocaleString()}` : '—'}
               </p>
               <p className="text-xs text-muted-foreground mt-1">Monthly recurring revenue</p>
               <div className="mt-4 flex items-center gap-2 text-sm flex-wrap">
                 <span className="text-muted-foreground">Last 30 days</span>
                 <span className="font-medium text-foreground">
-                  {data.last30RevenueDollars != null ? `$${data.last30RevenueDollars.toLocaleString()}` : '—'}
+                  {last30RevenueDollars != null ? `$${last30RevenueDollars.toLocaleString()}` : '—'}
                 </span>
-                {data.momPercent != null && (
+                {momPercent != null && (
                   <span
                     className={cn(
                       'inline-flex items-center gap-0.5 font-medium',
@@ -341,8 +363,8 @@ export function AdminOverviewTab({
                   >
                     {momUp && <ArrowUpRight className="w-3.5 h-3.5" />}
                     {momDown && <ArrowDownRight className="w-3.5 h-3.5" />}
-                    {data.momPercent >= 0 ? '+' : ''}
-                    {data.momPercent.toFixed(1)}% MoM
+                    {momPercent >= 0 ? '+' : ''}
+                    {momPercent.toFixed(1)}% MoM
                   </span>
                 )}
               </div>
