@@ -64,9 +64,13 @@ export function AdminFinancialsTab({ onNavigateToDashboard }: AdminFinancialsTab
   const fetchData = async (bust = false) => {
     try {
       setError(null);
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-      if (!accessToken) throw new Error('Not authenticated');
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      let accessToken = session?.access_token;
+      if (sessionError || !accessToken) {
+        const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
+        if (!refreshedSession?.access_token) throw new Error('Not authenticated');
+        accessToken = refreshedSession.access_token;
+      }
       const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
       const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
       if (!baseUrl || !anonKey) throw new Error('Supabase URL or anon key is not configured');
