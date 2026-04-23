@@ -88,7 +88,9 @@ export function AdminFinancialsTab({ onNavigateToDashboard }: AdminFinancialsTab
       if (!res.ok || json?.error) throw new Error(json?.error || `HTTP ${res.status}`);
       setData(json);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to load financials');
+      const msg = e instanceof Error ? e.message : 'Failed to load financials';
+      console.error('[Financials] Error:', e);
+      setError(msg);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -129,6 +131,8 @@ export function AdminFinancialsTab({ onNavigateToDashboard }: AdminFinancialsTab
       </div>
     );
   }
+
+  console.log('[Financials] Data received:', JSON.stringify(data).substring(0, 200));
 
   const trendData = data.revenueTrend?.slice(-6).map(t => ({
     month: t.month.slice(0, 7),
