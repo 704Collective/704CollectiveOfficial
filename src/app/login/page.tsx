@@ -199,8 +199,12 @@ function Login() {
 
     setMagicLinkLoading(true);
     try {
-      const { error } = await supabase.functions.invoke('request-magic-link', {
-        body: { email: emailToUse },
+      const { error } = await supabase.auth.signInWithOtp({
+        email: emailToUse,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          shouldCreateUser: false,
+        },
       });
       if (error) {
         setMagicLinkError('Something went wrong. Please try again.');
@@ -229,8 +233,12 @@ function Login() {
 
     setMagicLinkLoading(true);
     try {
-      const { error } = await supabase.functions.invoke('request-magic-link', {
-        body: { email: magicLinkEmail.trim() },
+      const { error } = await supabase.auth.signInWithOtp({
+        email: magicLinkEmail.trim(),
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          shouldCreateUser: false,
+        },
       });
       if (error) {
         setMagicLinkError('Something went wrong. Please try again.');
