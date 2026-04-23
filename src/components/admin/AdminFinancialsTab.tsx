@@ -65,6 +65,7 @@ export function AdminFinancialsTab({ onNavigateToDashboard }: AdminFinancialsTab
     try {
       setError(null);
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('[Financials] session:', !!session, 'error:', sessionError, 'token prefix:', session?.access_token?.substring(0, 30));
       let accessToken = session?.access_token;
       if (sessionError || !accessToken) {
         const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
