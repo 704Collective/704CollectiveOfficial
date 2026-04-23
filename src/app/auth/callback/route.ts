@@ -100,38 +100,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/login?error=invalid_link', origin));
     }
 
-    const isActive =
-      profile?.subscription_status === 'active' ||
-      profile?.subscription_status === 'trialing' ||
-      profile?.membership_override === true;
-
-    const isAdmin =
-      profile?.role === 'admin' ||
-      profile?.role === 'super_admin';
-
-    const isNonMember =
-      profile?.member_type === 'social_non_member' ||
-      profile?.member_type === 'business_non_member' ||
-      profile?.member_type === 'non_member';
-
-    const isPartner = profile?.member_type === 'partner';
-
-    const allowed =
-      isActive || isAdmin || isNonMember || isPartner;
-
-    if (!allowed) {
-      await supabase.auth.signOut();
-      const isCanceled =
-        profile?.subscription_status === 'canceled' ||
-        profile?.subscription_status === 'cancelled';
-      const noAccessPath = isCanceled ? '/membership-ended' : '/signup';
-      const noAccessRedirect = NextResponse.redirect(new URL(noAccessPath, origin));
-      pendingCookies.forEach(({ name, value, options }) => {
-        noAccessRedirect.cookies.set(name, value, options as Parameters<typeof noAccessRedirect.cookies.set>[2]);
-      });
-      return noAccessRedirect;
-    }
-
     const destination = postAuthDestination(profile);
     const redirectResponse = NextResponse.redirect(new URL(destination, origin));
     pendingCookies.forEach(({ name, value, options }) => {
@@ -199,43 +167,6 @@ export async function GET(request: NextRequest) {
       joinRedirect.cookies.set(name, value, options as Parameters<typeof joinRedirect.cookies.set>[2]);
     });
     return joinRedirect;
-  }
-
-  const isActive =
-    profile?.subscription_status === 'active' ||
-    profile?.subscription_status === 'trialing' ||
-    profile?.membership_override === true;
-
-  const isAdmin =
-    profile?.role === 'admin' ||
-    profile?.role === 'super_admin';
-
-  const isNonMember =
-    profile?.member_type === 'social_non_member' ||
-    profile?.member_type === 'business_non_member' ||
-    profile?.member_type === 'non_member';
-
-  const isPartner = profile?.member_type === 'partner';
-
-  const allowed =
-    isActive || isAdmin || isNonMember || isPartner;
-
-  // No profile or no access: sign out before redirecting so the session
-  // cookie is cleared. Without this the middleware sees an active session
-  // and redirects every subsequent /login visit back to /signup (loop).
-  if (!allowed) {
-    await supabase.auth.signOut();
-    // pendingCookies now contains the sign-out clear operations after the
-    // session-set operations, so applying them in order wipes the session.
-    const isCanceled =
-      profile?.subscription_status === 'canceled' ||
-      profile?.subscription_status === 'cancelled';
-    const noAccessPath = isCanceled ? '/membership-ended' : '/signup';
-    const noAccessRedirect = NextResponse.redirect(new URL(noAccessPath, origin));
-    pendingCookies.forEach(({ name, value, options }) => {
-      noAccessRedirect.cookies.set(name, value, options as Parameters<typeof noAccessRedirect.cookies.set>[2]);
-    });
-    return noAccessRedirect;
   }
 
   const destination = postAuthDestination(profile);
