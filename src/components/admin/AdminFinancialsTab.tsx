@@ -65,7 +65,6 @@ export function AdminFinancialsTab({ onNavigateToDashboard }: AdminFinancialsTab
     try {
       setError(null);
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      console.log('[Financials] session:', !!session, 'error:', sessionError, 'token prefix:', session?.access_token?.substring(0, 30));
       let accessToken = session?.access_token;
       if (sessionError || !accessToken) {
         const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
@@ -131,8 +130,6 @@ export function AdminFinancialsTab({ onNavigateToDashboard }: AdminFinancialsTab
       </div>
     );
   }
-
-  console.log('[Financials] Data received:', JSON.stringify(data).substring(0, 200));
 
   const trendData = data.revenueTrend?.slice(-6).map(t => ({
     month: t.month.slice(0, 7),
