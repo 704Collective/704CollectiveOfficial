@@ -200,10 +200,25 @@ async function handleCheckoutCompleted(
     const softDeletedProfile = allProfiles?.find((p: any) => p.deleted_at);
 
     if (activeProfile) {
-      // ── existing active member ──
       userId = activeProfile.id;
-      memberAction = "existing_active";
-      log("Updating existing active profile", { userId });
+
+      // Distinguish genuine existing paying member from a shell profile
+      // created by the auth signup trigger that is now being activated
+      // by first payment. Without this check, the signup trigger's shell
+      // profile causes ALL new paying members to be misclassified as
+      // "existing_active" and skip the welcome onboarding.
+      const wasAlreadyPaying =
+        activeProfile.subscription_status === "active" ||
+        activeProfile.subscription_status === "trialing";
+
+      memberAction = wasAlreadyPaying ? "existing_active" : "new";
+
+      log(
+        wasAlreadyPaying
+          ? "Updating existing active profile"
+          : "Activating shell profile for new paying member",
+        { userId, previousStatus: activeProfile.subscription_status }
+      );
 
       const mt = activeProfile.member_type as string | null | undefined;
       const updates: Record<string, unknown> = {
@@ -224,8 +239,26 @@ async function handleCheckoutCompleted(
       if (!activeProfile.member_since) {
         updates.member_since = new Date().toISOString();
       }
+      if (!activeProfile.first_payment_at) {
+        updates.first_payment_at = new Date().toISOString();
+      }
 
       await supabase.from("profiles").update(updates).eq("id", userId);
+
+      // If this is effectively a new member (shell profile being activated
+      // by first payment), run the same onboarding steps that the brand-new
+      // branch runs — user_roles upsert and welcome feed post.
+      if (!wasAlreadyPaying) {
+        await supabase.from("user_roles").upsert(
+          { user_id: userId!, role: "member" },
+          { onConflict: "user_id,role" }
+        );
+        try {
+          await insertNewSocialMemberWelcomePost(supabase, userId!, customerName);
+        } catch (postErr) {
+          log("Welcome post insert failed (non-fatal)", { error: String(postErr) });
+        }
+      }
     } else if (softDeletedProfile) {
       // ── reactivate soft-deleted member ──
       userId = softDeletedProfile.id;
