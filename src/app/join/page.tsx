@@ -33,7 +33,7 @@ interface Event {
 }
 
 const benefits = [
-  '8+ curated events every month',
+  '10+ curated events every month',
   'Priority RSVP access (events fill up fast)',
   'Co-ed community of people like you',
   'Happy hours, game nights, adventures & more',

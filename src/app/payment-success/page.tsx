@@ -203,29 +203,20 @@ function PaymentSuccess() {
                 </Button>
               </>
             ) : (
-              <>
-                <div style={{
-                  backgroundColor: 'rgba(198,166,100,0.08)',
-                  border: '1px solid rgba(198,166,100,0.25)',
-                  borderRadius: '12px',
-                  padding: '16px',
-                  textAlign: 'left',
-                  marginBottom: '8px'
-                }}>
-                  <p style={{ fontSize: '0.875rem', color: '#C6A664', fontWeight: 600, margin: '0 0 4px' }}>
-                    📧 Check your email
-                  </p>
-                  <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.5)', margin: 0, lineHeight: 1.5 }}>
-                    We sent you a confirmation link. Click it to verify your email and you&apos;ll be automatically signed in and taken to your dashboard.
-                  </p>
-                </div>
-                <Button variant="outline" className="w-full" asChild>
-                  <Link href="/login">
-                    Already confirmed? Sign in
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Link>
-                </Button>
-              </>
+              <div style={{
+                backgroundColor: 'rgba(198,166,100,0.08)',
+                border: '1px solid rgba(198,166,100,0.25)',
+                borderRadius: '12px',
+                padding: '16px',
+                textAlign: 'left',
+              }}>
+                <p style={{ fontSize: '0.875rem', color: '#C6A664', fontWeight: 600, margin: '0 0 4px' }}>
+                  📧 Check your email
+                </p>
+                <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.5)', margin: 0, lineHeight: 1.5 }}>
+                  We sent you a confirmation link. Click it to verify your email and you&apos;ll be automatically signed in and taken to your dashboard.
+                </p>
+              </div>
             )}
           </div>
         </div>
