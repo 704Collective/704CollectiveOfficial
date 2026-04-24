@@ -77,6 +77,9 @@ function Login() {
   // Legacy magic-link mode (kept for existing flows triggered from elsewhere)
   const [magicLinkMode, setMagicLinkMode] = useState(false);
 
+  // Tab switcher
+  const [activeTab, setActiveTab] = useState<'magic' | 'password'>('magic');
+
   // Smart error hint
   const [showGoogleHint, setShowGoogleHint] = useState(false);
 
@@ -375,143 +378,182 @@ function Login() {
           ) : (
             /* ── MAIN SIGN-IN VIEW ── */
             <>
-              {/* ── PRIMARY: Magic Link ── */}
-              <form onSubmit={handleInlineMagicLink}>
-                <div style={{ marginBottom: '12px' }}>
-                  <label htmlFor="magic-inline-email" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)', marginBottom: '8px' }}>
-                    Email
-                  </label>
-                  <input
-                    id="magic-inline-email"
-                    type="email"
-                    autoComplete="email"
-                    placeholder="you@example.com"
-                    value={magicLinkEmail}
-                    onChange={(e) => { setMagicLinkEmail(e.target.value); setMagicLinkError(''); setMagicLinkSent(false); }}
-                    style={{ ...inputStyle, border: magicLinkError ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)' }}
-                    onFocus={(e) => { if (!magicLinkError) e.currentTarget.style.borderColor = '#C6A664'; }}
-                    onBlur={(e) => { if (!magicLinkError) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
-                  />
-                  {magicLinkError && <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '6px' }}>{magicLinkError}</p>}
-                </div>
-
-                {magicLinkSent && (
-                  <div style={{ backgroundColor: 'rgba(198,166,100,0.08)', border: '1px solid rgba(198,166,100,0.2)', borderRadius: '10px', padding: '12px 16px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Mail size={16} color="#C6A664" style={{ flexShrink: 0 }} />
-                    <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.5, margin: 0 }}>
-                      Check your email for a sign-in link. It expires in 1 hour.
-                    </p>
-                  </div>
-                )}
-
+              {/* ── TAB SWITCHER ── */}
+              <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: '24px' }}>
                 <button
-                  type="submit"
-                  disabled={magicLinkLoading || magicLinkCooldown > 0}
-                  style={{ width: '100%', padding: '14px', minHeight: '48px', backgroundColor: '#FFFFFF', color: '#000000', fontWeight: 600, fontSize: '0.9375rem', border: 'none', borderRadius: '8px', cursor: (magicLinkLoading || magicLinkCooldown > 0) ? 'not-allowed' : 'pointer', opacity: (magicLinkLoading || magicLinkCooldown > 0) ? 0.7 : 1, transition: 'all 200ms ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  type="button"
+                  onClick={() => { setActiveTab('magic'); setMagicLinkError(''); setErrors({}); }}
+                  style={{
+                    flex: 1,
+                    padding: '12px 16px',
+                    background: 'transparent',
+                    border: 'none',
+                    borderBottom: activeTab === 'magic' ? '2px solid #C6A664' : '2px solid transparent',
+                    color: activeTab === 'magic' ? '#C6A664' : 'rgba(255,255,255,0.5)',
+                    fontSize: '0.9375rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    marginBottom: '-1px',
+                    transition: 'all 200ms ease',
+                  }}
                 >
-                  {magicLinkLoading
-                    ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />Sending...</>
-                    : magicLinkCooldown > 0
-                    ? `Resend in ${magicLinkCooldown}s`
-                    : <><Mail size={16} />Send sign-in link</>
-                  }
+                  Magic link
                 </button>
-              </form>
-
-              {/* Divider */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', margin: '24px 0' }}>
-                <div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.08)' }} />
-                <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Or sign in with password</span>
-                <div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.08)' }} />
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab('password'); setMagicLinkError(''); setErrors({}); }}
+                  style={{
+                    flex: 1,
+                    padding: '12px 16px',
+                    background: 'transparent',
+                    border: 'none',
+                    borderBottom: activeTab === 'password' ? '2px solid #C6A664' : '2px solid transparent',
+                    color: activeTab === 'password' ? '#C6A664' : 'rgba(255,255,255,0.5)',
+                    fontSize: '0.9375rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    marginBottom: '-1px',
+                    transition: 'all 200ms ease',
+                  }}
+                >
+                  Password
+                </button>
               </div>
 
-              {/* ── SECONDARY: Password ── */}
-              <form onSubmit={handleLogin}>
-                {/* Email for password form */}
-                <div style={{ marginBottom: '16px' }}>
-                  <label htmlFor="email" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)', marginBottom: '8px' }}>
-                    Email
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => { setEmail(e.target.value); setShowGoogleHint(false); }}
-                    style={{ ...inputStyle, border: errors.email ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.1)' }}
-                    onFocus={(e) => { if (!errors.email) e.currentTarget.style.borderColor = '#C6A664'; }}
-                    onBlur={(e) => { if (!errors.email) e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
-                  />
-                  {errors.email && <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '6px' }}>{errors.email}</p>}
-                </div>
-
-                {/* Password */}
-                <div style={{ marginBottom: '16px' }}>
-                  <label htmlFor="password" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)', marginBottom: '8px' }}>
-                    Password
-                  </label>
-                  <div style={{ position: 'relative' }}>
+              {/* ── MAGIC LINK TAB ── */}
+              {activeTab === 'magic' && (
+                <form onSubmit={handleInlineMagicLink}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <label htmlFor="magic-inline-email" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)', marginBottom: '8px' }}>
+                      Email
+                    </label>
                     <input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete="current-password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      style={{ ...inputStyle, padding: '13px 52px 13px 16px', border: errors.password ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.1)' }}
-                      onFocus={(e) => { if (!errors.password) e.currentTarget.style.borderColor = '#C6A664'; }}
-                      onBlur={(e) => { if (!errors.password) e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
+                      id="magic-inline-email"
+                      type="email"
+                      autoComplete="email"
+                      placeholder="you@example.com"
+                      value={magicLinkEmail}
+                      onChange={(e) => { setMagicLinkEmail(e.target.value); setMagicLinkError(''); setMagicLinkSent(false); }}
+                      style={{ ...inputStyle, border: magicLinkError ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)' }}
+                      onFocus={(e) => { if (!magicLinkError) e.currentTarget.style.borderColor = '#C6A664'; }}
+                      onBlur={(e) => { if (!magicLinkError) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      style={{ position: 'absolute', right: '0', top: '0', bottom: '0', width: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255, 255, 255, 0.4)' }}
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
+                    {magicLinkError && <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '6px' }}>{magicLinkError}</p>}
                   </div>
-                  {errors.password && <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '6px' }}>{errors.password}</p>}
-                </div>
 
-                {/* Google hint — shown when email exists but password fails */}
-                {showGoogleHint && (
-                  <div style={{ backgroundColor: 'rgba(198,166,100,0.08)', border: '1px solid rgba(198,166,100,0.25)', borderRadius: '10px', padding: '14px 16px', marginBottom: '16px' }}>
-                    <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.55, marginBottom: '10px' }}>
-                      It looks like you signed up with Google. Try signing in with Google below, or use a magic link instead.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => { setMagicLinkMode(true); setMagicLinkEmail(email); }}
-                      style={{ fontSize: '0.8125rem', color: '#C6A664', background: 'none', border: 'none', cursor: 'pointer', padding: '0', textDecoration: 'underline' }}
-                    >
-                      Send me a magic link →
-                    </button>
-                  </div>
-                )}
+                  {magicLinkSent && (
+                    <div style={{ backgroundColor: 'rgba(198,166,100,0.08)', border: '1px solid rgba(198,166,100,0.2)', borderRadius: '10px', padding: '12px 16px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <Mail size={16} color="#C6A664" style={{ flexShrink: 0 }} />
+                      <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.5, margin: 0 }}>
+                        Check your email for a sign-in link. It expires in 1 hour.
+                      </p>
+                    </div>
+                  )}
 
-                {/* Forgot Password */}
-                <div style={{ textAlign: 'right', marginBottom: '20px' }}>
-                  <Link
-                    href="/reset-password"
-                    style={{ fontSize: '0.8125rem', color: 'rgba(255, 255, 255, 0.4)', textDecoration: 'none', transition: 'color 200ms ease', display: 'inline-block', padding: '4px 0' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.color = '#C6A664'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255, 255, 255, 0.4)'; }}
+                  <button
+                    type="submit"
+                    disabled={magicLinkLoading || magicLinkCooldown > 0}
+                    style={{ width: '100%', padding: '14px', minHeight: '48px', backgroundColor: '#FFFFFF', color: '#000000', fontWeight: 600, fontSize: '0.9375rem', border: 'none', borderRadius: '8px', cursor: (magicLinkLoading || magicLinkCooldown > 0) ? 'not-allowed' : 'pointer', opacity: (magicLinkLoading || magicLinkCooldown > 0) ? 0.7 : 1, transition: 'all 200ms ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                   >
-                    Forgot your password?
-                  </Link>
-                </div>
+                    {magicLinkLoading
+                      ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />Sending...</>
+                      : magicLinkCooldown > 0
+                      ? `Resend in ${magicLinkCooldown}s`
+                      : <><Mail size={16} />Send sign-in link</>
+                    }
+                  </button>
+                </form>
+              )}
 
-                {/* Sign In Button */}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  style={{ width: '100%', padding: '14px', minHeight: '48px', backgroundColor: 'transparent', color: '#FFFFFF', fontWeight: 600, fontSize: '0.9375rem', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, transition: 'all 200ms ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                >
-                  {loading ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />Signing in...</> : 'Sign in with password'}
-                </button>
-              </form>
+              {/* ── PASSWORD TAB ── */}
+              {activeTab === 'password' && (
+                <form onSubmit={handleLogin}>
+                  {/* Email for password form */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <label htmlFor="email" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)', marginBottom: '8px' }}>
+                      Email
+                    </label>
+                    <input
+                      id="email"
+                      type="email"
+                      autoComplete="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => { setEmail(e.target.value); setShowGoogleHint(false); }}
+                      style={{ ...inputStyle, border: errors.email ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.1)' }}
+                      onFocus={(e) => { if (!errors.email) e.currentTarget.style.borderColor = '#C6A664'; }}
+                      onBlur={(e) => { if (!errors.email) e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
+                    />
+                    {errors.email && <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '6px' }}>{errors.email}</p>}
+                  </div>
+
+                  {/* Password */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <label htmlFor="password" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)', marginBottom: '8px' }}>
+                      Password
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="current-password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        style={{ ...inputStyle, padding: '13px 52px 13px 16px', border: errors.password ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.1)' }}
+                        onFocus={(e) => { if (!errors.password) e.currentTarget.style.borderColor = '#C6A664'; }}
+                        onBlur={(e) => { if (!errors.password) e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        style={{ position: 'absolute', right: '0', top: '0', bottom: '0', width: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255, 255, 255, 0.4)' }}
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                    {errors.password && <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '6px' }}>{errors.password}</p>}
+                  </div>
+
+                  {/* Google hint — shown when email exists but password fails */}
+                  {showGoogleHint && (
+                    <div style={{ backgroundColor: 'rgba(198,166,100,0.08)', border: '1px solid rgba(198,166,100,0.25)', borderRadius: '10px', padding: '14px 16px', marginBottom: '16px' }}>
+                      <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.55, marginBottom: '10px' }}>
+                        It looks like you signed up with Google. Try signing in with Google below, or use a magic link instead.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => { setMagicLinkMode(true); setMagicLinkEmail(email); }}
+                        style={{ fontSize: '0.8125rem', color: '#C6A664', background: 'none', border: 'none', cursor: 'pointer', padding: '0', textDecoration: 'underline' }}
+                      >
+                        Send me a magic link →
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Forgot Password */}
+                  <div style={{ textAlign: 'right', marginBottom: '20px' }}>
+                    <Link
+                      href="/reset-password"
+                      style={{ fontSize: '0.8125rem', color: 'rgba(255, 255, 255, 0.4)', textDecoration: 'none', transition: 'color 200ms ease', display: 'inline-block', padding: '4px 0' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = '#C6A664'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255, 255, 255, 0.4)'; }}
+                    >
+                      Forgot your password?
+                    </Link>
+                  </div>
+
+                  {/* Sign In Button */}
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    style={{ width: '100%', padding: '14px', minHeight: '48px', backgroundColor: 'transparent', color: '#FFFFFF', fontWeight: 600, fontSize: '0.9375rem', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, transition: 'all 200ms ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  >
+                    {loading ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />Signing in...</> : 'Sign in with password'}
+                  </button>
+                </form>
+              )}
 
               {/* Divider */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', margin: '24px 0' }}>
