@@ -24,7 +24,7 @@ const BRAND = {
   textSecondary: "#D8D8D8", // Silver secondary text
   textMuted: "#A0A0A0",   // Grey metadata
   border: "rgba(255,255,255,0.10)",
-  logoUrl: "https://chnpjxwcmxkmcdoivmra.supabase.co/storage/v1/object/public/public-assets/704-logo.png",
+  logoUrl: "https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/704-logo.png",
   fontStack:
     "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
 };
@@ -89,10 +89,10 @@ function ctaButton(text: string, url: string): string {
 </table>`;
 }
 
-function welcomeTemplate(data: { name: string; calendarUrl: string; origin?: string }): { subject: string; html: string } {
+function welcomeBackTemplate(data: { name: string; calendarUrl: string; origin?: string }): { subject: string; html: string } {
   const name = data.name || "there";
   const base = data.origin;
-  if (!base) throw new Error("[welcome] origin is required but was not provided. Ensure the calling function passes origin in the email data payload.");
+  if (!base) throw new Error("[welcome-back] origin is required but was not provided. Ensure the calling function passes origin in the email data payload.");
   return {
     subject: "You're back - welcome home",
     html: baseLayout(`
@@ -751,8 +751,8 @@ ${ctaButton("Open your dashboard", data.dashboardUrl)}
 
 function getTemplate(template: string, data: Record<string, unknown>): { subject: string; html: string } {
   switch (template) {
-    case "welcome":
-      return welcomeTemplate(data as { name: string; calendarUrl: string; origin?: string });
+    case "welcome-back":
+      return welcomeBackTemplate(data as { name: string; calendarUrl: string; origin?: string });
     case "password-setup":
       return passwordSetupTemplate(data as { name: string; setupLink: string });
     case "welcome-setup":
@@ -915,7 +915,7 @@ serve(async (req) => {
 
     // Templates that require service role (internal/admin only)
     const restrictedTemplates = [
-      "admin-invite", "welcome-setup", "welcome", "password-setup", "event-change", "guest-followup",
+      "admin-invite", "welcome-setup", "welcome-back", "password-setup", "event-change", "guest-followup",
       "ticket-followup", "guest-pass", "feed-mention", "partner-application-submitted",
       "partner-new-application-admin", "partner-welcome-invite", "partner-application-denied",
       "partner-event-inquiry-admin", "partner-inquiry-admin-reply-partner", "partner-team-first-superadmin",
@@ -990,7 +990,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from: fromAddress,
         to: [to],
-        ...(!skipCc && (template === "welcome" || template === "password-setup" || template === "welcome-setup")
+        ...(!skipCc && (template === "welcome-back" || template === "password-setup" || template === "welcome-setup")
           ? { cc: ["hello@704collective.com"] }
           : {}),
         subject,

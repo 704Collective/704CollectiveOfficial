@@ -392,7 +392,7 @@ async function handleCheckoutCompleted(
         await fetch(`${supabaseUrl}/functions/v1/send-email`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
-          body: JSON.stringify({ to: customerEmail, template: "welcome", data: { name: customerName || "there", calendarUrl, origin: sessionOrigin } }),
+          body: JSON.stringify({ to: customerEmail, template: memberAction === "reactivated" ? "welcome-back" : "welcome-setup", data: { name: customerName || "there", calendarUrl, origin: sessionOrigin } }),
         });
 
         log("Welcome email sent", { email: customerEmail, memberAction });
