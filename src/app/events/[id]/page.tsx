@@ -237,7 +237,7 @@ export default function EventDetail() {
     );
     if (!user) {
       if (event.access_type === 'public_free') return (
-        <div style={{ width: '100%' }}>
+        <div style={{ width: '100%', boxSizing: 'border-box' }}>
           <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '6px' }}>RSVP — no account needed</h3>
           <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', marginBottom: '18px' }}>Free event, open to everyone.</p>
           {publicRsvpState === 'success' ? (
@@ -251,15 +251,15 @@ export default function EventDetail() {
               </div>
             </div>
           ) : (
-            <form onSubmit={handlePublicRsvp} style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <form onSubmit={handlePublicRsvp} style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', boxSizing: 'border-box' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', width: '100%', boxSizing: 'border-box' }}>
                 <input
                   type="text"
                   placeholder="First name"
                   value={publicRsvpFirstName}
                   onChange={(e) => setPublicRsvpFirstName(e.target.value)}
                   required
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', minHeight: '44px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#FFFFFF', fontSize: '0.9375rem', outline: 'none' }}
+                  style={{ width: '100%', boxSizing: 'border-box', minWidth: 0, padding: '12px 14px', minHeight: '44px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#FFFFFF', fontSize: '0.9375rem', outline: 'none' }}
                 />
                 <input
                   type="text"
@@ -267,7 +267,7 @@ export default function EventDetail() {
                   value={publicRsvpLastName}
                   onChange={(e) => setPublicRsvpLastName(e.target.value)}
                   required
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', minHeight: '44px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#FFFFFF', fontSize: '0.9375rem', outline: 'none' }}
+                  style={{ width: '100%', boxSizing: 'border-box', minWidth: 0, padding: '12px 14px', minHeight: '44px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#FFFFFF', fontSize: '0.9375rem', outline: 'none' }}
                 />
               </div>
               <input
@@ -276,14 +276,14 @@ export default function EventDetail() {
                 value={publicRsvpEmail}
                 onChange={(e) => setPublicRsvpEmail(e.target.value)}
                 required
-                style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', minHeight: '44px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#FFFFFF', fontSize: '0.9375rem', outline: 'none' }}
+                style={{ width: '100%', boxSizing: 'border-box', minWidth: 0, padding: '12px 14px', minHeight: '44px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#FFFFFF', fontSize: '0.9375rem', outline: 'none' }}
               />
               <input
                 type="tel"
                 placeholder="Phone (optional)"
                 value={publicRsvpPhone}
                 onChange={(e) => setPublicRsvpPhone(e.target.value)}
-                style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', minHeight: '44px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#FFFFFF', fontSize: '0.9375rem', outline: 'none' }}
+                style={{ width: '100%', boxSizing: 'border-box', minWidth: 0, padding: '12px 14px', minHeight: '44px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#FFFFFF', fontSize: '0.9375rem', outline: 'none' }}
               />
               {publicRsvpError && (
                 <p style={{ fontSize: '0.8125rem', color: '#E57373', margin: 0 }}>{publicRsvpError}</p>
@@ -291,7 +291,7 @@ export default function EventDetail() {
               <button
                 type="submit"
                 disabled={publicRsvpLoading}
-                style={{ width: '100%', padding: '13px 24px', minHeight: '44px', backgroundColor: publicRsvpLoading ? 'rgba(198,166,100,0.5)' : '#C6A664', color: '#1A1A1A', fontWeight: 700, borderRadius: '8px', border: 'none', cursor: publicRsvpLoading ? 'not-allowed' : 'pointer', fontSize: '0.9375rem', transition: 'all 200ms ease' }}
+                style={{ width: '100%', boxSizing: 'border-box', padding: '13px 24px', minHeight: '44px', backgroundColor: publicRsvpLoading ? 'rgba(198,166,100,0.5)' : '#C6A664', color: '#1A1A1A', fontWeight: 700, borderRadius: '8px', border: 'none', cursor: publicRsvpLoading ? 'not-allowed' : 'pointer', fontSize: '0.9375rem', transition: 'all 200ms ease' }}
               >
                 {publicRsvpLoading ? 'Reserving...' : 'Reserve my spot'}
               </button>
