@@ -110,6 +110,28 @@ ${ctaButton("See Upcoming Events", `${base}/events`)}
   };
 }
 
+function welcomeNewTemplate(data: { name: string; calendarUrl: string; origin?: string }): { subject: string; html: string } {
+  const name = data.name || "there";
+  const base = data.origin;
+  if (!base) throw new Error("[welcome-new] origin is required but was not provided. Ensure the calling function passes origin in the email data payload.");
+  return {
+    subject: "You're in. Welcome to 704 Collective.",
+    html: baseLayout(`
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name},</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Welcome to 704 Collective. You just joined a room full of people who are actually worth knowing in Charlotte.</p>
+<p style="margin:0 0 12px;font-size:15px;font-weight:600;color:${BRAND.text};">Here's what to do next:</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+<tr><td style="padding:8px 0;font-size:15px;color:${BRAND.textSecondary};">&rarr;&nbsp;<a href="${base}/events" style="color:${BRAND.accent};text-decoration:underline;">Browse upcoming events and grab your spot</a></td></tr>
+<tr><td style="padding:8px 0;font-size:15px;color:${BRAND.textSecondary};">&rarr;&nbsp;<a href="${data.calendarUrl}" style="color:${BRAND.accent};text-decoration:underline;">Subscribe to the member calendar</a></td></tr>
+<tr><td style="padding:8px 0;font-size:15px;color:${BRAND.textSecondary};">&rarr;&nbsp;<a href="${base}/settings" style="color:${BRAND.accent};text-decoration:underline;">Fill out your profile so people know who you are</a></td></tr>
+</table>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">If you need anything, reply to this email. A real person reads it.</p>
+${ctaButton("See Upcoming Events", `${base}/events`)}
+<p style="margin:24px 0 0;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">704 Collective</p>
+`, base),
+  };
+}
+
 function passwordSetupTemplate(data: { name: string; setupLink: string; origin?: string }): { subject: string; html: string } {
   const name = data.name || "there";
   return {
@@ -753,6 +775,8 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
   switch (template) {
     case "welcome-back":
       return welcomeBackTemplate(data as { name: string; calendarUrl: string; origin?: string });
+    case "welcome-new":
+      return welcomeNewTemplate(data as { name: string; calendarUrl: string; origin?: string });
     case "password-setup":
       return passwordSetupTemplate(data as { name: string; setupLink: string });
     case "welcome-setup":
@@ -915,7 +939,7 @@ serve(async (req) => {
 
     // Templates that require service role (internal/admin only)
     const restrictedTemplates = [
-      "admin-invite", "welcome-setup", "welcome-back", "password-setup", "event-change", "guest-followup",
+      "admin-invite", "welcome-setup", "welcome-back", "welcome-new", "password-setup", "event-change", "guest-followup",
       "ticket-followup", "guest-pass", "feed-mention", "partner-application-submitted",
       "partner-new-application-admin", "partner-welcome-invite", "partner-application-denied",
       "partner-event-inquiry-admin", "partner-inquiry-admin-reply-partner", "partner-team-first-superadmin",
