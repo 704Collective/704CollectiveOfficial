@@ -340,6 +340,14 @@ export default function EventDetail() {
         </div>
       );
     }
+    if (event.access_type === 'public_free') return (
+      <div style={{ textAlign: 'center' }}>
+        <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#4CAF50', backgroundColor: 'rgba(76,175,80,0.06)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Free Event</span>
+        <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>Free Entry</h3>
+        <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>RSVP — open to everyone.</p>
+        <button onClick={handleMemberRegister} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> RSVPing...</> : 'RSVP for Free'}</button>
+      </div>
+    );
     return (
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: '2rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '2px' }}>{formatPrice(ticketPrice)}</div>
@@ -353,11 +361,25 @@ export default function EventDetail() {
   };
 
   const getMobileCTAText = () => {
+    if (event.access_type === 'public_free') {
+      if (!user) return 'RSVP — No Account Needed';
+      return isAtCapacity ? 'Join Waitlist' : 'RSVP for Free';
+    }
     if (!user) return event.is_members_only ? 'Sign In to RSVP' : 'Purchase Ticket';
     if (isActiveMember) return isAtCapacity ? 'Join Waitlist' : 'RSVP for Free';
     return 'Purchase Ticket';
   };
   const handleMobileCTA = () => {
+    if (event.access_type === 'public_free') {
+      if (!user) {
+        const form = document.querySelector('form');
+        if (form) form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      if (isAtCapacity) handleJoinWaitlist();
+      else handleMemberRegister();
+      return;
+    }
     if (!user) { if (event.is_members_only || ticketPrice === 0) router.push('/login'); else handleGuestPurchase(); return; }
     if (isActiveMember) { if (isAtCapacity) handleJoinWaitlist(); else handleMemberRegister(); return; }
     handlePurchaseTicket();
@@ -463,7 +485,7 @@ export default function EventDetail() {
         {!hasTicket && !waitlistPosition && (
           <div className="mobile-sticky-cta" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, backgroundColor: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(12px)', borderTop: '1px solid rgba(255,255,255,0.06)', padding: '14px 24px', display: 'none' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', maxWidth: '500px', margin: '0 auto' }}>
-              <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: isActiveMember ? '#4CAF50' : '#FFFFFF' }}>{isActiveMember || ticketPrice <= 0 ? 'Free' : formatPrice(ticketPrice)}</div>
+              <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: (isActiveMember || event.access_type === 'public_free') ? '#4CAF50' : '#FFFFFF' }}>{isActiveMember || ticketPrice <= 0 || event.access_type === 'public_free' ? 'Free' : formatPrice(ticketPrice)}</div>
               <button onClick={handleMobileCTA} disabled={isActionLoading} style={{ flex: 1, padding: '14px 24px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, backgroundColor: '#FFF', color: '#000', border: 'none', cursor: isActionLoading ? 'wait' : 'pointer', opacity: isActionLoading ? 0.6 : 1 }}>
                 {isActionLoading ? 'Loading...' : getMobileCTAText()}
               </button>
