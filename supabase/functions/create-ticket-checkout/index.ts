@@ -114,10 +114,8 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://704collective.com";
 
-    // Route authenticated users to dashboard, guests to payment verification
-    const successUrl = userId
-      ? `${origin}/dashboard?ticket_purchased=${eventId}`
-      : `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&event_id=${eventId}`;
+    // Always route through /payment-success so verify-ticket-payment runs and creates the ticket + sends email
+    const successUrl = `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&event_id=${eventId}`;
     logStep("Success URL determined", { authenticated: !!userId, successUrl });
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
