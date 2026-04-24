@@ -93,7 +93,7 @@ serve(async (req) => {
     // Create the ticket record (using service role key bypasses RLS)
     const ticketData: Record<string, unknown> = {
       event_id,
-      ticket_type: "paid",
+      ticket_type: "public_paid",
       status: "confirmed",
       stripe_payment_id: paymentId,
       source: "stripe",
