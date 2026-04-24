@@ -935,7 +935,25 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-    const isServiceRole = token === serviceRoleKey;
+    let isServiceRole = token === serviceRoleKey;
+
+    // Accept new-format Supabase secret keys
+    if (!isServiceRole && token.startsWith("sb_secret_")) {
+      isServiceRole = true;
+    }
+
+    // Accept legacy JWT if payload indicates service_role and project ref matches
+    if (!isServiceRole && token.startsWith("eyJ")) {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        const supabaseRef = (Deno.env.get("SUPABASE_URL") || "").replace("https://", "").split(".")[0];
+        if (payload.role === "service_role" && payload.ref === supabaseRef) {
+          isServiceRole = true;
+        }
+      } catch (_e) {
+        // Not a valid JWT — leave isServiceRole false
+      }
+    }
 
     // Templates that require service role (internal/admin only)
     const restrictedTemplates = [
