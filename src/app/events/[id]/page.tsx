@@ -221,13 +221,13 @@ export default function EventDetail() {
   const linkBtn: React.CSSProperties = { display: 'block', width: '100%', padding: '11px 24px', borderRadius: '10px', fontSize: '0.8125rem', fontWeight: 600, textAlign: 'center', textDecoration: 'none', transition: 'all 200ms ease' };
 
   // State 3: resolve member-tier ticket price based on the user's member_type
-  const resolveMemberPrice = (): number => {
-    if (!event) return 0;
-    const memberType = profile?.member_type;
-    if (memberType === 'business' || memberType === 'founder' || memberType === 'partner') {
+  const resolveMemberPrice = (): number | null => {
+    if (!event) return null;
+    const memberType = (profile?.member_type ?? '') as string;
+    if (memberType === 'business' || memberType === 'partner') {
       return event.business_member_price ?? event.social_member_price ?? event.ticket_price ?? 0;
     }
-    if (memberType === 'social' || memberType === 'social_member') {
+    if (memberType === 'social') {
       return event.social_member_price ?? event.ticket_price ?? 0;
     }
     return event.ticket_price ?? 0;
