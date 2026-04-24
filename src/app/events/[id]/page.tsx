@@ -34,6 +34,8 @@ interface Event {
   is_members_only: boolean | null;
   is_published?: boolean | null;
   ticket_price: number | null;
+  social_member_price?: number | null;
+  business_member_price?: number | null;
   category: string | null;
   allows_guest_passes: boolean | null;
   access_type?: 'members_only' | 'public_ticketed' | 'public_free';
@@ -218,6 +220,19 @@ export default function EventDetail() {
   const dangerBtn: React.CSSProperties = { ...primaryBtn, backgroundColor: 'transparent', color: '#E57373', border: '1px solid rgba(229,115,115,0.15)' };
   const linkBtn: React.CSSProperties = { display: 'block', width: '100%', padding: '11px 24px', borderRadius: '10px', fontSize: '0.8125rem', fontWeight: 600, textAlign: 'center', textDecoration: 'none', transition: 'all 200ms ease' };
 
+  // State 3: resolve member-tier ticket price based on the user's member_type
+  const resolveMemberPrice = (): number => {
+    if (!event) return 0;
+    const memberType = profile?.member_type;
+    if (memberType === 'business' || memberType === 'founder' || memberType === 'partner') {
+      return event.business_member_price ?? event.social_member_price ?? event.ticket_price ?? 0;
+    }
+    if (memberType === 'social' || memberType === 'social_member') {
+      return event.social_member_price ?? event.ticket_price ?? 0;
+    }
+    return event.ticket_price ?? 0;
+  };
+
   const renderTicketCard = () => {
     // STATE 7: Attended — past event with checked_in_at OR status='attended'
     const isAttended = ticketStatus === 'attended' || checkedInAt;
@@ -348,12 +363,30 @@ export default function EventDetail() {
           <button onClick={handleJoinWaitlist} disabled={isActionLoading} style={ghostBtn}>{isActionLoading ? 'Joining...' : 'Join Waitlist'}</button>
         </div>
       );
-      return (
+      const memberPrice = resolveMemberPrice();
+      const standardPrice = event.ticket_price ?? 0;
+
+      if (!memberPrice || memberPrice === 0) return (
         <div style={{ textAlign: 'center' }}>
           <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#4CAF50', backgroundColor: 'rgba(76,175,80,0.06)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Member Benefit</span>
           <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>Free Entry</h3>
           <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>RSVP - it{"'"}s on us.</p>
           <button onClick={handleMemberRegister} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> RSVPing...</> : 'RSVP for Free'}</button>
+        </div>
+      );
+
+      // STATE 3: Member Paid — member price > 0
+      return (
+        <div style={{ textAlign: 'center' }}>
+          <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#C6A664', backgroundColor: 'rgba(198,166,100,0.08)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Member Price</span>
+          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '2px' }}>{formatPrice(memberPrice)}</div>
+          {standardPrice > memberPrice && (
+            <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)', marginBottom: '18px' }}>Standard price: {formatPrice(standardPrice)}</p>
+          )}
+          {standardPrice <= memberPrice && (
+            <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', marginBottom: '18px' }}>One-time ticket</p>
+          )}
+          <button onClick={handlePurchaseTicket} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> Redirecting...</> : `Purchase ticket — ${formatPrice(memberPrice)}`}</button>
         </div>
       );
     }
