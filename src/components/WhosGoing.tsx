@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -77,16 +77,26 @@ export function WhosGoing({ eventId }: WhosGoingProps) {
     setLoading(false);
   };
 
+  const containerStyle: React.CSSProperties = {
+    backgroundColor: '#111',
+    border: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: '12px',
+    padding: '18px 20px',
+    marginBottom: '16px',
+  };
+
   if (loading) {
     return (
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="h-5 w-24 bg-muted rounded animate-pulse" />
-        </div>
-        <div className="flex -space-x-2">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="w-10 h-10 rounded-full bg-muted animate-pulse border-2 border-background" />
-          ))}
+      <div style={containerStyle}>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="h-5 w-24 bg-muted rounded animate-pulse" />
+          </div>
+          <div className="flex -space-x-2">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="w-10 h-10 rounded-full bg-muted animate-pulse border-2 border-background" />
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -99,39 +109,41 @@ export function WhosGoing({ eventId }: WhosGoingProps) {
   const remainingCount = totalCount - attendees.length;
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Users className="w-5 h-5" />
-        <h3 className="font-semibold text-foreground">Who's Going</h3>
-      </div>
-      
-      <p className="text-sm text-muted-foreground">
-        {totalCount} member{totalCount !== 1 ? 's' : ''} registered
-      </p>
-      
-      <div className="flex items-center -space-x-2">
-        {attendees.map((attendee) => (
-          <Avatar 
-            key={attendee.id} 
-            className="w-10 h-10 border-2 border-background"
-          >
-            <AvatarImage src={attendee.avatar_url || undefined} alt={attendee.full_name || 'Member'} />
-            <AvatarFallback
-              className="text-sm font-semibold"
-              style={getInitialsAvatarStyle(attendee.id)}
-            >
-              {twoInitials(attendee.full_name)}
-            </AvatarFallback>
-          </Avatar>
-        ))}
+    <div style={containerStyle}>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Users className="w-5 h-5" />
+          <h3 className="font-semibold text-foreground">Who's Going</h3>
+        </div>
         
-        {remainingCount > 0 && (
-          <div className="w-10 h-10 rounded-full bg-muted border-2 border-background flex items-center justify-center">
-            <span className="text-xs font-medium text-muted-foreground">
-              +{remainingCount}
-            </span>
-          </div>
-        )}
+        <p className="text-sm text-muted-foreground">
+          {totalCount} member{totalCount !== 1 ? 's' : ''} registered
+        </p>
+        
+        <div className="flex items-center -space-x-2">
+          {attendees.map((attendee) => (
+            <Avatar 
+              key={attendee.id} 
+              className="w-10 h-10 border-2 border-background"
+            >
+              <AvatarImage src={attendee.avatar_url || undefined} alt={attendee.full_name || 'Member'} />
+              <AvatarFallback
+                className="text-sm font-semibold"
+                style={getInitialsAvatarStyle(attendee.id)}
+              >
+                {twoInitials(attendee.full_name)}
+              </AvatarFallback>
+            </Avatar>
+          ))}
+          
+          {remainingCount > 0 && (
+            <div className="w-10 h-10 rounded-full bg-muted border-2 border-background flex items-center justify-center">
+              <span className="text-xs font-medium text-muted-foreground">
+                +{remainingCount}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

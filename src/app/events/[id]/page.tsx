@@ -459,9 +459,7 @@ export default function EventDetail() {
                 </div>
               )}
 
-              <div style={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '18px 20px', marginBottom: '16px' }}>
-                <WhosGoing eventId={id!} />
-              </div>
+              <WhosGoing eventId={id!} />
 
               {event.location_address && (
                 <div style={{ marginBottom: '16px' }}>
