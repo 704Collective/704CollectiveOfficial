@@ -67,7 +67,7 @@ export function useTicketActions(): UseTicketActionsReturn {
       .from('tickets')
       .select('event_id')
       .eq('user_id', user.id)
-      .in('status', ['confirmed', 'rsvp']);
+      .in('status', ['confirmed', 'rsvp', 'attended']);
 
     if (data) {
       setUserTicketIds(new Set(data.map(t => t.event_id).filter(Boolean) as string[]));

@@ -49,6 +49,8 @@ export default function EventDetail() {
   usePageTitle(event ? event.title : 'Event Details');
   const [loading, setloading] = useState(true);
   const [ticketId, setTicketId] = useState<string | null>(null);
+  const [ticketStatus, setTicketStatus] = useState<string | null>(null);
+  const [checkedInAt, setCheckedInAt] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [ticketCount, setTicketCount] = useState(0);
@@ -85,8 +87,15 @@ export default function EventDetail() {
   }, [event, authLoading, isAdmin, isSuperAdmin, router]);
   const fetchTicketId = async () => {
     if (!user) return;
-    const { data } = await supabase.from('tickets').select('id').eq('event_id', id).eq('user_id', user.id).in('status', ['confirmed', 'rsvp']).maybeSingle();
+    const { data } = await supabase.from('tickets')
+      .select('id, status, checked_in_at')
+      .eq('event_id', id)
+      .eq('user_id', user.id)
+      .in('status', ['confirmed', 'rsvp', 'attended'])
+      .maybeSingle();
     setTicketId(data?.id || null);
+    setTicketStatus(data?.status || null);
+    setCheckedInAt(data?.checked_in_at || null);
   };
   const fetchTicketCount = async () => {
     const { count } = await supabase.from('tickets').select('*', { count: 'exact', head: true }).eq('event_id', id).in('status', ['confirmed', 'rsvp']);
@@ -210,6 +219,16 @@ export default function EventDetail() {
   const linkBtn: React.CSSProperties = { display: 'block', width: '100%', padding: '11px 24px', borderRadius: '10px', fontSize: '0.8125rem', fontWeight: 600, textAlign: 'center', textDecoration: 'none', transition: 'all 200ms ease' };
 
   const renderTicketCard = () => {
+    // STATE 7: Attended — past event with checked_in_at OR status='attended'
+    const isAttended = ticketStatus === 'attended' || checkedInAt;
+    if (hasTicket && isAttended) return (
+      <div style={{ textAlign: 'center' }}>
+        <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#C6A664', backgroundColor: 'rgba(198,166,100,0.08)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Attended</span>
+        <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>You attended this one.</h3>
+        <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>{checkedInAt ? `Checked in ${format(new Date(checkedInAt), 'MMMM d, yyyy')}` : `Event on ${format(eventDate, 'MMMM d, yyyy')}`}</p>
+        <Link href="/events" style={{ ...linkBtn, backgroundColor: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)', marginBottom: '8px' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><Calendar style={{ width: '13px', height: '13px' }} /> Browse Other Events</span></Link>
+      </div>
+    );
     if (hasTicket) return (
       <div style={{ textAlign: 'center' }}>
         <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(76,175,80,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
