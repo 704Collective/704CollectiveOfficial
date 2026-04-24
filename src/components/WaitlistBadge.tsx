@@ -26,7 +26,7 @@ export function WaitlistBadge({ position, onLeaveWaitlist, onLeave, loading, cla
       </Badge>
       
       <p className="text-xs text-muted-foreground">
-        We'll notify you by email if a spot opens up.
+        An admin will reach out if a spot opens up.
       </p>
       
       {handleLeave && (

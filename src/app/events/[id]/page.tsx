@@ -109,11 +109,9 @@ export default function EventDetail() {
   };
   const handleJoinWaitlist = async () => {
     if (!user || !event) return; setIsRegistering(true);
-    const { data: maxPos } = await supabase.from('event_waitlist').select('position').eq('event_id', event.id).order('position', { ascending: false }).limit(1).maybeSingle();
-    const pos = (maxPos?.position || 0) + 1;
-    const { data, error } = await supabase.from('event_waitlist').insert({ event_id: event.id, user_id: user.id, position: pos }).select().single();
+    const { data, error } = await supabase.from('event_waitlist').insert({ event_id: event.id, user_id: user.id, position: 0 }).select('id, position').single();
     if (error) { toast.error(error.code === '23505' ? 'Already on waitlist' : 'Failed to join'); setIsRegistering(false); return; }
-    setWaitlistPosition(pos); setWaitlistId(data.id); setIsRegistering(false); toast.success(`You're #${pos} on the waitlist!`);
+    setWaitlistPosition(data.position); setWaitlistId(data.id); setIsRegistering(false); toast.success(`You're #${data.position} on the waitlist!`);
   };
   const handleLeaveWaitlist = async () => {
     if (!waitlistId) return;
