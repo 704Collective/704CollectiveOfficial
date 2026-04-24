@@ -132,6 +132,39 @@ ${ctaButton("See Upcoming Events", `${base}/events`)}
   };
 }
 
+function publicRsvpConfirmationTemplate(data: {
+  name: string;
+  eventName: string;
+  eventDate: string;
+  eventTime: string;
+  eventLocation: string;
+  eventAddress?: string;
+  origin?: string;
+}): { subject: string; html: string } {
+  const name = data.name || "there";
+  const base = data.origin || "https://704collective.com";
+  return {
+    subject: `You're confirmed: ${data.eventName}`,
+    html: baseLayout(`
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name}!</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">You're confirmed for <strong>${data.eventName}</strong>. We'll see you there.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:${BRAND.color};border-radius:8px;border:1px solid ${BRAND.border};">
+<tr><td style="padding:20px 24px;">
+<table role="presentation" cellpadding="0" cellspacing="0">
+<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">&#128197;&nbsp;&nbsp;${data.eventDate}</td></tr>
+<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">&#9200;&nbsp;&nbsp;${data.eventTime}</td></tr>
+<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">&#128205;&nbsp;&nbsp;${data.eventLocation}${data.eventAddress ? `, ${data.eventAddress}` : ""}</td></tr>
+</table>
+</td></tr>
+</table>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">704 Collective is Charlotte's community for young professionals who want to meet people worth knowing. We host events, dinners, and experiences throughout the year.</p>
+<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Want access to more events like this?</p>
+${ctaButton("Learn About 704 Collective", `${base}/join`)}
+<p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">No pressure — just glad you're coming.</p>
+`, base),
+  };
+}
+
 function passwordSetupTemplate(data: { name: string; setupLink: string; origin?: string }): { subject: string; html: string } {
   const name = data.name || "there";
   return {
@@ -777,6 +810,16 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
       return welcomeBackTemplate(data as { name: string; calendarUrl: string; origin?: string });
     case "welcome-new":
       return welcomeNewTemplate(data as { name: string; calendarUrl: string; origin?: string });
+    case "public-rsvp-confirmation":
+      return publicRsvpConfirmationTemplate(data as {
+        name: string;
+        eventName: string;
+        eventDate: string;
+        eventTime: string;
+        eventLocation: string;
+        eventAddress?: string;
+        origin?: string;
+      });
     case "password-setup":
       return passwordSetupTemplate(data as { name: string; setupLink: string });
     case "welcome-setup":
@@ -957,7 +1000,7 @@ serve(async (req) => {
 
     // Templates that require service role (internal/admin only)
     const restrictedTemplates = [
-      "admin-invite", "welcome-setup", "welcome-back", "welcome-new", "password-setup", "event-change", "guest-followup",
+      "admin-invite", "welcome-setup", "welcome-back", "welcome-new", "public-rsvp-confirmation", "password-setup", "event-change", "guest-followup",
       "ticket-followup", "guest-pass", "feed-mention", "partner-application-submitted",
       "partner-new-application-admin", "partner-welcome-invite", "partner-application-denied",
       "partner-event-inquiry-admin", "partner-inquiry-admin-reply-partner", "partner-team-first-superadmin",

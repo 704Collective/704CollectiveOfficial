@@ -36,6 +36,7 @@ interface Event {
   ticket_price: number | null;
   category: string | null;
   allows_guest_passes: boolean | null;
+  access_type?: 'members_only' | 'public_ticketed' | 'public_free';
 }
 
 export default function EventDetail() {
@@ -53,6 +54,14 @@ export default function EventDetail() {
   const [ticketCount, setTicketCount] = useState(0);
   const [waitlistPosition, setWaitlistPosition] = useState<number | null>(null);
   const [waitlistId, setWaitlistId] = useState<string | null>(null);
+
+  const [publicRsvpFirstName, setPublicRsvpFirstName] = useState('');
+  const [publicRsvpLastName, setPublicRsvpLastName] = useState('');
+  const [publicRsvpEmail, setPublicRsvpEmail] = useState('');
+  const [publicRsvpPhone, setPublicRsvpPhone] = useState('');
+  const [publicRsvpLoading, setPublicRsvpLoading] = useState(false);
+  const [publicRsvpError, setPublicRsvpError] = useState('');
+  const [publicRsvpState, setPublicRsvpState] = useState<'idle' | 'success'>('idle');
 
   const hasTicket = id ? checkHasTicket(id) : false;
 
@@ -111,6 +120,56 @@ export default function EventDetail() {
     const { error } = await supabase.from('event_waitlist').delete().eq('id', waitlistId);
     if (error) { toast.error('Failed to leave waitlist'); return; }
     setWaitlistPosition(null); setWaitlistId(null); toast.success('Left the waitlist');
+  };
+  const handlePublicRsvp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPublicRsvpError('');
+
+    if (!publicRsvpFirstName.trim() || !publicRsvpLastName.trim() || !publicRsvpEmail.trim()) {
+      setPublicRsvpError('Please fill in name and email.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(publicRsvpEmail.trim())) {
+      setPublicRsvpError('Please enter a valid email.');
+      return;
+    }
+
+    setPublicRsvpLoading(true);
+    try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      const res = await fetch(`${supabaseUrl}/functions/v1/capture-public-rsvp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: anonKey || '',
+          Authorization: `Bearer ${anonKey || ''}`,
+        },
+        body: JSON.stringify({
+          event_id: event!.id,
+          first_name: publicRsvpFirstName.trim(),
+          last_name: publicRsvpLastName.trim(),
+          email: publicRsvpEmail.trim(),
+          phone: publicRsvpPhone.trim() || null,
+          origin: window.location.origin,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setPublicRsvpError(data.error || 'Something went wrong. Please try again.');
+        setPublicRsvpLoading(false);
+        return;
+      }
+
+      setPublicRsvpState('success');
+      setPublicRsvpLoading(false);
+    } catch {
+      setPublicRsvpError('Something went wrong. Please try again.');
+      setPublicRsvpLoading(false);
+    }
   };
   const handlePurchaseTicket = async () => {
     if (!event) return; setIsRegistering(true);
@@ -177,6 +236,72 @@ export default function EventDetail() {
       </div>
     );
     if (!user) {
+      if (event.access_type === 'public_free') return (
+        <div>
+          <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '6px' }}>RSVP — no account needed</h3>
+          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', marginBottom: '18px' }}>Free event, open to everyone.</p>
+          {publicRsvpState === 'success' ? (
+            <div style={{ textAlign: 'center', padding: '16px 0' }}>
+              <div style={{ fontSize: '2rem', marginBottom: '8px' }}>✓</div>
+              <p style={{ fontSize: '1rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '4px' }}>See you there.</p>
+              <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', marginBottom: '20px' }}>Confirmation sent to {publicRsvpEmail}.</p>
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px' }}>
+                <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.5)', marginBottom: '10px' }}>Curious about membership?</p>
+                <Link href="/join" style={{ ...linkBtn, border: '1px solid #C6A664', color: '#C6A664' }}>Learn about 704 Collective →</Link>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handlePublicRsvp} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <input
+                  type="text"
+                  placeholder="First name"
+                  value={publicRsvpFirstName}
+                  onChange={(e) => setPublicRsvpFirstName(e.target.value)}
+                  required
+                  style={{ padding: '10px 12px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#FFFFFF', fontSize: '0.875rem', outline: 'none' }}
+                />
+                <input
+                  type="text"
+                  placeholder="Last name"
+                  value={publicRsvpLastName}
+                  onChange={(e) => setPublicRsvpLastName(e.target.value)}
+                  required
+                  style={{ padding: '10px 12px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#FFFFFF', fontSize: '0.875rem', outline: 'none' }}
+                />
+              </div>
+              <input
+                type="email"
+                placeholder="Email"
+                value={publicRsvpEmail}
+                onChange={(e) => setPublicRsvpEmail(e.target.value)}
+                required
+                style={{ padding: '10px 12px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#FFFFFF', fontSize: '0.875rem', outline: 'none' }}
+              />
+              <input
+                type="tel"
+                placeholder="Phone (optional)"
+                value={publicRsvpPhone}
+                onChange={(e) => setPublicRsvpPhone(e.target.value)}
+                style={{ padding: '10px 12px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#FFFFFF', fontSize: '0.875rem', outline: 'none' }}
+              />
+              {publicRsvpError && (
+                <p style={{ fontSize: '0.8125rem', color: '#E57373', margin: 0 }}>{publicRsvpError}</p>
+              )}
+              <button
+                type="submit"
+                disabled={publicRsvpLoading}
+                style={{ padding: '12px 24px', backgroundColor: publicRsvpLoading ? 'rgba(198,166,100,0.5)' : '#C6A664', color: '#1A1A1A', fontWeight: 700, borderRadius: '8px', border: 'none', cursor: publicRsvpLoading ? 'not-allowed' : 'pointer', fontSize: '0.9375rem', transition: 'all 200ms ease' }}
+              >
+                {publicRsvpLoading ? 'Reserving...' : 'Reserve my spot'}
+              </button>
+              <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', textAlign: 'center', margin: 0 }}>
+                Already a member? <Link href="/login" style={{ color: '#C6A664', textDecoration: 'underline' }}>Sign in instead</Link>
+              </p>
+            </form>
+          )}
+        </div>
+      );
       if (event.is_members_only) return (
         <div style={{ textAlign: 'center' }}>
           <div style={{ marginBottom: '12px' }}><MembersOnlyEventBadge /></div>
