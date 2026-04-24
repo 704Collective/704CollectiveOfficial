@@ -111,7 +111,7 @@ function Login() {
   useEffect(() => {
     if (!authLoading && user && profile) {
       const path = window.location.pathname;
-      if (path !== '/setup-password' && path !== '/update-password') {
+      if (path !== '/setup-password') {
         router.replace(postAuthDestination(profile));
       }
     }
