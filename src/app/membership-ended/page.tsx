@@ -21,7 +21,7 @@ export default function MembershipEndedPage() {
     >
       <Link href="/" style={{ display: 'block', marginBottom: '40px' }}>
         <Image
-          src="https://chnpjxwcmxkmcdoivmra.supabase.co/storage/v1/object/public/public-assets/704-logo.png"
+          src="https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/704-logo.png"
           alt="704 Collective"
           width={120}
           height={40}

@@ -64,7 +64,7 @@ function buildAttendeeListHtml(event: EventRow, attendees: AttendeeRow[]): strin
 
   return `<!DOCTYPE html><html>
 <body style="font-family:sans-serif;background:#1A1A1A;color:#FAF6F0;padding:32px;">
-<img src="https://chnpjxwcmxkmcdoivmra.supabase.co/storage/v1/object/public/public-assets/704-logo.png" alt="704 Collective" width="120" style="margin-bottom:24px;" />
+<img src="https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/704-logo.png" alt="704 Collective" width="120" style="margin-bottom:24px;" />
 <h2 style="color:#C6A664;margin:0 0 8px;">Attendee List</h2>
 <h3 style="margin:0 0 16px;">${event.title}</h3>
 <p style="color:#D8D8D8;margin:0 0 4px;">📅 ${startFormatted}</p>

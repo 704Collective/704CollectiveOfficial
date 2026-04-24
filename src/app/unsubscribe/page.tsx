@@ -55,7 +55,7 @@ function UnsubscribeContent() {
 
       {/* Logo */}
       <img
-        src="https://chnpjxwcmxkmcdoivmra.supabase.co/storage/v1/object/public/public-assets/704-logo.png"
+        src="https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/704-logo.png"
         alt="704 Collective"
         width={140}
         className="mb-8"

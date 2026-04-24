@@ -309,7 +309,7 @@ export function AdminMembersTab({ onNavigateToDashboard }: AdminMembersTabProps)
       const calendarToken = (profile as any)?.calendar_token ?? '';
       const calendarUrl = `webcal://${(supabaseUrl || '').replace('https://', '')}/functions/v1/calendar-feed?token=${calendarToken}`;
       const { data, error } = await supabase.functions.invoke('send-email', {
-        body: { to: editingMember.email, template: 'welcome', data: { name: editingMember.full_name || 'there', calendarUrl, origin: window.location.origin } },
+        body: { to: editingMember.email, template: 'welcome-back', data: { name: editingMember.full_name || 'there', calendarUrl, origin: window.location.origin } },
       });
       if (error) throw new Error(error.message);
       if (data?.error) throw new Error(data.error);

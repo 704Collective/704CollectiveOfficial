@@ -224,7 +224,7 @@ export function AdminMemberProfileSheet({
       const calendarToken = (profile as any)?.calendar_token ?? '';
       const calendarUrl = `webcal://${supabaseUrl.replace('https://', '')}/functions/v1/calendar-feed?token=${calendarToken}`;
       const { data, error } = await supabase.functions.invoke('send-email', {
-        body: { to: member.email, template: 'welcome', data: { name: member.full_name || 'there', calendarUrl, origin: window.location.origin } },
+        body: { to: member.email, template: 'welcome-back', data: { name: member.full_name || 'there', calendarUrl, origin: window.location.origin } },
       });
       if (error || data?.error) throw new Error(error?.message || data?.error);
       toast.success(`Welcome email sent`);

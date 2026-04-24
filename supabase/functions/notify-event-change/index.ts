@@ -22,7 +22,7 @@ const BRAND = {
   textSecondary: "#D8D8D8",
   textMuted: "#A0A0A0",
   border: "rgba(255,255,255,0.10)",
-  logoUrl: "https://chnpjxwcmxkmcdoivmra.supabase.co/storage/v1/object/public/public-assets/704-logo.png",
+  logoUrl: "https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/704-logo.png",
   fontStack: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
 };
 

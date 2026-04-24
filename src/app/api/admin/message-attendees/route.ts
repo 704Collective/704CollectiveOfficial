@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
 
     const emailHtml = (name: string) => `<!DOCTYPE html><html>
 <body style="font-family:'Plus Jakarta Sans',sans-serif;background:#1A1A1A;color:#FAF6F0;padding:32px;">
-<img src="https://chnpjxwcmxkmcdoivmra.supabase.co/storage/v1/object/public/public-assets/704-logo.png" alt="704 Collective" width="120" style="margin-bottom:24px;" />
+<img src="https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/704-logo.png" alt="704 Collective" width="120" style="margin-bottom:24px;" />
 <h2 style="color:#C6A664;margin:0 0 8px;">Message from 704 Collective</h2>
 <p style="color:#D8D8D8;margin:0 0 8px;">Hey ${escHtml(name)},</p>
 <p style="color:#D8D8D8;margin:0 0 24px;">This is a message from the organizers of <strong>${escHtml(event.title)}</strong>:</p>
