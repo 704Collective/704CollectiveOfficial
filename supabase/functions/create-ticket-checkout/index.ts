@@ -42,20 +42,13 @@ serve(async (req) => {
 
     const { data: eventData, error: eventError } = await supabaseAdmin
       .from("events")
-      .select("ticket_price")
+      .select("ticket_price, social_member_price, business_member_price, access_type")
       .eq("id", eventId)
       .single();
 
     if (eventError || !eventData) {
       throw new Error(`Event not found: ${eventId}`);
     }
-
-    if (!eventData.ticket_price || eventData.ticket_price <= 0) {
-      throw new Error("This event does not have a valid ticket price");
-    }
-
-    const unitAmount = eventData.ticket_price;
-    logStep("Ticket price fetched from DB", { unitAmount });
 
     // --- Auth: getClaims (optional — supports guest checkout) ---
     let userEmail: string | undefined;
@@ -85,6 +78,52 @@ serve(async (req) => {
         });
       }
     }
+
+    // --- Member-type lookup for tier pricing ---
+    let memberType: string | null = null;
+    if (userId) {
+      const { data: memberProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("member_type, subscription_status, membership_override, deleted_at")
+        .eq("id", userId)
+        .maybeSingle();
+
+      const isActiveMember =
+        !!memberProfile &&
+        memberProfile.deleted_at == null &&
+        (memberProfile.subscription_status === "active" ||
+          memberProfile.subscription_status === "trialing" ||
+          memberProfile.membership_override === true);
+
+      if (isActiveMember) {
+        memberType = memberProfile?.member_type ?? null;
+      }
+      logStep("Member type resolved", { memberType, isActiveMember });
+    }
+
+    // --- Tier-aware price resolution ---
+    let resolvedPrice: number;
+    if (memberType === "business" || memberType === "partner") {
+      resolvedPrice =
+        eventData.business_member_price ??
+        eventData.social_member_price ??
+        eventData.ticket_price ??
+        0;
+    } else if (memberType === "social") {
+      resolvedPrice = eventData.social_member_price ?? eventData.ticket_price ?? 0;
+    } else {
+      resolvedPrice = eventData.ticket_price ?? 0;
+    }
+
+    if (resolvedPrice <= 0) {
+      return new Response(
+        JSON.stringify({ error: "This event is free for you — please RSVP instead." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const unitAmount = resolvedPrice;
+    logStep("Ticket price resolved", { unitAmount, memberType });
 
     // --- Stripe customer: profile-first lookup (only for authenticated users) ---
     let customerId: string | undefined;
@@ -143,6 +182,8 @@ serve(async (req) => {
         user_id: userId || "",
         ticket_type: "paid",
         origin: origin,
+        resolved_price_cents: String(resolvedPrice),
+        member_type_at_purchase: memberType ?? "guest",
       },
     };
 
