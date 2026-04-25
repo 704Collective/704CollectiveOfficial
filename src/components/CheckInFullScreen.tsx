@@ -381,13 +381,45 @@ export function CheckInFullScreen({
         } else if (profile.subscription_status !== 'active') {
           toast.error(`${profile.full_name || profile.email} is not an active Social member`);
         } else {
+          // Look up event access_type to determine the right ticket_type
+          const { data: walkInEventRow } = await supabase
+            .from('events')
+            .select('access_type, ticket_price')
+            .eq('id', eventId)
+            .single();
+
+          // Look up full membership status (existing profile fetch only has subscription_status)
+          const { data: walkInProfile } = await supabase
+            .from('profiles')
+            .select('subscription_status, member_type, membership_override, deleted_at')
+            .eq('id', scannedUserId)
+            .maybeSingle();
+
+          const isWalkInMember = !!walkInProfile
+            && walkInProfile.deleted_at == null
+            && (walkInProfile.subscription_status === 'active'
+                || walkInProfile.subscription_status === 'trialing'
+                || walkInProfile.membership_override === true);
+
+          let walkInTicketType: string;
+          if (isWalkInMember) {
+            walkInTicketType = 'member_free';
+          } else if (walkInEventRow?.access_type === 'public_free') {
+            walkInTicketType = 'public_free';
+          } else {
+            // Non-member at a paid event: admin comp
+            walkInTicketType = 'comp';
+          }
+
           const { error: ticketError } = await supabase
             .from('tickets')
             .insert({
               event_id: eventId,
               user_id: scannedUserId,
-              ticket_type: 'walk_in',
+              ticket_type: walkInTicketType,
               status: 'confirmed',
+              source: 'walk_in',
+              amount_paid_cents: 0,
               checked_in_at: new Date().toISOString(),
               checked_in_by: adminId,
             });

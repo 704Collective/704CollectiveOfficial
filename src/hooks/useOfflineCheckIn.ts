@@ -85,14 +85,37 @@ export const useOfflineCheckIn = ({ eventId, adminId }: UseOfflineCheckInProps) 
       for (const checkIn of pending) {
         try {
           if (checkIn.isWalkIn && !checkIn.ticketId) {
+            // Resolve ticket_type at sync time — 'walk_in' is not a valid enum value
+            const [{ data: walkInEvent }, { data: walkInProf }] = await Promise.all([
+              supabase.from('events').select('access_type').eq('id', checkIn.eventId).single(),
+              supabase.from('profiles').select('subscription_status, membership_override, deleted_at').eq('id', checkIn.userId).maybeSingle(),
+            ]);
+
+            const isMember = !!walkInProf
+              && walkInProf.deleted_at == null
+              && (walkInProf.subscription_status === 'active'
+                  || walkInProf.subscription_status === 'trialing'
+                  || walkInProf.membership_override === true);
+
+            let resolvedTicketType: string;
+            if (isMember) {
+              resolvedTicketType = 'member_free';
+            } else if (walkInEvent?.access_type === 'public_free') {
+              resolvedTicketType = 'public_free';
+            } else {
+              resolvedTicketType = 'comp';
+            }
+
             // Create walk-in ticket
             const { error: ticketError } = await supabase
               .from('tickets')
               .insert([{
                 event_id: checkIn.eventId,
                 user_id: checkIn.userId,
-                ticket_type: 'walk_in',
+                ticket_type: resolvedTicketType,
                 status: 'confirmed',
+                source: 'walk_in',
+                amount_paid_cents: 0,
                 checked_in_at: checkIn.timestamp,
                 checked_in_by: checkIn.adminId,
               }]);
