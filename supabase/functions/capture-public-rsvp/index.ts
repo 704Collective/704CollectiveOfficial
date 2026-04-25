@@ -210,6 +210,14 @@ serve(async (req) => {
       .single();
 
     if (rsvpErr) {
+      // Capacity errors thrown by the trg_check_event_capacity_public_rsvps trigger
+      if (rsvpErr.message?.toLowerCase().includes("capacity")) {
+        log("RSVP rejected: event at capacity", { event_id, email: cleanEmail });
+        return new Response(
+          JSON.stringify({ error: "Event is at capacity" }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       log("RSVP insert failed", { error: rsvpErr.message });
       return new Response(
         JSON.stringify({ error: "Failed to save RSVP" }),

@@ -66,6 +66,7 @@ export default function EventDetail() {
   const [publicRsvpLoading, setPublicRsvpLoading] = useState(false);
   const [publicRsvpError, setPublicRsvpError] = useState('');
   const [publicRsvpState, setPublicRsvpState] = useState<'idle' | 'success'>('idle');
+  const [publicRsvpFull, setPublicRsvpFull] = useState(false);
 
   const hasTicket = id ? checkHasTicket(id) : false;
 
@@ -124,6 +125,47 @@ export default function EventDetail() {
     if (error) { toast.error(error.code === '23505' ? 'Already on waitlist' : 'Failed to join'); setIsRegistering(false); return; }
     setWaitlistPosition(data.position); setWaitlistId(data.id); setIsRegistering(false); toast.success(`You're #${data.position} on the waitlist!`);
   };
+  const handleMemberRegisterWithWaitlistFallback = async () => {
+    if (!user || !event) return;
+    setIsRegistering(true);
+    try {
+      const { error } = await supabase.from('tickets').insert({
+        event_id: event.id,
+        user_id: user.id,
+        ticket_type: 'member_free',
+        status: 'confirmed',
+        source: 'direct',
+      });
+      if (error) {
+        if (error.message?.toLowerCase().includes('capacity') || error.code === 'P0001') {
+          const { data: wl, error: wlErr } = await supabase
+            .from('event_waitlist')
+            .insert({ event_id: event.id, user_id: user.id, position: 0 })
+            .select('id, position')
+            .single();
+          setIsRegistering(false);
+          if (wlErr) {
+            toast.error(wlErr.code === '23505' ? "You're already on the waitlist." : 'Failed to join waitlist.');
+            return;
+          }
+          setWaitlistPosition(wl.position);
+          setWaitlistId(wl.id);
+          toast.success(`Event is full — you're #${wl.position} on the waitlist!`);
+          return;
+        }
+        toast.error('Failed to RSVP. Please try again.');
+        setIsRegistering(false);
+        return;
+      }
+      await refreshUserTickets();
+      await fetchTicketId();
+      setIsRegistering(false);
+      toast.success("You're RSVP'd!");
+    } catch {
+      toast.error('Something went wrong.');
+      setIsRegistering(false);
+    }
+  };
   const handleLeaveWaitlist = async () => {
     if (!waitlistId) return;
     const { error } = await supabase.from('event_waitlist').delete().eq('id', waitlistId);
@@ -168,6 +210,12 @@ export default function EventDetail() {
 
       const data = await res.json();
       if (!res.ok) {
+        const errMsg = (data.error || '').toLowerCase();
+        if (res.status === 409 || errMsg.includes('capacity') || errMsg.includes('full')) {
+          setPublicRsvpFull(true);
+          setPublicRsvpLoading(false);
+          return;
+        }
         setPublicRsvpError(data.error || 'Something went wrong. Please try again.');
         setPublicRsvpLoading(false);
         return;
@@ -272,7 +320,21 @@ export default function EventDetail() {
         <div style={{ width: '100%', boxSizing: 'border-box' }}>
           <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '6px' }}>RSVP — no account needed</h3>
           <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', marginBottom: '18px' }}>Free event, open to everyone.</p>
-          {publicRsvpState === 'success' ? (
+          {publicRsvpFull ? (
+            <div style={{ textAlign: 'center', padding: '16px 0' }}>
+              <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#E57373', backgroundColor: 'rgba(229,115,115,0.06)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Event Full</span>
+              <p style={{ fontSize: '1rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '8px' }}>Sorry, we{"'"}re at capacity.</p>
+              <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, marginBottom: '20px' }}>
+                704 Collective members get priority access to events and can join the waitlist when something fills up.
+              </p>
+              <Link href="/join" style={{ display: 'inline-block', padding: '13px 24px', backgroundColor: '#C6A664', color: '#1A1A1A', fontWeight: 700, borderRadius: '8px', textDecoration: 'none', fontSize: '0.9375rem', minHeight: '44px' }}>
+                Join 704 Collective
+              </Link>
+              <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginTop: '14px' }}>
+                Membership starts at $35/mo. Cancel anytime.
+              </p>
+            </div>
+          ) : publicRsvpState === 'success' ? (
             <div style={{ textAlign: 'center', padding: '16px 0' }}>
               <div style={{ fontSize: '2rem', marginBottom: '8px' }}>✓</div>
               <p style={{ fontSize: '1rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '4px' }}>See you there.</p>
@@ -371,7 +433,7 @@ export default function EventDetail() {
           <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#4CAF50', backgroundColor: 'rgba(76,175,80,0.06)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Member Benefit</span>
           <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>Free Entry</h3>
           <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>RSVP - it{"'"}s on us.</p>
-          <button onClick={handleMemberRegister} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> RSVPing...</> : 'RSVP for Free'}</button>
+          <button onClick={handleMemberRegisterWithWaitlistFallback} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> RSVPing...</> : 'RSVP for Free'}</button>
         </div>
       );
 
@@ -395,7 +457,7 @@ export default function EventDetail() {
         <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#4CAF50', backgroundColor: 'rgba(76,175,80,0.06)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Free Event</span>
         <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>Free Entry</h3>
         <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>RSVP — open to everyone.</p>
-        <button onClick={handleMemberRegister} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> RSVPing...</> : 'RSVP for Free'}</button>
+        <button onClick={handleMemberRegisterWithWaitlistFallback} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> RSVPing...</> : 'RSVP for Free'}</button>
       </div>
     );
     return (
@@ -427,11 +489,11 @@ export default function EventDetail() {
         return;
       }
       if (isAtCapacity) handleJoinWaitlist();
-      else handleMemberRegister();
+      else handleMemberRegisterWithWaitlistFallback();
       return;
     }
     if (!user) { if (event.is_members_only || ticketPrice === 0) router.push('/login'); else handleGuestPurchase(); return; }
-    if (isActiveMember) { if (isAtCapacity) handleJoinWaitlist(); else handleMemberRegister(); return; }
+    if (isActiveMember) { if (isAtCapacity) handleJoinWaitlist(); else handleMemberRegisterWithWaitlistFallback(); return; }
     handlePurchaseTicket();
   };
 
