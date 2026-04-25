@@ -122,6 +122,7 @@ export function AddMembersToEventDialog({
       event_id: eventId,
       user_id: userId,
       status: 'confirmed',
+      amount_paid_cents: 0,
     }));
     addMutation.mutate(tickets);
   };
@@ -142,6 +143,7 @@ export function AddMembersToEventDialog({
       event_id: eventId,
       email,
       status: 'confirmed',
+      amount_paid_cents: 0,
     }));
     addMutation.mutate(tickets);
   };

@@ -97,6 +97,7 @@ serve(async (req) => {
       status: "confirmed",
       stripe_payment_id: paymentId,
       source: "stripe",
+      amount_paid_cents: session.amount_total ?? 0,
     };
 
     if (userId) {

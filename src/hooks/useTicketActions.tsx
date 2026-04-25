@@ -119,6 +119,7 @@ export function useTicketActions(): UseTicketActionsReturn {
             ticket_type: 'member_free',
             status: 'confirmed',
             source: 'member_rsvp',
+            amount_paid_cents: 0,
           })
           .select('id')
           .single();
@@ -147,6 +148,7 @@ export function useTicketActions(): UseTicketActionsReturn {
             status: 'confirmed',
             source: 'business_plus_one',
             guest_name: 'Guest (+1)',
+            amount_paid_cents: 0,
           }).then(({ error: plusOneError }) => {
             if (plusOneError) {
               // Silently fail — member's own ticket is already confirmed

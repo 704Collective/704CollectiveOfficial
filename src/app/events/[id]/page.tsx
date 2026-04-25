@@ -135,6 +135,7 @@ export default function EventDetail() {
         ticket_type: 'member_free',
         status: 'confirmed',
         source: 'direct',
+        amount_paid_cents: 0,
       });
       if (error) {
         if (error.message?.toLowerCase().includes('capacity') || error.code === 'P0001') {

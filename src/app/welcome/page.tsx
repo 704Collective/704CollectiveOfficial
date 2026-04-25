@@ -297,6 +297,7 @@ function WelcomeContent() {
         ticket_type: 'member_free',
         status: 'confirmed',
         source: 'welcome_onboarding_rsvp',
+        amount_paid_cents: 0,
       });
       if (error) {
         if (error.code === '23505') {
