@@ -334,6 +334,13 @@ serve(async (req) => {
       }
     }
 
+    // Canonical member count: active/trialing OR membership_override = true
+    const { count: canonicalActiveMembers } = await supabase
+      .from("profiles")
+      .select("*", { count: "exact", head: true })
+      .is("deleted_at", null)
+      .or("subscription_status.in.(active,trialing),membership_override.eq.true");
+
     // Recent payments (last 20 invoices, sorted by date)
     const allRecentItems = invoices90
       .filter((inv) => (inv.amount_paid || 0) > 0)
@@ -418,7 +425,7 @@ serve(async (req) => {
       activeByTier,
       revenueTrend,
       members: {
-        totalActive: totalActiveSubs,
+        totalActive: canonicalActiveMembers ?? totalActiveSubs, // canonical DB count (active+trialing OR override)
         newThisMonth,
         newLastMonth,
         canceledThisMonth,

@@ -119,17 +119,16 @@ async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
     supabase.from('events').select('*', { count: 'exact', head: true })
       .gte('start_time', ws.toISOString())
       .lte('start_time', we.toISOString()),
+    // Canonical: active/trialing OR membership_override = true
     supabase.from('profiles').select('*', { count: 'exact', head: true })
       .is('deleted_at', null)
-      .in('subscription_status', ['active', 'trialing']),
+      .or('subscription_status.in.(active,trialing),membership_override.eq.true'),
+    // Comped: override=true regardless of subscription_status
     supabase.from('profiles').select('*', { count: 'exact', head: true })
       .is('deleted_at', null)
-      .in('subscription_status', ['active', 'trialing'])
-      .not('subscription_id', 'is', null),
-    supabase.from('profiles').select('*', { count: 'exact', head: true })
-      .is('deleted_at', null)
-      .in('subscription_status', ['active', 'trialing'])
       .eq('membership_override', true),
+    // Placeholder kept so destructured array indices don't shift
+    Promise.resolve({ count: 0 }),
     supabase.from('profiles').select('*', { count: 'exact', head: true })
       .is('deleted_at', null)
       .gte('created_at', weekAgo),
@@ -204,8 +203,8 @@ async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
     financialsUnavailable: true,
     upcomingEvents,
     activeMembers: activeMembersQ.count || 0,
-    payingMembers: payingQ.count || 0,
-    compedMembers: compedQ.count || 0,
+    compedMembers: payingQ.count || 0,  // payingQ slot now holds the override=true count
+    payingMembers: Math.max(0, (activeMembersQ.count || 0) - (payingQ.count || 0)),
     newMembersWeek: newWeekQ.count || 0,
     canceledMembersWeek: canceledWeekQ.count || 0,
     recentMembers: (recentList.data || []) as DashboardSnapshot['recentMembers'],
