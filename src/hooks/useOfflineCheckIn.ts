@@ -84,6 +84,12 @@ export const useOfflineCheckIn = ({ eventId, adminId }: UseOfflineCheckInProps) 
 
       for (const checkIn of pending) {
         try {
+          // TODO: offline check-in currently only supports ticket rows.
+          // Public RSVPs (event_public_rsvps) require online connectivity to check in —
+          // the manual attendee list in CheckInFullScreen shows a "Cannot verify membership
+          // while offline" guard. A future improvement would store the source ('ticket' |
+          // 'public_rsvp') in the PendingCheckIn record and dispatch to the correct table
+          // during sync.
           if (checkIn.isWalkIn && !checkIn.ticketId) {
             // Resolve ticket_type at sync time — 'walk_in' is not a valid enum value
             const [{ data: walkInEvent }, { data: walkInProf }] = await Promise.all([

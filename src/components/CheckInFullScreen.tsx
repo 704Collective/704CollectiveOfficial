@@ -14,15 +14,16 @@ import { toast } from 'sonner';
 import { useOfflineCheckIn } from '@/hooks/useOfflineCheckIn';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 
-interface Attendee {
-  ticketId: string;
-  userId: string;
+type AttendeeRow = {
+  id: string;
+  source: 'ticket' | 'public_rsvp';
+  user_id: string | null;
+  ticket_type: string | null;
+  full_name: string;
   email: string;
-  fullName: string | null;
-  avatarUrl: string | null;
-  checkedInAt: string | null;
-  ticketType: string;
-}
+  avatar_url: string | null;
+  checked_in_at: string | null;
+};
 
 interface RecentCheckIn {
   name: string;
@@ -45,7 +46,7 @@ export function CheckInFullScreen({
   eventTitle, 
   adminId 
 }: CheckInFullScreenProps) {
-  const [attendees, setAttendees] = useState<Attendee[]>([]);
+  const [attendees, setAttendees] = useState<AttendeeRow[]>([]);
   const [recentCheckIns, setRecentCheckIns] = useState<RecentCheckIn[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
@@ -70,41 +71,65 @@ export function CheckInFullScreen({
 
   const fetchAttendees = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('tickets')
-      .select(`
-        id,
-        user_id,
-        checked_in_at,
-        ticket_type,
-        guest_email,
-        guest_name,
-        profiles!tickets_user_id_fkey (
-          id,
-          email,
-          full_name,
-          avatar_url
-        )
-      `)
-      .eq('event_id', eventId)
-      .in('status', ['confirmed', 'rsvp']);
 
-    if (!error && data) {
-      type ProfileJoin = { id: string; email: string; full_name: string | null; avatar_url: string | null } | null;
-      const attendeeList: Attendee[] = data.map(ticket => {
-        const p = ticket.profiles as unknown as ProfileJoin;
-        return {
-          ticketId: ticket.id,
-          userId: ticket.user_id || '',
-          email: p ? p.email : ticket.guest_email || '',
-          fullName: p ? p.full_name : ticket.guest_name,
-          avatarUrl: p ? p.avatar_url : null,
-          checkedInAt: ticket.checked_in_at,
-          ticketType: ticket.ticket_type,
-        };
-      });
-      setAttendees(attendeeList);
-    }
+    const [ticketsResult, publicRsvpsResult] = await Promise.all([
+      supabase
+        .from('tickets')
+        .select(`
+          id,
+          user_id,
+          checked_in_at,
+          ticket_type,
+          guest_email,
+          guest_name,
+          profiles!tickets_user_id_fkey (
+            id,
+            email,
+            full_name,
+            avatar_url
+          )
+        `)
+        .eq('event_id', eventId)
+        .in('status', ['confirmed', 'rsvp']),
+      supabase
+        .from('event_public_rsvps')
+        .select('id, first_name, last_name, email, phone, checked_in_at, status')
+        .eq('event_id', eventId)
+        .eq('status', 'rsvp'),
+    ]);
+
+    type ProfileJoin = { id: string; email: string; full_name: string | null; avatar_url: string | null } | null;
+
+    const ticketAttendees: AttendeeRow[] = (ticketsResult.data || []).map(t => {
+      const p = t.profiles as unknown as ProfileJoin;
+      return {
+        id: t.id,
+        source: 'ticket' as const,
+        user_id: t.user_id,
+        ticket_type: t.ticket_type,
+        full_name: p?.full_name || t.guest_name || 'Unknown',
+        email: p?.email || t.guest_email || '',
+        avatar_url: p?.avatar_url || null,
+        checked_in_at: t.checked_in_at,
+      };
+    });
+
+    const publicRsvpAttendees: AttendeeRow[] = (publicRsvpsResult.data || []).map(r => ({
+      id: r.id,
+      source: 'public_rsvp' as const,
+      user_id: null,
+      ticket_type: 'public_free',
+      full_name: `${r.first_name} ${r.last_name}`.trim(),
+      email: r.email,
+      avatar_url: null,
+      checked_in_at: r.checked_in_at,
+    }));
+
+    const merged = [...ticketAttendees, ...publicRsvpAttendees].sort((a, b) =>
+      (a.full_name || '').localeCompare(b.full_name || '')
+    );
+
+    setAttendees(merged);
     setLoading(false);
   }, [eventId]);
 
@@ -346,22 +371,22 @@ export function CheckInFullScreen({
         return;
       }
 
-      const existingAttendee = attendees.find(a => a.userId === scannedUserId);
+      const existingAttendee = attendees.find(a => a.user_id === scannedUserId);
       
       if (existingAttendee) {
-        if (existingAttendee.checkedInAt) {
-          toast.info(`${existingAttendee.fullName || existingAttendee.email} is already checked in`);
+        if (existingAttendee.checked_in_at) {
+          toast.info(`${existingAttendee.full_name || existingAttendee.email} is already checked in`);
         } else if (!isOnline) {
           await queueCheckIn(
-            existingAttendee.ticketId,
+            existingAttendee.id,
             scannedUserId,
-            existingAttendee.fullName || existingAttendee.email,
+            existingAttendee.full_name || existingAttendee.email,
             false
           );
           toast.info('Check-in saved offline');
-          addRecentCheckIn(existingAttendee.fullName || existingAttendee.email, false, true);
+          addRecentCheckIn(existingAttendee.full_name || existingAttendee.email, false, true);
         } else {
-          await checkInTicket(existingAttendee.ticketId, existingAttendee.fullName || existingAttendee.email, false);
+          await checkInAttendee(existingAttendee, false);
         }
       } else {
         if (!isOnline) {
@@ -444,14 +469,22 @@ export function CheckInFullScreen({
     }
   };
 
-  const checkInTicket = async (ticketId: string, name: string, isWalkIn: boolean) => {
-    const { error } = await supabase
-      .from('tickets')
-      .update({
-        checked_in_at: new Date().toISOString(),
-        checked_in_by: adminId,
-      })
-      .eq('id', ticketId);
+  const checkInAttendee = async (attendee: AttendeeRow, isWalkIn: boolean = false) => {
+    const now = new Date().toISOString();
+    const name = attendee.full_name || attendee.email;
+
+    let error;
+    if (attendee.source === 'public_rsvp') {
+      ({ error } = await supabase
+        .from('event_public_rsvps')
+        .update({ checked_in_at: now, checked_in_by: adminId })
+        .eq('id', attendee.id));
+    } else {
+      ({ error } = await supabase
+        .from('tickets')
+        .update({ checked_in_at: now, checked_in_by: adminId })
+        .eq('id', attendee.id));
+    }
 
     if (error) {
       toast.error('Failed to check in');
@@ -520,19 +553,19 @@ export function CheckInFullScreen({
     showSuccessConfirmation(name, isWalkIn, isOffline);
   };
 
-  const handleManualCheckIn = async (attendee: Attendee) => {
-    await checkInTicket(attendee.ticketId, attendee.fullName || attendee.email, false);
+  const handleManualCheckIn = async (attendee: AttendeeRow) => {
+    await checkInAttendee(attendee, false);
     setShowAttendeeList(false);
   };
 
-  const filteredAttendees = attendees.filter(a => 
-    !a.checkedInAt && (
-      a.fullName?.toLowerCase().includes(search.toLowerCase()) ||
+  const filteredAttendees = attendees.filter(a =>
+    !a.checked_in_at && (
+      a.full_name?.toLowerCase().includes(search.toLowerCase()) ||
       a.email.toLowerCase().includes(search.toLowerCase())
     )
   );
 
-  const checkedInCount = attendees.filter(a => a.checkedInAt).length;
+  const checkedInCount = attendees.filter(a => a.checked_in_at).length;
   const totalCount = attendees.length;
   const progressPercent = totalCount > 0 ? (checkedInCount / totalCount) * 100 : 0;
 
@@ -609,19 +642,22 @@ export function CheckInFullScreen({
             ) : (
               filteredAttendees.map(attendee => (
                 <div
-                  key={attendee.ticketId}
+                  key={attendee.id}
                   className="p-3 rounded-lg border border-border bg-card flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3">
                     <Avatar className="w-10 h-10">
-                      <AvatarImage src={attendee.avatarUrl || undefined} />
+                      <AvatarImage src={attendee.avatar_url || undefined} />
                       <AvatarFallback>
-                        {(attendee.fullName || attendee.email).charAt(0).toUpperCase()}
+                        {(attendee.full_name || attendee.email).charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium">{attendee.fullName || 'No name'}</p>
+                      <p className="font-medium">{attendee.full_name || 'No name'}</p>
                       <p className="text-sm text-muted-foreground">{attendee.email}</p>
+                      {attendee.source === 'public_rsvp' && (
+                        <span className="text-xs text-muted-foreground/60">Public RSVP</span>
+                      )}
                     </div>
                   </div>
                   <Button size="sm" onClick={() => handleManualCheckIn(attendee)}>
