@@ -215,7 +215,7 @@ export function EventAttendeesDialog({
         )}
 
         {/* Scrollable list */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {loading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
