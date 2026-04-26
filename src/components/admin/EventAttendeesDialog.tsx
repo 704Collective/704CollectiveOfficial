@@ -79,30 +79,25 @@ export function EventAttendeesDialog({
       avatar_url: t.profiles?.avatar_url ?? null,
       checked_in_at: t.checked_in_at,
       rsvp_date: t.created_at,
-      contact_route_id: t.user_id
-        ? encodeURIComponent(`profiles:${t.user_id}`)
-        : null,
+      contact_route_id: t.user_id ? encodeURIComponent('profiles:' + t.user_id) : null,
     }));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const publicRsvpAttendees: AttendeeRow[] = (publicRsvpsResult.data ?? []).map((r: any) => ({
       id: r.id,
       source: 'public_rsvp' as const,
-      full_name: `${r.first_name ?? ''} ${r.last_name ?? ''}`.trim(),
+      full_name: ((r.first_name ?? '') + ' ' + (r.last_name ?? '')).trim(),
       email: r.email,
       phone: r.phone ?? null,
       avatar_url: null,
       checked_in_at: r.checked_in_at,
       rsvp_date: r.created_at,
-      contact_route_id: r.contact_id
-        ? encodeURIComponent(`contacts:${r.contact_id}`)
-        : null,
+      contact_route_id: r.contact_id ? encodeURIComponent('contacts:' + r.contact_id) : null,
     }));
 
     const merged = [...ticketAttendees, ...publicRsvpAttendees].sort((a, b) =>
       (a.full_name || '').localeCompare(b.full_name || ''),
     );
-
     setAttendees(merged);
     setLoading(false);
   }, [eventId]);
@@ -116,7 +111,7 @@ export function EventAttendeesDialog({
     if (!open) setSelected(new Set());
   }, [open]);
 
-  const selKey = (a: AttendeeRow) => `${a.source}-${a.id}`;
+  const selKey = (a: AttendeeRow) => a.source + '-' + a.id;
 
   const toggleSelect = (a: AttendeeRow, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -128,19 +123,10 @@ export function EventAttendeesDialog({
     });
   };
 
-  const handleSelectAll = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (selected.size === attendees.length) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(attendees.map(selKey)));
-    }
-  };
-
   const handleRowClick = (a: AttendeeRow) => {
     if (!a.contact_route_id) return;
     onOpenChange(false);
-    router.push(`/admin/contacts/${a.contact_route_id}`);
+    router.push('/admin/contacts/' + a.contact_route_id);
   };
 
   const handleBulkCheckIn = async () => {
@@ -150,9 +136,7 @@ export function EventAttendeesDialog({
     try {
       const updates = [...selected].map(key => {
         const isPublicRsvp = key.startsWith('public_rsvp-');
-        const id = isPublicRsvp
-          ? key.slice('public_rsvp-'.length)
-          : key.slice('ticket-'.length);
+        const id = isPublicRsvp ? key.slice('public_rsvp-'.length) : key.slice('ticket-'.length);
         if (isPublicRsvp) {
           return supabase
             .from('event_public_rsvps')
@@ -164,15 +148,12 @@ export function EventAttendeesDialog({
           .update({ checked_in_at: now })
           .eq('id', id);
       });
-
       const results = await Promise.all(updates);
       const errorCount = results.filter(r => r.error).length;
       if (errorCount > 0) {
-        toast.error(`${errorCount} check-in(s) failed`);
+        toast.error(errorCount + ' check-in(s) failed');
       } else {
-        toast.success(
-          `Checked in ${selected.size} attendee${selected.size !== 1 ? 's' : ''}`,
-        );
+        toast.success('Checked in ' + selected.size + ' attendee' + (selected.size !== 1 ? 's' : ''));
       }
       setSelected(new Set());
       await fetchAttendees();
@@ -185,25 +166,35 @@ export function EventAttendeesDialog({
 
   const totalCount = attendees.length;
   const checkedInCount = attendees.filter(a => a.checked_in_at).length;
-  const allSelected = attendees.length > 0 && selected.size === attendees.length;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="flex flex-col max-h-screen p-0 w-full sm:max-w-lg overflow-hidden"
+        className="flex flex-col max-h-screen p-0 w-full max-w-[480px] overflow-hidden"
       >
-        {/* Header — fixed */}
-        <SheetHeader className="flex-shrink-0 px-6 py-4 border-b border-border">
-          <SheetTitle className="pr-6 text-base">Attendees — {eventTitle}</SheetTitle>
-          <SheetDescription className="text-xs">
-            {loading
-              ? 'Loading\u2026'
-              : `${totalCount} attendee${totalCount !== 1 ? 's' : ''} \u00b7 ${checkedInCount} checked in`}
+        {/* Header */}
+        <SheetHeader className="flex-shrink-0 px-6 pt-5 pb-4 border-b border-border">
+          <SheetTitle className="pr-8 text-base truncate line-clamp-1">
+            Attendees &mdash; {eventTitle}
+          </SheetTitle>
+          <SheetDescription asChild>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+              {loading ? (
+                <span>Loading&hellip;</span>
+              ) : (
+                <>
+                  <span>{totalCount} RSVPs</span>
+                  <span className="opacity-40">&middot;</span>
+                  <CheckCircle2 className="w-3 h-3 text-green-500 shrink-0" />
+                  <span>{checkedInCount} / {totalCount} checked in</span>
+                </>
+              )}
+            </div>
           </SheetDescription>
         </SheetHeader>
 
-        {/* Bulk action bar — fixed */}
+        {/* Bulk action bar */}
         {selected.size > 0 && (
           <div className="flex-shrink-0 flex items-center gap-3 px-6 py-3 bg-amber-500/10 border-b border-amber-500/20">
             <span className="text-sm text-amber-400 font-medium">
@@ -225,7 +216,7 @@ export function EventAttendeesDialog({
           </div>
         )}
 
-        {/* Scrollable list — fills remaining height */}
+        {/* Scrollable list */}
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center py-16">
@@ -236,110 +227,92 @@ export function EventAttendeesDialog({
               <p className="text-sm text-muted-foreground">No attendees yet.</p>
             </div>
           ) : (
-            <>
-              {/* Select-all row */}
-              <div
-                className="flex items-center gap-3 px-4 py-2 border-b border-border bg-muted/20 cursor-pointer"
-                onClick={handleSelectAll}
-              >
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  onChange={() => {}}
-                  className="rounded border-border cursor-pointer"
-                  aria-label="Select all attendees"
-                />
-                <span className="text-xs text-muted-foreground select-none">Select all</span>
-              </div>
+            <div className="divide-y divide-border">
+              {attendees.map(attendee => {
+                const initials = (attendee.full_name || '?').charAt(0).toUpperCase();
+                const isCheckedIn = !!attendee.checked_in_at;
+                const key = selKey(attendee);
+                const isSelected = selected.has(key);
+                const clickable = !!attendee.contact_route_id;
 
-              {/* Attendee rows */}
-              <div className="divide-y divide-border">
-                {attendees.map(attendee => {
-                  const initials = (attendee.full_name || '?').charAt(0).toUpperCase();
-                  const isCheckedIn = !!attendee.checked_in_at;
-                  const key = selKey(attendee);
-                  const isSelected = selected.has(key);
-                  const clickable = !!attendee.contact_route_id;
-
-                  return (
+                return (
+                  <div
+                    key={key}
+                    className={[
+                      'flex items-center gap-3 px-4 py-3 transition-colors',
+                      clickable ? 'cursor-pointer hover:bg-muted/50' : '',
+                      isSelected ? 'bg-muted/30' : '',
+                    ].join(' ')}
+                    onClick={() => handleRowClick(attendee)}
+                  >
+                    {/* Checkbox */}
                     <div
-                      key={key}
-                      className={[
-                        'flex items-center gap-3 px-4 py-3 transition-colors',
-                        clickable ? 'cursor-pointer hover:bg-muted/50' : '',
-                        isSelected ? 'bg-muted/30' : '',
-                      ].join(' ')}
-                      onClick={() => handleRowClick(attendee)}
+                      className="shrink-0 flex items-center"
+                      onClick={e => toggleSelect(attendee, e)}
                     >
-                      {/* Checkbox */}
-                      <div
-                        className="shrink-0 flex items-center justify-center"
-                        onClick={e => toggleSelect(attendee, e)}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => {}}
-                          className="rounded border-border cursor-pointer"
-                          aria-label={`Select ${attendee.full_name}`}
-                        />
-                      </div>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}}
+                        className="rounded border-border cursor-pointer"
+                        aria-label={'Select ' + attendee.full_name}
+                      />
+                    </div>
 
-                      {/* Avatar */}
-                      <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm font-semibold text-foreground overflow-hidden">
-                        {attendee.avatar_url ? (
-                          <img
-                            src={attendee.avatar_url}
-                            alt=""
-                            className="w-9 h-9 rounded-full object-cover"
-                          />
+                    {/* Avatar */}
+                    <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm font-semibold text-foreground overflow-hidden">
+                      {attendee.avatar_url ? (
+                        <img src={attendee.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover" />
+                      ) : (
+                        initials
+                      )}
+                    </div>
+
+                    {/* Name / email / phone */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-sm font-medium truncate">{attendee.full_name}</span>
+                        {attendee.source === 'ticket' ? (
+                          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-background text-foreground border border-border">
+                            Member
+                          </span>
                         ) : (
-                          initials
+                          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-400 text-black">
+                            Public RSVP
+                          </span>
                         )}
                       </div>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">{attendee.email}</p>
+                      {attendee.phone && (
+                        <p className="text-xs text-muted-foreground/60 truncate">{attendee.phone}</p>
+                      )}
+                    </div>
 
-                      {/* Name / email / phone / RSVP date */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-medium truncate">{attendee.full_name}</span>
-                          {attendee.source === 'public_rsvp' && (
-                            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                              Public RSVP
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate">{attendee.email}</p>
-                        {attendee.phone && (
-                          <p className="text-xs text-muted-foreground/70 truncate">
-                            {attendee.phone}
-                          </p>
-                        )}
-                        {attendee.rsvp_date && (
-                          <p className="text-[10px] text-muted-foreground/50 mt-0.5">
-                            RSVPd {format(new Date(attendee.rsvp_date), 'MMM d, yyyy')}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Check-in status */}
-                      <div className="shrink-0 flex items-center gap-1 text-xs">
+                    {/* Date + check-in status stacked — fixed width to prevent cutoff */}
+                    <div className="shrink-0 flex flex-col items-end gap-0.5 min-w-[68px]">
+                      {attendee.rsvp_date && (
+                        <span className="text-[10px] text-muted-foreground/50 leading-none">
+                          {format(new Date(attendee.rsvp_date), 'MMM d')}
+                        </span>
+                      )}
+                      <div className="flex items-center gap-1 text-xs">
                         {isCheckedIn ? (
                           <>
                             <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-                            <span className="text-green-500 hidden sm:inline">Checked in</span>
+                            <span className="text-green-500 whitespace-nowrap">Checked in</span>
                           </>
                         ) : (
                           <>
                             <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                            <span className="text-muted-foreground hidden sm:inline">Not yet</span>
+                            <span className="text-muted-foreground whitespace-nowrap">Not yet</span>
                           </>
                         )}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            </>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       </SheetContent>

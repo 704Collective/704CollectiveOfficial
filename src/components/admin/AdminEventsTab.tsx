@@ -149,16 +149,20 @@ async function fetchEventsData(page: number, filter: 'all' | 'upcoming' | 'past'
   const rsvpCounts: Record<string, number> = {};
   const followupCounts: Record<string, number> = {};
 
+  const publicCountMap: Record<string, number> = {};
+
   if (ids.length > 0) {
-    const [ticketsRes, followupsRes] = await Promise.all([
+    const [ticketsRes, followupsRes, publicRsvpsRes] = await Promise.all([
       supabase.from('tickets').select('event_id').in('event_id', ids).in('status', ['confirmed', 'rsvp']),
       supabase.from('guest_passes').select('event_id').in('event_id', ids).eq('status', 'used').is('followup_sent_at', null),
+      supabase.from('event_public_rsvps').select('event_id').in('event_id', ids).eq('status', 'rsvp'),
     ]);
     (ticketsRes.data || []).forEach(t => { if (t.event_id) rsvpCounts[t.event_id] = (rsvpCounts[t.event_id] || 0) + 1; });
     (followupsRes.data || []).forEach(g => { if (g.event_id) followupCounts[g.event_id] = (followupCounts[g.event_id] || 0) + 1; });
+    (publicRsvpsRes.data || []).forEach(r => { if (r.event_id) publicCountMap[r.event_id] = (publicCountMap[r.event_id] || 0) + 1; });
   }
 
-  return { events, totalCount: count || 0, rsvpCounts, followupCounts };
+  return { events, totalCount: count || 0, rsvpCounts, followupCounts, publicCountMap };
 }
 
 interface AdminEventsTabProps {
@@ -213,6 +217,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   const totalCount = data?.totalCount ?? 0;
   const rsvpCounts = data?.rsvpCounts ?? {};
   const followupCounts = data?.followupCounts ?? {};
+  const publicCountMap = data?.publicCountMap ?? {};
   const [sentFollowups, setSentFollowups] = useState<Record<string, boolean>>({});
 
   const invalidateEvents = () => queryClient.invalidateQueries({ queryKey: ['admin-events'] });
@@ -784,10 +789,15 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                         <TableCell className="py-3 text-muted-foreground whitespace-nowrap">{format(new Date(event.start_time), 'h:mm a')}</TableCell>
                         <TableCell className="py-3 whitespace-nowrap" onClick={e => e.stopPropagation()}>
                           <button
-                            className="text-muted-foreground hover:text-foreground hover:underline underline-offset-2 transition-colors cursor-pointer"
+                            className="text-muted-foreground hover:text-foreground hover:underline underline-offset-2 transition-colors cursor-pointer leading-tight"
                             onClick={() => { setAttendeesDialogEvent({ id: event.id, title: event.title }); setAttendeesDialogOpen(true); }}
                           >
                             {rsvpCount}/{event.capacity ?? '∞'}
+                            {(publicCountMap[event.id] ?? 0) > 0 && (
+                              <span className="block text-xs text-green-500 font-normal">
+                                +{publicCountMap[event.id]} public
+                              </span>
+                            )}
                           </button>
                         </TableCell>
                         <TableCell className="py-3">
@@ -883,10 +893,15 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <button
-                            className="inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:underline underline-offset-2 transition-colors cursor-pointer"
+                            className="inline-flex flex-col items-center rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:underline underline-offset-2 transition-colors cursor-pointer leading-tight"
                             onClick={e => { e.stopPropagation(); setAttendeesDialogEvent({ id: event.id, title: event.title }); setAttendeesDialogOpen(true); }}
                           >
-                            {rsvpCount}/{event.capacity ?? '∞'}
+                            <span>{rsvpCount}/{event.capacity ?? '∞'}</span>
+                            {(publicCountMap[event.id] ?? 0) > 0 && (
+                              <span className="text-green-500 font-normal">
+                                +{publicCountMap[event.id]} public
+                              </span>
+                            )}
                           </button>
                           {isUpcoming
                             ? <span className="bg-green-500/20 text-green-400 border border-green-500/30 rounded-full px-2 py-0.5 text-xs font-medium">Upcoming</span>
