@@ -24,6 +24,7 @@ import { RecurrenceSelector, RecurrenceRule, parseRecurrenceRule } from '@/compo
 import { EventCategory, CATEGORY_CONFIG, detectCategoryFromTitle } from '@/components/CategoryBadge';
 import { DeleteConfirmDialog } from '@/components/admin/DeleteConfirmDialog';
 import { AddMembersToEventDialog } from '@/components/admin/AddMembersToEventDialog';
+import { EventAttendeesDialog } from '@/components/admin/EventAttendeesDialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -194,6 +195,10 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   const [reuseOpen, setReuseOpen] = useState(false);
   const [previousImages, setPreviousImages] = useState<string[]>([]);
   const [deleteMenuEvent, setDeleteMenuEvent] = useState<Event | null>(null);
+
+  // Attendees dialog state
+  const [attendeesDialogOpen, setAttendeesDialogOpen] = useState(false);
+  const [attendeesDialogEvent, setAttendeesDialogEvent] = useState<{ id: string; title: string } | null>(null);
 
   // ── React Query ──────────────────────────────────────────────────────────
   const { data, isLoading, isError } = useQuery({
@@ -775,7 +780,14 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                         <TableCell className="font-medium py-3 max-w-[250px]"><span className="truncate block">{event.title}</span></TableCell>
                         <TableCell className="py-3 text-muted-foreground whitespace-nowrap">{format(new Date(event.start_time), 'MMM d')}</TableCell>
                         <TableCell className="py-3 text-muted-foreground whitespace-nowrap">{format(new Date(event.start_time), 'h:mm a')}</TableCell>
-                        <TableCell className="py-3 text-muted-foreground whitespace-nowrap">{rsvpCount}/{event.capacity ?? '∞'}</TableCell>
+                        <TableCell className="py-3 whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                          <button
+                            className="text-muted-foreground hover:text-foreground hover:underline underline-offset-2 transition-colors cursor-pointer"
+                            onClick={() => { setAttendeesDialogEvent({ id: event.id, title: event.title }); setAttendeesDialogOpen(true); }}
+                          >
+                            {rsvpCount}/{event.capacity ?? '∞'}
+                          </button>
+                        </TableCell>
                         <TableCell className="py-3">
                           <div className="flex items-center gap-1.5">
                             {isUpcoming
@@ -868,7 +880,12 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                           <p className="text-sm text-muted-foreground mt-0.5">{format(new Date(event.start_time), 'MMM d · h:mm a')}</p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <Badge variant="outline" className="text-xs">{rsvpCount}/{event.capacity ?? '∞'}</Badge>
+                          <button
+                            className="inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:underline underline-offset-2 transition-colors cursor-pointer"
+                            onClick={e => { e.stopPropagation(); setAttendeesDialogEvent({ id: event.id, title: event.title }); setAttendeesDialogOpen(true); }}
+                          >
+                            {rsvpCount}/{event.capacity ?? '∞'}
+                          </button>
                           {isUpcoming
                             ? <span className="bg-green-500/20 text-green-400 border border-green-500/30 rounded-full px-2 py-0.5 text-xs font-medium">Upcoming</span>
                             : <span className="bg-muted text-muted-foreground border border-border rounded-full px-2 py-0.5 text-xs">Past</span>}
@@ -1342,6 +1359,14 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
         description="This permanently removes the event. This action cannot be undone."
         destructive
         loading={deleteMutation.isPending}
+      />
+
+      {/* Attendees Dialog */}
+      <EventAttendeesDialog
+        eventId={attendeesDialogEvent?.id ?? null}
+        eventTitle={attendeesDialogEvent?.title ?? ''}
+        open={attendeesDialogOpen}
+        onOpenChange={setAttendeesDialogOpen}
       />
     </div>
   );
