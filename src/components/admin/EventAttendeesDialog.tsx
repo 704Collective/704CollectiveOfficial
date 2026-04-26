@@ -1,17 +1,30 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, CheckCircle2, Clock } from 'lucide-react';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { Loader2, CheckCircle2, Clock, UserCheck } from 'lucide-react';
 
 interface AttendeeRow {
   id: string;
   source: 'ticket' | 'public_rsvp';
   full_name: string;
   email: string;
+  phone: string | null;
   avatar_url: string | null;
   checked_in_at: string | null;
+  rsvp_date: string | null;
+  contact_route_id: string | null;
 }
 
 interface EventAttendeesDialogProps {
@@ -19,139 +32,317 @@ interface EventAttendeesDialogProps {
   eventTitle: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  adminId: string | null;
 }
 
-export function EventAttendeesDialog({ eventId, eventTitle, open, onOpenChange }: EventAttendeesDialogProps) {
+export function EventAttendeesDialog({
+  eventId,
+  eventTitle,
+  open,
+  onOpenChange,
+  adminId,
+}: EventAttendeesDialogProps) {
+  const router = useRouter();
   const [attendees, setAttendees] = useState<AttendeeRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkChecking, setBulkChecking] = useState(false);
+
+  const fetchAttendees = useCallback(async () => {
+    if (!eventId) return;
+    setLoading(true);
+    setAttendees([]);
+    setSelected(new Set());
+
+    const [ticketsResult, publicRsvpsResult] = await Promise.all([
+      supabase
+        .from('tickets')
+        .select(
+          'id, user_id, checked_in_at, ticket_type, guest_email, guest_name, created_at, profiles!tickets_user_id_fkey(id, email, full_name, avatar_url, phone)',
+        )
+        .eq('event_id', eventId)
+        .in('status', ['confirmed', 'rsvp']),
+      supabase
+        .from('event_public_rsvps')
+        .select('id, contact_id, first_name, last_name, email, phone, checked_in_at, status, created_at')
+        .eq('event_id', eventId)
+        .eq('status', 'rsvp'),
+    ]);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ticketAttendees: AttendeeRow[] = (ticketsResult.data ?? []).map((t: any) => ({
+      id: t.id,
+      source: 'ticket' as const,
+      full_name: t.profiles?.full_name || t.guest_name || 'Unknown',
+      email: t.profiles?.email || t.guest_email || '',
+      phone: t.profiles?.phone ?? null,
+      avatar_url: t.profiles?.avatar_url ?? null,
+      checked_in_at: t.checked_in_at,
+      rsvp_date: t.created_at,
+      contact_route_id: t.user_id
+        ? encodeURIComponent(`profiles:${t.user_id}`)
+        : null,
+    }));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const publicRsvpAttendees: AttendeeRow[] = (publicRsvpsResult.data ?? []).map((r: any) => ({
+      id: r.id,
+      source: 'public_rsvp' as const,
+      full_name: `${r.first_name ?? ''} ${r.last_name ?? ''}`.trim(),
+      email: r.email,
+      phone: r.phone ?? null,
+      avatar_url: null,
+      checked_in_at: r.checked_in_at,
+      rsvp_date: r.created_at,
+      contact_route_id: r.contact_id
+        ? encodeURIComponent(`contacts:${r.contact_id}`)
+        : null,
+    }));
+
+    const merged = [...ticketAttendees, ...publicRsvpAttendees].sort((a, b) =>
+      (a.full_name || '').localeCompare(b.full_name || ''),
+    );
+
+    setAttendees(merged);
+    setLoading(false);
+  }, [eventId]);
 
   useEffect(() => {
     if (!open || !eventId) return;
+    void fetchAttendees();
+  }, [open, eventId, fetchAttendees]);
 
-    let cancelled = false;
-    setLoading(true);
-    setAttendees([]);
+  useEffect(() => {
+    if (!open) setSelected(new Set());
+  }, [open]);
 
-    (async () => {
-      const [ticketsResult, publicRsvpsResult] = await Promise.all([
-        supabase
+  const selKey = (a: AttendeeRow) => `${a.source}-${a.id}`;
+
+  const toggleSelect = (a: AttendeeRow, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelected(prev => {
+      const next = new Set(prev);
+      const k = selKey(a);
+      next.has(k) ? next.delete(k) : next.add(k);
+      return next;
+    });
+  };
+
+  const handleSelectAll = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (selected.size === attendees.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(attendees.map(selKey)));
+    }
+  };
+
+  const handleRowClick = (a: AttendeeRow) => {
+    if (!a.contact_route_id) return;
+    onOpenChange(false);
+    router.push(`/admin/contacts/${a.contact_route_id}`);
+  };
+
+  const handleBulkCheckIn = async () => {
+    if (selected.size === 0) return;
+    setBulkChecking(true);
+    const now = new Date().toISOString();
+    try {
+      const updates = [...selected].map(key => {
+        const isPublicRsvp = key.startsWith('public_rsvp-');
+        const id = isPublicRsvp
+          ? key.slice('public_rsvp-'.length)
+          : key.slice('ticket-'.length);
+        if (isPublicRsvp) {
+          return supabase
+            .from('event_public_rsvps')
+            .update({ checked_in_at: now, checked_in_by: adminId })
+            .eq('id', id);
+        }
+        return supabase
           .from('tickets')
-          .select('id, user_id, checked_in_at, ticket_type, guest_email, guest_name, profiles!tickets_user_id_fkey ( id, email, full_name, avatar_url )')
-          .eq('event_id', eventId)
-          .in('status', ['confirmed', 'rsvp']),
-        supabase
-          .from('event_public_rsvps')
-          .select('id, first_name, last_name, email, phone, checked_in_at, status')
-          .eq('event_id', eventId)
-          .eq('status', 'rsvp'),
-      ]);
+          .update({ checked_in_at: now })
+          .eq('id', id);
+      });
 
-      if (cancelled) return;
-
-      const ticketAttendees: AttendeeRow[] = (ticketsResult.data || []).map((t: any) => ({
-        id: t.id,
-        source: 'ticket' as const,
-        full_name: t.profiles?.full_name || t.guest_name || 'Unknown',
-        email: t.profiles?.email || t.guest_email || '',
-        avatar_url: t.profiles?.avatar_url || null,
-        checked_in_at: t.checked_in_at,
-      }));
-
-      const publicRsvpAttendees: AttendeeRow[] = (publicRsvpsResult.data || []).map((r: any) => ({
-        id: r.id,
-        source: 'public_rsvp' as const,
-        full_name: `${r.first_name} ${r.last_name}`.trim(),
-        email: r.email,
-        avatar_url: null,
-        checked_in_at: r.checked_in_at,
-      }));
-
-      const merged = [...ticketAttendees, ...publicRsvpAttendees].sort((a, b) =>
-        (a.full_name || '').localeCompare(b.full_name || '')
-      );
-
-      setAttendees(merged);
-      setLoading(false);
-    })();
-
-    return () => { cancelled = true; };
-  }, [open, eventId]);
+      const results = await Promise.all(updates);
+      const errorCount = results.filter(r => r.error).length;
+      if (errorCount > 0) {
+        toast.error(`${errorCount} check-in(s) failed`);
+      } else {
+        toast.success(
+          `Checked in ${selected.size} attendee${selected.size !== 1 ? 's' : ''}`,
+        );
+      }
+      setSelected(new Set());
+      await fetchAttendees();
+    } catch {
+      toast.error('Bulk check-in failed');
+    } finally {
+      setBulkChecking(false);
+    }
+  };
 
   const totalCount = attendees.length;
   const checkedInCount = attendees.filter(a => a.checked_in_at).length;
+  const allSelected = attendees.length > 0 && selected.size === attendees.length;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-lg mx-4 sm:mx-auto">
-        <DialogHeader>
-          <DialogTitle className="pr-6">Attendees — {eventTitle}</DialogTitle>
-          <DialogDescription>
-            {loading ? 'Loading…' : `${totalCount} attendee${totalCount !== 1 ? 's' : ''} · ${checkedInCount} checked in`}
-          </DialogDescription>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="flex flex-col max-h-screen p-0 w-full sm:max-w-lg overflow-hidden"
+      >
+        {/* Header — fixed */}
+        <SheetHeader className="flex-shrink-0 px-6 py-4 border-b border-border">
+          <SheetTitle className="pr-6 text-base">Attendees — {eventTitle}</SheetTitle>
+          <SheetDescription className="text-xs">
+            {loading
+              ? 'Loading\u2026'
+              : `${totalCount} attendee${totalCount !== 1 ? 's' : ''} \u00b7 ${checkedInCount} checked in`}
+          </SheetDescription>
+        </SheetHeader>
 
-        <div className="overflow-y-auto" style={{ maxHeight: '60vh' }}>
+        {/* Bulk action bar — fixed */}
+        {selected.size > 0 && (
+          <div className="flex-shrink-0 flex items-center gap-3 px-6 py-3 bg-amber-500/10 border-b border-amber-500/20">
+            <span className="text-sm text-amber-400 font-medium">
+              {selected.size} selected
+            </span>
+            <Button
+              size="sm"
+              className="ml-auto bg-amber-500 hover:bg-amber-400 text-black font-semibold h-8 px-3 text-xs gap-1.5"
+              onClick={handleBulkCheckIn}
+              disabled={bulkChecking}
+            >
+              {bulkChecking ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <UserCheck className="w-3.5 h-3.5" />
+              )}
+              Check in {selected.size} attendee{selected.size !== 1 ? 's' : ''}
+            </Button>
+          </div>
+        )}
+
+        {/* Scrollable list — fills remaining height */}
+        <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
+            <div className="flex items-center justify-center py-16">
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : attendees.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="flex items-center justify-center py-16">
               <p className="text-sm text-muted-foreground">No attendees yet.</p>
             </div>
           ) : (
-            <div className="space-y-1 py-1">
-              {attendees.map(attendee => {
-                const initials = (attendee.full_name || '?').charAt(0).toUpperCase();
-                const isCheckedIn = !!attendee.checked_in_at;
-                return (
-                  <div
-                    key={`${attendee.source}-${attendee.id}`}
-                    className="flex items-center gap-3 rounded-lg px-2 py-2.5 hover:bg-muted/50 transition-colors"
-                  >
-                    {/* Avatar */}
-                    <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm font-semibold text-foreground">
-                      {attendee.avatar_url ? (
-                        <img src={attendee.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover" />
-                      ) : (
-                        initials
-                      )}
-                    </div>
+            <>
+              {/* Select-all row */}
+              <div
+                className="flex items-center gap-3 px-4 py-2 border-b border-border bg-muted/20 cursor-pointer"
+                onClick={handleSelectAll}
+              >
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={() => {}}
+                  className="rounded border-border cursor-pointer"
+                  aria-label="Select all attendees"
+                />
+                <span className="text-xs text-muted-foreground select-none">Select all</span>
+              </div>
 
-                    {/* Name + email */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium truncate">{attendee.full_name}</span>
-                        {attendee.source === 'public_rsvp' && (
-                          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                            Public RSVP
-                          </span>
+              {/* Attendee rows */}
+              <div className="divide-y divide-border">
+                {attendees.map(attendee => {
+                  const initials = (attendee.full_name || '?').charAt(0).toUpperCase();
+                  const isCheckedIn = !!attendee.checked_in_at;
+                  const key = selKey(attendee);
+                  const isSelected = selected.has(key);
+                  const clickable = !!attendee.contact_route_id;
+
+                  return (
+                    <div
+                      key={key}
+                      className={[
+                        'flex items-center gap-3 px-4 py-3 transition-colors',
+                        clickable ? 'cursor-pointer hover:bg-muted/50' : '',
+                        isSelected ? 'bg-muted/30' : '',
+                      ].join(' ')}
+                      onClick={() => handleRowClick(attendee)}
+                    >
+                      {/* Checkbox */}
+                      <div
+                        className="shrink-0 flex items-center justify-center"
+                        onClick={e => toggleSelect(attendee, e)}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {}}
+                          className="rounded border-border cursor-pointer"
+                          aria-label={`Select ${attendee.full_name}`}
+                        />
+                      </div>
+
+                      {/* Avatar */}
+                      <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm font-semibold text-foreground overflow-hidden">
+                        {attendee.avatar_url ? (
+                          <img
+                            src={attendee.avatar_url}
+                            alt=""
+                            className="w-9 h-9 rounded-full object-cover"
+                          />
+                        ) : (
+                          initials
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">{attendee.email}</p>
-                    </div>
 
-                    {/* Check-in status */}
-                    <div className="shrink-0 flex items-center gap-1 text-xs">
-                      {isCheckedIn ? (
-                        <>
-                          <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-                          <span className="text-green-500 hidden sm:inline">Checked in</span>
-                        </>
-                      ) : (
-                        <>
-                          <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                          <span className="text-muted-foreground hidden sm:inline">Not yet</span>
-                        </>
-                      )}
+                      {/* Name / email / phone / RSVP date */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium truncate">{attendee.full_name}</span>
+                          {attendee.source === 'public_rsvp' && (
+                            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                              Public RSVP
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">{attendee.email}</p>
+                        {attendee.phone && (
+                          <p className="text-xs text-muted-foreground/70 truncate">
+                            {attendee.phone}
+                          </p>
+                        )}
+                        {attendee.rsvp_date && (
+                          <p className="text-[10px] text-muted-foreground/50 mt-0.5">
+                            RSVPd {format(new Date(attendee.rsvp_date), 'MMM d, yyyy')}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Check-in status */}
+                      <div className="shrink-0 flex items-center gap-1 text-xs">
+                        {isCheckedIn ? (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                            <span className="text-green-500 hidden sm:inline">Checked in</span>
+                          </>
+                        ) : (
+                          <>
+                            <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                            <span className="text-muted-foreground hidden sm:inline">Not yet</span>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

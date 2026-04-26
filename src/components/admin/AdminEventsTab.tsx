@@ -27,6 +27,7 @@ import { AddMembersToEventDialog } from '@/components/admin/AddMembersToEventDia
 import { EventAttendeesDialog } from '@/components/admin/EventAttendeesDialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { format, getDay, getDate, addHours } from 'date-fns';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -169,6 +170,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   const queryClient = useQueryClient();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
 
   // UI state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -1367,6 +1369,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
         eventTitle={attendeesDialogEvent?.title ?? ''}
         open={attendeesDialogOpen}
         onOpenChange={setAttendeesDialogOpen}
+        adminId={user?.id ?? null}
       />
     </div>
   );
