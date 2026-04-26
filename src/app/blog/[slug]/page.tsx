@@ -130,7 +130,7 @@ export default async function BlogPostPage({ params }: Props) {
   const post = await getPublishedPost(slug);
   if (!post) notFound();
 
-  const safeHtmlBase = await sanitizeBlogHtml(post.content);
+  const safeHtmlBase = sanitizeBlogHtml(post.content);
   const { html: bodyHtml, toc } = injectHeadingAnchorsAndBuildToc(safeHtmlBase);
   const showToc = post.show_table_of_contents === true && toc.length > 0;
 

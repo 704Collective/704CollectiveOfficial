@@ -1,17 +1,8 @@
-let _purify: typeof import('isomorphic-dompurify').default | null = null;
+import sanitizeHtml from 'sanitize-html';
 
-async function getPurify() {
-  if (!_purify) {
-    const mod = await import('isomorphic-dompurify');
-    _purify = mod.default;
-  }
-  return _purify;
-}
-
-export async function sanitizeBlogHtml(html: string): Promise<string> {
-  const purify = await getPurify();
-  return purify.sanitize(html, {
-    ALLOWED_TAGS: [
+export function sanitizeBlogHtml(html: string): string {
+  return sanitizeHtml(html, {
+    allowedTags: [
       'h2',
       'h3',
       'p',
@@ -27,6 +18,29 @@ export async function sanitizeBlogHtml(html: string): Promise<string> {
       'div',
       'span',
     ],
-    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'target', 'rel', 'id'],
+    allowedAttributes: {
+      a: ['href', 'title', 'target', 'rel', 'id', 'class'],
+      img: ['src', 'alt', 'title', 'class', 'id'],
+      div: ['class', 'id'],
+      span: ['class', 'id'],
+      h2: ['id', 'class'],
+      h3: ['id', 'class'],
+      p: ['class', 'id'],
+      blockquote: ['class', 'id'],
+      ul: ['class', 'id'],
+      ol: ['class', 'id'],
+      li: ['class', 'id'],
+    },
+    allowedSchemes: ['http', 'https', 'mailto'],
+    allowedSchemesAppliedToAttributes: ['href', 'src'],
+    transformTags: {
+      a: (tagName, attribs) => ({
+        tagName: 'a',
+        attribs: {
+          ...attribs,
+          rel: attribs.target === '_blank' ? 'noopener noreferrer' : (attribs.rel || ''),
+        },
+      }),
+    },
   });
 }
