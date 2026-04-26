@@ -47,6 +47,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: false,
+  serverExternalPackages: ['isomorphic-dompurify', 'jsdom'],
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },
