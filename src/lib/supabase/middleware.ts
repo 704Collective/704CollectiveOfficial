@@ -33,11 +33,13 @@ export async function updateSession(request: NextRequest) {
       cookies: {
         getAll() { return request.cookies.getAll(); },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value);
+          });
           supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
+          cookiesToSet.forEach(({ name, value, options }) => {
+            supabaseResponse.cookies.set(name, value, options);
+          });
         },
       },
     }
@@ -75,8 +77,8 @@ export async function updateSession(request: NextRequest) {
     openAuthPrefixes.some((p) => path.startsWith(p)) || isPartnerPublicPath(path);
   const isSignupRoute = signupPaths.some((p) => path.startsWith(p));
 
-  // ── 0. Banned user check — applies to all authenticated users ─────────────
-  if (user && !isAuthRoute) {
+  // ── 0. Banned user check — scoped to meaningful routes to avoid a DB hit on every page load ──
+  if (user && (isProtectedRoute || isOpenAuthRoute)) {
     const { data: banCheck } = await supabase
       .from('profiles')
       .select('is_banned')
