@@ -1102,6 +1102,7 @@ serve(async (req) => {
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
       );
+      const nowIso = new Date().toISOString();
       await serviceRoleClient.from("email_log").insert({
         to_email: to,
         to_name: (data as Record<string, unknown>)?.name as string ?? null,
@@ -1109,7 +1110,8 @@ serve(async (req) => {
         template,
         status: "sent",
         resend_id: resendData.id ?? null,
-        created_at: new Date().toISOString(),
+        sent_at: nowIso,
+        created_at: nowIso,
       });
     } catch (logErr) {
       console.error("[SEND-EMAIL] email_log insert failed:", logErr instanceof Error ? logErr.message : logErr);
