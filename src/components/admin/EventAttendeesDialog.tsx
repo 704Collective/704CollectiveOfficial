@@ -3,17 +3,17 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from '@/components/ui/sheet';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Loader2, CheckCircle2, Clock, UserCheck } from 'lucide-react';
+import { Loader2, CheckCircle2, Clock, UserCheck, Check } from 'lucide-react';
 
 interface AttendeeRow {
   id: string;
@@ -168,17 +168,15 @@ export function EventAttendeesDialog({
   const checkedInCount = attendees.filter(a => a.checked_in_at).length;
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="flex flex-col max-h-screen p-0 w-full max-w-[480px] overflow-hidden"
-      >
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[480px] max-h-[85vh] p-0 gap-0 flex flex-col">
+
         {/* Header */}
-        <SheetHeader className="flex-shrink-0 px-6 pt-5 pb-4 border-b border-border">
-          <SheetTitle className="pr-8 text-base truncate line-clamp-1">
+        <DialogHeader className="flex-shrink-0 px-6 pt-5 pb-4 border-b border-border">
+          <DialogTitle className="pr-6 text-base truncate line-clamp-1">
             Attendees &mdash; {eventTitle}
-          </SheetTitle>
-          <SheetDescription asChild>
+          </DialogTitle>
+          <DialogDescription asChild>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
               {loading ? (
                 <span>Loading&hellip;</span>
@@ -191,8 +189,8 @@ export function EventAttendeesDialog({
                 </>
               )}
             </div>
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
 
         {/* Bulk action bar */}
         {selected.size > 0 && (
@@ -245,19 +243,21 @@ export function EventAttendeesDialog({
                     ].join(' ')}
                     onClick={() => handleRowClick(attendee)}
                   >
-                    {/* Checkbox */}
-                    <div
-                      className="shrink-0 flex items-center"
+                    {/* Circular checkbox */}
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={isSelected}
                       onClick={e => toggleSelect(attendee, e)}
+                      className={[
+                        'w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors',
+                        isSelected
+                          ? 'bg-amber-500 border-amber-500'
+                          : 'border-muted-foreground/40 hover:border-muted-foreground',
+                      ].join(' ')}
                     >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => {}}
-                        className="rounded border-border cursor-pointer"
-                        aria-label={'Select ' + attendee.full_name}
-                      />
-                    </div>
+                      {isSelected && <Check className="w-3 h-3 text-black" />}
+                    </button>
 
                     {/* Avatar */}
                     <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm font-semibold text-foreground overflow-hidden">
@@ -268,7 +268,7 @@ export function EventAttendeesDialog({
                       )}
                     </div>
 
-                    {/* Name / email / phone */}
+                    {/* Name / phone / email */}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-sm font-medium truncate">{attendee.full_name}</span>
@@ -282,14 +282,14 @@ export function EventAttendeesDialog({
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">{attendee.email}</p>
                       {attendee.phone && (
-                        <p className="text-xs text-muted-foreground/60 truncate">{attendee.phone}</p>
+                        <p className="text-xs text-amber-400 truncate mt-0.5">{attendee.phone}</p>
                       )}
+                      <p className="text-xs text-muted-foreground truncate">{attendee.email}</p>
                     </div>
 
-                    {/* Date + check-in status stacked — fixed width to prevent cutoff */}
-                    <div className="shrink-0 flex flex-col items-end gap-0.5 min-w-[68px]">
+                    {/* Date + check-in status stacked */}
+                    <div className="shrink-0 flex flex-col items-end gap-0.5 min-w-[72px]">
                       {attendee.rsvp_date && (
                         <span className="text-[10px] text-muted-foreground/50 leading-none">
                           {format(new Date(attendee.rsvp_date), 'MMM d')}
@@ -315,7 +315,7 @@ export function EventAttendeesDialog({
             </div>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
