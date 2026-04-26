@@ -1,7 +1,16 @@
-import DOMPurify from 'isomorphic-dompurify';
+let _purify: typeof import('isomorphic-dompurify').default | null = null;
 
-export function sanitizeBlogHtml(html: string): string {
-  return DOMPurify.sanitize(html, {
+async function getPurify() {
+  if (!_purify) {
+    const mod = await import('isomorphic-dompurify');
+    _purify = mod.default;
+  }
+  return _purify;
+}
+
+export async function sanitizeBlogHtml(html: string): Promise<string> {
+  const purify = await getPurify();
+  return purify.sanitize(html, {
     ALLOWED_TAGS: [
       'h2',
       'h3',
