@@ -182,10 +182,10 @@ export function AdminFinancialsTab({ onNavigateToDashboard }: AdminFinancialsTab
         />
         <StatCard
           label="Churn Rate"
-          value={`${(data.churn.rateThisMonth * 100).toFixed(1)}%`}
+          value={`${data.churn.rateThisMonth.toFixed(1)}%`}
           sub={`Avg lifetime: ${data.churn.avgLifetimeMonths}mo`}
           icon={TrendingDown}
-          trend={data.churn.rateThisMonth > 0.05 ? 'down' : 'neutral'}
+          trend={data.churn.rateThisMonth > 5 ? 'down' : 'neutral'}
         />
       </div>
 
