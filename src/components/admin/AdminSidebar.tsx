@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Calendar, Users, FileText, DollarSign, Mail,
   MessageSquare, QrCode, Layers, GitPullRequest, Handshake, Receipt,
   Newspaper, Shield, Lightbulb, BookOpen, Inbox, Upload, Lock, Database,
-  AlertTriangle, ClipboardList, Settings, BarChart2,
+  AlertTriangle, ClipboardList, Settings, BarChart2, Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminSection } from '@/components/AdminLayout';
@@ -161,6 +161,7 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
           <div className="space-y-0.5">
             {linkBtn('/admin/hubs',       Layers,        'Hubs')}
             {linkBtn('/admin/referrals',  GitPullRequest, 'Referrals')}
+            {isAdminOrSuper && linkBtn('/admin/ambassadors', Sparkles, 'Ambassadors')}
             {isAdminOrSuper && linkBtn('/admin/partners', Handshake, 'Partners')}
             {isAdminOrSuper && sectionBtn({ icon: ClipboardList, label: 'Inquiries', section: 'inquiries' })}
             {isAdminOrSuper && linkBtn('/admin/invoices', Receipt,   'Invoices')}
