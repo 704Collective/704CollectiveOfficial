@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Calendar, Gift, Mail, DollarSign, MapPin } from 'lucide-react';
-import { format } from 'date-fns';
+import { ArrowLeft, Calendar, Gift, Mail, DollarSign, MapPin, Trash2 } from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { parseContactRouteId } from '@/lib/admin/unified-contacts';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,28 @@ interface GuestPassEventRow {
   eventTitle?: string;
   eventDate?: string;
   inviterName?: string;
+}
+
+interface ContactNoteRow {
+  id: string;
+  contact_id: string;
+  author_id: string;
+  content: string;
+  created_at: string;
+  author_name?: string | null;
+  author_email?: string | null;
+  author_avatar?: string | null;
+}
+
+interface AttendedEventRow {
+  id: string;
+  source: 'ticket' | 'public_rsvp';
+  event_id: string;
+  event_title: string;
+  event_date: string | null;
+  rsvp_date: string | null;
+  checked_in_at: string | null;
+  type: string | null;
 }
 
 function initials(name: string | null, email: string) {
@@ -50,10 +72,33 @@ export default function AdminContactDetailPage() {
   const [contactRow, setContactRow] = useState<Record<string, unknown> | null>(null);
   const [emails, setEmails] = useState<{ subject: string; template: string; created_at: string }[]>([]);
   const [payments, setPayments] = useState<{ description: string | null; amount: number; created_at: string | null; status: string }[]>([]);
-  const [notes, setNotes] = useState('');
-  const [savingNotes, setSavingNotes] = useState(false);
-  const [rsvpCount, setRsvpCount] = useState(0);
   const [guestPassEvents, setGuestPassEvents] = useState<GuestPassEventRow[]>([]);
+
+  // Resolved cross-table ids (so notes/events/settings can target the correct rows
+  // regardless of whether the route is profiles:{id} or contacts:{id})
+  const [resolvedContactId, setResolvedContactId] = useState<string | null>(null);
+  const [resolvedProfileId, setResolvedProfileId] = useState<string | null>(null);
+
+  // Current admin (for "You" comparison + author_id stamping on new notes)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // Notes (contact_notes table)
+  const [notesList, setNotesList] = useState<ContactNoteRow[]>([]);
+  const [newNoteText, setNewNoteText] = useState('');
+  const [addingNote, setAddingNote] = useState(false);
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
+
+  // Events attended (UNION of tickets + event_public_rsvps)
+  const [eventsAttended, setEventsAttended] = useState<AttendedEventRow[]>([]);
+
+  // Settings form (controlled inputs + save)
+  const [settingsForm, setSettingsForm] = useState({
+    full_name: '',
+    email: '',
+    phone: '',
+    company: '',
+  });
+  const [savingSettings, setSavingSettings] = useState(false);
 
   const load = useCallback(async () => {
     const parsed = parseContactRouteId(raw);
@@ -68,13 +113,14 @@ export default function AdminContactDetailPage() {
         if (error) throw error;
         setProfile(data as Record<string, unknown>);
         setContactRow(null);
-        setNotes((data as { admin_notes?: string | null })?.admin_notes ?? '');
-        const { count } = await supabase
-          .from('tickets')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', parsed.id)
-          .in('status', ['confirmed', 'rsvp']);
-        setRsvpCount(count ?? 0);
+        setResolvedProfileId(parsed.id);
+        // Resolve linked contact id (if any) so notes + public RSVPs can be loaded
+        const { data: linkedContact } = await supabase
+          .from('contacts')
+          .select('id')
+          .eq('converted_to_member_id', parsed.id)
+          .maybeSingle();
+        setResolvedContactId((linkedContact as { id?: string } | null)?.id ?? null);
         const { data: pay } = await supabase
           .from('payments')
           .select('description, amount, created_at, status')
@@ -97,8 +143,8 @@ export default function AdminContactDetailPage() {
         if (error) throw error;
         setContactRow((data as Record<string, unknown>) ?? null);
         setProfile(null);
-        setNotes(String((data as { notes?: string })?.notes ?? ''));
-        setRsvpCount(0);
+        setResolvedContactId(parsed.id);
+        setResolvedProfileId((data as { converted_to_member_id?: string } | null)?.converted_to_member_id ?? null);
         setPayments([]);
         setEmails([]);
 
@@ -163,25 +209,214 @@ export default function AdminContactDetailPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const saveNotesBlur = async () => {
-    if (!parsed) return;
-    setSavingNotes(true);
-    try {
-      if (parsed.table === 'profiles') {
-        const { error } = await supabase.from('profiles').update({ admin_notes: notes || null }).eq('id', parsed.id);
-        if (error) throw error;
-      } else if (parsed.table === 'contacts') {
-        const { error } = await supabase
-          .from('contacts')
-          .update({ notes: notes || null, updated_at: new Date().toISOString() })
-          .eq('id', parsed.id);
-        if (error) throw error;
-      }
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to save notes');
-    } finally {
-      setSavingNotes(false);
+  useEffect(() => {
+    let cancelled = false;
+    void supabase.auth.getUser().then(({ data }) => {
+      if (!cancelled) setCurrentUserId(data.user?.id ?? null);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  // ----- Notes (contact_notes) -----
+  const loadNotes = useCallback(async () => {
+    if (!resolvedContactId) {
+      setNotesList([]);
+      return;
     }
+    const { data: rows, error } = await supabase
+      .from('contact_notes')
+      .select('id, contact_id, author_id, content, created_at')
+      .eq('contact_id', resolvedContactId)
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('[contact_notes] load failed', error);
+      setNotesList([]);
+      return;
+    }
+    const authorIds = Array.from(
+      new Set((rows ?? []).map((r) => (r as { author_id: string }).author_id).filter(Boolean))
+    );
+    const authorMap: Record<string, { full_name: string | null; email: string | null; avatar_url: string | null }> = {};
+    if (authorIds.length > 0) {
+      // author_id FKs auth.users; profiles.id == auth.users.id, so this works as a manual join
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, avatar_url')
+        .in('id', authorIds);
+      (profs ?? []).forEach((p) => {
+        const row = p as { id: string; full_name: string | null; email: string | null; avatar_url: string | null };
+        authorMap[row.id] = { full_name: row.full_name, email: row.email, avatar_url: row.avatar_url };
+      });
+    }
+    setNotesList(
+      (rows ?? []).map((r) => {
+        const row = r as { id: string; contact_id: string; author_id: string; content: string; created_at: string };
+        const author = authorMap[row.author_id];
+        return {
+          id: row.id,
+          contact_id: row.contact_id,
+          author_id: row.author_id,
+          content: row.content,
+          created_at: row.created_at,
+          author_name: author?.full_name ?? null,
+          author_email: author?.email ?? null,
+          author_avatar: author?.avatar_url ?? null,
+        };
+      })
+    );
+  }, [resolvedContactId]);
+
+  const addNote = async () => {
+    const text = newNoteText.trim();
+    if (!text) return;
+    if (!resolvedContactId) {
+      toast.error('Cannot add a note: no linked contact record for this profile.');
+      return;
+    }
+    if (!currentUserId) {
+      toast.error('Not signed in');
+      return;
+    }
+    setAddingNote(true);
+    const { error } = await supabase.from('contact_notes').insert({
+      contact_id: resolvedContactId,
+      author_id: currentUserId,
+      content: text,
+    });
+    setAddingNote(false);
+    if (error) {
+      toast.error(error.message || 'Failed to add note');
+      return;
+    }
+    setNewNoteText('');
+    void loadNotes();
+  };
+
+  const deleteNote = async (noteId: string) => {
+    setDeletingNoteId(noteId);
+    const { error } = await supabase.from('contact_notes').delete().eq('id', noteId);
+    setDeletingNoteId(null);
+    if (error) {
+      toast.error(error.message || 'Failed to delete note');
+      return;
+    }
+    setNotesList((prev) => prev.filter((n) => n.id !== noteId));
+  };
+
+  useEffect(() => { void loadNotes(); }, [loadNotes]);
+
+  // ----- Events Attended (UNION tickets + event_public_rsvps) -----
+  const loadEventsAttended = useCallback(async () => {
+    const profileId = resolvedProfileId;
+    const contactId = resolvedContactId;
+    if (!profileId && !contactId) {
+      setEventsAttended([]);
+      return;
+    }
+
+    const ticketsPromise = profileId
+      ? supabase
+          .from('tickets')
+          .select('id, event_id, ticket_type, status, checked_in_at, created_at, events(id, title, start_time)')
+          .eq('user_id', profileId)
+          .in('status', ['confirmed', 'rsvp', 'used'])
+      : Promise.resolve({ data: [] as unknown[] });
+
+    const rsvpsPromise = contactId
+      ? supabase
+          .from('event_public_rsvps')
+          .select('id, event_id, status, checked_in_at, created_at, events(id, title, start_time)')
+          .eq('contact_id', contactId)
+          .eq('status', 'rsvp')
+      : Promise.resolve({ data: [] as unknown[] });
+
+    const [ticketsRes, rsvpsRes] = await Promise.all([ticketsPromise, rsvpsPromise]);
+
+    type TicketRow = { id: string; event_id: string; ticket_type: string | null; status: string; checked_in_at: string | null; created_at: string; events: { id: string; title: string; start_time: string } | null };
+    type RsvpRow = { id: string; event_id: string; status: string; checked_in_at: string | null; created_at: string; events: { id: string; title: string; start_time: string } | null };
+
+    const tickets: AttendedEventRow[] = ((ticketsRes.data ?? []) as unknown as TicketRow[]).map((t) => ({
+      id: t.id,
+      source: 'ticket',
+      event_id: t.event_id,
+      event_title: t.events?.title ?? 'Unknown event',
+      event_date: t.events?.start_time ?? null,
+      rsvp_date: t.created_at,
+      checked_in_at: t.checked_in_at,
+      type: t.ticket_type ?? null,
+    }));
+
+    const rsvps: AttendedEventRow[] = ((rsvpsRes.data ?? []) as unknown as RsvpRow[]).map((r) => ({
+      id: r.id,
+      source: 'public_rsvp',
+      event_id: r.event_id,
+      event_title: r.events?.title ?? 'Unknown event',
+      event_date: r.events?.start_time ?? null,
+      rsvp_date: r.created_at,
+      checked_in_at: r.checked_in_at,
+      type: 'public_free',
+    }));
+
+    const all = [...tickets, ...rsvps].sort(
+      (a, b) => new Date(b.event_date || 0).getTime() - new Date(a.event_date || 0).getTime()
+    );
+    setEventsAttended(all);
+  }, [resolvedProfileId, resolvedContactId]);
+
+  useEffect(() => { void loadEventsAttended(); }, [loadEventsAttended]);
+
+  // ----- Settings form (controlled state) -----
+  useEffect(() => {
+    const source = (profile ?? contactRow) as
+      | { full_name?: string | null; email?: string | null; phone?: string | null; company?: string | null }
+      | null;
+    if (!source) return;
+    setSettingsForm({
+      full_name: source.full_name ?? '',
+      email: source.email ?? '',
+      phone: source.phone ?? '',
+      company: source.company ?? '',
+    });
+  }, [profile, contactRow]);
+
+  const handleSaveSettings = async () => {
+    setSavingSettings(true);
+    let contactErr: { message: string } | null = null;
+    let profileErr: { message: string } | null = null;
+
+    if (resolvedContactId) {
+      const { error } = await supabase
+        .from('contacts')
+        .update({
+          full_name: settingsForm.full_name,
+          email: settingsForm.email,
+          phone: settingsForm.phone,
+          company: settingsForm.company,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', resolvedContactId);
+      contactErr = error;
+    }
+
+    if (resolvedProfileId) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: settingsForm.full_name,
+          email: settingsForm.email,
+          phone: settingsForm.phone,
+        })
+        .eq('id', resolvedProfileId);
+      profileErr = error;
+    }
+
+    setSavingSettings(false);
+    if (contactErr || profileErr) {
+      toast.error(contactErr?.message || profileErr?.message || 'Failed to save changes');
+      return;
+    }
+    toast.success('Saved');
+    void load();
   };
 
   if (!parsed) {
@@ -279,8 +514,8 @@ export default function AdminContactDetailPage() {
                       <p className="text-xs uppercase tracking-wider text-muted-foreground/70">Events Attended</p>
                       <Calendar className="w-4 h-4 text-muted-foreground" />
                     </div>
-                    <p className="text-3xl font-bold text-foreground">{rsvpCount}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{rsvpCount} total RSVPs</p>
+                    <p className="text-3xl font-bold text-foreground">{eventsAttended.length}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{eventsAttended.length} total RSVPs</p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -345,18 +580,95 @@ export default function AdminContactDetailPage() {
                   </CardContent>
                 </Card>
               </div>
-              <div>
-                <Label>Admin Notes</Label>
-                <Textarea
-                  rows={4}
-                  placeholder="Add notes about this member..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  onBlur={() => { void saveNotesBlur(); }}
-                  disabled={savingNotes}
-                />
-                <p className="text-xs text-muted-foreground mt-1">Auto-saves when you click away</p>
-              </div>
+              <Card>
+                <CardContent className="p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground/70">Admin Notes</p>
+                    <span className="text-xs text-muted-foreground">{notesList.length} note{notesList.length === 1 ? '' : 's'}</span>
+                  </div>
+
+                  {!resolvedContactId ? (
+                    <p className="text-sm text-muted-foreground">
+                      No linked contact record. Notes are stored against the contact row — link this profile to a contact to start tracking notes.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <Textarea
+                          rows={3}
+                          placeholder="Add a note about this contact..."
+                          value={newNoteText}
+                          onChange={(e) => setNewNoteText(e.target.value)}
+                          disabled={addingNote}
+                        />
+                        <div className="flex justify-end">
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => { void addNote(); }}
+                            disabled={addingNote || !newNoteText.trim()}
+                            className="bg-amber-500 hover:bg-amber-600 text-black"
+                          >
+                            {addingNote ? 'Adding...' : 'Add Note'}
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-border pt-4 space-y-3">
+                        {notesList.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No notes yet.</p>
+                        ) : (
+                          notesList.map((n) => {
+                            const isMine = currentUserId && n.author_id === currentUserId;
+                            const displayName = isMine
+                              ? 'You'
+                              : (n.author_name || n.author_email || 'Unknown user');
+                            const initialsSource = n.author_name || n.author_email || '?';
+                            return (
+                              <div key={n.id} className="flex gap-3 border border-border rounded-lg p-3">
+                                {n.author_avatar ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={n.author_avatar}
+                                    alt={displayName}
+                                    className="w-8 h-8 rounded-full object-cover shrink-0"
+                                  />
+                                ) : (
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white shrink-0 ${avatarColor(n.author_email || n.author_id)}`}>
+                                    {initials(n.author_name ?? null, initialsSource)}
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="text-sm font-medium truncate">{displayName}</span>
+                                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                        {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                                      </span>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => { void deleteNote(n.id); }}
+                                      disabled={deletingNoteId === n.id}
+                                      className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5 mr-1" />
+                                      {deletingNoteId === n.id ? 'Deleting...' : 'Delete'}
+                                    </Button>
+                                  </div>
+                                  <p className="text-sm whitespace-pre-wrap break-words mt-1">{n.content}</p>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="activity" className="mt-4 text-sm text-muted-foreground">
@@ -408,23 +720,82 @@ export default function AdminContactDetailPage() {
                 <div className="space-y-4">
                   <h3 className="text-sm font-semibold">Member Settings</h3>
                   <div>
-                    <Label>Email</Label>
-                    <Input value={email} readOnly className="bg-muted/40" />
+                    <Label>Full Name</Label>
+                    <Input
+                      value={settingsForm.full_name}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, full_name: e.target.value })}
+                    />
                   </div>
                   <div>
-                    <Label>Full Name</Label>
-                    <Input defaultValue={name ?? ''} />
+                    <Label>Email</Label>
+                    <Input
+                      type="email"
+                      value={settingsForm.email}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, email: e.target.value })}
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-1">Updating the email here only changes the profile/contact record — the auth login email is unchanged.</p>
+                  </div>
+                  <div>
+                    <Label>Phone</Label>
+                    <Input
+                      value={settingsForm.phone}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, phone: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      onClick={() => { void handleSaveSettings(); }}
+                      disabled={savingSettings}
+                      className="bg-amber-500 hover:bg-amber-600 text-black"
+                    >
+                      {savingSettings ? 'Saving...' : 'Save Changes'}
+                    </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">Subscription, admin access, and billing are managed from the CRM and member admin tools.</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   <h3 className="text-sm font-semibold">Contact Settings</h3>
-                  <div><Label>Name</Label><Input defaultValue={String(contactRow?.full_name ?? '')} /></div>
-                  <div><Label>Email</Label><Input defaultValue={email} /></div>
-                  <div><Label>Phone</Label><Input defaultValue={String(contactRow?.phone ?? '')} /></div>
-                  <div><Label>Company</Label><Input defaultValue={String(contactRow?.company ?? '')} /></div>
-                  <div><Label>Notes</Label><Textarea rows={3} defaultValue={String(contactRow?.notes ?? '')} /></div>
+                  <div>
+                    <Label>Name</Label>
+                    <Input
+                      value={settingsForm.full_name}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, full_name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Email</Label>
+                    <Input
+                      type="email"
+                      value={settingsForm.email}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, email: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Phone</Label>
+                    <Input
+                      value={settingsForm.phone}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, phone: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Company</Label>
+                    <Input
+                      value={settingsForm.company}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, company: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      onClick={() => { void handleSaveSettings(); }}
+                      disabled={savingSettings}
+                      className="bg-amber-500 hover:bg-amber-600 text-black"
+                    >
+                      {savingSettings ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                  </div>
                   <div className="border border-destructive/40 rounded-lg p-4 space-y-2">
                     <p className="text-sm font-medium text-destructive">Danger Zone</p>
                     <Button variant="destructive" size="sm" type="button">Delete Contact</Button>
