@@ -71,7 +71,7 @@ function Login() {
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [magicLinkLoading, setMagicLinkLoading] = useState(false);
   const [magicLinkEmail, setMagicLinkEmail] = useState('');
-  const [magicLinkError, setMagicLinkError] = useState('');
+  const [magicLinkError, setMagicLinkError] = useState<{ message: string; showSignupCta?: boolean } | null>(null);
   const [magicLinkCooldown, setMagicLinkCooldown] = useState(0);
 
   // Legacy magic-link mode (kept for existing flows triggered from elsewhere)
@@ -194,12 +194,12 @@ function Login() {
 
   const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMagicLinkError('');
+    setMagicLinkError(null);
 
     const emailToUse = (magicLinkMode ? magicLinkEmail : magicLinkEmail || email).trim();
     const result = emailSchema.safeParse(emailToUse);
     if (!result.success) {
-      setMagicLinkError('Please enter a valid email address');
+      setMagicLinkError({ message: 'Please enter a valid email address', showSignupCta: false });
       return;
     }
 
@@ -213,12 +213,41 @@ function Login() {
         },
       });
       if (error) {
-        setMagicLinkError('Something went wrong. Please try again.');
+        const errorCode = (error as { code?: string }).code;
+        const errorStatus = (error as { status?: number }).status;
+        const errorMsg = (error.message || '').toLowerCase();
+        if (
+          errorCode === 'otp_disabled' ||
+          errorStatus === 422 ||
+          errorMsg.includes('signups not allowed') ||
+          errorMsg.includes('user not found') ||
+          errorMsg.includes('not found')
+        ) {
+          setMagicLinkError({
+            message: 'No account found with that email.',
+            showSignupCta: true,
+          });
+        } else if (
+          errorCode === 'over_email_send_rate_limit' ||
+          errorCode === 'over_request_rate_limit' ||
+          errorMsg.includes('rate limit') ||
+          errorStatus === 429
+        ) {
+          setMagicLinkError({
+            message: 'Too many requests. Please wait a few minutes and try again.',
+            showSignupCta: false,
+          });
+        } else {
+          setMagicLinkError({
+            message: 'Something went wrong. Please try again.',
+            showSignupCta: false,
+          });
+        }
         setMagicLinkLoading(false);
         return;
       }
     } catch {
-      setMagicLinkError('Something went wrong. Please try again.');
+      setMagicLinkError({ message: 'Network error. Please check your connection.', showSignupCta: false });
       setMagicLinkLoading(false);
       return;
     }
@@ -229,11 +258,11 @@ function Login() {
 
   const handleInlineMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMagicLinkError('');
+    setMagicLinkError(null);
 
     const result = emailSchema.safeParse(magicLinkEmail);
     if (!result.success) {
-      setMagicLinkError('Please enter a valid email address');
+      setMagicLinkError({ message: 'Please enter a valid email address', showSignupCta: false });
       return;
     }
 
@@ -247,12 +276,41 @@ function Login() {
         },
       });
       if (error) {
-        setMagicLinkError('Something went wrong. Please try again.');
+        const errorCode = (error as { code?: string }).code;
+        const errorStatus = (error as { status?: number }).status;
+        const errorMsg = (error.message || '').toLowerCase();
+        if (
+          errorCode === 'otp_disabled' ||
+          errorStatus === 422 ||
+          errorMsg.includes('signups not allowed') ||
+          errorMsg.includes('user not found') ||
+          errorMsg.includes('not found')
+        ) {
+          setMagicLinkError({
+            message: 'No account found with that email.',
+            showSignupCta: true,
+          });
+        } else if (
+          errorCode === 'over_email_send_rate_limit' ||
+          errorCode === 'over_request_rate_limit' ||
+          errorMsg.includes('rate limit') ||
+          errorStatus === 429
+        ) {
+          setMagicLinkError({
+            message: 'Too many requests. Please wait a few minutes and try again.',
+            showSignupCta: false,
+          });
+        } else {
+          setMagicLinkError({
+            message: 'Something went wrong. Please try again.',
+            showSignupCta: false,
+          });
+        }
         setMagicLinkLoading(false);
         return;
       }
     } catch {
-      setMagicLinkError('Something went wrong. Please try again.');
+      setMagicLinkError({ message: 'Network error. Please check your connection.', showSignupCta: false });
       setMagicLinkLoading(false);
       return;
     }
@@ -317,7 +375,7 @@ function Login() {
             <div>
               <button
                 type="button"
-                onClick={() => { setMagicLinkMode(false); setMagicLinkSent(false); setMagicLinkError(''); setMagicLinkCooldown(0); }}
+                onClick={() => { setMagicLinkMode(false); setMagicLinkSent(false); setMagicLinkError(null); setMagicLinkCooldown(0); }}
                 style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: '0.8125rem', marginBottom: '20px', padding: '0' }}
               >
                 <ArrowLeft size={14} /> Back to sign in
@@ -339,7 +397,7 @@ function Login() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => { setMagicLinkSent(false); setMagicLinkError(''); }}
+                      onClick={() => { setMagicLinkSent(false); setMagicLinkError(null); }}
                       style={{ fontSize: '0.8125rem', color: '#C6A664', background: 'none', border: 'none', cursor: 'pointer', padding: '0', marginTop: '12px', textDecoration: 'underline' }}
                     >
                       Send again
@@ -366,7 +424,22 @@ function Login() {
                       onFocus={(e) => { if (!magicLinkError) e.currentTarget.style.borderColor = '#C6A664'; }}
                       onBlur={(e) => { if (!magicLinkError) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
                     />
-                    {magicLinkError && <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '6px' }}>{magicLinkError}</p>}
+                    {magicLinkError && (
+                      <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '6px' }}>
+                        {magicLinkError.message}
+                        {magicLinkError.showSignupCta && (
+                          <>
+                            {' '}
+                            <Link
+                              href="/join"
+                              style={{ color: '#C6A664', textDecoration: 'underline' }}
+                            >
+                              Sign up here →
+                            </Link>
+                          </>
+                        )}
+                      </p>
+                    )}
                   </div>
                   <button
                     type="submit"
@@ -385,7 +458,7 @@ function Login() {
               <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: '24px' }}>
                 <button
                   type="button"
-                  onClick={() => { setActiveTab('magic'); setMagicLinkError(''); setErrors({}); }}
+                  onClick={() => { setActiveTab('magic'); setMagicLinkError(null); setErrors({}); }}
                   style={{
                     flex: 1,
                     padding: '12px 16px',
@@ -404,7 +477,7 @@ function Login() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setActiveTab('password'); setMagicLinkError(''); setErrors({}); }}
+                  onClick={() => { setActiveTab('password'); setMagicLinkError(null); setErrors({}); }}
                   style={{
                     flex: 1,
                     padding: '12px 16px',
@@ -436,12 +509,27 @@ function Login() {
                       autoComplete="email"
                       placeholder="you@example.com"
                       value={magicLinkEmail}
-                      onChange={(e) => { setMagicLinkEmail(e.target.value); setMagicLinkError(''); setMagicLinkSent(false); }}
+                      onChange={(e) => { setMagicLinkEmail(e.target.value); setMagicLinkError(null); setMagicLinkSent(false); }}
                       style={{ ...inputStyle, border: magicLinkError ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)' }}
                       onFocus={(e) => { if (!magicLinkError) e.currentTarget.style.borderColor = '#C6A664'; }}
                       onBlur={(e) => { if (!magicLinkError) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
                     />
-                    {magicLinkError && <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '6px' }}>{magicLinkError}</p>}
+                    {magicLinkError && (
+                      <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '6px' }}>
+                        {magicLinkError.message}
+                        {magicLinkError.showSignupCta && (
+                          <>
+                            {' '}
+                            <Link
+                              href="/join"
+                              style={{ color: '#C6A664', textDecoration: 'underline' }}
+                            >
+                              Sign up here →
+                            </Link>
+                          </>
+                        )}
+                      </p>
+                    )}
                   </div>
 
                   {magicLinkSent && (
