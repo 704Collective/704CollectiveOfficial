@@ -235,7 +235,7 @@ export default async function PartnersPage() {
                 {
                   n: '03',
                   title: 'Start partnering',
-                  body: 'Once approved, you&apos;ll plug into events, co-marketing, and introductions across Charlotte. We operate as an extension of your team - not a one-off transaction.',
+                  body: "Once approved, you'll plug into events, co-marketing, and introductions across Charlotte. We operate as an extension of your team - not a one-off transaction.",
                 },
               ].map((step) => (
                 <li key={step.n} className="text-center flex flex-col items-center">
