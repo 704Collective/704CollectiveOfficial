@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useEffect, Suspense } from 'react';
+import { useCallback, useState, useEffect, Suspense } from 'react';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { addDays, format } from 'date-fns';
 import { Calendar, MapPin, Users, ArrowRight, Loader2 } from 'lucide-react';
@@ -77,6 +77,13 @@ function JoinInner() {
   const [submitting, setSubmitting]         = useState(false);
   const [formError, setFormError]           = useState<string | null>(null);
 
+  // Ambassador referral state
+  const [referralCode, setReferralCode] = useState('');
+  const [referralCodeInput, setReferralCodeInput] = useState('');
+  const [resolvedAmbassador, setResolvedAmbassador] = useState<{ id: string; full_name: string } | null>(null);
+  const [referralCodeError, setReferralCodeError] = useState<string | null>(null);
+  const [validatingCode, setValidatingCode] = useState(false);
+
   // Tier picker Social card loading state
   const [socialLoading, setSocialLoading] = useState(false);
 
@@ -105,6 +112,40 @@ function JoinInner() {
     fetchEvents();
   }, []);
 
+  // Validate an ambassador code against the public RPC. Stable identity so the
+  // ?ref= bootstrap effect below has a clean dep list.
+  const validateReferralCode = useCallback(async (code: string) => {
+    const trimmed = code.trim();
+    if (!trimmed) {
+      setResolvedAmbassador(null);
+      setReferralCodeError(null);
+      setReferralCode('');
+      return;
+    }
+    setValidatingCode(true);
+    setReferralCodeError(null);
+    const { data, error } = await supabase.rpc('get_ambassador_by_code', { p_code: trimmed });
+    setValidatingCode(false);
+    if (error || !data || data.length === 0) {
+      setResolvedAmbassador(null);
+      setReferralCode('');
+      setReferralCodeError('Invalid or inactive code');
+      return;
+    }
+    const ambassador = data[0] as { id: string; full_name: string };
+    setResolvedAmbassador({ id: ambassador.id, full_name: ambassador.full_name });
+    setReferralCode(trimmed);
+    setReferralCodeError(null);
+  }, []);
+
+  // Pre-fill from ?ref= and auto-validate.
+  useEffect(() => {
+    const refFromUrl = searchParams.get('ref')?.trim();
+    if (!refFromUrl) return;
+    setReferralCodeInput(refFromUrl.toUpperCase());
+    void validateReferralCode(refFromUrl);
+  }, [searchParams, validateReferralCode]);
+
   const isFormValid =
     fullName.trim().length > 0 &&
     email.trim().length > 0 &&
@@ -121,6 +162,8 @@ function JoinInner() {
     const cleanPhone = phone.replace(/\D/g, '');
     const consentTimestamp = smsConsent ? new Date().toISOString() : null;
     const consentUserAgent = smsConsent ? navigator.userAgent : null;
+    const ambassadorIdToUse = resolvedAmbassador?.id ?? null;
+    const referralCodeToUse = referralCode || null;
 
     // Fire-and-forget: capture prospect
     try {
@@ -130,6 +173,7 @@ function JoinInner() {
           full_name: fullName.trim(),
           phone: cleanPhone,
           sms_consent: smsConsent,
+          referral_code: referralCodeToUse,
         },
       });
     } catch {
@@ -146,6 +190,8 @@ function JoinInner() {
           sms_consent: smsConsent,
           sms_consent_at: consentTimestamp,
           sms_consent_user_agent: consentUserAgent,
+          referral_code: referralCodeToUse,
+          ambassador_id: ambassadorIdToUse,
         },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
@@ -165,6 +211,8 @@ function JoinInner() {
           phone: cleanPhone,
           primary_goal: goal,
           sms_consent: smsConsent,
+          referral_code: referralCodeToUse,
+          ambassador_id: ambassadorIdToUse,
         },
       });
       if (error) throw error;
@@ -395,6 +443,64 @@ function JoinInner() {
                       <>Continue to Checkout <ArrowRight style={{ width: '16px', height: '16px' }} /></>
                     )}
                   </button>
+
+                  {/* Ambassador referral — social proof when resolved, collapsed
+                      input otherwise. Pre-filled from ?ref= on mount. */}
+                  {resolvedAmbassador ? (
+                    <div style={{
+                      padding: '14px 16px',
+                      backgroundColor: 'rgba(198, 166, 100, 0.10)',
+                      border: '1px solid rgba(198, 166, 100, 0.30)',
+                      borderRadius: '10px',
+                    }}>
+                      <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginBottom: '4px', letterSpacing: '0.08em' }}>
+                        REFERRED BY
+                      </div>
+                      <div style={{ fontSize: '1rem', fontWeight: 600, color: '#C6A664' }}>
+                        {resolvedAmbassador.full_name}
+                      </div>
+                      <div style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.55)', marginTop: '6px' }}>
+                        You{"'"}ll receive locked-in pricing as a thank-you for joining via referral.
+                      </div>
+                    </div>
+                  ) : (
+                    <details>
+                      <summary style={{ cursor: 'pointer', fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)' }}>
+                        Have a referral code?
+                      </summary>
+                      <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
+                        <input
+                          type="text"
+                          placeholder="Enter code"
+                          value={referralCodeInput}
+                          onChange={(e) => setReferralCodeInput(e.target.value.toUpperCase())}
+                          onBlur={(e) => void validateReferralCode(e.target.value)}
+                          style={{ ...inputStyle, flex: 1, textTransform: 'uppercase' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void validateReferralCode(referralCodeInput)}
+                          disabled={validatingCode}
+                          style={{
+                            padding: '0 18px',
+                            backgroundColor: validatingCode ? 'rgba(198,166,100,0.4)' : '#C6A664',
+                            color: '#1A1A1A',
+                            border: 'none',
+                            borderRadius: '10px',
+                            fontSize: '0.875rem',
+                            fontWeight: 600,
+                            cursor: validatingCode ? 'not-allowed' : 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {validatingCode ? 'Checking...' : 'Apply'}
+                        </button>
+                      </div>
+                      {referralCodeError && (
+                        <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '6px', marginBottom: 0 }}>{referralCodeError}</p>
+                      )}
+                    </details>
+                  )}
 
                   {/* SMS consent — optional opt-in (Twilio A2P 10DLC compliance) */}
                   <div style={{

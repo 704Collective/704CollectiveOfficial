@@ -392,6 +392,132 @@ async function handleCheckoutCompleted(
       else log("Password recovery link generated");
     }
 
+    // ── Ambassador referral tracking ──
+    // Runs after the profile is created/updated and before the welcome email.
+    // Best-effort: any failure here is logged but does not block the rest of
+    // the checkout pipeline (the member should still get their welcome email
+    // even if referral attribution silently fails — admins can backfill later).
+    const ambassadorIdFromMeta = session.metadata?.ambassador_id || null;
+    const referralCodeFromMeta = session.metadata?.referral_code || null;
+    const ambassadorTierFromMeta = session.metadata?.ambassador_tier || "social";
+
+    if (ambassadorIdFromMeta && userId) {
+      try {
+        // Re-validate ambassador (defense in depth — metadata could be stale
+        // by the time the webhook fires).
+        const { data: amb } = await supabase
+          .from("ambassadors")
+          .select("id, email, social_reward_cents, business_reward_cents, approved_social_referrals_count, is_active")
+          .eq("id", ambassadorIdFromMeta)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (!amb) {
+          log("Ambassador not found or inactive on referral creation", { ambassadorIdFromMeta });
+        } else {
+          const ambRow = amb as {
+            id: string;
+            email: string | null;
+            social_reward_cents: number;
+            business_reward_cents: number;
+            approved_social_referrals_count: number | null;
+          };
+
+          const rewardCents = ambassadorTierFromMeta === "business"
+            ? ambRow.business_reward_cents
+            : ambRow.social_reward_cents;
+
+          // Anti-abuse signals — light-weight checks that admins can review
+          // before approving the referral.
+          const flags: Record<string, boolean> = {};
+          if (ambRow.email) {
+            const ambDomain = ambRow.email.split("@")[1]?.toLowerCase();
+            const refDomain = customerEmail.split("@")[1]?.toLowerCase();
+            if (ambDomain && refDomain && ambDomain === refDomain) {
+              flags.same_email_domain = true;
+            }
+          }
+          // Stripe Checkout sessions don't expose the cardholder fingerprint
+          // directly; we'd need to inflate the payment_intent.charges to get
+          // it. Defer card-level fraud checks to admin review for now.
+          const paymentMethodFingerprint: string | null = null;
+
+          const hasFlags = Object.keys(flags).length > 0;
+          const approvedCount = ambRow.approved_social_referrals_count ?? 0;
+
+          // Auto-approve only when the ambassador has already had 3+ approved
+          // social referrals AND no abuse signals fired on this signup.
+          const isAutoApproveEligible =
+            !hasFlags &&
+            ambassadorTierFromMeta === "social" &&
+            approvedCount >= 3;
+
+          const initialStatus = hasFlags
+            ? (flags.same_email_domain ? "flagged_self_refer" : "pending")
+            : (isAutoApproveEligible ? "auto_approved" : "pending");
+
+          const { data: refRow, error: refErr } = await supabase
+            .from("ambassador_referrals")
+            .insert({
+              ambassador_id: ambRow.id,
+              referred_user_id: userId,
+              referred_email: customerEmail,
+              referred_full_name: customerName || null,
+              tier: ambassadorTierFromMeta,
+              reward_cents: rewardCents,
+              status: initialStatus,
+              payment_method_fingerprint: paymentMethodFingerprint,
+              abuse_flags: flags,
+              stripe_subscription_id: typeof session.subscription === "string" ? session.subscription : null,
+              approved_at: initialStatus === "auto_approved" ? new Date().toISOString() : null,
+            })
+            .select("id")
+            .single();
+
+          if (refErr) {
+            log("Failed to insert ambassador referral", { error: refErr.message });
+          } else if (refRow) {
+            // Stamp the linkage + locked-in pricing flag on the profile so
+            // downstream admin tooling can see who referred whom.
+            await supabase
+              .from("profiles")
+              .update({
+                referred_by_ambassador_id: ambRow.id,
+                ambassador_referral_id: refRow.id,
+                is_locked_in_pricing: true,
+              })
+              .eq("id", userId);
+
+            // Bump the auto-approval counter so future referrals can flow
+            // through without manual review. Try the RPC first; if it doesn't
+            // exist yet, fall back to read-modify-write.
+            if (initialStatus === "auto_approved") {
+              const { error: rpcErr } = await supabase.rpc(
+                "increment_ambassador_social_count",
+                { p_ambassador_id: ambRow.id }
+              );
+              if (rpcErr) {
+                await supabase
+                  .from("ambassadors")
+                  .update({ approved_social_referrals_count: approvedCount + 1 })
+                  .eq("id", ambRow.id);
+              }
+            }
+
+            log("Ambassador referral created", {
+              referral_id: refRow.id,
+              status: initialStatus,
+              ambassador_id: ambRow.id,
+              code: referralCodeFromMeta,
+            });
+          }
+        }
+      } catch (refError) {
+        const msg = refError instanceof Error ? refError.message : String(refError);
+        log("Ambassador referral processing failed (non-blocking)", { error: msg });
+      }
+    }
+
     // ── Welcome email (only for new or reactivated) ──
     // New members now set their password during signup on /join, so we always
     // send the regular welcome email — no recovery link generation needed.

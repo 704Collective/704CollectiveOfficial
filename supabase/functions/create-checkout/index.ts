@@ -42,8 +42,13 @@ async function checkRateLimit(supabase: any, key: string, max: number): Promise<
   return false;
 }
 
-// Social membership price ID — set STRIPE_SOCIAL_PRICE_ID in Supabase secrets
-const MEMBERSHIP_PRICE_ID = Deno.env.get("STRIPE_SOCIAL_PRICE_ID") ?? "";
+// Social membership price IDs — both set in Supabase secrets.
+// SOCIAL_REGULAR is the standard $35/mo price.
+// SOCIAL_AMBASSADOR is the locked-in price referred members get for joining
+// through an ambassador's code; it stays at the original $35/mo even after
+// the catalog price increases on May 1, 2026.
+const SOCIAL_REGULAR = Deno.env.get("STRIPE_SOCIAL_PRICE_ID") ?? "";
+const SOCIAL_AMBASSADOR = Deno.env.get("STRIPE_AMBASSADOR_SOCIAL_PRICE_ID") ?? "";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -81,6 +86,42 @@ serve(async (req) => {
     const guestName = body.name;
     const smsConsent = body.sms_consent === true;
     const smsConsentAt = smsConsent ? new Date().toISOString() : "";
+    const rawReferralCode: string | null = typeof body.referral_code === "string" ? body.referral_code : null;
+    const rawAmbassadorId: string | null = typeof body.ambassador_id === "string" ? body.ambassador_id : null;
+
+    // ── Server-side ambassador re-validation ───────────────────────────
+    // The /join form already validated, but we re-verify here so a tampered
+    // request body can't grant locked-in pricing without an active code.
+    let validatedAmbassadorId: string | null = null;
+    let validatedReferralCode: string | null = null;
+    if (rawAmbassadorId && rawReferralCode) {
+      const { data: ambData } = await rateLimitSupabase
+        .from("ambassadors")
+        .select("id, referral_code, is_active")
+        .eq("id", rawAmbassadorId)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (ambData && ambData.referral_code.toLowerCase() === rawReferralCode.toLowerCase()) {
+        validatedAmbassadorId = ambData.id;
+        validatedReferralCode = ambData.referral_code;
+        logStep("Ambassador validated", { ambassador_id: validatedAmbassadorId, code: validatedReferralCode });
+      } else {
+        logStep("Ambassador validation failed — falling back to standard price", {
+          provided_id: rawAmbassadorId,
+          provided_code: rawReferralCode,
+        });
+      }
+    }
+
+    // Pick the price ID: ambassador-locked when validated, regular otherwise.
+    const priceIdToUse = validatedAmbassadorId ? SOCIAL_AMBASSADOR : SOCIAL_REGULAR;
+    if (!priceIdToUse) {
+      throw new Error(
+        validatedAmbassadorId
+          ? "STRIPE_AMBASSADOR_SOCIAL_PRICE_ID is not set"
+          : "STRIPE_SOCIAL_PRICE_ID is not set"
+      );
+    }
 
     // --- Auth: getClaims (optional — supports guest checkout) ---
     let userEmail: string | undefined;
@@ -162,7 +203,7 @@ serve(async (req) => {
       customer_email: customerId ? undefined : checkoutEmail || undefined,
       line_items: [
         {
-          price: MEMBERSHIP_PRICE_ID,
+          price: priceIdToUse,
           quantity: 1,
         },
       ],
@@ -175,6 +216,9 @@ serve(async (req) => {
         origin: origin,
         sms_consent: String(smsConsent),
         sms_consent_at: smsConsentAt,
+        ambassador_id: validatedAmbassadorId ?? "",
+        referral_code: validatedReferralCode ?? "",
+        ambassador_tier: validatedAmbassadorId ? "social" : "",
       },
     };
 

@@ -13,11 +13,12 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { email, full_name, phone, sms_consent } = body as {
+    const { email, full_name, phone, sms_consent, referral_code } = body as {
       email?: string;
       full_name?: string;
       phone?: string;
       sms_consent?: boolean;
+      referral_code?: string | null;
     };
 
     if (!email) {
@@ -34,6 +35,13 @@ serve(async (req) => {
     );
 
     const consentTrue = sms_consent === true;
+
+    // Tag the prospect with their referral source. This is informational only —
+    // the canonical ambassador_referrals row is created later by stripe-webhook
+    // after payment completes successfully.
+    const cleanCode = (referral_code ?? "").trim().toUpperCase();
+    const sourceValue = cleanCode ? `ambassador_referral:${cleanCode}` : "join_page";
+
     const { data: contact, error: upsertError } = await supabase
       .from("contacts")
       .upsert(
@@ -41,7 +49,7 @@ serve(async (req) => {
           email: email.toLowerCase().trim(),
           full_name: full_name ?? null,
           phone: phone ?? null,
-          source: "join_page",
+          source: sourceValue,
           source_detail: "pre_checkout_capture",
           status: "active",
           sms_consent: consentTrue,
