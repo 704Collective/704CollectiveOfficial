@@ -12,6 +12,18 @@ const log = (step: string, details?: unknown) => {
   console.log(`[SEND-EMAIL] ${step}${d}`);
 };
 
+// Templates that CC hello@704collective.com so the team is aware of
+// member onboarding moments. Members can suppress CC by passing skipCc: true.
+const TEAM_CC_TEMPLATES = new Set([
+  "welcome-new",
+  "welcome-back",
+  "welcome-setup",
+  "password-setup",
+  "welcome-onboarding-complete",
+  "business-membership-approved",
+]);
+const TEAM_CC_ADDRESS = "hello@704collective.com";
+
 // ── email templates ──────────────────────────────────────────────────────
 
 // ── Brand constants ──────────────────────────────────────────────────────
@@ -1075,8 +1087,8 @@ serve(async (req) => {
       body: JSON.stringify({
         from: fromAddress,
         to: [to],
-        ...(!skipCc && (template === "welcome-back" || template === "password-setup" || template === "welcome-setup")
-          ? { cc: ["hello@704collective.com"] }
+        ...(!skipCc && TEAM_CC_TEMPLATES.has(template)
+          ? { cc: [TEAM_CC_ADDRESS] }
           : {}),
         subject,
         html,
