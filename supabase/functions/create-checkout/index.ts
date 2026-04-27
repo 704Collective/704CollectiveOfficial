@@ -79,6 +79,8 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const guestEmail = body.email;
     const guestName = body.name;
+    const smsConsent = body.sms_consent === true;
+    const smsConsentAt = smsConsent ? new Date().toISOString() : "";
 
     // --- Auth: getClaims (optional — supports guest checkout) ---
     let userEmail: string | undefined;
@@ -171,6 +173,8 @@ serve(async (req) => {
         user_id: userId || "",
         guest_name: guestName || "",
         origin: origin,
+        sms_consent: String(smsConsent),
+        sms_consent_at: smsConsentAt,
       },
     };
 

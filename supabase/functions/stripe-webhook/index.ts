@@ -148,6 +148,26 @@ async function handleCheckoutCompleted(
   const customerName = session.customer_details?.name || "";
   const customerPhone = session.customer_details?.phone || null;
 
+  // ── SMS consent (A2P 10DLC): captured at /join checkout time and forwarded
+  // through Stripe Checkout Session metadata. Stripe metadata values are
+  // strings; "true"/"false" come back exactly as we sent them.
+  const smsConsentFromMeta = session.metadata?.sms_consent === "true";
+  const smsConsentAtFromMeta = session.metadata?.sms_consent_at || null;
+  const smsConsentUserAgentFromMeta = session.metadata?.sms_consent_user_agent || null;
+  const consentFields: Record<string, unknown> = {
+    sms_consent: smsConsentFromMeta,
+    sms_consent_at: smsConsentFromMeta
+      ? (smsConsentAtFromMeta || new Date().toISOString())
+      : null,
+    // user_agent is best-effort: Stripe metadata caps each value at 500 chars,
+    // and most browser UA strings exceed that — so this is typically null and
+    // the audit-grade UA is recorded on the contacts row at capture-prospect time.
+    sms_consent_user_agent:
+      smsConsentFromMeta && smsConsentUserAgentFromMeta
+        ? smsConsentUserAgentFromMeta
+        : null,
+  };
+
   // ── Phase A: Product Identification ──────────────────────────────────
 
   const socialProductId = Deno.env.get("STRIPE_SOCIAL_PRODUCT_ID");
@@ -227,6 +247,7 @@ async function handleCheckoutCompleted(
         subscription_id: subscriptionId,
         cancel_at_period_end: false,
         ...(customerPhone ? { phone: customerPhone } : {}),
+        ...consentFields,
       };
       // Social checkout: ensure member_type social when not business/partner
       if (
@@ -275,6 +296,7 @@ async function handleCheckoutCompleted(
           member_since: new Date().toISOString(),
           cancel_at_period_end: false,
           ...(customerPhone ? { phone: customerPhone } : {}),
+          ...consentFields,
         })
         .eq("id", userId);
 
@@ -335,6 +357,7 @@ async function handleCheckoutCompleted(
           stripe_customer_id: stripeCustomerId,
           member_since: new Date().toISOString(),
           ...(customerPhone ? { phone: customerPhone } : {}),
+          ...consentFields,
         },
         { onConflict: "id" }
       );
@@ -350,6 +373,7 @@ async function handleCheckoutCompleted(
             stripe_customer_id: stripeCustomerId,
             member_since: new Date().toISOString(),
             full_name: customerName,
+            ...consentFields,
           })
           .eq("id", userId!);
       }

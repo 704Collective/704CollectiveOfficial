@@ -13,7 +13,12 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { email, full_name, phone } = body as { email?: string; full_name?: string; phone?: string };
+    const { email, full_name, phone, sms_consent } = body as {
+      email?: string;
+      full_name?: string;
+      phone?: string;
+      sms_consent?: boolean;
+    };
 
     if (!email) {
       return new Response(JSON.stringify({ error: "email is required" }), {
@@ -28,6 +33,7 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
+    const consentTrue = sms_consent === true;
     const { data: contact, error: upsertError } = await supabase
       .from("contacts")
       .upsert(
@@ -38,6 +44,8 @@ serve(async (req) => {
           source: "join_page",
           source_detail: "pre_checkout_capture",
           status: "active",
+          sms_consent: consentTrue,
+          sms_consent_at: consentTrue ? new Date().toISOString() : null,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "email", ignoreDuplicates: false }

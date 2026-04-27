@@ -145,7 +145,16 @@ export default function Privacy() {
           </section>
 
           <section style={sectionStyle}>
-            <h2 style={h2Style}>11. Contact Us</h2>
+            <h2 style={h2Style}>11. SMS Communications</h2>
+            <p style={pStyle}>If you opt in to receive text messages from 704 Collective, we collect your phone number and your consent for the purpose of sending you event reminders, member updates, and occasional marketing communications related to your membership.</p>
+            <p style={pStyle}>Your phone number is used solely by 704 Collective to communicate with you, and is processed through our SMS provider Twilio for delivery. We do not sell, rent, or share your phone number with third parties for their marketing purposes.</p>
+            <p style={pStyle}>Message frequency varies based on event activity and your engagement. Standard message and data rates from your mobile carrier may apply.</p>
+            <p style={pStyle}>You may opt out of SMS communications at any time by replying STOP to any text. To request help, reply HELP. You may also manage your communication preferences in your account settings or by contacting us at <a href="mailto:hello@704collective.com" style={linkStyle}>hello@704collective.com</a>.</p>
+            <p style={pStyle}>We retain a record of your SMS opt-in (including timestamp and the device information at the time of consent) as required by federal regulations governing commercial text messaging.</p>
+          </section>
+
+          <section style={sectionStyle}>
+            <h2 style={h2Style}>12. Contact Us</h2>
             <p style={pStyle}>If you have any questions about this Privacy Policy or our data practices, please contact us:</p>
             <p style={pStyle}>704 Collective</p>
             <p style={pStyle}>Email: <a href="mailto:hello@704collective.com" style={linkStyle}>hello@704collective.com</a></p>

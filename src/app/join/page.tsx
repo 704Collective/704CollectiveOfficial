@@ -73,6 +73,7 @@ function JoinInner() {
   const [goal, setGoal]                     = useState('');
   const [password, setPassword]             = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [smsConsent, setSmsConsent]         = useState(false);
   const [submitting, setSubmitting]         = useState(false);
   const [formError, setFormError]           = useState<string | null>(null);
 
@@ -118,11 +119,18 @@ function JoinInner() {
     setFormError(null);
 
     const cleanPhone = phone.replace(/\D/g, '');
+    const consentTimestamp = smsConsent ? new Date().toISOString() : null;
+    const consentUserAgent = smsConsent ? navigator.userAgent : null;
 
     // Fire-and-forget: capture prospect
     try {
       await supabase.functions.invoke('capture-prospect', {
-        body: { email: email.trim(), full_name: fullName.trim(), phone: cleanPhone },
+        body: {
+          email: email.trim(),
+          full_name: fullName.trim(),
+          phone: cleanPhone,
+          sms_consent: smsConsent,
+        },
       });
     } catch {
       // Non-blocking - do not abort checkout
@@ -133,7 +141,12 @@ function JoinInner() {
       email: email.trim(),
       password: password,
       options: {
-        data: { full_name: fullName.trim() },
+        data: {
+          full_name: fullName.trim(),
+          sms_consent: smsConsent,
+          sms_consent_at: consentTimestamp,
+          sms_consent_user_agent: consentUserAgent,
+        },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
@@ -151,6 +164,7 @@ function JoinInner() {
           name: fullName.trim(),
           phone: cleanPhone,
           primary_goal: goal,
+          sms_consent: smsConsent,
         },
       });
       if (error) throw error;
@@ -381,6 +395,47 @@ function JoinInner() {
                       <>Continue to Checkout <ArrowRight style={{ width: '16px', height: '16px' }} /></>
                     )}
                   </button>
+
+                  {/* SMS consent — optional opt-in (Twilio A2P 10DLC compliance) */}
+                  <div style={{
+                    marginBottom: '4px',
+                    padding: '14px 16px',
+                    backgroundColor: 'rgba(198, 166, 100, 0.05)',
+                    border: '1px solid rgba(198, 166, 100, 0.15)',
+                    borderRadius: '10px',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '12px',
+                  }}>
+                    <input
+                      type="checkbox"
+                      id="sms-consent"
+                      checked={smsConsent}
+                      onChange={(e) => setSmsConsent(e.target.checked)}
+                      style={{
+                        marginTop: '3px',
+                        width: '18px',
+                        height: '18px',
+                        cursor: 'pointer',
+                        accentColor: '#C6A664',
+                        flexShrink: 0,
+                      }}
+                    />
+                    <label
+                      htmlFor="sms-consent"
+                      style={{
+                        fontSize: '0.875rem',
+                        color: 'rgba(255, 255, 255, 0.75)',
+                        lineHeight: 1.55,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Yes, send me event reminders and member updates by text from 704 Collective at the phone number above. Message frequency varies. Message and data rates may apply. Reply STOP to cancel, HELP for help. View our{' '}
+                      <Link href="/privacy" style={{ color: '#C6A664', textDecoration: 'underline' }}>Privacy Policy</Link>
+                      {' '}and{' '}
+                      <Link href="/terms" style={{ color: '#C6A664', textDecoration: 'underline' }}>Terms</Link>.
+                    </label>
+                  </div>
 
                   <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', textAlign: 'center', margin: 0 }}>
                     You{"'"}ll be redirected to Stripe for secure payment. By continuing, you agree to our{' '}
