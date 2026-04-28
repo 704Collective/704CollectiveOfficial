@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
+import Stripe from 'stripe';
 
 function serviceClient() {
   return createServiceClient(
@@ -247,4 +248,162 @@ export async function deactivateAmbassador(
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
   return { ok: true };
+}
+
+export async function createAmbassadorOnboardingLink(
+  ambassadorId: string
+): Promise<{ url: string; expiresAt: number }> {
+  const gate = await assertAdmin();
+  if (!gate.ok) throw new Error(gate.error);
+
+  const supabase = serviceClient();
+  const { data: ambassador, error: fetchErr } = await supabase
+    .from('ambassadors')
+    .select('id, full_name, email, stripe_account_id, stripe_account_status')
+    .eq('id', ambassadorId)
+    .maybeSingle();
+  if (fetchErr || !ambassador) throw new Error('Ambassador not found');
+
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2026-02-25.clover' });
+
+  let accountId: string = (ambassador as { stripe_account_id: string | null }).stripe_account_id ?? '';
+
+  if (!accountId) {
+    const account = await stripe.accounts.create({
+      type: 'express',
+      country: 'US',
+      email: (ambassador as { email: string }).email,
+      capabilities: { transfers: { requested: true } },
+      metadata: {
+        ambassador_id: (ambassador as { id: string }).id,
+        platform_source: '704_collective',
+      },
+    });
+    accountId = account.id;
+    await supabase
+      .from('ambassadors')
+      .update({ stripe_account_id: accountId, stripe_account_status: 'onboarding' })
+      .eq('id', (ambassador as { id: string }).id);
+  }
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? '';
+  const ambId = (ambassador as { id: string }).id;
+  const accountLink = await stripe.accountLinks.create({
+    account: accountId,
+    refresh_url: siteUrl + '/admin/ambassadors/' + ambId + '?onboarding=refresh',
+    return_url: siteUrl + '/admin/ambassadors/' + ambId + '?onboarding=complete',
+    type: 'account_onboarding',
+  });
+
+  return { url: accountLink.url, expiresAt: accountLink.expires_at };
+}
+
+export async function fireAmbassadorPayout(
+  referralId: string
+): Promise<{ payout_id: string; transfer_id: string }> {
+  const gate = await assertAdmin();
+  if (!gate.ok) throw new Error(gate.error);
+
+  const supabase = serviceClient();
+  const { data: ref, error: refErr } = await supabase
+    .from('ambassador_referrals')
+    .select('id, ambassador_id, reward_cents, status, paid_out_at, ambassador:ambassadors!ambassador_id (id, full_name, stripe_account_id, stripe_account_status)')
+    .eq('id', referralId)
+    .maybeSingle();
+  if (refErr || !ref) throw new Error('Referral not found');
+
+  if (ref.status !== 'approved' && ref.status !== 'auto_approved') {
+    throw new Error('Referral must be approved before payout');
+  }
+  if (ref.paid_out_at) throw new Error('Payout already fired for this referral');
+
+  const amb = (ref.ambassador as unknown) as {
+    id: string;
+    full_name: string;
+    stripe_account_id: string | null;
+    stripe_account_status: string | null;
+  };
+
+  if (!amb.stripe_account_id) {
+    throw new Error('Ambassador has no Stripe account \u2014 they need to complete onboarding first');
+  }
+  if (amb.stripe_account_status !== 'active') {
+    throw new Error('Ambassador Stripe account is ' + amb.stripe_account_status + ', not active');
+  }
+
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2026-02-25.clover' });
+
+  const transfer = await stripe.transfers.create({
+    amount: ref.reward_cents as number,
+    currency: 'usd',
+    destination: amb.stripe_account_id,
+    description: '704 Collective ambassador referral reward \u2014 ' + amb.full_name,
+    metadata: {
+      ambassador_id: amb.id,
+      referral_id: ref.id as string,
+    },
+  });
+
+  const { data: payoutRow, error: payoutErr } = await supabase
+    .from('ambassador_payouts')
+    .insert({
+      ambassador_id: amb.id,
+      referral_id: ref.id,
+      amount_cents: ref.reward_cents,
+      stripe_transfer_id: transfer.id,
+      status: 'sent',
+      sent_at: new Date().toISOString(),
+    })
+    .select('id')
+    .single();
+
+  if (payoutErr) {
+    // Transfer already happened in Stripe -- log loudly but don't throw.
+    console.error('Transfer succeeded but payout log insert failed:', payoutErr);
+  }
+
+  await supabase
+    .from('ambassador_referrals')
+    .update({ paid_out_at: new Date().toISOString(), stripe_payout_id: transfer.id })
+    .eq('id', ref.id);
+
+  return { payout_id: payoutRow?.id ?? '', transfer_id: transfer.id };
+}
+
+export async function fireAllPendingPayouts(): Promise<{
+  total: number;
+  success: number;
+  failed: { id: string; error: string }[];
+}> {
+  const gate = await assertAdmin();
+  if (!gate.ok) throw new Error(gate.error);
+
+  const supabase = serviceClient();
+  const { data: refs, error } = await supabase
+    .from('ambassador_referrals')
+    .select('id, ambassador:ambassadors!ambassador_id (stripe_account_status)')
+    .in('status', ['approved', 'auto_approved'])
+    .is('paid_out_at', null);
+
+  if (error) throw new Error(error.message);
+
+  const eligible = (refs ?? []).filter(
+    (r) => ((r.ambassador as unknown) as { stripe_account_status: string | null } | null)?.stripe_account_status === 'active'
+  );
+
+  const result = { total: eligible.length, success: 0, failed: [] as { id: string; error: string }[] };
+
+  for (const ref of eligible) {
+    try {
+      await fireAmbassadorPayout(ref.id as string);
+      result.success += 1;
+    } catch (err) {
+      result.failed.push({
+        id: ref.id as string,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  return result;
 }

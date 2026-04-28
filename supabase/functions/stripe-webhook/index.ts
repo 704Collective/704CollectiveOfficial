@@ -837,6 +837,42 @@ serve(async (req) => {
       case "customer.subscription.updated":
         await handleSubscriptionUpdated(event, supabase);
         break;
+      case "account.updated": {
+        const account = event.data.object as Stripe.Account;
+        const ambassadorId = account.metadata?.ambassador_id;
+        if (!ambassadorId) {
+          log("account.updated event without ambassador_id metadata, ignoring", { account_id: account.id });
+          break;
+        }
+        let newStatus = 'onboarding';
+        if (account.details_submitted && account.charges_enabled && account.payouts_enabled) {
+          newStatus = 'active';
+        } else if (account.requirements?.disabled_reason) {
+          newStatus = 'restricted';
+        }
+        const updates: Record<string, unknown> = { stripe_account_status: newStatus };
+        if (newStatus === 'active') {
+          // Only stamp the completion time once; fetch current value first.
+          const { data: ambRow } = await supabase
+            .from('ambassadors')
+            .select('stripe_onboarding_completed_at')
+            .eq('id', ambassadorId)
+            .maybeSingle();
+          if (!ambRow?.stripe_onboarding_completed_at) {
+            updates.stripe_onboarding_completed_at = new Date().toISOString();
+          }
+        }
+        const { error: updErr } = await supabase
+          .from('ambassadors')
+          .update(updates)
+          .eq('id', ambassadorId);
+        if (updErr) {
+          log("Failed to update ambassador status from account.updated", { ambassadorId, error: updErr.message });
+        } else {
+          log("Ambassador Stripe account status updated", { ambassadorId, status: newStatus });
+        }
+        break;
+      }
       default:
         log("Unhandled event type", { type: event.type });
         break;

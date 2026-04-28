@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { NewAmbassadorDialog } from '@/components/admin/NewAmbassadorDialog';
-import { approveReferral, denyReferral, deactivateAmbassador } from '@/app/actions/ambassadorActions';
+import { approveReferral, denyReferral, deactivateAmbassador, createAmbassadorOnboardingLink, fireAllPendingPayouts } from '@/app/actions/ambassadorActions';
 
 type AmbassadorRow = {
   id: string;
@@ -49,6 +49,7 @@ type ReferralRow = {
   referred_email: string;
   referred_full_name: string | null;
   abuse_flags: unknown;
+  paid_out_at: string | null;
   created_at: string;
 };
 
@@ -119,6 +120,9 @@ export default function AdminAmbassadorsPage() {
   const [payoutsThisMonth, setPayoutsThisMonth] = useState<PayoutRow[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [generatingLinkFor, setGeneratingLinkFor] = useState<string | null>(null);
+  const [firingAll, setFiringAll] = useState(false);
+  const [fireAllResult, setFireAllResult] = useState<{ total: number; success: number; failed: { id: string; error: string }[] } | null>(null);
 
   const load = useCallback(async () => {
     setLoadingData(true);
@@ -129,7 +133,7 @@ export default function AdminAmbassadorsPage() {
         .order('created_at', { ascending: false }),
       supabase
         .from('ambassador_referrals')
-        .select('id, ambassador_id, status, tier, reward_cents, referred_email, referred_full_name, abuse_flags, created_at')
+        .select('id, ambassador_id, status, tier, reward_cents, referred_email, referred_full_name, abuse_flags, paid_out_at, created_at')
         .order('created_at', { ascending: false }),
       supabase
         .from('ambassador_payouts')
@@ -189,13 +193,54 @@ export default function AdminAmbassadorsPage() {
       (sum, p) => sum + Number(p.amount_cents ?? 0),
       0
     );
+    const ambMap = new Map(ambassadors.map((a) => [a.id, a]));
+    const pendingPayoutCount = referrals.filter(
+      (r) => (r.status === 'approved' || r.status === 'auto_approved') &&
+        !r.paid_out_at &&
+        ambMap.get(r.ambassador_id)?.stripe_account_status === 'active'
+    ).length;
     return {
       activeCount,
       pendingCount: pendingReferrals.length,
       totalReferred,
       paidOutCents,
+      pendingPayoutCount,
     };
   }, [ambassadors, referrals, payoutsThisMonth, pendingReferrals.length]);
+
+  const handleGenerateOnboardingLinkForRow = async (ambassador: AmbassadorRow) => {
+    setGeneratingLinkFor(ambassador.id);
+    try {
+      const result = await createAmbassadorOnboardingLink(ambassador.id);
+      await navigator.clipboard.writeText(result.url);
+      window.open(result.url, '_blank');
+      toast.success(`Onboarding link generated and copied. Send to ${ambassador.email}.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to generate onboarding link');
+    } finally {
+      setGeneratingLinkFor(null);
+    }
+  };
+
+  const handleFireAllPayouts = async () => {
+    if (!window.confirm(`Fire all ${totals.pendingPayoutCount} pending payout(s)?`)) return;
+    setFiringAll(true);
+    setFireAllResult(null);
+    try {
+      const result = await fireAllPendingPayouts();
+      setFireAllResult(result);
+      if (result.failed.length === 0) {
+        toast.success(`All ${result.success} payout(s) fired successfully.`);
+      } else {
+        toast.error(`${result.success}/${result.total} payouts succeeded. ${result.failed.length} failed.`);
+      }
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Bulk payout failed');
+    } finally {
+      setFiringAll(false);
+    }
+  };
 
   const doApprove = async (refId: string) => {
     setBusyId(refId);
@@ -271,13 +316,28 @@ export default function AdminAmbassadorsPage() {
               Manage your referral partners and review pending referrals.
             </p>
           </div>
-          <Button
-            onClick={() => setCreateOpen(true)}
-            className="gap-2 shrink-0 bg-amber-500 hover:bg-amber-600 text-black"
-          >
-            <Plus className="h-4 w-4" />
-            New ambassador
-          </Button>
+          <div className="flex flex-wrap gap-2 shrink-0">
+            {totals.pendingPayoutCount > 0 && (
+              <Button
+                onClick={() => void handleFireAllPayouts()}
+                disabled={firingAll}
+                variant="outline"
+                className="gap-2"
+              >
+                {firingAll
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : null}
+                Fire all pending payouts ({totals.pendingPayoutCount})
+              </Button>
+            )}
+            <Button
+              onClick={() => setCreateOpen(true)}
+              className="gap-2 bg-amber-500 hover:bg-amber-600 text-black"
+            >
+              <Plus className="h-4 w-4" />
+              New ambassador
+            </Button>
+          </div>
         </div>
 
         {/* Stats row */}
@@ -449,12 +509,13 @@ export default function AdminAmbassadorsPage() {
                                 Edit
                               </DropdownMenuItem>
                               <DropdownMenuItem
+                                disabled={generatingLinkFor === a.id}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  toast.info('Stripe Connect onboarding link generation lands in the next prompt.');
+                                  void handleGenerateOnboardingLinkForRow(a);
                                 }}
                               >
-                                Resend onboarding link
+                                {generatingLinkFor === a.id ? 'Generating...' : 'Resend onboarding link'}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem

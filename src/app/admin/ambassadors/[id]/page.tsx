@@ -33,7 +33,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { updateAmbassador } from '@/app/actions/ambassadorActions';
+import { updateAmbassador, createAmbassadorOnboardingLink, fireAmbassadorPayout } from '@/app/actions/ambassadorActions';
 
 type Ambassador = {
   id: string;
@@ -150,14 +150,6 @@ function StatCard({ label, value, hint }: { label: string; value: string; hint?:
   );
 }
 
-function onboardingStatusLine(amb: Ambassador): string {
-  const s = (amb.stripe_account_status ?? 'pending').toLowerCase();
-  if (s === 'active') return 'Onboarded';
-  if (s === 'onboarding') return 'Onboarding pending';
-  if (s === 'restricted') return 'Stripe account restricted';
-  return 'Onboarding link: not yet generated';
-}
-
 export default function AdminAmbassadorDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -187,6 +179,8 @@ export default function AdminAmbassadorDetailPage() {
     notes: '',
   });
   const [saving, setSaving] = useState(false);
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [firingPayoutId, setFiringPayoutId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -285,6 +279,36 @@ export default function AdminAmbassadorDetailPage() {
     }
   };
 
+  const handleGenerateOnboardingLink = async (ambassador: Ambassador) => {
+    setGeneratingLink(true);
+    try {
+      const result = await createAmbassadorOnboardingLink(ambassador.id);
+      await navigator.clipboard.writeText(result.url);
+      window.open(result.url, '_blank');
+      toast.success(`Onboarding link generated and copied. Send to ${ambassador.email}.`);
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to generate onboarding link');
+    } finally {
+      setGeneratingLink(false);
+    }
+  };
+
+  const handleFirePayout = async (referralId: string, rewardCents: number) => {
+    if (!amb) return;
+    if (!window.confirm(`Send ${dollars(rewardCents)} to ${amb.full_name}?`)) return;
+    setFiringPayoutId(referralId);
+    try {
+      const result = await fireAmbassadorPayout(referralId);
+      toast.success(`Payout sent! Transfer ID: ${result.transfer_id}`);
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Payout failed');
+    } finally {
+      setFiringPayoutId(null);
+    }
+  };
+
   if (authLoading || !isAdminOrSuper) {
     return (
       <AdminLayout title="Ambassador">
@@ -355,7 +379,57 @@ export default function AdminAmbassadorDetailPage() {
                   </Badge>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground mt-2">{onboardingStatusLine(amb)}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {(amb.stripe_account_status ?? 'pending') === 'active' ? (
+                  <>
+                    <Badge variant="outline" className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
+                      Stripe Connect Active
+                    </Badge>
+                    {amb.stripe_account_id && (
+                      <span className="text-xs text-muted-foreground font-mono">{amb.stripe_account_id}</span>
+                    )}
+                  </>
+                ) : (amb.stripe_account_status ?? 'pending') === 'restricted' ? (
+                  <>
+                    <Badge variant="outline" className="bg-rose-500/15 text-rose-400 border-rose-500/30">
+                      Update Required
+                    </Badge>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={generatingLink}
+                      onClick={() => void handleGenerateOnboardingLink(amb)}
+                      className="h-7 text-xs gap-1"
+                    >
+                      {generatingLink ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                      Regenerate link
+                    </Button>
+                  </>
+                ) : (amb.stripe_account_status ?? 'pending') === 'onboarding' ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={generatingLink}
+                    onClick={() => void handleGenerateOnboardingLink(amb)}
+                    className="h-7 text-xs gap-1 bg-amber-500 hover:bg-amber-600 text-black"
+                  >
+                    {generatingLink ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                    Resend onboarding link
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={generatingLink}
+                    onClick={() => void handleGenerateOnboardingLink(amb)}
+                    className="h-7 text-xs gap-1 bg-amber-500 hover:bg-amber-600 text-black"
+                  >
+                    {generatingLink ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                    Create onboarding link
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="shrink-0">
               <Button type="button" variant="outline" onClick={() => router.push(`/admin/ambassadors/${amb.id}?tab=settings`)}>
@@ -410,12 +484,13 @@ export default function AdminAmbassadorDetailPage() {
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Reward</TableHead>
                     <TableHead>Payout</TableHead>
+                    <TableHead>Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredReferrals.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
                         No referrals match this filter.
                       </TableCell>
                     </TableRow>
@@ -456,6 +531,26 @@ export default function AdminAmbassadorDetailPage() {
                             <TableCell className="text-right tabular-nums">{dollars(r.reward_cents)}</TableCell>
                             <TableCell className="text-muted-foreground text-sm">
                               {r.paid_out_at ? format(new Date(r.paid_out_at), 'MMM d') : '—'}
+                            </TableCell>
+                            <TableCell>
+                              {APPROVED_STATUSES.has(r.status) && !r.paid_out_at ? (
+                                amb.stripe_account_status === 'active' ? (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    disabled={firingPayoutId === r.id}
+                                    onClick={(e) => { e.stopPropagation(); void handleFirePayout(r.id, r.reward_cents); }}
+                                    className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-black gap-1"
+                                  >
+                                    {firingPayoutId === r.id ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                                    Fire payout
+                                  </Button>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground" title="Ambassador must complete Stripe onboarding first">
+                                    Pending onboarding
+                                  </span>
+                                )
+                              ) : null}
                             </TableCell>
                           </TableRow>
                           {isOpen && hasDetail && (
