@@ -78,10 +78,10 @@ serve(async (req) => {
       .select("role")
       .eq("id", userJson.id)
       .maybeSingle();
-    if (!profileData || (profileData.role !== "admin" && profileData.role !== "super_admin")) {
-      throw new Error("Not an admin");
+    if (!profileData || profileData.role !== "super_admin") {
+      throw new Error("Forbidden: super_admin required");
     }
-    log("Admin verified", { userId: userJson.id });
+    log("Super admin verified", { userId: userJson.id });
 
     // Parse body for force_refresh
     let forceRefresh = false;
