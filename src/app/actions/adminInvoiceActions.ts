@@ -47,7 +47,7 @@ export async function createPartnerInvoiceDraft(payload: {
   description: string;
   dueDate: string | null;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
-  const gate = await assertAdmin();
+  const gate = await assertSuperAdmin();
   if (!gate.ok) return gate;
   if (!payload.description?.trim()) return { ok: false, error: 'Description required' };
   if (payload.amount <= 0) return { ok: false, error: 'Invalid amount' };
@@ -70,7 +70,7 @@ export async function createPartnerInvoiceDraft(payload: {
 }
 
 export async function waivePartnerInvoice(invoiceId: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  const gate = await assertAdmin();
+  const gate = await assertSuperAdmin();
   if (!gate.ok) return gate;
   const { error } = await gate.admin
     .from('partner_invoices')
@@ -87,7 +87,7 @@ export async function waivePartnerInvoice(invoiceId: string): Promise<{ ok: true
 export async function sendPartnerStripeInvoice(
   invoiceId: string
 ): Promise<{ ok: true; url?: string } | { ok: false; error: string }> {
-  const gate = await assertAdmin();
+  const gate = await assertSuperAdmin();
   if (!gate.ok) return gate;
 
   const key = process.env.STRIPE_SECRET_KEY;

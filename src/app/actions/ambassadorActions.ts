@@ -267,7 +267,7 @@ export async function deactivateAmbassador(
 export async function createAmbassadorOnboardingLink(
   ambassadorId: string
 ): Promise<{ url: string; expiresAt: number }> {
-  const gate = await assertAdmin();
+  const gate = await assertSuperAdmin();
   if (!gate.ok) throw new Error(gate.error);
 
   const supabase = serviceClient();
@@ -318,7 +318,7 @@ export async function createAmbassadorOnboardingLink(
 export async function fireAmbassadorPayout(
   referralId: string
 ): Promise<{ payout_id: string; transfer_id: string }> {
-  const gate = await assertAdmin();
+  const gate = await assertSuperAdmin();
   if (!gate.ok) throw new Error(gate.error);
 
   const supabase = serviceClient();
@@ -427,7 +427,7 @@ export async function fireAllPendingPayouts(): Promise<{
   success: number;
   failed: { id: string; error: string }[];
 }> {
-  const gate = await assertAdmin();
+  const gate = await assertSuperAdmin();
   if (!gate.ok) throw new Error(gate.error);
 
   const supabase = serviceClient();
