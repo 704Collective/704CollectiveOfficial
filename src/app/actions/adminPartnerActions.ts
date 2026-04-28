@@ -43,6 +43,24 @@ async function assertAdmin() {
   return { ok: true as const, userId: user.id, supabase, admin };
 }
 
+async function assertSuperAdmin() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false as const, error: 'Unauthorized' };
+  const admin = serviceClient();
+  const { data: prof } = await admin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (prof?.role !== 'super_admin') {
+    return { ok: false as const, error: 'Forbidden: super_admin required' };
+  }
+  return { ok: true as const, userId: user.id, supabase, admin };
+}
+
 export async function approvePartnerApplication(applicationId: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const gate = await assertAdmin();
   if (!gate.ok) return gate;
