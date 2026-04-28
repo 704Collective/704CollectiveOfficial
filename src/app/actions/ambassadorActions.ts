@@ -273,7 +273,10 @@ export async function createAmbassadorOnboardingLink(
       type: 'express',
       country: 'US',
       email: (ambassador as { email: string }).email,
-      capabilities: { transfers: { requested: true } },
+      capabilities: {
+        transfers: { requested: true },
+        card_payments: { requested: true },
+      },
       metadata: {
         ambassador_id: (ambassador as { id: string }).id,
         platform_source: '704_collective',
