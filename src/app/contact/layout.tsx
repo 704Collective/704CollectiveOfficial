@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { DEFAULT_OG_IMAGE, SITE_URL } from "@/lib/siteMetadata";
 
 export const metadata: Metadata = {
-  title: "Contact | 704 Collective",
+  title: "Contact",
   description:
     "Get in touch with 704 Collective - email, social channels, and Charlotte community updates.",
   openGraph: {

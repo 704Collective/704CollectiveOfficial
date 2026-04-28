@@ -19,8 +19,6 @@ import GradientShift from '@/components/GradientShift';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import JsonLd from '@/components/JsonLd';
 import { socialServiceSchema704 } from '@/lib/jsonLdSchemas';
-import { PromoBanner } from '@/components/PromoBanner';
-
 /* ─── Helpers ─── */
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -96,7 +94,6 @@ export default function SocialPage() {
   return (
     <>
       <JsonLd schema={socialServiceSchema704} />
-      <PromoBanner />
       <Nav />
       <main id="main-content" style={{ paddingTop: 'calc(64px + var(--banner-height, 0px))' }}>
         <MarketingPageRoot>

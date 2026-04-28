@@ -4,7 +4,7 @@ import { DEFAULT_OG_IMAGE, SITE_URL } from "@/lib/siteMetadata";
 export const dynamic = "force-static";
 
 export const metadata: Metadata = {
-  title: "Upcoming Events | 704 Collective",
+  title: "Upcoming Events",
   description:
     "Discover and RSVP to upcoming 704 Collective events in Charlotte. Members attend free; guests can purchase tickets.",
   openGraph: {

@@ -10,7 +10,6 @@ import { addDays, format } from 'date-fns';
 import { Calendar, MapPin, Users, ArrowRight, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import Nav from '@/components/Nav';
-import { PromoBanner } from '@/components/PromoBanner';
 import { Footer } from '@/components/Footer';
 import {
   FadeUp,
@@ -275,7 +274,6 @@ function JoinInner() {
 
   return (
     <>
-      <PromoBanner />
       <Nav />
       <main id="main-content" style={{ paddingTop: 'calc(64px + var(--banner-height, 0px))', backgroundColor: '#000', minHeight: '100dvh' }}>
         <MarketingPageRoot>
