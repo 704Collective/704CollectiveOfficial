@@ -328,48 +328,48 @@ export function AdminOverviewTab({
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Financials */}
-        <div className="rounded-xl border border-border bg-card p-5 flex flex-col min-h-[220px]">
-          <div className="flex items-start justify-between mb-3">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">FINANCIALS</p>
-            <DollarSign className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden />
-          </div>
-          {finLoading ? (
-            <div className="flex-1 space-y-2 pt-1">
-              <Skeleton className="h-8 w-28" />
-              <Skeleton className="h-3 w-40" />
-              <Skeleton className="h-4 w-52 mt-3" />
+        {/* Financials — super_admin only */}
+        {isSuperAdmin && (
+          <div className="rounded-xl border border-border bg-card p-5 flex flex-col min-h-[220px]">
+            <div className="flex items-start justify-between mb-3">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">FINANCIALS</p>
+              <DollarSign className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden />
             </div>
-          ) : financialsUnavailable ? (
-            <p className="text-sm text-muted-foreground flex-1">Financial data unavailable.</p>
-          ) : (
-            <>
-              <p className="text-3xl font-bold tabular-nums">
-                {mrr != null ? `$${mrr.toLocaleString()}` : '—'}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">Monthly recurring revenue</p>
-              <div className="mt-4 flex items-center gap-2 text-sm flex-wrap">
-                <span className="text-muted-foreground">Last 30 days</span>
-                <span className="font-medium text-foreground">
-                  {last30RevenueDollars != null ? `$${last30RevenueDollars.toLocaleString()}` : '—'}
-                </span>
-                {momPercent != null && (
-                  <span
-                    className={cn(
-                      'inline-flex items-center gap-0.5 font-medium',
-                      momUp ? 'text-green-400' : momDown ? 'text-destructive' : 'text-muted-foreground',
-                    )}
-                  >
-                    {momUp && <ArrowUpRight className="w-3.5 h-3.5" />}
-                    {momDown && <ArrowDownRight className="w-3.5 h-3.5" />}
-                    {momPercent >= 0 ? '+' : ''}
-                    {momPercent.toFixed(1)}% MoM
-                  </span>
-                )}
+            {finLoading ? (
+              <div className="flex-1 space-y-2 pt-1">
+                <Skeleton className="h-8 w-28" />
+                <Skeleton className="h-3 w-40" />
+                <Skeleton className="h-4 w-52 mt-3" />
               </div>
-            </>
-          )}
-          {isSuperAdmin && (
+            ) : financialsUnavailable ? (
+              <p className="text-sm text-muted-foreground flex-1">Financial data unavailable.</p>
+            ) : (
+              <>
+                <p className="text-3xl font-bold tabular-nums">
+                  {mrr != null ? `$${mrr.toLocaleString()}` : '—'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Monthly recurring revenue</p>
+                <div className="mt-4 flex items-center gap-2 text-sm flex-wrap">
+                  <span className="text-muted-foreground">Last 30 days</span>
+                  <span className="font-medium text-foreground">
+                    {last30RevenueDollars != null ? `$${last30RevenueDollars.toLocaleString()}` : '—'}
+                  </span>
+                  {momPercent != null && (
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-0.5 font-medium',
+                        momUp ? 'text-green-400' : momDown ? 'text-destructive' : 'text-muted-foreground',
+                      )}
+                    >
+                      {momUp && <ArrowUpRight className="w-3.5 h-3.5" />}
+                      {momDown && <ArrowDownRight className="w-3.5 h-3.5" />}
+                      {momPercent >= 0 ? '+' : ''}
+                      {momPercent.toFixed(1)}% MoM
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
             <button
               type="button"
               onClick={() => onSectionChange('financials')}
@@ -377,8 +377,8 @@ export function AdminOverviewTab({
             >
               View full financials <ArrowRight className="w-4 h-4" />
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Events */}
         <div className="rounded-xl border border-border bg-card p-5 flex flex-col min-h-[220px]">

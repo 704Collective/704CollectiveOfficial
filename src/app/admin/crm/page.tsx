@@ -9,6 +9,7 @@ import {
   Clock, CheckCircle2,
 } from 'lucide-react';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { useAuth } from '@/hooks/useAuth';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -160,6 +161,7 @@ function CustomTooltip({ active, payload, label }: any) {
 /* ─── Page ─── */
 export default function CrmDashboardPage() {
   const router = useRouter();
+  const { isSuperAdmin } = useAuth();
 
   const [totalContacts, setTotalContacts] = useState(0);
   const [activeMembers, setActiveMembers] = useState(0);
@@ -176,11 +178,10 @@ export default function CrmDashboardPage() {
   useEffect(() => {
     async function load() {
       try {
-        // Row 1 stats
+        // Row 1 stats (non-financial)
         const [
           contactsRes,
           membersRes,
-          paymentsRes,
           pipelineRes,
         ] = await Promise.all([
           supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('status', 'active'),
@@ -189,15 +190,22 @@ export default function CrmDashboardPage() {
             .select('id', { count: 'exact', head: true })
             .is('deleted_at', null)
             .in('subscription_status', ['active', 'trialing']),
-          supabase.from('payments').select('amount').eq('status', 'succeeded')
-            .gte('created_at', startOfMonth(new Date()).toISOString()),
           supabase.from('crm_deals').select('value').not('stage', 'in', '("denied","lost")'),
         ]);
 
         setTotalContacts(contactsRes.count ?? 0);
         setActiveMembers(membersRes.count ?? 0);
-        setMrr((paymentsRes.data ?? []).reduce((s, r) => s + (r.amount ?? 0), 0));
         setPipelineValue((pipelineRes.data ?? []).reduce((s, r) => s + (r.value ?? 0), 0));
+
+        // MRR — super_admin only
+        if (isSuperAdmin) {
+          const paymentsRes = await supabase
+            .from('payments')
+            .select('amount')
+            .eq('status', 'succeeded')
+            .gte('created_at', startOfMonth(new Date()).toISOString());
+          setMrr((paymentsRes.data ?? []).reduce((s, r) => s + (r.amount ?? 0), 0));
+        }
 
         // Member growth — last 6 months
         const months = Array.from({ length: 6 }, (_, i) => {
@@ -218,20 +226,22 @@ export default function CrmDashboardPage() {
         );
         setMemberGrowth(growthData);
 
-        // Revenue — last 6 months
-        const revData = await Promise.all(
-          months.map(async (m) => {
-            const { data } = await supabase
-              .from('payments')
-              .select('amount')
-              .eq('status', 'succeeded')
-              .gte('created_at', m.start)
-              .lte('created_at', m.end);
-            const total = (data ?? []).reduce((s, r) => s + (r.amount ?? 0), 0);
-            return { month: m.month, revenue: total };
-          })
-        );
-        setRevenueData(revData);
+        // Revenue — super_admin only
+        if (isSuperAdmin) {
+          const revData = await Promise.all(
+            months.map(async (m) => {
+              const { data } = await supabase
+                .from('payments')
+                .select('amount')
+                .eq('status', 'succeeded')
+                .gte('created_at', m.start)
+                .lte('created_at', m.end);
+              const total = (data ?? []).reduce((s, r) => s + (r.amount ?? 0), 0);
+              return { month: m.month, revenue: total };
+            })
+          );
+          setRevenueData(revData);
+        }
 
         // Recent activity
         const { data: activityData } = await supabase
@@ -279,7 +289,7 @@ export default function CrmDashboardPage() {
       }
     }
     load();
-  }, []);
+  }, [isSuperAdmin]);
 
   const statCards: StatCard[] = [
     {
@@ -349,7 +359,7 @@ export default function CrmDashboardPage() {
 
       {/* Row 1 — Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {statCards.map((card) => (
+        {statCards.filter(card => card.label !== 'MRR' || isSuperAdmin).map((card) => (
           <StatCardWidget key={card.label} card={card} />
         ))}
       </div>
@@ -375,23 +385,25 @@ export default function CrmDashboardPage() {
           )}
         </div>
 
-        {/* Revenue */}
-        <div className="bg-card border border-border rounded-xl p-5">
-          <SectionHeader title="Revenue" action="View financials" onAction={() => router.push('/admin?section=financials')} />
-          {revenueData.every(m => m.revenue === 0) ? (
-            <div className="flex items-center justify-center h-44 text-muted-foreground text-sm">No data yet</div>
-          ) : (
-            <ResponsiveContainer width="100%" height={176}>
-              <BarChart data={revenueData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} width={40} tickFormatter={(v) => `$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="revenue" name="Revenue" fill="#C6A664" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+        {/* Revenue — super_admin only */}
+        {isSuperAdmin && (
+          <div className="bg-card border border-border rounded-xl p-5">
+            <SectionHeader title="Revenue" action="View financials" onAction={() => router.push('/admin?section=financials')} />
+            {revenueData.every(m => m.revenue === 0) ? (
+              <div className="flex items-center justify-center h-44 text-muted-foreground text-sm">No data yet</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={176}>
+                <BarChart data={revenueData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} width={40} tickFormatter={(v) => `$${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="revenue" name="Revenue" fill="#C6A664" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Row 3 — Activity + Pipeline */}

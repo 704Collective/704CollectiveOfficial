@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { format, subDays } from 'date-fns';
 import {
@@ -151,6 +152,7 @@ function ConnectAccountDialog({ open, onClose, onConnected }: { open: boolean; o
 
 /* ─── Page ─── */
 export default function CrmAdsPage() {
+  const { isSuperAdmin } = useAuth();
   const [accounts, setAccounts] = useState<AdAccount[]>([]);
   const [performance, setPerformance] = useState<AdPerformance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -265,10 +267,12 @@ export default function CrmAdsPage() {
         <>
           {/* Stats */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <StatCard label="Total Spend"      value={formatCurrency(totals.spend)}               icon={DollarSign}    color="bg-red-500/10 text-red-400" />
+            {isSuperAdmin && (
+              <StatCard label="Total Spend" value={formatCurrency(totals.spend)} icon={DollarSign} color="bg-red-500/10 text-red-400" />
+            )}
             <StatCard label="Impressions"      value={totals.impressions.toLocaleString()}         icon={Eye}           color="bg-blue-500/10 text-blue-400" />
             <StatCard label="Clicks"           value={totals.clicks.toLocaleString()}              icon={MousePointer}  color="bg-yellow-500/10 text-yellow-400" sub={`${avgCtr}% CTR`} />
-            <StatCard label="Conversions"      value={totals.conversions.toLocaleString()}         icon={Target}        color="bg-emerald-500/10 text-emerald-400" sub={`${avgRoas}x ROAS`} />
+            <StatCard label="Conversions"      value={totals.conversions.toLocaleString()}         icon={Target}        color="bg-emerald-500/10 text-emerald-400" sub={isSuperAdmin ? `${avgRoas}x ROAS` : undefined} />
           </div>
 
           {/* Charts */}

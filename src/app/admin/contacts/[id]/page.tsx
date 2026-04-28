@@ -6,6 +6,7 @@ import { ArrowLeft, Calendar, Gift, Mail, DollarSign, MapPin, Trash2 } from 'luc
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { parseContactRouteId } from '@/lib/admin/unified-contacts';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -64,6 +65,7 @@ function avatarColor(email: string) {
 export default function AdminContactDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { isSuperAdmin } = useAuth();
   const raw = typeof params.id === 'string' ? params.id : '';
   const parsed = useMemo(() => parseContactRouteId(raw), [raw]);
 
@@ -121,13 +123,17 @@ export default function AdminContactDetailPage() {
           .eq('converted_to_member_id', parsed.id)
           .maybeSingle();
         setResolvedContactId((linkedContact as { id?: string } | null)?.id ?? null);
-        const { data: pay } = await supabase
-          .from('payments')
-          .select('description, amount, created_at, status')
-          .eq('user_id', parsed.id)
-          .order('created_at', { ascending: false })
-          .limit(20);
-        setPayments((pay ?? []) as never);
+        if (isSuperAdmin) {
+          const { data: pay } = await supabase
+            .from('payments')
+            .select('description, amount, created_at, status')
+            .eq('user_id', parsed.id)
+            .order('created_at', { ascending: false })
+            .limit(20);
+          setPayments((pay ?? []) as never);
+        } else {
+          setPayments([]);
+        }
         const em = (data as { email?: string })?.email;
         if (em) {
           const { data: logs } = await supabase
@@ -205,7 +211,7 @@ export default function AdminContactDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [raw]);
+  }, [raw, isSuperAdmin]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -499,11 +505,13 @@ export default function AdminContactDetailPage() {
 
           <Tabs defaultValue="overview">
             <TabsList className="flex flex-wrap h-auto gap-1 bg-muted/40 p-1">
-              {(['Overview', 'Activity', 'Emails', 'Messages', 'Payments', 'Settings'] as const).map((t) => (
-                <TabsTrigger key={t} value={t.toLowerCase()} className="text-xs sm:text-sm">
-                  {t}
-                </TabsTrigger>
-              ))}
+              {(['Overview', 'Activity', 'Emails', 'Messages', 'Payments', 'Settings'] as const)
+                .filter(t => t !== 'Payments' || isSuperAdmin)
+                .map((t) => (
+                  <TabsTrigger key={t} value={t.toLowerCase()} className="text-xs sm:text-sm">
+                    {t}
+                  </TabsTrigger>
+                ))}
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4 mt-4">
@@ -697,23 +705,25 @@ export default function AdminContactDetailPage() {
               No messages for this contact.
             </TabsContent>
 
-            <TabsContent value="payments" className="mt-4 space-y-2">
-              {payments.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No payments found.</p>
-              ) : (
-                payments.map((p, i) => (
-                  <div key={i} className="flex gap-3 border border-border rounded-lg p-3 items-center">
-                    <DollarSign className="w-4 h-4" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{p.description || 'Payment'}</p>
-                      <p className="text-xs text-muted-foreground">{p.created_at ? format(new Date(p.created_at), 'MMM d, yyyy') : '—'}</p>
+            {isSuperAdmin && (
+              <TabsContent value="payments" className="mt-4 space-y-2">
+                {payments.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No payments found.</p>
+                ) : (
+                  payments.map((p, i) => (
+                    <div key={i} className="flex gap-3 border border-border rounded-lg p-3 items-center">
+                      <DollarSign className="w-4 h-4" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{p.description || 'Payment'}</p>
+                        <p className="text-xs text-muted-foreground">{p.created_at ? format(new Date(p.created_at), 'MMM d, yyyy') : '—'}</p>
+                      </div>
+                      <p className="font-medium">${(p.amount / 100).toFixed(2)}</p>
+                      <span className="text-xs rounded-full px-2 py-0.5 bg-green-500/20 text-green-400 border border-green-500/30">Succeeded</span>
                     </div>
-                    <p className="font-medium">${(p.amount / 100).toFixed(2)}</p>
-                    <span className="text-xs rounded-full px-2 py-0.5 bg-green-500/20 text-green-400 border border-green-500/30">Succeeded</span>
-                  </div>
-                ))
-              )}
-            </TabsContent>
+                  ))
+                )}
+              </TabsContent>
+            )}
 
             <TabsContent value="settings" className="mt-4 space-y-6">
               {isMember ? (
