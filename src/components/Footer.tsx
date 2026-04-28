@@ -39,6 +39,7 @@ export function Footer() {
             { href: '/events', label: 'Events' },
             { href: '/about', label: 'About' },
             { href: '/contact', label: 'Contact' },
+            { href: '/ambassadors/leaderboard', label: 'Ambassadors' },
             { href: '/terms', label: 'Terms' },
             { href: '/privacy', label: 'Privacy' },
           ].map((link) => (

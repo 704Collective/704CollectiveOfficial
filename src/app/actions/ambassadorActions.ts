@@ -310,7 +310,7 @@ export async function fireAmbassadorPayout(
   const supabase = serviceClient();
   const { data: ref, error: refErr } = await supabase
     .from('ambassador_referrals')
-    .select('id, ambassador_id, reward_cents, status, paid_out_at, ambassador:ambassadors!ambassador_id (id, full_name, stripe_account_id, stripe_account_status)')
+    .select('id, ambassador_id, reward_cents, status, paid_out_at, ambassador:ambassadors!ambassador_id (id, full_name, email, stripe_account_id, stripe_account_status)')
     .eq('id', referralId)
     .maybeSingle();
   if (refErr || !ref) throw new Error('Referral not found');
@@ -323,6 +323,7 @@ export async function fireAmbassadorPayout(
   const amb = (ref.ambassador as unknown) as {
     id: string;
     full_name: string;
+    email: string | null;
     stripe_account_id: string | null;
     stripe_account_status: string | null;
   };
@@ -369,6 +370,40 @@ export async function fireAmbassadorPayout(
     .from('ambassador_referrals')
     .update({ paid_out_at: new Date().toISOString(), stripe_payout_id: transfer.id })
     .eq('id', ref.id);
+
+  // ── Send payout email (non-blocking) ──
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const { data: totalPaidRows } = await supabase
+      .from('ambassador_payouts')
+      .select('amount_cents')
+      .eq('ambassador_id', amb.id)
+      .eq('status', 'sent');
+    const totalPaidCents = (totalPaidRows ?? []).reduce(
+      (sum: number, r: { amount_cents: number | null }) => sum + (r.amount_cents || 0),
+      0
+    );
+    await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({
+        to: amb.email ?? '',
+        template: 'ambassador-payout-sent',
+        skipCc: true,
+        data: {
+          ambassadorName: amb.full_name,
+          amountDollars: ((ref.reward_cents as number) / 100).toFixed(2),
+          transferId: transfer.id,
+          totalPaidDollars: (totalPaidCents / 100).toFixed(2),
+        },
+      }),
+    });
+  } catch (emailErr) {
+    console.error('Payout email failed (non-blocking):', emailErr);
+  }
 
   return { payout_id: payoutRow?.id ?? '', transfer_id: transfer.id };
 }
