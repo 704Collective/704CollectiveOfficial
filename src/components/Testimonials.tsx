@@ -6,14 +6,14 @@ const TESTIMONIALS = [
       '704 makes it so easy to hit fun events - especially the health and wellness ones, my personal fave - and I get to meet so many new people every time!!',
     author: 'Sydney',
     role: 'Social Member',
-    img: 'https://chnpjxwcmxkmcdoivmra.supabase.co/storage/v1/object/public/public-assets//Sydney.jpg',
+    img: '/testimonials/sydney.jpg',
   },
   {
     quote:
       "Joining 704 was a great decision, there's so many events and everyone I've met has been great.",
     author: 'Nick',
     role: 'Social Member',
-    img: 'https://chnpjxwcmxkmcdoivmra.supabase.co/storage/v1/object/public/public-assets//Nick.jpg',
+    img: '/testimonials/nick.jpg',
   },
 ];
 

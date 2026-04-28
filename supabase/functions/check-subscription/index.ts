@@ -35,7 +35,7 @@ serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
 
-    // Use anon key + user's auth header for proper JWT validation on Lovable Cloud (ES256 tokens)
+    // Use anon key + user's auth header for proper JWT validation
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
