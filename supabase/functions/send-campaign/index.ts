@@ -32,7 +32,7 @@ interface Block {
 
 interface RenderContext {
   isTest: boolean;
-  upcomingEvents?: Array<{ name: string; date: string; location: string; url: string }>;
+  upcomingEvents?: Array<{ name: string; date: string; time?: string; location: string; url: string }>;
   senderName: string;
   siteUrl: string;
 }
@@ -52,26 +52,29 @@ function preserveNewlines(s: string): string {
 function renderBlock(block: Block, ctx: RenderContext): string {
   const c = block.content ?? {};
   switch (block.type) {
-    case 'logo':
+    case 'logo': {
+      const logoUrl = 'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/704-logo.png';
+      const link = c.link || ctx.siteUrl;
       return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 auto;">
-        <tr><td align="center" style="padding:24px 0;">
-          <a href="${escapeHtml(c.link || ctx.siteUrl)}" style="text-decoration:none;">
-            <span style="display:inline-block;background:#000000;color:#FFFFFF;font-family:Arial,sans-serif;font-weight:700;font-size:14px;padding:10px 20px;border-radius:8px;">704 Collective</span>
+        <tr><td align="center" style="padding:32px 0 24px;">
+          <a href="${escapeHtml(link)}" style="text-decoration:none;">
+            <img src="${logoUrl}" alt="704 Collective" width="80" style="display:block;width:80px;height:80px;border:0;border-radius:50%;" />
           </a>
         </td></tr>
       </table>`;
+    }
 
     case 'greeting':
-      return `<p style="font-family:Arial,sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;margin:8px 0;line-height:1.5;">${preserveNewlines(c.text || '')}</p>`;
+      return `<p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:17px;font-weight:600;color:#1A1A1A;margin:8px 0 16px;line-height:1.5;">${preserveNewlines(c.text || '')}</p>`;
 
     case 'heading': {
       const tag = c.size === 'h1' ? 'h1' : c.size === 'h3' ? 'h3' : 'h2';
       const fontSize = tag === 'h1' ? '24px' : tag === 'h3' ? '16px' : '20px';
-      return `<${tag} style="font-family:Arial,sans-serif;font-weight:700;color:#1A1A1A;margin:16px 0 8px;font-size:${fontSize};line-height:1.3;">${escapeHtml(c.text || '')}</${tag}>`;
+      return `<${tag} style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-weight:700;color:#1A1A1A;margin:24px 0 12px;font-size:${fontSize};line-height:1.3;">${escapeHtml(c.text || '')}</${tag}>`;
     }
 
     case 'text':
-      return `<p style="font-family:Arial,sans-serif;font-size:14px;color:#444444;margin:8px 0;line-height:1.6;white-space:pre-wrap;">${preserveNewlines(c.text || '')}</p>`;
+      return `<p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#444444;margin:0 0 16px;line-height:1.7;white-space:pre-wrap;">${preserveNewlines(c.text || '')}</p>`;
 
     case 'image': {
       if (!c.url) return '';
@@ -96,42 +99,59 @@ function renderBlock(block: Block, ctx: RenderContext): string {
 
     case 'events_list': {
       const title = c.title || 'Upcoming Events';
-      const heading = `<p style="font-family:Arial,sans-serif;font-weight:700;color:#1A1A1A;margin:8px 0;font-size:16px;">${escapeHtml(title)}</p>`;
+      const heading = `<p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-weight:700;color:#1A1A1A;margin:24px 0 16px;font-size:20px;">${escapeHtml(title)}</p>`;
 
       if (ctx.isTest) {
-        return heading + `<p style="font-family:Arial,sans-serif;font-size:13px;color:#666666;font-style:italic;margin:4px 0;">[Live event data will populate when sent — preview only]</p>`;
+        const placeholderCard = (date: string, label: string) => `
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF8;border:1px solid #EAEAE5;border-radius:12px;margin:0 0 12px;">
+            <tr><td style="padding:20px;">
+              <p style="margin:0 0 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;color:#888;">${date}</p>
+              <p style="margin:0 0 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:17px;font-weight:700;color:#1A1A1A;line-height:1.3;">${label}</p>
+              <p style="margin:0 0 4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#444;"><strong>Time:</strong> [event time]</p>
+              <p style="margin:0 0 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#444;"><strong>Location:</strong> [event location]</p>
+              <a href="${ctx.siteUrl}" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#C6A664;text-decoration:none;font-weight:600;">RSVP →</a>
+            </td></tr>
+          </table>`;
+        return heading
+          + placeholderCard('Sample Day, Month Date', '[Event Title — Live data populates when sent]')
+          + placeholderCard('Sample Day, Month Date', '[Another Event Title]');
       }
 
       const events = ctx.upcomingEvents ?? [];
       if (events.length === 0) {
-        return heading + `<p style="font-family:Arial,sans-serif;font-size:13px;color:#666666;margin:4px 0;">No upcoming events scheduled.</p>`;
+        return heading + `<p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#666;margin:8px 0 24px;">No upcoming events scheduled.</p>`;
       }
 
-      const rows = events.map(e => `
-        <tr><td style="padding:6px 0;font-family:Arial,sans-serif;font-size:13px;color:#444;">
-          <a href="${escapeHtml(e.url)}" style="color:#1A1A1A;text-decoration:underline;font-weight:600;">${escapeHtml(e.name)}</a>
-          <span style="color:#888;"> — ${escapeHtml(e.date)} · ${escapeHtml(e.location)}</span>
-        </td></tr>
-      `).join('');
+      const cards = events.map(e => `
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF8;border:1px solid #EAEAE5;border-radius:12px;margin:0 0 12px;">
+          <tr><td style="padding:20px;">
+            <p style="margin:0 0 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;color:#888;">${escapeHtml(e.date)}</p>
+            <p style="margin:0 0 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:17px;font-weight:700;color:#1A1A1A;line-height:1.3;">${escapeHtml(e.name)}</p>
+            ${e.time ? `<p style="margin:0 0 4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#444;"><strong>Time:</strong> ${escapeHtml(e.time)}</p>` : ''}
+            ${e.location ? `<p style="margin:0 0 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#444;"><strong>Location:</strong> ${escapeHtml(e.location)}</p>` : ''}
+            <a href="${escapeHtml(e.url)}" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#C6A664;text-decoration:none;font-weight:600;">RSVP →</a>
+          </td></tr>
+        </table>`).join('');
 
-      return heading + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>`;
+      return heading + cards;
     }
 
     case 'signoff': {
       const name = escapeHtml(c.name || ctx.senderName);
       const title = escapeHtml(c.title || '');
       const ps = c.ps ? `<p style="font-family:Arial,sans-serif;font-size:12px;color:#666;margin-top:12px;font-style:italic;">P.S. ${escapeHtml(c.ps)}</p>` : '';
-      return `<p style="font-family:Arial,sans-serif;font-size:14px;color:#444;margin:16px 0 4px;">${name}</p>
-              <p style="font-family:Arial,sans-serif;font-size:12px;color:#888;margin:0;">${title}</p>
+      return `<p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#444;margin:32px 0 4px;">${name}</p>
+              <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:#888;margin:0;">${title}</p>
               ${ps}`;
     }
 
     case 'footer':
-      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;border-top:1px solid #E5E5E5;">
-        <tr><td align="center" style="padding:16px 0;font-family:Arial,sans-serif;font-size:11px;color:#888;">
-          ${escapeHtml(c.org || '704 Collective')}
-          <br/>
-          <a href="{{unsubscribe_url}}" style="color:#888;text-decoration:underline;">Unsubscribe</a>
+      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;border-top:1px solid #EAEAE5;">
+        <tr><td align="center" style="padding:24px 0 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:#888;">
+          ${escapeHtml(c.org || '704 Collective')} · Charlotte, NC
+        </td></tr>
+        <tr><td align="center" style="padding:0 0 24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:#888;">
+          <a href="{{unsubscribe_url}}" style="color:#888;text-decoration:underline;">Unsubscribe</a> · <a href="${ctx.siteUrl}/settings" style="color:#888;text-decoration:underline;">Manage preferences</a>
         </td></tr>
       </table>`;
 
@@ -145,11 +165,11 @@ function renderBlocks(blocks: Block[] | null | undefined, ctx: RenderContext): s
   const inner = blocks.map(b => renderBlock(b, ctx)).join('\n');
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#FAFAFA;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAFA;">
-    <tr><td align="center" style="padding:24px 12px;">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#FFFFFF;border-radius:12px;overflow:hidden;">
-        <tr><td style="padding:24px 32px;">
+<body style="margin:0;padding:0;background:#F5F5F0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F5F5F0;">
+    <tr><td align="center" style="padding:32px 16px;">
+      <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="max-width:640px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+        <tr><td style="padding:8px 40px 40px;">
           ${inner}
         </td></tr>
       </table>
@@ -257,7 +277,33 @@ serve(async (req) => {
     let recipients: Recipient[] = [];
     const audienceType: string = campaign.audience_type ?? "all_members";
 
-    if (audienceType === "all_members") {
+    if (audienceType === "self") {
+      if (!campaign.created_by) {
+        await supabase.from("email_campaigns").update({ status: "draft" }).eq("id", campaign_id);
+        return new Response(JSON.stringify({ error: "Cannot resolve sender — campaign has no created_by" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: senderProfile } = await supabase
+        .from("profiles")
+        .select("id, email, full_name")
+        .eq("id", campaign.created_by)
+        .single();
+      if (senderProfile?.email) {
+        recipients = [{ email: senderProfile.email, name: senderProfile.full_name, profile_id: senderProfile.id }];
+      }
+    } else if (audienceType === "super_admins") {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, email, full_name")
+        .eq("role", "super_admin")
+        .is("deleted_at", null);
+      recipients = (profiles ?? []).map((p) => ({
+        email: p.email,
+        name: p.full_name,
+        profile_id: p.id,
+      }));
+    } else if (audienceType === "all_members") {
       const { data: profiles } = await supabase
         .from("profiles")
         .select("id, email, full_name")
@@ -354,18 +400,26 @@ serve(async (req) => {
       cutoff.setDate(cutoff.getDate() + maxDaysAhead);
       const { data: eventsData } = await supabase
         .from('events')
-        .select('id, title, start_time, location')
+        .select('id, title, start_time, end_time, location')
         .gte('start_time', new Date().toISOString())
         .lte('start_time', cutoff.toISOString())
         .eq('is_published', true)
         .order('start_time', { ascending: true })
         .limit(10);
-      upcomingEvents = (eventsData ?? []).map(e => ({
-        name: e.title,
-        date: new Date(e.start_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
-        location: e.location || '',
-        url: `${SITE_URL}/events/${e.id}`,
-      }));
+      upcomingEvents = (eventsData ?? []).map(e => {
+        const startDate = new Date(e.start_time);
+        const endDate = e.end_time ? new Date(e.end_time) : null;
+        const timeStr = endDate
+          ? `${startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} – ${endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`
+          : startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        return {
+          name: e.title,
+          date: startDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+          time: timeStr,
+          location: e.location || '',
+          url: `${SITE_URL}/events/${e.id}`,
+        };
+      });
     }
 
     // Render HTML once — shared across all recipients (per-recipient tokens are replaced inside the loop)

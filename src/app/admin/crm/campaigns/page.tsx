@@ -69,6 +69,8 @@ const STATUS_STYLES: Record<CampaignStatus, string> = {
 };
 
 const AUDIENCE_OPTIONS = [
+  { value: 'self',          label: 'Just Me (Sender)' },
+  { value: 'super_admins',  label: 'Super Admins' },
   { value: 'all_active',    label: 'All Active Members' },
   { value: 'social',        label: 'Social Members Only' },
   { value: 'business',      label: 'Business Members Only' },
@@ -553,15 +555,18 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
 
   useEffect(() => {
     async function fetchCounts() {
-      const [activeQ, socialQ, businessQ, nonMemberQ, cancelledQ, guestsQ] = await Promise.all([
+      const [activeQ, socialQ, businessQ, nonMemberQ, cancelledQ, guestsQ, superAdminsQ] = await Promise.all([
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').is('deleted_at', null),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').eq('member_type', 'social').is('deleted_at', null),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').eq('member_type', 'business').is('deleted_at', null),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('member_type', 'non_member').is('deleted_at', null),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'canceled').is('deleted_at', null),
         supabase.from('contacts').select('*', { count: 'exact', head: true }).eq('contact_type', 'guest'),
+        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'super_admin').is('deleted_at', null),
       ]);
       setAudienceCounts({
+        self: 1,
+        super_admins: superAdminsQ.count ?? 0,
         all_active: activeQ.count ?? 0,
         social: socialQ.count ?? 0,
         business: businessQ.count ?? 0,
