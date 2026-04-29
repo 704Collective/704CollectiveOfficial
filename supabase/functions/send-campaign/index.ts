@@ -18,6 +18,148 @@ interface Recipient {
   profile_id?: string;
 }
 
+// ===== Block-based email body renderer =====
+
+type BlockType =
+  | 'logo' | 'greeting' | 'heading' | 'text' | 'image'
+  | 'button' | 'divider' | 'spacer' | 'events_list' | 'signoff' | 'footer';
+
+interface Block {
+  id: string;
+  type: BlockType;
+  content: Record<string, any>;
+}
+
+interface RenderContext {
+  isTest: boolean;
+  upcomingEvents?: Array<{ name: string; date: string; location: string; url: string }>;
+  senderName: string;
+  siteUrl: string;
+}
+
+function escapeHtml(s: string): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function preserveNewlines(s: string): string {
+  return escapeHtml(s).replace(/\n/g, '<br/>');
+}
+
+function renderBlock(block: Block, ctx: RenderContext): string {
+  const c = block.content ?? {};
+  switch (block.type) {
+    case 'logo':
+      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+        <tr><td align="center" style="padding:24px 0;">
+          <a href="${escapeHtml(c.link || ctx.siteUrl)}" style="text-decoration:none;">
+            <span style="display:inline-block;background:#000000;color:#FFFFFF;font-family:Arial,sans-serif;font-weight:700;font-size:14px;padding:10px 20px;border-radius:8px;">704 Collective</span>
+          </a>
+        </td></tr>
+      </table>`;
+
+    case 'greeting':
+      return `<p style="font-family:Arial,sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;margin:8px 0;line-height:1.5;">${preserveNewlines(c.text || '')}</p>`;
+
+    case 'heading': {
+      const tag = c.size === 'h1' ? 'h1' : c.size === 'h3' ? 'h3' : 'h2';
+      const fontSize = tag === 'h1' ? '24px' : tag === 'h3' ? '16px' : '20px';
+      return `<${tag} style="font-family:Arial,sans-serif;font-weight:700;color:#1A1A1A;margin:16px 0 8px;font-size:${fontSize};line-height:1.3;">${escapeHtml(c.text || '')}</${tag}>`;
+    }
+
+    case 'text':
+      return `<p style="font-family:Arial,sans-serif;font-size:14px;color:#444444;margin:8px 0;line-height:1.6;white-space:pre-wrap;">${preserveNewlines(c.text || '')}</p>`;
+
+    case 'image': {
+      if (!c.url) return '';
+      const img = `<img src="${escapeHtml(c.url)}" alt="${escapeHtml(c.alt || '')}" style="display:block;max-width:100%;height:auto;border:0;margin:0 auto;" />`;
+      const wrapped = c.link ? `<a href="${escapeHtml(c.link)}" style="text-decoration:none;">${img}</a>` : img;
+      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:8px 0;">${wrapped}</td></tr></table>`;
+    }
+
+    case 'button': {
+      const align = c.align === 'left' ? 'left' : c.align === 'right' ? 'right' : 'center';
+      const color = c.color || '#C6A664';
+      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="${align}" style="padding:12px 0;">
+        <a href="${escapeHtml(c.url || ctx.siteUrl)}" style="display:inline-block;background-color:${escapeHtml(color)};color:#000000;font-family:Arial,sans-serif;font-weight:600;font-size:14px;text-decoration:none;padding:12px 24px;border-radius:8px;">${escapeHtml(c.text || 'Click Here')}</a>
+      </td></tr></table>`;
+    }
+
+    case 'divider':
+      return `<hr style="border:0;border-top:1px solid ${escapeHtml(c.color || '#2E2E2E')};margin:16px 0;" />`;
+
+    case 'spacer':
+      return `<div style="height:${Number(c.height) || 24}px;line-height:${Number(c.height) || 24}px;font-size:1px;">&nbsp;</div>`;
+
+    case 'events_list': {
+      const title = c.title || 'Upcoming Events';
+      const heading = `<p style="font-family:Arial,sans-serif;font-weight:700;color:#1A1A1A;margin:8px 0;font-size:16px;">${escapeHtml(title)}</p>`;
+
+      if (ctx.isTest) {
+        return heading + `<p style="font-family:Arial,sans-serif;font-size:13px;color:#666666;font-style:italic;margin:4px 0;">[Live event data will populate when sent — preview only]</p>`;
+      }
+
+      const events = ctx.upcomingEvents ?? [];
+      if (events.length === 0) {
+        return heading + `<p style="font-family:Arial,sans-serif;font-size:13px;color:#666666;margin:4px 0;">No upcoming events scheduled.</p>`;
+      }
+
+      const rows = events.map(e => `
+        <tr><td style="padding:6px 0;font-family:Arial,sans-serif;font-size:13px;color:#444;">
+          <a href="${escapeHtml(e.url)}" style="color:#1A1A1A;text-decoration:underline;font-weight:600;">${escapeHtml(e.name)}</a>
+          <span style="color:#888;"> — ${escapeHtml(e.date)} · ${escapeHtml(e.location)}</span>
+        </td></tr>
+      `).join('');
+
+      return heading + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>`;
+    }
+
+    case 'signoff': {
+      const name = escapeHtml(c.name || ctx.senderName);
+      const title = escapeHtml(c.title || '');
+      const ps = c.ps ? `<p style="font-family:Arial,sans-serif;font-size:12px;color:#666;margin-top:12px;font-style:italic;">P.S. ${escapeHtml(c.ps)}</p>` : '';
+      return `<p style="font-family:Arial,sans-serif;font-size:14px;color:#444;margin:16px 0 4px;">${name}</p>
+              <p style="font-family:Arial,sans-serif;font-size:12px;color:#888;margin:0;">${title}</p>
+              ${ps}`;
+    }
+
+    case 'footer':
+      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;border-top:1px solid #E5E5E5;">
+        <tr><td align="center" style="padding:16px 0;font-family:Arial,sans-serif;font-size:11px;color:#888;">
+          ${escapeHtml(c.org || '704 Collective')}
+          <br/>
+          <a href="{{unsubscribe_url}}" style="color:#888;text-decoration:underline;">Unsubscribe</a>
+        </td></tr>
+      </table>`;
+
+    default:
+      return '';
+  }
+}
+
+function renderBlocks(blocks: Block[] | null | undefined, ctx: RenderContext): string {
+  if (!blocks || !Array.isArray(blocks)) return '';
+  const inner = blocks.map(b => renderBlock(b, ctx)).join('\n');
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#FAFAFA;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAFA;">
+    <tr><td align="center" style="padding:24px 12px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#FFFFFF;border-radius:12px;overflow:hidden;">
+        <tr><td style="padding:24px 32px;">
+          ${inner}
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+}
+
+// ===== End renderer =====
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -56,7 +198,6 @@ serve(async (req) => {
       });
     }
 
-    const htmlBody: string = campaign.body_html ?? campaign.content_html ?? campaign.content ?? "";
     const subject: string = campaign.subject;
     const fromName: string = campaign.from_name ?? "704 Collective";
     const fromEmail: string = campaign.from_email ?? "no-reply@704collective.com";
@@ -64,18 +205,18 @@ serve(async (req) => {
 
     // ── TEST SEND: single recipient, no DB updates ───────────────────────────
     if (test_email) {
-      const unsubToken = btoa(`${test_email}:${campaign_id}`);
-      const unsubUrl = `${unsubscribeBase}?token=${unsubToken}`;
       const trackingPixel = `<img src="${SITE_URL}/api/track/open?c=${campaign_id}&e=${encodeURIComponent(test_email)}" width="1" height="1" style="display:none" />`;
-      const body = htmlBody
-        .replace(/{{first_name}}/gi, "Preview")
-        .replace(/{{name}}/gi, "Preview")
+      const renderedHtml = renderBlocks(campaign.body_json as Block[], {
+        isTest: true,
+        senderName: fromName,
+        siteUrl: SITE_URL,
+      });
+      const finalHtml = renderedHtml
+        .replace(/{{first_name}}/gi, 'Preview')
+        .replace(/{{name}}/gi, 'Preview')
         .replace(/{{sender_name}}/gi, fromName)
-        .replace(/{{unsubscribe_url}}/gi, unsubUrl);
-      const finalHtml = `${body}${trackingPixel}
-<p style="font-size:11px;color:#999;margin-top:32px;">
-  <a href="${unsubUrl}" style="color:#999;">Unsubscribe</a>
-</p>`;
+        .replace(/{{unsubscribe_url}}/gi, `${SITE_URL}/unsubscribe?preview=1`)
+        + trackingPixel;
 
       const testRes = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -200,6 +341,41 @@ serve(async (req) => {
     }
     const finalRecipients = Array.from(uniqueMap.values());
 
+    // Fetch upcoming events for any events_list blocks
+    const campaignBlocks = (campaign.body_json as Block[]) ?? [];
+    const eventsListBlocks = campaignBlocks.filter(b => b.type === 'events_list');
+    const maxDaysAhead = eventsListBlocks.length > 0
+      ? Math.max(...eventsListBlocks.map(b => Number(b.content?.days_ahead) || 7))
+      : 0;
+
+    let upcomingEvents: Array<{ name: string; date: string; location: string; url: string }> = [];
+    if (maxDaysAhead > 0) {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() + maxDaysAhead);
+      const { data: eventsData } = await supabase
+        .from('events')
+        .select('id, title, start_time, location')
+        .gte('start_time', new Date().toISOString())
+        .lte('start_time', cutoff.toISOString())
+        .eq('is_published', true)
+        .order('start_time', { ascending: true })
+        .limit(10);
+      upcomingEvents = (eventsData ?? []).map(e => ({
+        name: e.title,
+        date: new Date(e.start_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+        location: e.location || '',
+        url: `${SITE_URL}/events/${e.id}`,
+      }));
+    }
+
+    // Render HTML once — shared across all recipients (per-recipient tokens are replaced inside the loop)
+    const renderedHtml = renderBlocks(campaignBlocks, {
+      isTest: false,
+      upcomingEvents,
+      senderName: fromName,
+      siteUrl: SITE_URL,
+    });
+
     // Batch send (Resend batch endpoint, max 100 per call)
     const BATCH_SIZE = 100;
     let totalSent = 0;
@@ -212,14 +388,12 @@ serve(async (req) => {
         const unsubToken = btoa(`${r.email}:${campaign_id}`);
         const unsubUrl = `${unsubscribeBase}?token=${unsubToken}`;
         const trackingPixel = `<img src="${SITE_URL}/api/track/open?c=${campaign_id}&e=${encodeURIComponent(r.email)}" width="1" height="1" style="display:none" />`;
-        const body = htmlBody
+        const body = renderedHtml
           .replace(/{{first_name}}/gi, r.name?.split(" ")[0] ?? "Member")
           .replace(/{{name}}/gi, r.name ?? "Member")
+          .replace(/{{sender_name}}/gi, fromName)
           .replace(/{{unsubscribe_url}}/gi, unsubUrl);
-        const finalHtml = `${body}${trackingPixel}
-<p style="font-size:11px;color:#999;margin-top:32px;">
-  <a href="${unsubUrl}" style="color:#999;">Unsubscribe</a>
-</p>`;
+        const finalHtml = `${body}${trackingPixel}`;
 
         return {
           from: `${fromName} <${fromEmail}>`,
