@@ -653,7 +653,14 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShowTestDialog(true)} className="gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowTestDialog(true)}
+            disabled={!campaign?.id}
+            title={!campaign?.id ? 'Save your campaign as a draft first' : undefined}
+            className="gap-2"
+          >
             <Send className="w-4 h-4" /> Send Test
           </Button>
           <Button variant="outline" size="sm" onClick={() => handleSave('draft')} disabled={saving} className="gap-2">
@@ -834,15 +841,18 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
                       Authorization: `Bearer ${session?.access_token}`,
                       apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
                     },
-                    body: JSON.stringify({ campaignId: campaign?.id, testEmail }),
+                    body: JSON.stringify({ campaign_id: campaign?.id, test_email: testEmail }),
                   });
                   if (res.ok) {
                     toast.success(`Test sent to ${testEmail}`);
                     setShowTestDialog(false);
                   } else {
-                    toast.error('Failed to send test email');
+                    const errBody = await res.json().catch(() => ({}));
+                    console.error('[Send Test] HTTP', res.status, errBody);
+                    toast.error(errBody.error || 'Failed to send test email');
                   }
-                } catch {
+                } catch (err) {
+                  console.error('[Send Test] fetch threw:', err);
                   toast.error('Failed to send test email');
                 } finally {
                   setSendingTest(false);

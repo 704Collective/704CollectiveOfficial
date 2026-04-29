@@ -8,6 +8,7 @@ const corsHeaders = {
 
 interface SendCampaignPayload {
   campaign_id: string;
+  test_email?: string; // when provided, send only to this address (no DB updates)
 }
 
 interface Recipient {
@@ -29,7 +30,7 @@ serve(async (req) => {
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
     const SITE_URL = Deno.env.get("SITE_URL") ?? "https://704collective.com";
 
-    const { campaign_id }: SendCampaignPayload = await req.json();
+    const { campaign_id, test_email }: SendCampaignPayload = await req.json();
     if (!campaign_id) {
       return new Response(JSON.stringify({ error: "campaign_id is required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -49,11 +50,61 @@ serve(async (req) => {
       });
     }
 
-    if (campaign.status === "sent") {
+    if (campaign.status === "sent" && !test_email) {
       return new Response(JSON.stringify({ error: "Campaign already sent" }), {
         status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const htmlBody: string = campaign.body_html ?? campaign.content_html ?? campaign.content ?? "";
+    const subject: string = campaign.subject;
+    const fromName: string = campaign.from_name ?? "704 Collective";
+    const fromEmail: string = campaign.from_email ?? "no-reply@704collective.com";
+    const unsubscribeBase = `${SITE_URL}/unsubscribe`;
+
+    // ── TEST SEND: single recipient, no DB updates ───────────────────────────
+    if (test_email) {
+      const unsubToken = btoa(`${test_email}:${campaign_id}`);
+      const unsubUrl = `${unsubscribeBase}?token=${unsubToken}`;
+      const trackingPixel = `<img src="${SITE_URL}/api/track/open?c=${campaign_id}&e=${encodeURIComponent(test_email)}" width="1" height="1" style="display:none" />`;
+      const body = htmlBody
+        .replace(/{{first_name}}/gi, "Preview")
+        .replace(/{{name}}/gi, "Preview")
+        .replace(/{{sender_name}}/gi, fromName)
+        .replace(/{{unsubscribe_url}}/gi, unsubUrl);
+      const finalHtml = `${body}${trackingPixel}
+<p style="font-size:11px;color:#999;margin-top:32px;">
+  <a href="${unsubUrl}" style="color:#999;">Unsubscribe</a>
+</p>`;
+
+      const testRes = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: `${fromName} <${fromEmail}>`,
+          to: test_email,
+          subject: `[TEST] ${subject}`,
+          html: finalHtml,
+        }),
+      });
+
+      if (!testRes.ok) {
+        const errData = await testRes.json().catch(() => ({}));
+        console.error("send-campaign test send failed:", errData);
+        return new Response(JSON.stringify({ error: errData.message ?? "Failed to send test email" }), {
+          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(
+        JSON.stringify({ ok: true, sent_to: test_email }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    // ── END TEST SEND ────────────────────────────────────────────────────────
 
     // Mark as sending
     await supabase
@@ -148,12 +199,6 @@ serve(async (req) => {
       }
     }
     const finalRecipients = Array.from(uniqueMap.values());
-
-    const htmlBody: string = campaign.content_html ?? campaign.content ?? "";
-    const subject: string = campaign.subject;
-    const fromName: string = campaign.from_name ?? "704 Collective";
-    const fromEmail: string = campaign.from_email ?? "no-reply@704collective.com";
-    const unsubscribeBase = `${SITE_URL}/unsubscribe`;
 
     // Batch send (Resend batch endpoint, max 100 per call)
     const BATCH_SIZE = 100;
