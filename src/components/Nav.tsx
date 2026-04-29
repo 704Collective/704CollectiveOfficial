@@ -50,7 +50,7 @@ export default function Nav() {
         top: "var(--banner-height, 0px)",
         left: 0,
         right: 0,
-        zIndex: 50,
+        zIndex: 60,
         backgroundColor: "rgba(0, 0, 0, 0.92)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",

@@ -594,7 +594,7 @@ export default function EventDetail() {
         </div>
 
         {!hasTicket && !waitlistPosition && (
-          <div className="mobile-sticky-cta" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, backgroundColor: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(12px)', borderTop: '1px solid rgba(255,255,255,0.06)', padding: '14px 24px', display: 'none' }}>
+          <div className="mobile-sticky-cta" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40, backgroundColor: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(12px)', borderTop: '1px solid rgba(255,255,255,0.06)', padding: '14px 24px', display: 'none' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', maxWidth: '500px', margin: '0 auto' }}>
               <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: (isActiveMember || event.access_type === 'public_free') ? '#4CAF50' : '#FFFFFF' }}>{isActiveMember || ticketPrice <= 0 || event.access_type === 'public_free' ? 'Free' : formatPrice(ticketPrice)}</div>
               <button onClick={handleMobileCTA} disabled={isActionLoading} style={{ flex: 1, padding: '14px 24px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, backgroundColor: '#FFF', color: '#000', border: 'none', cursor: isActionLoading ? 'wait' : 'pointer', opacity: isActionLoading ? 0.6 : 1 }}>
