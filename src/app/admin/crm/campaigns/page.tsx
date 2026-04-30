@@ -627,9 +627,10 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
         updated_at: new Date().toISOString(),
       };
       if (!campaignId) {
+        const { data: { user } } = await supabase.auth.getUser();
         const { data, error } = await supabase
           .from('email_campaigns')
-          .insert({ ...payload, status: 'draft' })
+          .insert({ ...payload, status: 'draft', created_by: user?.id })
           .select('id')
           .single();
         if (error) throw error;
@@ -713,7 +714,8 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
       };
 
       if (isNew) {
-        const { error } = await supabase.from('email_campaigns').insert({ ...payload, status: 'draft' });
+        const { data: { user } } = await supabase.auth.getUser();
+        const { error } = await supabase.from('email_campaigns').insert({ ...payload, status: 'draft', created_by: user?.id });
         if (error) throw error;
         toast.success('Campaign saved as draft');
       } else {
