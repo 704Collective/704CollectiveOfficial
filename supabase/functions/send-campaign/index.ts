@@ -476,17 +476,23 @@ serve(async (req) => {
         if (success) totalSent++; else totalFailed++;
         return {
           campaign_id,
-          contact_id: r.contact_id ?? null,
           profile_id: r.profile_id ?? null,
-          email: r.email,
+          to_email: r.email,
+          to_name: r.name ?? null,
+          from_email: fromEmail,
           subject,
+          resend_id: resendId,
           resend_message_id: resendId,
           status: success ? "sent" : "failed",
           sent_at: new Date().toISOString(),
         };
       });
 
-      await supabase.from("email_log").insert(logRows);
+      const { error: logError } = await supabase.from("email_log").insert(logRows);
+      if (logError) {
+        console.error("[send-campaign] email_log insert failed:", logError);
+        // Don't throw — emails were sent successfully, just log the failure
+      }
     }
 
     // Mark as 'failed' only if we had recipients but zero went through.
@@ -496,7 +502,7 @@ serve(async (req) => {
       ? "failed"
       : "sent";
 
-    await supabase
+    const { error: campaignUpdateError } = await supabase
       .from("email_campaigns")
       .update({
         status: finalStatus,
@@ -506,6 +512,10 @@ serve(async (req) => {
         delivered_count: totalSent,  // webhook events will update this to true delivery count
       })
       .eq("id", campaign_id);
+
+    if (campaignUpdateError) {
+      console.error("[send-campaign] campaign update failed:", campaignUpdateError);
+    }
 
     return new Response(
       JSON.stringify({
