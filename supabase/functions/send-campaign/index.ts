@@ -105,16 +105,17 @@ function renderBlock(block: Block, ctx: RenderContext): string {
         const placeholderCard = (date: string, label: string) => `
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF8;border:1px solid #EAEAE5;border-radius:12px;margin:0 0 12px;">
             <tr><td style="padding:20px;">
-              <p style="margin:0 0 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;color:#888;">${date}</p>
-              <p style="margin:0 0 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:17px;font-weight:700;color:#1A1A1A;line-height:1.3;">${label}</p>
-              <p style="margin:0 0 4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#444;"><strong>Time:</strong> [event time]</p>
-              <p style="margin:0 0 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#444;"><strong>Location:</strong> [event location]</p>
-              <a href="${ctx.siteUrl}" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#C6A664;text-decoration:none;font-weight:600;">RSVP →</a>
+              <p style="margin:0 0 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;color:#888;">${escapeHtml(date)}</p>
+              <p style="margin:0 0 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:17px;font-weight:700;color:#1A1A1A;line-height:1.3;font-style:italic;">${escapeHtml(label)}</p>
             </td></tr>
           </table>`;
+        const today = new Date();
+        const futureDate1 = new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000);
+        const futureDate2 = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const fmtDate = (d: Date) => d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
         return heading
-          + placeholderCard('Sample Day, Month Date', '[Event Title — Live data populates when sent]')
-          + placeholderCard('Sample Day, Month Date', '[Another Event Title]');
+          + placeholderCard(fmtDate(futureDate1), 'Live event data will populate when sent')
+          + placeholderCard(fmtDate(futureDate2), 'Real upcoming events appear here in the actual send');
       }
 
       const events = ctx.upcomingEvents ?? [];
@@ -148,7 +149,7 @@ function renderBlock(block: Block, ctx: RenderContext): string {
     case 'footer':
       return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;border-top:1px solid #EAEAE5;">
         <tr><td align="center" style="padding:24px 0 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:#888;">
-          ${escapeHtml(c.org || '704 Collective')} · Charlotte, NC
+          ${escapeHtml(c.org || '704 Collective, Charlotte, NC')}
         </td></tr>
         <tr><td align="center" style="padding:0 0 24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:#888;">
           <a href="{{unsubscribe_url}}" style="color:#888;text-decoration:underline;">Unsubscribe</a> · <a href="${ctx.siteUrl}/settings" style="color:#888;text-decoration:underline;">Manage preferences</a>
