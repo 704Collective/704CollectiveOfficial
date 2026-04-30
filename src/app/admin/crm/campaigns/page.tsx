@@ -622,6 +622,7 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
         preview_text: previewText || null,
         from_name: fromName,
         audience: { type: audience },
+        audience_type: audience,
         body_json: blocks,
         updated_at: new Date().toISOString(),
       };
@@ -704,6 +705,7 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
         preview_text: previewText || null,
         from_name: fromName,
         audience: { type: audience },
+        audience_type: audience,
         body_json: blocks,
         status,
         updated_at: new Date().toISOString(),

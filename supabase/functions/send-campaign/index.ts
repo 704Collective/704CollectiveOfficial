@@ -489,18 +489,32 @@ serve(async (req) => {
       await supabase.from("email_log").insert(logRows);
     }
 
-    // Update campaign status
+    // Mark as 'failed' only if we had recipients but zero went through.
+    // Partial deliveries still count as 'sent' (the sent_count column tracks
+    // the actual number).
+    const finalStatus = (totalSent === 0 && finalRecipients.length > 0)
+      ? "failed"
+      : "sent";
+
     await supabase
       .from("email_campaigns")
       .update({
-        status: "sent",
+        status: finalStatus,
         sent_at: new Date().toISOString(),
         recipient_count: finalRecipients.length,
+        sent_count: totalSent,
+        delivered_count: totalSent,  // webhook events will update this to true delivery count
       })
       .eq("id", campaign_id);
 
     return new Response(
-      JSON.stringify({ success: true, sent: totalSent, failed: totalFailed, total: finalRecipients.length }),
+      JSON.stringify({
+        success: finalStatus !== "failed",
+        status: finalStatus,
+        sent: totalSent,
+        failed: totalFailed,
+        total: finalRecipients.length,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
