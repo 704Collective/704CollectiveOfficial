@@ -165,9 +165,11 @@ function BlockPreview({ block }: { block: Block }) {
     case 'logo':
       return (
         <div className="text-center py-4">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-black rounded-lg">
-            <span className="text-white font-bold text-sm">704 Collective</span>
-          </div>
+          <img
+            src="https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/704-logo.png"
+            alt="704 Collective"
+            className="inline-block w-20 h-20 rounded-full"
+          />
         </div>
       );
     case 'greeting':

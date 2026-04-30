@@ -165,12 +165,32 @@ function renderBlocks(blocks: Block[] | null | undefined, ctx: RenderContext): s
   if (!blocks || !Array.isArray(blocks)) return '';
   const inner = blocks.map(b => renderBlock(b, ctx)).join('\n');
   return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<html><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
+  <style>
+    @media only screen and (max-width: 600px) {
+      .email-card {
+        width: 100% !important;
+        max-width: 100% !important;
+        border-radius: 0 !important;
+      }
+      .email-card-padding {
+        padding: 16px 20px !important;
+      }
+      .email-outer-padding {
+        padding: 0 !important;
+      }
+    }
+  </style>
+</head>
 <body style="margin:0;padding:0;background:#F5F5F0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F5F5F0;">
-    <tr><td align="center" style="padding:32px 16px;">
-      <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="max-width:640px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
-        <tr><td style="padding:8px 40px 40px;">
+    <tr><td align="center" class="email-outer-padding" style="padding:32px 16px;">
+      <table role="presentation" class="email-card" width="640" cellpadding="0" cellspacing="0" style="max-width:640px;width:100%;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+        <tr><td class="email-card-padding" style="padding:8px 40px 40px;">
           ${inner}
         </td></tr>
       </table>
@@ -222,6 +242,18 @@ serve(async (req) => {
     const subject: string = campaign.subject;
     const fromName: string = campaign.from_name ?? "704 Collective";
     const fromEmail: string = campaign.from_email ?? "no-reply@704collective.com";
+
+    // Load the actual sender's full name for {{sender_name}} token resolution
+    let senderFullName: string | null = null;
+    if (campaign.created_by) {
+      const { data: senderProfile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", campaign.created_by)
+        .single();
+      senderFullName = senderProfile?.full_name ?? null;
+    }
+    const senderDisplayName = senderFullName || fromName;
     const unsubscribeBase = `${SITE_URL}/unsubscribe`;
 
     // ── TEST SEND: single recipient, no DB updates ───────────────────────────
@@ -229,13 +261,13 @@ serve(async (req) => {
       const trackingPixel = `<img src="${SITE_URL}/api/track/open?c=${campaign_id}&e=${encodeURIComponent(test_email)}" width="1" height="1" style="display:none" />`;
       const renderedHtml = renderBlocks(campaign.body_json as Block[], {
         isTest: true,
-        senderName: fromName,
+        senderName: senderDisplayName,
         siteUrl: SITE_URL,
       });
       const finalHtml = renderedHtml
         .replace(/{{first_name}}/gi, 'Preview')
         .replace(/{{name}}/gi, 'Preview')
-        .replace(/{{sender_name}}/gi, fromName)
+        .replace(/{{sender_name}}/gi, senderDisplayName)
         .replace(/{{unsubscribe_url}}/gi, `${SITE_URL}/unsubscribe?preview=1`)
         + trackingPixel;
 
@@ -392,14 +424,23 @@ serve(async (req) => {
     const campaignBlocks = (campaign.body_json as Block[]) ?? [];
     const eventsListBlocks = campaignBlocks.filter(b => b.type === 'events_list');
     const maxDaysAhead = eventsListBlocks.length > 0
-      ? Math.max(...eventsListBlocks.map(b => Number(b.content?.days_ahead) || 7))
+      ? Math.max(...eventsListBlocks.map(b => {
+          const v = Number(b.content?.days_ahead);
+          return v > 0 ? v : 7;
+        }))
       : 0;
 
     let upcomingEvents: Array<{ name: string; date: string; location: string; url: string }> = [];
     if (maxDaysAhead > 0) {
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() + maxDaysAhead);
-      const { data: eventsData } = await supabase
+      console.log('[send-campaign] Events query', {
+        maxDaysAhead,
+        eventsListBlocksCount: eventsListBlocks.length,
+        cutoff: cutoff.toISOString(),
+        now: new Date().toISOString(),
+      });
+      const { data: eventsData, error: eventsError } = await supabase
         .from('events')
         .select('id, title, start_time, end_time, location')
         .gte('start_time', new Date().toISOString())
@@ -421,13 +462,17 @@ serve(async (req) => {
           url: `${SITE_URL}/events/${e.id}`,
         };
       });
+      console.log('[send-campaign] Events query result', {
+        eventsCount: upcomingEvents.length,
+        error: eventsError ?? null,
+      });
     }
 
     // Render HTML once — shared across all recipients (per-recipient tokens are replaced inside the loop)
     const renderedHtml = renderBlocks(campaignBlocks, {
       isTest: false,
       upcomingEvents,
-      senderName: fromName,
+      senderName: senderDisplayName,
       siteUrl: SITE_URL,
     });
 
@@ -446,7 +491,7 @@ serve(async (req) => {
         const body = renderedHtml
           .replace(/{{first_name}}/gi, r.name?.split(" ")[0] ?? "Member")
           .replace(/{{name}}/gi, r.name ?? "Member")
-          .replace(/{{sender_name}}/gi, fromName)
+          .replace(/{{sender_name}}/gi, senderDisplayName)
           .replace(/{{unsubscribe_url}}/gi, unsubUrl);
         const finalHtml = `${body}${trackingPixel}`;
 
