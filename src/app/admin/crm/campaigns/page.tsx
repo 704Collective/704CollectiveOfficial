@@ -606,6 +606,91 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
     setBlocks(prev => prev.map(b => b.id === updated.id ? updated : b));
   };
 
+  const handleSendNow = async () => {
+    if (!name.trim() || !subject.trim()) {
+      toast.error('Campaign name and subject are required');
+      return;
+    }
+
+    // Save the current draft state first so we always have a campaign id
+    let campaignId = campaign?.id ?? null;
+    setSaving(true);
+    try {
+      const payload = {
+        name: name.trim(),
+        subject: subject.trim(),
+        preview_text: previewText || null,
+        from_name: fromName,
+        audience: { type: audience },
+        body_json: blocks,
+        updated_at: new Date().toISOString(),
+      };
+      if (!campaignId) {
+        const { data, error } = await supabase
+          .from('email_campaigns')
+          .insert({ ...payload, status: 'draft' })
+          .select('id')
+          .single();
+        if (error) throw error;
+        campaignId = data.id;
+      } else {
+        const { error } = await supabase
+          .from('email_campaigns')
+          .update(payload)
+          .eq('id', campaignId);
+        if (error) throw error;
+      }
+      onSaved(); // refresh parent list without navigating away
+    } catch (err: any) {
+      toast.error(err.message ?? 'Failed to save campaign before sending');
+      setSaving(false);
+      return;
+    }
+    setSaving(false);
+
+    if (!campaignId) {
+      toast.error('Failed to save campaign before sending');
+      return;
+    }
+
+    const audienceLabel = AUDIENCE_OPTIONS.find(o => o.value === audience)?.label ?? audience;
+    const recipientCount = audienceCounts[audience] ?? '?';
+    const confirmed = window.confirm(
+      `Send "${name}" to ${recipientCount} recipient${recipientCount === 1 ? '' : 's'} (${audienceLabel})?\n\nThis cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    setSending(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-campaign`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        },
+        body: JSON.stringify({ campaign_id: campaignId }),
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        toast.success(`Campaign sent to ${result.sent ?? '?'} recipients`);
+        onSaved();
+        onBack();
+      } else {
+        const errBody = await res.json().catch(() => ({}));
+        console.error('[Send Now] HTTP', res.status, errBody);
+        toast.error(errBody.error || `Send failed (HTTP ${res.status})`);
+      }
+    } catch (err) {
+      console.error('[Send Now] fetch threw:', err);
+      toast.error('Send failed — network error');
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleSave = async (status: 'draft' | 'sending' = 'draft') => {
     if (!name.trim() || !subject.trim()) {
       toast.error('Campaign name and subject are required');
@@ -675,9 +760,9 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
           <Button variant="outline" size="sm" onClick={() => setShowSchedule(true)} className="gap-2">
             <Clock className="w-4 h-4" /> Schedule
           </Button>
-          <Button size="sm" onClick={() => { setSending(true); handleSave('sending'); }} disabled={saving || sending} className="gap-2">
+          <Button size="sm" onClick={handleSendNow} disabled={saving || sending} className="gap-2">
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            Send Now
+            {sending ? 'Sending...' : 'Send Now'}
           </Button>
         </div>
       </div>
