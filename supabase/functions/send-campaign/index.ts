@@ -434,20 +434,17 @@ serve(async (req) => {
     if (maxDaysAhead > 0) {
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() + maxDaysAhead);
-      console.log('[send-campaign] Events query', {
-        maxDaysAhead,
-        eventsListBlocksCount: eventsListBlocks.length,
-        cutoff: cutoff.toISOString(),
-        now: new Date().toISOString(),
-      });
       const { data: eventsData, error: eventsError } = await supabase
         .from('events')
-        .select('id, title, start_time, end_time, location')
+        .select('id, title, start_time, end_time, location_name')
         .gte('start_time', new Date().toISOString())
         .lte('start_time', cutoff.toISOString())
         .eq('is_published', true)
         .order('start_time', { ascending: true })
         .limit(10);
+      if (eventsError) {
+        console.error('[send-campaign] events query failed:', eventsError);
+      }
       upcomingEvents = (eventsData ?? []).map(e => {
         const startDate = new Date(e.start_time);
         const endDate = e.end_time ? new Date(e.end_time) : null;
@@ -458,13 +455,9 @@ serve(async (req) => {
           name: e.title,
           date: startDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
           time: timeStr,
-          location: e.location || '',
+          location: e.location_name || '',
           url: `${SITE_URL}/events/${e.id}`,
         };
-      });
-      console.log('[send-campaign] Events query result', {
-        eventsCount: upcomingEvents.length,
-        error: eventsError ?? null,
       });
     }
 
