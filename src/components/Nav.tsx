@@ -6,7 +6,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { isMemberDashboardRoute } from "@/lib/member-dashboard-route";
-import { PromoBanner } from "@/components/PromoBanner";
 
 export default function Nav() {
   const pathname = usePathname();
@@ -43,7 +42,6 @@ export default function Nav() {
 
   return (
     <>
-    <PromoBanner />
     <nav
       style={{
         position: "fixed",
