@@ -45,7 +45,7 @@ export default function Terms() {
 
           <section style={sectionStyle}>
             <h2 style={h2Style}>2. Membership &amp; Billing</h2>
-            <p style={pStyle}><span style={strongStyle}>Monthly Subscription:</span> By joining 704 Collective, you authorize us to charge your selected payment method $35.00 per month (or the current membership rate at the time of signup) on a recurring basis until you cancel.</p>
+            <p style={pStyle}><span style={strongStyle}>Monthly Subscription:</span> Membership fees are $49.00 per month, billed automatically until canceled. Members may cancel at any time through their account settings, with cancellation taking effect at the end of the current billing period.</p>
             <p style={pStyle}><span style={strongStyle}>Automatic Renewal:</span> Your membership automatically renews on the same date each month. We will send you a reminder email approximately 3 days before each renewal.</p>
             <p style={pStyle}><span style={strongStyle}>Payment Processing:</span> All payments are processed securely through Stripe. We do not store your full credit card information on our servers.</p>
             <p style={pStyle}><span style={strongStyle}>Price Changes:</span> We reserve the right to change membership pricing with 30 days{"'"} notice. Any price changes will not affect your current billing cycle.</p>

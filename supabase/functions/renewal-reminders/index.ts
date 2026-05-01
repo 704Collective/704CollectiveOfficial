@@ -216,7 +216,7 @@ serve(async (_req) => {
              </p>`
           : `<a href="${SITE_URL}/join/checkout"
                 style="display:inline-block;margin-top:24px;padding:12px 24px;background:#C6A664;color:#1A1A1A;text-decoration:none;border-radius:6px;font-weight:600;">
-               Renew My Membership — $35/mo
+               Renew My Membership — $49/mo
              </a>`
         }
         <p style="color:#999;font-size:12px;margin-top:48px;">

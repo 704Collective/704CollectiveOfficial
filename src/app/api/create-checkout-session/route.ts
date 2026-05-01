@@ -23,25 +23,23 @@ export async function POST(request: NextRequest) {
       apiVersion: '2026-02-25.clover',
     });
 
-    const origin = process.env.NEXT_PUBLIC_SITE_URL || 'https://704collective.com';
-
-    const prices = await stripe.prices.list({
-      product: process.env.STRIPE_SOCIAL_PRODUCT_ID!,
-      active: true,
-      limit: 1,
-    });
-
-    if (!prices.data.length) {
+    // Price IDs are environment-specific. The STRIPE_SOCIAL_PRICE_ID env var
+    // must be set to the current public price
+    // (e.g. price_1TS9EJRzSIH3EgWLjM6zx5p4 for the $49 monthly tier).
+    const priceId = process.env.STRIPE_SOCIAL_PRICE_ID;
+    if (!priceId) {
       return NextResponse.json(
-        { error: 'No active price found', message: 'No active price found' },
-        { status: 400 }
+        { error: 'Price not configured', message: 'Price not configured' },
+        { status: 500 }
       );
     }
+
+    const origin = process.env.NEXT_PUBLIC_SITE_URL || 'https://704collective.com';
 
     const session = await stripe.checkout.sessions.create({
       ui_mode: 'embedded',
       mode: 'subscription',
-      line_items: [{ price: prices.data[0].id, quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       return_url: `${origin}/welcome?session_id={CHECKOUT_SESSION_ID}`,
     });
 

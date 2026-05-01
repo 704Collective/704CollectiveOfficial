@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
+import { SOCIAL_TIER } from '@/lib/pricing';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -143,7 +144,7 @@ export default function Settings() {
                     Redirecting...
                   </>
                 ) : (
-                  'Subscribe - $35/month'
+                  `Subscribe - ${SOCIAL_TIER.monthlyPriceFull}`
                 )}
               </Button>
             </div>
@@ -250,7 +251,7 @@ export default function Settings() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-4 rounded-lg bg-muted/50">
                 <div>
                   <p className="font-medium">
-                    {isActiveMember ? 'Social - $35/month' : 'No active membership'}
+                    {isActiveMember ? `Social - ${SOCIAL_TIER.monthlyPriceFull}` : 'No active membership'}
                   </p>
                   {p.member_since && (
                     <p className="text-sm text-muted-foreground">

@@ -6,12 +6,14 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Copy, Crown, ExternalLink, Tag, Users } from 'lucide-react';
 import { startOfMonth } from 'date-fns';
+import { SOCIAL_TIER } from '@/lib/pricing';
 
 // ─── Hardcoded Stripe membership config ───────────────────────────────────────
-// UPDATE THESE if the Stripe product or price changes.
-const STRIPE_PRODUCT_ID = 'prod_S7hFqQl2k4qgvC';
-const MEMBERSHIP_PRICE = '$35/month';
+const STRIPE_PRODUCT_ID = SOCIAL_TIER.productId;
+const MEMBERSHIP_PRICE = SOCIAL_TIER.monthlyPriceFull;
 const MEMBERSHIP_BILLING = 'Monthly recurring';
+// Note: STRIPE_CHECKOUT_URL points to the current Payment Link. Verify in
+// Stripe dashboard that this link is set to the $49/mo price.
 const STRIPE_CHECKOUT_URL = 'https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04';
 const STRIPE_COUPONS_URL = 'https://dashboard.stripe.com/coupons';
 // ─────────────────────────────────────────────────────────────────────────────

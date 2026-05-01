@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { SOCIAL_TIER } from '@/lib/pricing';
 import { useRouter } from 'next/navigation';
 import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
@@ -229,7 +230,7 @@ export default function SignupPage() {
                   <Crown className="w-6 h-6 text-primary" />
                 </div>
                 <div className="text-center">
-                  <p className="font-semibold text-foreground mb-1">Join Now - $35/mo</p>
+                  <p className="font-semibold text-foreground mb-1">{SOCIAL_TIER.ctaLabel}</p>
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     Unlock free RSVPs, guest passes, member-only events, and full community access.
                   </p>

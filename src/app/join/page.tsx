@@ -8,6 +8,7 @@ import { useCallback, useState, useEffect, Suspense } from 'react';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { addDays, format } from 'date-fns';
 import { Calendar, MapPin, Users, ArrowRight, Loader2 } from 'lucide-react';
+import { SOCIAL_TIER } from '@/lib/pricing';
 import { supabase } from '@/integrations/supabase/client';
 import Nav from '@/components/Nav';
 import { Footer } from '@/components/Footer';
@@ -300,7 +301,7 @@ function JoinInner() {
                   fontSize: '1rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6,
                   marginBottom: '32px', textAlign: 'center',
                 }}>
-                  Join Charlotte{"'"}s most curated social club for $35/month. Cancel anytime.
+                  Join Charlotte{"'"}s most curated social club for {SOCIAL_TIER.monthlyPriceFull}. Cancel anytime.
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -595,7 +596,7 @@ function JoinInner() {
                       704 Social
                     </h2>
                     <p style={{ fontSize: '2rem', fontWeight: 700, color: '#C6A664', margin: 0 }}>
-                      $35<span style={{ fontSize: '1rem', fontWeight: 400, color: 'rgba(255,255,255,0.45)' }}>/month</span>
+                      {SOCIAL_TIER.monthlyPrice}<span style={{ fontSize: '1rem', fontWeight: 400, color: 'rgba(255,255,255,0.45)' }}>/month</span>
                     </p>
                     <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', margin: '0 0 16px' }}>
                       Cancel anytime

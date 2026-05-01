@@ -2,6 +2,7 @@
 
 import { Check, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SOCIAL_TIER } from '@/lib/pricing';
 
 const STRIPE_JOIN_URL = 'https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04';
 
@@ -24,7 +25,7 @@ export function MembershipCtaSection() {
           <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-2">Membership</p>
           <h2 id="membership-heading" className="text-3xl md:text-4xl font-semibold mb-2">704 Social</h2>
           <p className="text-4xl md:text-5xl font-bold mt-4 mb-8" style={{ color: '#C6A664' }}>
-            $35 <span className="text-lg font-medium text-muted-foreground">/ month</span>
+            {SOCIAL_TIER.monthlyPrice} <span className="text-lg font-medium text-muted-foreground">/ month</span>
           </p>
 
           <ul className="space-y-3 text-left max-w-sm mx-auto mb-10">

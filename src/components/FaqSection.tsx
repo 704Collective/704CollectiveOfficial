@@ -6,6 +6,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { SOCIAL_TIER } from '@/lib/pricing';
 
 const FAQ_ITEMS = [
   {
@@ -13,7 +14,7 @@ const FAQ_ITEMS = [
     a: "A membership community for young professionals (25-35) in Charlotte. We're not another networking group - we're where you find your people. Think social hours, real connections, and a real community.",
   },
   {
-    q: 'What does my $35/month cover?',
+    q: `What does my ${SOCIAL_TIER.monthlyPriceFull} cover?`,
     a: 'Your membership is an all-access pass to our entire calendar of events. We use those funds to cover activity costs (cold plunges, indoor golf, guest workshops), venue and logistics, and community growth tools. We frequently provide food, drinks, or exclusive perks as a bonus.',
   },
   {
@@ -22,7 +23,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Do I have to attend every event?',
-    a: 'Not at all. Our goal is to make sure one single event covers the cost of your membership. If you just make it to Sauna Night (value $45), your $35 membership is already paid for.',
+    a: `Not at all. Our goal is to make sure one single event covers the cost of your membership. If you just make it to Sauna Night (value $45), your ${SOCIAL_TIER.monthlyPrice} membership is already paid for.`,
   },
   {
     q: 'Can I bring guests?',

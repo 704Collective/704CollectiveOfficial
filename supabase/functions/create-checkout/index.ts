@@ -43,10 +43,9 @@ async function checkRateLimit(supabase: any, key: string, max: number): Promise<
 }
 
 // Social membership price IDs — both set in Supabase secrets.
-// SOCIAL_REGULAR is the standard $35/mo price.
-// SOCIAL_AMBASSADOR is the locked-in price referred members get for joining
-// through an ambassador's code; it stays at the original $35/mo even after
-// the catalog price increases on May 1, 2026.
+// SOCIAL_REGULAR is the standard $49/mo price.
+// SOCIAL_AMBASSADOR is the locked-in ambassador rate; referred members keep
+// their price regardless of future catalog price changes.
 const SOCIAL_REGULAR = Deno.env.get("STRIPE_SOCIAL_PRICE_ID") ?? "";
 const SOCIAL_AMBASSADOR = Deno.env.get("STRIPE_AMBASSADOR_SOCIAL_PRICE_ID") ?? "";
 

@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { SOCIAL_TIER } from '@/lib/pricing';
 
 type ThankYouType = 'new_member' | 'member' | 'guest';
 
@@ -148,7 +149,7 @@ export function ThankYouModal({ open, onOpenChange, type, event }: ThankYouModal
           </>}
           {type === 'guest' && <>
             <button onClick={() => nav('/events')} style={btn(true)}>Browse More Events</button>
-            <button onClick={() => nav('/social')} style={btn(false)}>Become a Member - $35/mo</button>
+            <button onClick={() => nav('/social')} style={btn(false)}>{SOCIAL_TIER.ctaLabelLong}</button>
             <button onClick={() => onOpenChange(false)} style={{ ...btn(false), border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: '0.8125rem' }}>Done</button>
           </>}
         </div>

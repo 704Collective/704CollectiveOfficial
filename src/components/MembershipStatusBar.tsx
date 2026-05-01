@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { SOCIAL_TIER } from '@/lib/pricing';
 import { format } from 'date-fns';
 import { Check, Crown, CreditCard, Loader2, Settings, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -40,7 +41,7 @@ export function MembershipStatusBar({
           <Crown className="w-5 h-5 text-primary" />
           <div>
             <p className="font-medium text-sm">Unlock Member Benefits</p>
-            <p className="text-xs text-muted-foreground">Join for $35/month - events, perks & more</p>
+            <p className="text-xs text-muted-foreground">Join for {SOCIAL_TIER.monthlyPriceFull} - events, perks & more</p>
           </div>
         </div>
         <Button variant="hero" size="sm" asChild>

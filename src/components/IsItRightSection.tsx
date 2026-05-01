@@ -3,6 +3,7 @@
 import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
+import { SOCIAL_TIER } from '@/lib/pricing';
 
 const STRIPE_JOIN_URL = 'https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04';
 
@@ -14,7 +15,7 @@ const REASONS = [
   "Tried the free 600-person meetups and felt overwhelmed",
   "Want real friends, not LinkedIn connections",
   "Need variety more than just bars on a Friday night - coffee meetups, game nights, workouts, adventures",
-  "Most events in Charlotte cost $15–25. We're doing 8+ for $35",
+  `Most events in Charlotte cost $15–25. We're doing 8+ for ${SOCIAL_TIER.monthlyPrice}`,
 ];
 
 export function IsItRightSection() {

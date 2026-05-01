@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { SOCIAL_TIER } from '@/lib/pricing';
 import { User, Key, Bell, CreditCard, Calendar, LogOut, Loader2, Camera, Copy, Check } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { DashboardNav } from '@/components/DashboardNav';
@@ -65,7 +66,7 @@ export default function SettingsPage() {
         ? 'Partner'
         : 'Social';
   const monthlyPrice =
-    p?.member_type === 'business' ? '$300' : p?.member_type === 'partner' ? '—' : '$35';
+    p?.member_type === 'business' ? '$300' : p?.member_type === 'partner' ? '—' : SOCIAL_TIER.monthlyPrice;
 
   const handleSaveProfile = async () => {
     if (!user) return;

@@ -4,6 +4,7 @@ import Nav from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import Link from "next/link";
 import { HERO_BLUR_DATA_URL } from "@/lib/heroBlur";
+import { SOCIAL_TIER } from "@/lib/pricing";
 import { getFeaturedPartnerLogos } from "@/lib/partnerFeatured";
 import { FeaturedPartnersCarousel } from "@/components/partners/FeaturedPartnersCarousel";
 import {
@@ -879,7 +880,7 @@ export default async function Home() {
                       Your social life, handled.
                     </p>
 
-                    <div style={{ marginBottom: "4px" }}>
+                    <div style={{ marginBottom: "20px" }}>
                       <span
                         style={{
                           fontSize: "2.25rem",
@@ -887,7 +888,7 @@ export default async function Home() {
                           color: "#FFFFFF",
                         }}
                       >
-                        $35
+                        {SOCIAL_TIER.monthlyPrice}
                       </span>
                       <span
                         style={{
@@ -899,15 +900,6 @@ export default async function Home() {
                         / month
                       </span>
                     </div>
-                    <p
-                      style={{
-                        fontSize: "0.75rem",
-                        color: "rgba(255, 255, 255, 0.4)",
-                        marginBottom: "20px",
-                      }}
-                    >
-                      Goes to $49/mo on May 1st
-                    </p>
 
                     <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
                       {[
@@ -1287,7 +1279,7 @@ export default async function Home() {
                 },
                 {
                   q: "How much does it cost?",
-                  a: "704 Social is $35/month — going to $49/month on May 1st. 704 Business starts at $300/month or $3,600/year (save $600). No contracts, cancel anytime.",
+                  a: `704 Social is ${SOCIAL_TIER.monthlyPriceFull}. 704 Business starts at $300/month or $3,600/year (save $600). No contracts, cancel anytime.`,
                 },
                 {
                   q: "Do I have to attend every event?",
@@ -1406,7 +1398,7 @@ export default async function Home() {
                   margin: "0 auto",
                 }}
               >
-                $35/month. 10 curated events. Charlotte&apos;s most intentional young professional community. Goes to $49/month on May 1st.
+                {SOCIAL_TIER.monthlyPriceFull}. 10 curated events. Charlotte&apos;s most intentional young professional community.
               </p>
             </FadeUp>
 

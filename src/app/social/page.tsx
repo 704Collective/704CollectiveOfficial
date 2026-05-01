@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { SOCIAL_TIER } from '@/lib/pricing';
 import Nav from '@/components/Nav';
 import { Footer } from '@/components/Footer';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -64,7 +65,7 @@ const rightForYou = [
   'Tried the free 600-person meetups and felt overwhelmed',
   'Want real friends, not LinkedIn connections',
   'Need variety more than just bars on a Friday night — coffee meetups, game nights, workouts, adventures',
-  'Most events in Charlotte cost $15-25. We\'re doing 10+ for $35',
+  `Most events in Charlotte cost $15-25. We're doing 10+ for ${SOCIAL_TIER.monthlyPrice}`,
 ];
 
 const valueItems = [
@@ -737,7 +738,7 @@ export default function SocialPage() {
                 </h3>
                 <div style={{ marginBottom: '4px', marginTop: '8px' }}>
                   <span style={{ fontSize: '2.75rem', fontWeight: 700, color: '#C6A664' }}>
-                    $35
+                    {SOCIAL_TIER.monthlyPrice}
                   </span>
                   <span style={{ fontSize: '1rem', color: 'rgba(255, 255, 255, 0.4)', marginLeft: '4px' }}>
                     / month

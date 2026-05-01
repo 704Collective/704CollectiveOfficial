@@ -14,27 +14,26 @@ const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 const log = (step: string, details?: unknown) =>
   console.log(`[ADMIN-FINANCIALS] ${step}${details ? ` - ${JSON.stringify(details)}` : ""}`);
 
-// Product → tier mapping
-const PRODUCT_TIERS: Record<string, { tier: "social" | "business"; label: string; monthlyRate: number }> = {
-  prod_TZI8im1xRNUMuy: { tier: "social", label: "Social", monthlyRate: 3000 },
-  prod_Tp1hxIreJ2Uepz: { tier: "business", label: "Business (Founding)", monthlyRate: 15000 },
-  prod_U4X7hj2PX84LW5: { tier: "business", label: "Business", monthlyRate: 30000 },
+// Known product labels for display. Tier is determined by product ID at runtime.
+const KNOWN_PRODUCT_LABELS: Record<string, string> = {
+  prod_TZI8im1xRNUMuy: "Social",
+  prod_Tp1hxIreJ2Uepz: "Business (Founding)",
+  prod_U4X7hj2PX84LW5: "Business",
 };
 
-function classifySub(sub: Stripe.Subscription): { tier: "social" | "business" | "unknown"; label: string; monthlyAmountCents: number; productId: string } {
+// Social product ID — all others are treated as business.
+const SOCIAL_PRODUCT_ID = "prod_TZI8im1xRNUMuy";
+
+function classifySub(sub: Stripe.Subscription): { tier: "social" | "business"; label: string; monthlyAmountCents: number; productId: string } {
   const item = sub.items?.data?.[0];
-  if (!item) return { tier: "unknown", label: "Unknown", monthlyAmountCents: 0, productId: "" };
+  if (!item) return { tier: "social", label: "Social", monthlyAmountCents: 0, productId: "" };
   const productId = typeof item.price.product === "string" ? item.price.product : (item.price.product as any)?.id || "";
-  const info = PRODUCT_TIERS[productId];
   const amount = item.price.unit_amount || 0;
   const interval = item.price.recurring?.interval;
-  const monthly = interval === "year" ? Math.round(amount / 12) : amount;
-  return {
-    tier: info?.tier || "unknown",
-    label: info?.label || "Unknown",
-    monthlyAmountCents: monthly,
-    productId,
-  };
+  const monthlyAmountCents = interval === "year" ? Math.round(amount / 12) : amount;
+  const tier: "social" | "business" = productId === SOCIAL_PRODUCT_ID ? "social" : "business";
+  const label = KNOWN_PRODUCT_LABELS[productId] ?? (tier === "social" ? "Social" : "Business");
+  return { tier, label, monthlyAmountCents, productId };
 }
 
 function getSubCustomerInfo(sub: Stripe.Subscription) {
@@ -133,9 +132,7 @@ serve(async (req) => {
     const subTierMap: Record<string, "social" | "business"> = {};
     for (const sub of [...activeSubs, ...canceledSubs]) {
       const { tier } = classifySub(sub);
-      if (tier !== "unknown") {
-        subTierMap[sub.id] = tier;
-      }
+      subTierMap[sub.id] = tier;
     }
 
     // Helper to extract subscription ID from invoice (basil API uses parent.subscription_details)

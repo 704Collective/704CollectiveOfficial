@@ -7,6 +7,7 @@ import Nav from '@/components/Nav';
 import { Footer } from '@/components/Footer';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { SOCIAL_TIER } from '@/lib/pricing';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -88,7 +89,7 @@ export default function CheckoutPage() {
               Join 704 Collective
             </h1>
             <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.45)' }}>
-              $35/month · Cancel anytime · Instant access
+              {SOCIAL_TIER.monthlyPriceFull} · Cancel anytime · Instant access
             </p>
           </div>
 
