@@ -217,7 +217,9 @@ export default function BusinessApplicationPage() {
 
       setStep('done');
     } catch (err) {
-      toast.error('Failed to submit application. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error('Application submit failed:', err);
+      toast.error(`Submission failed: ${errorMessage}. Please try again or contact support.`);
     } finally {
       setLoading(false);
     }
