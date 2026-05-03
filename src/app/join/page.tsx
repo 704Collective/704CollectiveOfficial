@@ -149,7 +149,7 @@ function JoinInner() {
   const isFormValid =
     fullName.trim().length > 0 &&
     email.trim().length > 0 &&
-    phone.trim().length > 0 &&
+    phone.replace(/\D/g, '').length >= 10 &&
     goal !== '' &&
     password.length >= 8 &&
     password === confirmPassword;
@@ -340,6 +340,11 @@ function JoinInner() {
                       placeholder="(704) 555-1234"
                       style={inputStyle}
                     />
+                    {phone.length > 0 && phone.replace(/\D/g, '').length < 10 && (
+                      <p style={{ fontSize: '0.8125rem', color: '#ef4444', margin: '4px 0 0' }}>
+                        Please enter a valid 10-digit phone number
+                      </p>
+                    )}
                   </div>
 
                   {/* Password */}
