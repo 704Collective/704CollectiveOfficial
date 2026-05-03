@@ -77,6 +77,15 @@ export async function GET(request: NextRequest) {
       return recoveryRedirect;
     }
 
+    // Business apply flow: email confirmed, redirect back to the application form.
+    if (source === 'business-apply') {
+      const businessRedirect = NextResponse.redirect(new URL('/apply/business?confirmed=true', origin));
+      pendingCookies.forEach(({ name, value, options }) => {
+        businessRedirect.cookies.set(name, value, options as Parameters<typeof businessRedirect.cookies.set>[2]);
+      });
+      return businessRedirect;
+    }
+
     // Signup confirmations: user has already paid, send them to dashboard.
     if (type === 'signup') {
       const { data: { user: signupUser } } = await supabase.auth.getUser();
@@ -143,6 +152,15 @@ export async function GET(request: NextRequest) {
       recoveryRedirect.cookies.set(name, value, options as Parameters<typeof recoveryRedirect.cookies.set>[2]);
     });
     return recoveryRedirect;
+  }
+
+  // Business apply flow: email confirmed, redirect back to the application form.
+  if (source === 'business-apply') {
+    const businessRedirect = NextResponse.redirect(new URL('/apply/business?confirmed=true', origin));
+    pendingCookies.forEach(({ name, value, options }) => {
+      businessRedirect.cookies.set(name, value, options as Parameters<typeof businessRedirect.cookies.set>[2]);
+    });
+    return businessRedirect;
   }
 
   const { data: profile } = await supabase

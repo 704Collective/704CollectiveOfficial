@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import { Button } from '@/components/ui/button';
@@ -58,8 +58,9 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
   );
 }
 
-export default function BusinessApplicationPage() {
+function BusinessApplicationInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const [step, setStep] = useState<Step>('account');
   const [loading, setLoading] = useState(false);
@@ -106,6 +107,14 @@ export default function BusinessApplicationPage() {
     prefillFromProfile();
   }, [authLoading, user, step]);
 
+  // Handle email-verified business applicant returning from /auth/callback
+  useEffect(() => {
+    const confirmed = searchParams.get('confirmed');
+    if (confirmed === 'true' && user && step === 'account') {
+      setStep('application');
+    }
+  }, [searchParams, user, step]);
+
   // ── Step 1: Create account ──────────────────────────────────────
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,6 +131,7 @@ export default function BusinessApplicationPage() {
           data: {
             full_name: `${form.firstName.trim()} ${form.lastName.trim()}`,
             phone: form.phone.trim(),
+            member_type: 'business_non_member',
           },
           emailRedirectTo: `${window.location.origin}/auth/callback?source=business-apply`,
         },
@@ -138,14 +148,6 @@ export default function BusinessApplicationPage() {
 
       if (data.user) {
         setUserId(data.user.id);
-        await supabase.from('profiles').upsert({
-          id: data.user.id,
-          email: form.email.trim().toLowerCase(),
-          full_name: `${form.firstName.trim()} ${form.lastName.trim()}`,
-          phone: form.phone.trim(),
-          member_type: 'business_non_member',
-          subscription_status: 'inactive',
-        });
       }
 
       setStep('verify');
@@ -470,5 +472,13 @@ export default function BusinessApplicationPage() {
       </div>
       </MarketingPageRoot>
     </div>
+  );
+}
+
+export default function BusinessApplicationPage() {
+  return (
+    <Suspense>
+      <BusinessApplicationInner />
+    </Suspense>
   );
 }
