@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
@@ -13,6 +13,10 @@ import { sendBusinessApplicationSubmittedEmails } from '@/app/actions/transactio
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 type Step = 'apply' | 'payment' | 'done';
 
@@ -48,6 +52,51 @@ const INITIAL_FORM: FormData = {
   recentWins: '', anythingElse: '',
 };
 
+// Inner Stripe form rendered inside <Elements> provider
+function PaymentForm({ onSuccess }: { onSuccess: () => void }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+
+    setSubmitting(true);
+    setErrorMessage(null);
+
+    const { error } = await stripe.confirmSetup({
+      elements,
+      confirmParams: {
+        return_url: `${window.location.origin}/apply/business?payment=saved`,
+      },
+      redirect: 'if_required',
+    });
+
+    if (error) {
+      setErrorMessage(error.message || 'Failed to save payment method');
+      setSubmitting(false);
+      return;
+    }
+
+    onSuccess();
+    setSubmitting(false);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <PaymentElement />
+      {errorMessage && (
+        <p className="text-sm text-red-400">{errorMessage}</p>
+      )}
+      <Button type="submit" className="w-full" disabled={!stripe || submitting}>
+        {submitting ? 'Saving...' : 'Save Payment Method'}
+      </Button>
+    </form>
+  );
+}
+
 function BusinessApplicationInner() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
@@ -55,6 +104,12 @@ function BusinessApplicationInner() {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<FormData>(INITIAL_FORM);
   const [userId, setUserId] = useState<string | null>(null);
+
+  // Payment step state
+  const [paymentCheckLoading, setPaymentCheckLoading] = useState(false);
+  const [hasExistingPayment, setHasExistingPayment] = useState<boolean | null>(null);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [paymentInitError, setPaymentInitError] = useState<string | null>(null);
 
   const set = (key: keyof FormData) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -95,6 +150,67 @@ function BusinessApplicationInner() {
     prefillFromProfile();
   }, [authLoading, user]);
 
+  // On entering the payment step: check for existing payment method,
+  // then create a SetupIntent if needed.
+  useEffect(() => {
+    if (step !== 'payment') return;
+    if (hasExistingPayment !== null) return;
+
+    let cancelled = false;
+
+    (async () => {
+      setPaymentCheckLoading(true);
+      setPaymentInitError(null);
+
+      try {
+        const checkRes = await fetch('/api/business-application-payment', {
+          method: 'GET',
+        });
+
+        if (!checkRes.ok) throw new Error('Failed to check payment status');
+
+        const checkData = await checkRes.json();
+
+        if (cancelled) return;
+
+        if (checkData.hasPaymentMethod) {
+          setHasExistingPayment(true);
+          setPaymentCheckLoading(false);
+          setTimeout(() => {
+            if (!cancelled) setStep('done');
+          }, 1500);
+          return;
+        }
+
+        setHasExistingPayment(false);
+
+        const intentRes = await fetch('/api/business-application-payment', {
+          method: 'POST',
+        });
+
+        if (!intentRes.ok) {
+          const errData = await intentRes.json().catch(() => ({}));
+          throw new Error((errData as { error?: string }).error || 'Failed to initialize payment');
+        }
+
+        const { clientSecret: cs } = await intentRes.json() as { clientSecret: string };
+
+        if (cancelled) return;
+
+        setClientSecret(cs);
+        setPaymentCheckLoading(false);
+      } catch (err) {
+        if (cancelled) return;
+        const msg = err instanceof Error ? err.message : 'Unknown error';
+        console.error('Payment init failed:', err);
+        setPaymentInitError(msg);
+        setPaymentCheckLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [step, hasExistingPayment]);
+
   const handleApply = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -113,7 +229,6 @@ function BusinessApplicationInner() {
     }
 
     if (!user) {
-      // New user: validate account fields too
       if (!form.firstName.trim() || !form.lastName.trim() ||
           !form.email.trim() || !form.phone.trim() || !form.password) {
         toast.error('Please fill out all required account fields');
@@ -235,7 +350,7 @@ function BusinessApplicationInner() {
     }
   };
 
-  // ── Payment placeholder ─────────────────────────────────────────
+  // ── Payment step ─────────────────────────────────────────────────
   if (step === 'payment') {
     return (
       <div className="min-h-screen bg-background flex flex-col" style={{ backgroundColor: '#1A1A1A', paddingTop: 'calc(64px + var(--banner-height, 0px))' }}>
@@ -243,41 +358,96 @@ function BusinessApplicationInner() {
         <MarketingPageRoot>
         <div className="flex-1 flex items-center justify-center px-4 py-16">
           <div className="w-full max-w-md space-y-6">
-            <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
-              <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <div className="text-center space-y-2">
-              <h1 className="text-2xl font-semibold text-foreground">Application Submitted!</h1>
-              <p className="text-base font-medium text-foreground">One More Step: Save Your Payment Method</p>
-            </div>
-            <div className="text-sm text-muted-foreground leading-relaxed space-y-3">
-              <p>Your application is now in review. To finalize your spot, please save a payment method below.</p>
-              <p>
-                <strong className="text-foreground">Important:</strong> You will NOT be charged unless your application
-                is approved by our team. If your application is denied, you will be provided a reason and you will NOT
-                be charged.
-              </p>
-              <p>
-                Please continuously check your email or member portal for an update, or email our team at{' '}
-                <a href="mailto:hello@704collective.com" className="text-primary hover:underline">
-                  hello@704collective.com
-                </a>{' '}
-                if you have any questions.
-              </p>
-            </div>
-            <Button
-              className="w-full"
-              disabled
-              onClick={() => toast.info('Payment integration coming soon')}
-            >
-              Continue to Payment Setup
-            </Button>
-            <p className="text-center text-xs text-muted-foreground">
-              📧 Don&apos;t forget to verify your email by clicking the link we sent — required to access your member
-              portal after approval.
-            </p>
+
+            {/* Loading */}
+            {paymentCheckLoading && (
+              <div className="flex flex-col items-center space-y-4 py-8">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Setting up payment...</p>
+              </div>
+            )}
+
+            {/* Error */}
+            {!paymentCheckLoading && paymentInitError && (
+              <div className="space-y-4 text-center">
+                <p className="text-sm text-red-400">{paymentInitError}</p>
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    setHasExistingPayment(null);
+                    setClientSecret(null);
+                    setPaymentInitError(null);
+                  }}
+                >
+                  Try again
+                </Button>
+              </div>
+            )}
+
+            {/* Existing payment method detected — transitioning */}
+            {!paymentCheckLoading && hasExistingPayment === true && (
+              <div className="flex flex-col items-center space-y-4 py-8 text-center">
+                <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
+                  <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Payment method on file — finalizing your application...
+                </p>
+              </div>
+            )}
+
+            {/* No existing payment method — show Stripe Elements */}
+            {!paymentCheckLoading && hasExistingPayment === false && clientSecret && (
+              <>
+                <div className="text-center space-y-2">
+                  <h1 className="text-2xl font-semibold text-foreground">
+                    Application Pending — Save Payment Method to Submit
+                  </h1>
+                </div>
+                <div className="text-sm text-muted-foreground leading-relaxed space-y-3">
+                  <p>
+                    Your application has been submitted for review. To finalize your spot,
+                    please save a payment method below.
+                  </p>
+                  <p>
+                    <strong className="text-foreground">Important:</strong> You will NOT be
+                    charged unless your application is approved by our team. If your application
+                    is denied, you will be provided a reason and you will NOT be charged.
+                  </p>
+                  <p>
+                    Please continuously check your email or member portal for an update, or email
+                    our team at{' '}
+                    <a href="mailto:hello@704collective.com" className="text-primary hover:underline">
+                      hello@704collective.com
+                    </a>{' '}
+                    if you have any questions.
+                  </p>
+                </div>
+                <Elements
+                  stripe={stripePromise}
+                  options={{
+                    clientSecret,
+                    appearance: {
+                      theme: 'night',
+                      variables: {
+                        colorPrimary: '#C6A664',
+                        colorBackground: '#1A1A1A',
+                        colorText: '#FAF6F0',
+                      },
+                    },
+                  }}
+                >
+                  <PaymentForm onSuccess={() => setStep('done')} />
+                </Elements>
+                <p className="text-center text-xs text-muted-foreground">
+                  📧 Don&apos;t forget to verify your email by clicking the link we sent —
+                  required to access your member portal after approval.
+                </p>
+              </>
+            )}
+
           </div>
         </div>
         </MarketingPageRoot>
@@ -299,9 +469,11 @@ function BusinessApplicationInner() {
               </svg>
             </div>
             <div>
-              <h1 className="text-2xl font-semibold text-foreground mb-2">Application submitted</h1>
+              <h1 className="text-2xl font-semibold text-foreground mb-2">You&apos;re All Set!</h1>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Thanks {form.firstName} - we review every application personally. Expect to hear from us within 48 hours.
+                Your application has been submitted and your payment method is on file. You&apos;ll
+                receive an email when our team reviews your application — usually within 2-3 business
+                days. If approved, your card will be charged the monthly rate at that time.
               </p>
             </div>
             <Button className="w-full" onClick={() => router.push('/dashboard')}>
