@@ -230,7 +230,7 @@ function BusinessApplicationInner() {
   // ── Verify email screen ─────────────────────────────────────────
   if (step === 'verify') {
     return (
-      <div className="min-h-screen bg-background flex flex-col" style={{ backgroundColor: '#1A1A1A' }}>
+      <div className="min-h-screen bg-background flex flex-col" style={{ backgroundColor: '#1A1A1A', paddingTop: 'calc(64px + var(--banner-height, 0px))' }}>
         <Nav />
         <MarketingPageRoot>
         <div className="flex-1 flex items-center justify-center px-4 py-16">
@@ -270,7 +270,7 @@ function BusinessApplicationInner() {
   // ── Thank you screen ────────────────────────────────────────────
   if (step === 'done') {
     return (
-      <div className="min-h-screen bg-background flex flex-col" style={{ backgroundColor: '#1A1A1A' }}>
+      <div className="min-h-screen bg-background flex flex-col" style={{ backgroundColor: '#1A1A1A', paddingTop: 'calc(64px + var(--banner-height, 0px))' }}>
         <Nav />
         <MarketingPageRoot>
         <div className="flex-1 flex items-center justify-center px-4 py-16">
@@ -299,7 +299,7 @@ function BusinessApplicationInner() {
   // ── Application form ────────────────────────────────────────────
   if (step === 'application') {
     return (
-      <div className="min-h-screen bg-background flex flex-col" style={{ backgroundColor: '#1A1A1A' }}>
+      <div className="min-h-screen bg-background flex flex-col" style={{ backgroundColor: '#1A1A1A', paddingTop: 'calc(64px + var(--banner-height, 0px))' }}>
         <Nav />
         <MarketingPageRoot>
         <div className="flex-1 px-4 py-12">
@@ -419,7 +419,7 @@ function BusinessApplicationInner() {
 
   // ── Account creation form ───────────────────────────────────────
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#1A1A1A' }}>
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#1A1A1A', paddingTop: 'calc(64px + var(--banner-height, 0px))' }}>
       <Nav />
       <MarketingPageRoot>
       <div className="flex-1 flex items-center justify-center px-4 py-16">
