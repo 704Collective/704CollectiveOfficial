@@ -61,7 +61,7 @@ type PayoutRow = {
   paid_at: string | null;
 };
 
-const APPROVED_STATUSES = new Set(['approved', 'auto_approved', 'paid_out']);
+const APPROVED_STATUSES = new Set(['approved', 'auto_approved', 'paid_out', 'converted']);
 
 function isPending(status: string) {
   return status === 'pending' || status.startsWith('flagged_');

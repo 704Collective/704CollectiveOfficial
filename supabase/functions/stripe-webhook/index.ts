@@ -407,7 +407,7 @@ async function handleCheckoutCompleted(
         // by the time the webhook fires).
         const { data: amb } = await supabase
           .from("ambassadors")
-          .select("id, email, social_reward_cents, business_reward_cents, approved_social_referrals_count, is_active")
+          .select("id, email, social_reward_cents, business_reward_cents, is_active")
           .eq("id", ambassadorIdFromMeta)
           .eq("is_active", true)
           .maybeSingle();
@@ -420,7 +420,6 @@ async function handleCheckoutCompleted(
             email: string | null;
             social_reward_cents: number;
             business_reward_cents: number;
-            approved_social_referrals_count: number | null;
           };
 
           const rewardCents = ambassadorTierFromMeta === "business"
@@ -443,18 +442,7 @@ async function handleCheckoutCompleted(
           const paymentMethodFingerprint: string | null = null;
 
           const hasFlags = Object.keys(flags).length > 0;
-          const approvedCount = ambRow.approved_social_referrals_count ?? 0;
-
-          // Auto-approve only when the ambassador has already had 3+ approved
-          // social referrals AND no abuse signals fired on this signup.
-          const isAutoApproveEligible =
-            !hasFlags &&
-            ambassadorTierFromMeta === "social" &&
-            approvedCount >= 3;
-
-          const initialStatus = hasFlags
-            ? (flags.same_email_domain ? "flagged_self_refer" : "pending")
-            : (isAutoApproveEligible ? "auto_approved" : "pending");
+          const initialStatus = hasFlags ? "flagged_self_refer" : "signed_up";
 
           const { data: refRow, error: refErr } = await supabase
             .from("ambassador_referrals")
@@ -469,7 +457,9 @@ async function handleCheckoutCompleted(
               payment_method_fingerprint: paymentMethodFingerprint,
               abuse_flags: flags,
               stripe_subscription_id: typeof session.subscription === "string" ? session.subscription : null,
-              approved_at: initialStatus === "auto_approved" ? new Date().toISOString() : null,
+              stripe_session_id: session.id,
+              signed_up_at: new Date().toISOString(),
+              payout_status: "pending",
             })
             .select("id")
             .single();
@@ -487,22 +477,6 @@ async function handleCheckoutCompleted(
                 is_locked_in_pricing: true,
               })
               .eq("id", userId);
-
-            // Bump the auto-approval counter so future referrals can flow
-            // through without manual review. Try the RPC first; if it doesn't
-            // exist yet, fall back to read-modify-write.
-            if (initialStatus === "auto_approved") {
-              const { error: rpcErr } = await supabase.rpc(
-                "increment_ambassador_social_count",
-                { p_ambassador_id: ambRow.id }
-              );
-              if (rpcErr) {
-                await supabase
-                  .from("ambassadors")
-                  .update({ approved_social_referrals_count: approvedCount + 1 })
-                  .eq("id", ambRow.id);
-              }
-            }
 
             log("Ambassador referral created", {
               referral_id: refRow.id,
@@ -704,6 +678,57 @@ async function handleInvoicePaymentSucceeded(
   } else {
     log("WARNING: No profile found for invoice.payment_succeeded", { stripeCustomerId });
   }
+
+  // Ambassador referral conversion tracking
+  // Trigger: 2nd invoice (first full billing cycle paid)
+  // billing_reason === 'subscription_cycle' indicates a renewal invoice
+  try {
+    const subscriptionId = typeof invoice.subscription === "string"
+      ? invoice.subscription
+      : null;
+
+    if (billingReason === "subscription_cycle" && subscriptionId) {
+      const { data: refRow, error: refLookupErr } = await supabase
+        .from("ambassador_referrals")
+        .select("id, status")
+        .eq("stripe_subscription_id", subscriptionId)
+        .eq("status", "signed_up")
+        .maybeSingle();
+
+      if (refLookupErr) {
+        log("Ambassador referral lookup failed on conversion", {
+          error: refLookupErr.message,
+        });
+      } else if (refRow) {
+        const { error: convErr } = await supabase
+          .from("ambassador_referrals")
+          .update({
+            status: "converted",
+            converted_at: new Date().toISOString(),
+            payout_status: "owed",
+          })
+          .eq("id", refRow.id)
+          .eq("status", "signed_up");  // Idempotency guard
+
+        if (convErr) {
+          log("Ambassador referral conversion update failed", {
+            referralId: refRow.id,
+            error: convErr.message,
+          });
+        } else {
+          log("Ambassador referral converted", {
+            referralId: refRow.id,
+            subscriptionId,
+          });
+        }
+      }
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    log("Ambassador conversion processing failed (non-blocking)", {
+      error: msg,
+    });
+  }
 }
 
 async function handleInvoicePaymentFailed(
@@ -774,6 +799,47 @@ async function handleSubscriptionDeleted(
     log("Subscription canceled", { userId: profile.id });
   } else {
     log("WARNING: No profile found for subscription.deleted", { stripeCustomerId });
+  }
+
+  // Ambassador referral churn tracking
+  // If subscription cancels BEFORE conversion, mark referral as churned.
+  // Already-converted referrals are NOT churned (they earned their commission already).
+  try {
+    const { data: refRow, error: refLookupErr } = await supabase
+      .from("ambassador_referrals")
+      .select("id, status")
+      .eq("stripe_subscription_id", subscription.id)
+      .eq("status", "signed_up")
+      .maybeSingle();
+
+    if (refLookupErr) {
+      log("Ambassador referral churn lookup failed", {
+        error: refLookupErr.message,
+      });
+    } else if (refRow) {
+      const { error: churnErr } = await supabase
+        .from("ambassador_referrals")
+        .update({ status: "churned" })
+        .eq("id", refRow.id)
+        .eq("status", "signed_up");  // Idempotency
+
+      if (churnErr) {
+        log("Ambassador referral churn update failed", {
+          referralId: refRow.id,
+          error: churnErr.message,
+        });
+      } else {
+        log("Ambassador referral churned (cancelled before conversion)", {
+          referralId: refRow.id,
+          subscriptionId: subscription.id,
+        });
+      }
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    log("Ambassador churn processing failed (non-blocking)", {
+      error: msg,
+    });
   }
 }
 

@@ -182,7 +182,7 @@ export async function approveReferral(referralId: string): Promise<
   if (!ref) return { ok: false, error: 'Referral not found' };
 
   const status = String(ref.status);
-  if (status !== 'pending' && !status.startsWith('flagged_')) {
+  if (status !== 'pending' && status !== 'signed_up' && !status.startsWith('flagged_')) {
     return { ok: false, error: `Cannot approve referral with status "${status}"` };
   }
 
@@ -233,7 +233,7 @@ export async function denyReferral(
   if (!ref) return { ok: false, error: 'Referral not found' };
 
   const status = String(ref.status);
-  if (status !== 'pending' && !status.startsWith('flagged_')) {
+  if (status !== 'pending' && status !== 'signed_up' && !status.startsWith('flagged_')) {
     return { ok: false, error: `Cannot deny referral with status "${status}"` };
   }
 
@@ -329,7 +329,7 @@ export async function fireAmbassadorPayout(
     .maybeSingle();
   if (refErr || !ref) throw new Error('Referral not found');
 
-  if (ref.status !== 'approved' && ref.status !== 'auto_approved') {
+  if (ref.status !== 'approved' && ref.status !== 'auto_approved' && ref.status !== 'converted') {
     throw new Error('Referral must be approved before payout');
   }
   if (ref.paid_out_at) throw new Error('Payout already fired for this referral');
@@ -434,7 +434,7 @@ export async function fireAllPendingPayouts(): Promise<{
   const { data: refs, error } = await supabase
     .from('ambassador_referrals')
     .select('id, ambassador:ambassadors!ambassador_id (stripe_account_status)')
-    .in('status', ['approved', 'auto_approved'])
+    .in('status', ['approved', 'auto_approved', 'converted'])
     .is('paid_out_at', null);
 
   if (error) throw new Error(error.message);
