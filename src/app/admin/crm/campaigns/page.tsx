@@ -45,6 +45,7 @@ interface Campaign {
   click_count: number;
   body_json: Block[] | null;
   body_html: string | null;
+  audience_event_id: string | null;
   created_at: string | null;
 }
 
@@ -540,6 +541,9 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
   const [testEmail, setTestEmail] = useState('');
   const [showTestDialog, setShowTestDialog] = useState(false);
   const [audienceCounts, setAudienceCounts] = useState<Record<string, number>>({});
+  const [audienceEventId, setAudienceEventId] = useState<string | null>(campaign?.audience_event_id ?? null);
+  const [events, setEvents] = useState<Array<{ id: string; title: string; start_time: string }>>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
 
   useEffect(() => {
     supabase
@@ -581,6 +585,21 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
     void fetchCounts();
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setEventsLoading(true);
+      const { data } = await supabase
+        .from('events')
+        .select('id, title, start_time')
+        .order('start_time', { ascending: false });
+      if (cancelled) return;
+      setEvents(data ?? []);
+      setEventsLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const addBlock = (type: BlockType) => {
     const newBlock: Block = { id: uid(), type, content: defaultContent(type) };
     const footerIdx = blocks.findIndex(b => b.type === 'footer');
@@ -609,6 +628,10 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
   };
 
   const handleSendNow = async () => {
+    if (audience === 'event_guests' && !audienceEventId) {
+      toast.error('Please select an event to target.');
+      return;
+    }
     if (!name.trim() || !subject.trim()) {
       toast.error('Campaign name and subject are required');
       return;
@@ -625,6 +648,7 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
         from_name: fromName,
         audience: { type: audience },
         audience_type: audience,
+        audience_event_id: audience === 'event_guests' ? audienceEventId : null,
         body_json: blocks,
         updated_at: new Date().toISOString(),
       };
@@ -709,6 +733,7 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
         from_name: fromName,
         audience: { type: audience },
         audience_type: audience,
+        audience_event_id: audience === 'event_guests' ? audienceEventId : null,
         body_json: blocks,
         status,
         updated_at: new Date().toISOString(),
@@ -845,6 +870,33 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
               </p>
             )}
           </div>
+
+          {audience === 'event_guests' && (
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1.5 block">Which event?</Label>
+              <Select
+                value={audienceEventId ?? ''}
+                onValueChange={(v) => setAudienceEventId(v || null)}
+                disabled={eventsLoading}
+              >
+                <SelectTrigger className="text-sm">
+                  <SelectValue placeholder={eventsLoading ? 'Loading events…' : '— Select an event —'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {events.map(ev => (
+                    <SelectItem key={ev.id} value={ev.id}>
+                      {ev.title} ({new Date(ev.start_time).toLocaleDateString()})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!audienceEventId && (
+                <p className="text-xs text-amber-400 mt-1">
+                  Please select an event to target its RSVPs.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div className="flex flex-col lg:flex-row gap-6">
