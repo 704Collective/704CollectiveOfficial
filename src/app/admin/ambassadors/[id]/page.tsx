@@ -79,13 +79,21 @@ type Payout = {
   failed_at: string | null;
 };
 
-const APPROVED_STATUSES = new Set(['approved', 'auto_approved', 'paid_out']);
+const APPROVED_STATUSES = new Set([
+  'approved',
+  'auto_approved',
+  'paid_out',
+  'converted',
+]);
 const STATUS_FILTERS = [
   { value: 'all', label: 'All' },
   { value: 'pending', label: 'Pending' },
+  { value: 'signed_up', label: 'Signed up' },
   { value: 'approved', label: 'Approved' },
+  { value: 'converted', label: 'Converted' },
   { value: 'denied', label: 'Denied' },
   { value: 'paid_out', label: 'Paid out' },
+  { value: 'churned', label: 'Churned' },
 ] as const;
 
 function dollars(cents: number | null | undefined): string {
@@ -94,7 +102,7 @@ function dollars(cents: number | null | undefined): string {
 }
 
 function isPending(status: string) {
-  return status === 'pending' || status.startsWith('flagged_');
+  return status === 'pending' || status === 'signed_up' || status.startsWith('flagged_');
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -102,14 +110,23 @@ function StatusBadge({ status }: { status: string }) {
   if (s === 'approved' || s === 'auto_approved') {
     return <Badge variant="outline" className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 capitalize">{s.replace('_', ' ')}</Badge>;
   }
+  if (s === 'converted') {
+    return <Badge variant="outline" className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30">converted</Badge>;
+  }
   if (s === 'paid_out') {
     return <Badge variant="outline" className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40">paid out</Badge>;
   }
   if (s === 'denied') {
     return <Badge variant="outline" className="bg-rose-500/15 text-rose-400 border-rose-500/30">denied</Badge>;
   }
+  if (s === 'churned') {
+    return <Badge variant="outline" className="bg-muted text-muted-foreground border-border">churned</Badge>;
+  }
   if (s.startsWith('flagged_')) {
     return <Badge variant="outline" className="bg-amber-500/15 text-amber-400 border-amber-500/30">{s.replace('flagged_', 'flag: ')}</Badge>;
+  }
+  if (s === 'signed_up') {
+    return <Badge variant="outline" className="bg-blue-500/15 text-blue-400 border-blue-500/30">signed up</Badge>;
   }
   if (s === 'pending') {
     return <Badge variant="outline" className="bg-muted text-muted-foreground">pending</Badge>;
@@ -234,7 +251,7 @@ export default function AdminAmbassadorDetailPage() {
     const totalReferrals = referrals.filter((r) => APPROVED_STATUSES.has(r.status)).length;
     const pendingCount = referrals.filter((r) => isPending(r.status)).length;
     const earnedCents = referrals
-      .filter((r) => r.status === 'approved' || r.status === 'paid_out' || r.status === 'auto_approved')
+      .filter((r) => APPROVED_STATUSES.has(r.status))
       .reduce((sum, r) => sum + Number(r.reward_cents ?? 0), 0);
     const paidOutCents = payouts
       .filter((p) => p.status === 'paid')
@@ -245,9 +262,12 @@ export default function AdminAmbassadorDetailPage() {
   const filteredReferrals = useMemo(() => {
     if (filter === 'all') return referrals;
     if (filter === 'pending') return referrals.filter((r) => isPending(r.status));
+    if (filter === 'signed_up') return referrals.filter((r) => r.status === 'signed_up');
     if (filter === 'approved') return referrals.filter((r) => r.status === 'approved' || r.status === 'auto_approved');
+    if (filter === 'converted') return referrals.filter((r) => r.status === 'converted');
     if (filter === 'denied') return referrals.filter((r) => r.status === 'denied');
     if (filter === 'paid_out') return referrals.filter((r) => r.status === 'paid_out');
+    if (filter === 'churned') return referrals.filter((r) => r.status === 'churned');
     return referrals;
   }, [filter, referrals]);
 
