@@ -2,19 +2,21 @@ import type { NextConfig } from "next";
 
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://*.stripe.com https://*.stripe.network",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https:",
+  "img-src 'self' data: blob: https: https://*.stripe.com https://q.stripe.com",
   "font-src 'self' data:",
   [
     "connect-src 'self'",
     "https://*.supabase.co",
     "wss://*.supabase.co",
     "https://api.stripe.com",
+    "https://*.stripe.com",
+    "https://*.stripe.network",
     "https://api.resend.com",
     "https://immortal-alien-83842.upstash.io",
   ].join(" "),
-  "frame-src https://js.stripe.com https://hooks.stripe.com",
+  "frame-src https://js.stripe.com https://*.stripe.com https://hooks.stripe.com",
   "object-src 'none'",
 ].join("; ");
 
