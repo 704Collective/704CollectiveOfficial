@@ -451,6 +451,64 @@ export async function createAmbassadorOnboardingLink(
   return { url: accountLink.url, expiresAt: accountLink.expires_at, emailSent };
 }
 
+export async function createMyOnboardingLink(): Promise<
+  { ok: true; url: string; expiresAt: number } | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Not authenticated' };
+
+  const admin = serviceClient();
+  const { data: amb, error: ambErr } = await admin
+    .from('ambassadors')
+    .select('id, full_name, email, stripe_account_id, stripe_account_status, profile_id')
+    .eq('profile_id', user.id)
+    .maybeSingle();
+  if (ambErr || !amb) return { ok: false, error: 'No ambassador account found for this user' };
+
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2026-02-25.clover' });
+
+  let accountId: string = (amb as { stripe_account_id: string | null }).stripe_account_id ?? '';
+
+  if (!accountId) {
+    const account = await stripe.accounts.create({
+      type: 'express',
+      country: 'US',
+      email: (amb as { email: string }).email,
+      capabilities: {
+        transfers: { requested: true },
+        card_payments: { requested: true },
+      },
+      metadata: {
+        ambassador_id: (amb as { id: string }).id,
+        platform_source: '704_collective',
+      },
+    });
+    accountId = account.id;
+    await admin
+      .from('ambassadors')
+      .update({ stripe_account_id: accountId, stripe_account_status: 'onboarding' })
+      .eq('id', (amb as { id: string }).id);
+  }
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://704collective.com';
+  const accountLink = await stripe.accountLinks.create({
+    account: accountId,
+    refresh_url: siteUrl + '/ambassadors/onboard?status=refresh',
+    return_url: siteUrl + '/ambassadors/dashboard?onboarding=complete',
+    type: 'account_onboarding',
+  });
+
+  // Update status to onboarding if it was not already set
+  await admin
+    .from('ambassadors')
+    .update({ stripe_account_status: 'onboarding' })
+    .eq('id', (amb as { id: string }).id)
+    .neq('stripe_account_status', 'active');
+
+  return { ok: true, url: accountLink.url, expiresAt: accountLink.expires_at };
+}
+
 export async function fireAmbassadorPayout(
   referralId: string
 ): Promise<{ payout_id: string; transfer_id: string }> {
