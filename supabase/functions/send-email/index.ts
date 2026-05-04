@@ -1028,6 +1028,73 @@ function ambassadorWeeklyPayoutTemplate(data: {
 `),
   };
 }
+function ambassadorWelcomeNewTemplate(data: {
+  name: string;
+  email: string;
+  tempPassword: string;
+  loginUrl: string;
+}): { subject: string; html: string } {
+  const firstName = escapeHtml((data.name || 'Ambassador').split(' ')[0]);
+  const email = escapeHtml(data.email || '');
+  const pwd = escapeHtml(data.tempPassword || '');
+  const url = data.loginUrl || '';
+  return {
+    subject: 'Welcome to the 704 Collective Ambassador Program',
+    html: baseLayout(`
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${firstName},</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.65;color:${BRAND.textSecondary};">
+  You've been invited to join the <strong style="color:${BRAND.text};">704 Collective Ambassador Program</strong>!
+  Here's how to access your dashboard:
+</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background:rgba(255,255,255,0.04);border:1px solid ${BRAND.border};border-radius:10px;">
+  <tr>
+    <td style="padding:14px 18px;border-bottom:1px solid ${BRAND.border};">
+      <span style="font-size:11px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:${BRAND.textMuted};">Email</span><br/>
+      <span style="font-size:14px;color:${BRAND.text};font-family:ui-monospace,SFMono-Regular,monospace;">${email}</span>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:14px 18px;">
+      <span style="font-size:11px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:${BRAND.textMuted};">Temporary Password</span><br/>
+      <span style="font-size:14px;color:${BRAND.accent};font-family:ui-monospace,SFMono-Regular,monospace;font-weight:700;">${pwd}</span>
+    </td>
+  </tr>
+</table>
+<p style="margin:0 0 24px;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">
+  Please change your password after your first login for security.
+</p>
+${ctaButton('Log In to Your Dashboard', url)}
+<p style="margin:24px 0 0;font-size:14px;line-height:1.65;color:${BRAND.textSecondary};">
+  Once logged in, you'll set up your Stripe Connect account so we can send you weekly payouts when your referrals convert.
+</p>
+<p style="margin:24px 0 0;font-size:14px;color:${BRAND.textMuted};">&#8212; The 704 Team</p>
+`),
+  };
+}
+
+function ambassadorWelcomeExistingTemplate(data: {
+  name: string;
+  loginUrl: string;
+}): { subject: string; html: string } {
+  const firstName = escapeHtml((data.name || 'Ambassador').split(' ')[0]);
+  const url = data.loginUrl || '';
+  return {
+    subject: "You're now a 704 Collective Ambassador",
+    html: baseLayout(`
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${firstName},</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.65;color:${BRAND.textSecondary};">
+  Welcome to the <strong style="color:${BRAND.text};">704 Collective Ambassador Program</strong>!
+  Since you already have a 704 account, you can log in to your ambassador dashboard with your existing credentials.
+</p>
+${ctaButton('Go to Ambassador Dashboard', url)}
+<p style="margin:24px 0 0;font-size:14px;line-height:1.65;color:${BRAND.textSecondary};">
+  You'll set up your Stripe Connect account on your first visit so we can send you weekly payouts when your referrals convert.
+</p>
+<p style="margin:24px 0 0;font-size:14px;color:${BRAND.textMuted};">&#8212; The 704 Team</p>
+`),
+  };
+}
+
 function getTemplate(template: string, data: Record<string, unknown>): { subject: string; html: string } {
   switch (template) {
     case "welcome-back":
@@ -1217,6 +1284,10 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
         conversions: Array<{ refereeName: string; refereeEmail: string; date: string; amountCents: number }>;
         transferArrivalEstimate: string;
       });
+    case "ambassador-welcome-new":
+      return ambassadorWelcomeNewTemplate(data as { name: string; email: string; tempPassword: string; loginUrl: string });
+    case "ambassador-welcome-existing":
+      return ambassadorWelcomeExistingTemplate(data as { name: string; loginUrl: string });
         default:
       throw new Error(`Unknown email template: ${template}`);
   }

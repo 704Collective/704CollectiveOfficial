@@ -91,6 +91,40 @@ function normalizeInput(input: {
   };
 }
 
+function generateTempPassword(): string {
+  // Avoids visually confusing chars (0/O, 1/l/I)
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let result = '';
+  for (let i = 0; i < 12; i++) result += chars[Math.floor(Math.random() * chars.length)];
+  return result;
+}
+
+async function getOrCreateAuthUser(
+  admin: ReturnType<typeof serviceClient>,
+  email: string,
+  fullName: string,
+  phone: string | null
+): Promise<{ userId: string; isNewUser: boolean; tempPassword?: string }> {
+  const { data: existingProfile } = await admin
+    .from('profiles')
+    .select('id')
+    .eq('email', email.toLowerCase())
+    .maybeSingle();
+  if (existingProfile) return { userId: (existingProfile as { id: string }).id, isNewUser: false };
+
+  const tempPassword = generateTempPassword();
+  const { data: newAuthUser, error: authErr } = await admin.auth.admin.createUser({
+    email: email.toLowerCase(),
+    password: tempPassword,
+    email_confirm: true,
+    user_metadata: { full_name: fullName, phone: phone ?? '', member_type: 'ambassador' },
+  });
+  if (authErr || !newAuthUser?.user) {
+    throw new Error(`Failed to create Auth user: ${authErr?.message ?? 'unknown'}`);
+  }
+  return { userId: newAuthUser.user.id, isNewUser: true, tempPassword };
+}
+
 export async function createAmbassador(input: {
   full_name: string;
   email: string;
@@ -113,10 +147,19 @@ export async function createAmbassador(input: {
     .maybeSingle();
   if (existing) return { ok: false, error: `Code "${v.values.referral_code}" is already in use` };
 
+  // Get or create Auth user for this ambassador
+  let authResult: { userId: string; isNewUser: boolean; tempPassword?: string };
+  try {
+    authResult = await getOrCreateAuthUser(gate.admin, v.values.email, v.values.full_name, v.values.phone);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Failed to provision Auth user' };
+  }
+
   const { data, error } = await gate.admin
     .from('ambassadors')
     .insert({
       ...v.values,
+      profile_id: authResult.userId,
       stripe_account_status: 'pending',
       is_active: true,
       created_by: gate.userId,
@@ -124,6 +167,38 @@ export async function createAmbassador(input: {
     .select('id')
     .single();
   if (error || !data?.id) return { ok: false, error: error?.message ?? 'Insert failed' };
+
+  // Send welcome email (non-blocking)
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const firstName = v.values.full_name.split(' ')[0] || 'Ambassador';
+    const loginUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://704collective.com'}/ambassadors/login`;
+    if (authResult.isNewUser) {
+      await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` },
+        body: JSON.stringify({
+          to: v.values.email,
+          template: 'ambassador-welcome-new',
+          skipCc: true,
+          data: { name: firstName, email: v.values.email, tempPassword: authResult.tempPassword, loginUrl },
+        }),
+      });
+    } else {
+      await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` },
+        body: JSON.stringify({
+          to: v.values.email,
+          template: 'ambassador-welcome-existing',
+          skipCc: true,
+          data: { name: firstName, loginUrl },
+        }),
+      });
+    }
+  } catch (emailErr) {
+    console.error('Welcome email failed (non-blocking):', emailErr);
+  }
   return { ok: true, ambassador_id: data.id as string };
 }
 
