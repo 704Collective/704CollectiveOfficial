@@ -68,6 +68,8 @@ export function getRedisClient(): Redis | null {
 /**
  * Sliding-window rate limiter (1 minute window). Prefix isolates keys per use-case.
  * When Upstash is not configured, returns a no-op limiter that always allows.
+ * When Upstash is configured but unreachable at runtime, the limit() call fails open
+ * (logs a warning and allows the request) instead of throwing a 500.
  */
 export function createRateLimiter(prefix: string, limit: number) {
   const redis = getRedisClient();
@@ -75,9 +77,28 @@ export function createRateLimiter(prefix: string, limit: number) {
     return noopLimiter(limit);
   }
 
-  return new Ratelimit({
+  const realLimiter = new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(limit, '1 m'),
     prefix: `@upstash/ratelimit/${prefix}`,
   });
+
+  return {
+    async limit(identifier: string) {
+      try {
+        return await realLimiter.limit(identifier);
+      } catch (err) {
+        console.warn(
+          `[upstash] Rate limit check failed for prefix "${prefix}", failing open:`,
+          err instanceof Error ? err.message : err
+        );
+        return {
+          success: true,
+          limit,
+          remaining: limit,
+          reset: Date.now(),
+        };
+      }
+    },
+  };
 }
