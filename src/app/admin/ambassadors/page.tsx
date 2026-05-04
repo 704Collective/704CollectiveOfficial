@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -38,6 +38,7 @@ type AmbassadorRow = {
   stripe_account_status: string | null;
   is_active: boolean;
   approved_social_referrals_count: number;
+  type: string | null;
 };
 
 type ReferralRow = {
@@ -96,12 +97,23 @@ function StripeStatusBadge({ status }: { status: string | null }) {
   );
 }
 
-function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function TypeBadge({ type }: { type: string | null }) {
+  const t = (type ?? 'locator').toLowerCase();
+  if (t === 'member') {
+    return <Badge variant="outline" className="bg-amber-500/15 text-amber-400 border-amber-500/30 capitalize">member</Badge>;
+  }
+  if (t === 'partner') {
+    return <Badge variant="outline" className="bg-blue-500/15 text-blue-400 border-blue-500/30 capitalize">partner</Badge>;
+  }
+  return <Badge variant="outline" className="bg-muted text-muted-foreground border-border capitalize">locator</Badge>;
+}
+
+function StatCard({ label, value, hint, valueClassName }: { label: string; value: string; hint?: string; valueClassName?: string }) {
   return (
     <Card>
       <CardContent className="p-4">
         <p className="text-xs uppercase tracking-wider text-muted-foreground/70">{label}</p>
-        <p className="text-2xl font-semibold mt-1 tabular-nums">{value}</p>
+        <p className={`text-2xl font-semibold mt-1 tabular-nums ${valueClassName ?? ""}`}>{value}</p>
         {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
       </CardContent>
     </Card>
@@ -129,7 +141,7 @@ export default function AdminAmbassadorsPage() {
     const [ambRes, refRes, payRes] = await Promise.all([
       supabase
         .from('ambassadors')
-        .select('id, full_name, email, referral_code, stripe_account_status, is_active, approved_social_referrals_count')
+        .select('id, full_name, email, referral_code, stripe_account_status, is_active, approved_social_referrals_count, type')
         .order('created_at', { ascending: false }),
       supabase
         .from('ambassador_referrals')
@@ -169,18 +181,25 @@ export default function AdminAmbassadorsPage() {
 
   // Per-ambassador aggregations.
   const perAmbassador = useMemo(() => {
-    const map = new Map<string, { total: number; pending: number; earnedCents: number }>();
+    const map = new Map<string, { total: number; conversions: number; pending: number; earnedCents: number; payoutOwedCents: number; payoutSentCents: number }>();
     for (const a of ambassadors) {
-      map.set(a.id, { total: 0, pending: 0, earnedCents: 0 });
+      map.set(a.id, { total: 0, conversions: 0, pending: 0, earnedCents: 0, payoutOwedCents: 0, payoutSentCents: 0 });
     }
     for (const r of referrals) {
       const cur = map.get(r.ambassador_id);
       if (!cur) continue;
+      cur.total += 1;
       if (APPROVED_STATUSES.has(r.status)) {
-        cur.total += 1;
+        cur.conversions += 1;
         cur.earnedCents += Number(r.reward_cents ?? 0);
       }
       if (isPending(r.status)) cur.pending += 1;
+      if ((r.status === 'approved' || r.status === 'auto_approved' || r.status === 'converted') && !r.paid_out_at) {
+        cur.payoutOwedCents += Number(r.reward_cents ?? 0);
+      }
+      if (r.status === 'paid_out' || r.paid_out_at) {
+        cur.payoutSentCents += Number(r.reward_cents ?? 0);
+      }
     }
     return map;
   }, [ambassadors, referrals]);
@@ -199,12 +218,16 @@ export default function AdminAmbassadorsPage() {
         !r.paid_out_at &&
         ambMap.get(r.ambassador_id)?.stripe_account_status === 'active'
     ).length;
+    const totalPayoutOwedCents = referrals
+      .filter((r) => (r.status === 'approved' || r.status === 'auto_approved' || r.status === 'converted') && !r.paid_out_at)
+      .reduce((sum, r) => sum + Number(r.reward_cents ?? 0), 0);
     return {
       activeCount,
       pendingCount: pendingReferrals.length,
       totalReferred,
       paidOutCents,
       pendingPayoutCount,
+      totalPayoutOwedCents,
     };
   }, [ambassadors, referrals, payoutsThisMonth, pendingReferrals.length]);
 
@@ -341,7 +364,8 @@ export default function AdminAmbassadorsPage() {
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <StatCard label="Total payout owed" value={dollars(totals.totalPayoutOwedCents)} hint="Unpaid commissions" valueClassName={totals.totalPayoutOwedCents > 0 ? 'text-rose-400' : undefined} />
           <StatCard label="Active ambassadors" value={String(totals.activeCount)} hint={`${ambassadors.length} total`} />
           <StatCard label="Pending referrals" value={String(totals.pendingCount)} hint="Awaiting your review" />
           <StatCard label="Total referred members" value={String(totals.totalReferred)} hint="Approved + paid out" />
@@ -435,12 +459,12 @@ export default function AdminAmbassadorsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead className="text-right">Referrals</TableHead>
-                  <TableHead className="text-right">Pending</TableHead>
-                  <TableHead className="text-right">Earned</TableHead>
+                  <TableHead className="text-right">Conversions</TableHead>
+                  <TableHead className="text-right">Payout Owed</TableHead>
+                  <TableHead className="text-right">Payout Sent</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
@@ -453,7 +477,7 @@ export default function AdminAmbassadorsPage() {
                   </TableRow>
                 ) : (
                   ambassadors.map((a) => {
-                    const stats = perAmbassador.get(a.id) ?? { total: 0, pending: 0, earnedCents: 0 };
+                    const stats = perAmbassador.get(a.id) ?? { total: 0, conversions: 0, pending: 0, earnedCents: 0, payoutOwedCents: 0, payoutSentCents: 0 };
                     return (
                       <TableRow
                         key={a.id}
@@ -469,23 +493,24 @@ export default function AdminAmbassadorsPage() {
                               </Badge>
                             )}
                           </div>
+                          <div className="text-xs text-muted-foreground">{a.email}</div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">{a.email}</TableCell>
                         <TableCell>
-                          <span className="font-mono text-amber-400">{a.referral_code}</span>
+                          <TypeBadge type={a.type} />
                         </TableCell>
+                        <TableCell className="text-right tabular-nums">{stats.total}</TableCell>
+                        <TableCell className="text-right tabular-nums">{stats.conversions}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {stats.payoutOwedCents > 0 ? (
+                            <span className="font-semibold text-rose-400">{dollars(stats.payoutOwedCents)}</span>
+                          ) : (
+                            <span className="text-muted-foreground">.00</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{dollars(stats.payoutSentCents)}</TableCell>
                         <TableCell>
                           <StripeStatusBadge status={a.stripe_account_status} />
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">{stats.total}</TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {stats.pending > 0 ? (
-                            <span className="text-amber-400 font-medium">{stats.pending}</span>
-                          ) : (
-                            <span className="text-muted-foreground">0</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">{dollars(stats.earnedCents)}</TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
