@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+﻿import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
@@ -943,6 +943,33 @@ ${needsAction
   };
 }
 
+function ambassadorOnboardingInviteTemplate(data: {
+  name: string;
+  onboardingUrl: string;
+}): { subject: string; html: string } {
+  const firstName = escapeHtml((data.name || 'Ambassador').split(' ')[0]);
+  const url = data.onboardingUrl || '';
+  return {
+    subject: 'Set up your 704 Collective ambassador payout account',
+    html: baseLayout(`
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${firstName},</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.65;color:${BRAND.textSecondary};">
+  You're set up as a 704 Collective ambassador. To receive payouts when your referrals convert,
+  please complete your Stripe Connect setup using the button below.
+</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.65;color:${BRAND.textSecondary};">
+  This link expires after a few days, so set it up soon &mdash; you can always reach out to us if
+  you need a fresh one.
+</p>
+${ctaButton('Complete Stripe Setup', url)}
+<p style="margin:0 0 24px;font-size:12px;line-height:1.6;color:${BRAND.textMuted};">
+  If the button above doesn't work, copy and paste this link into your browser:<br/>
+  <span style="font-family:ui-monospace,SFMono-Regular,monospace;word-break:break-all;">${escapeHtml(url)}</span>
+</p>
+<p style="margin:0;font-size:14px;color:${BRAND.textMuted};">Thanks for being part of 704 Collective! &mdash; The 704 Team</p>
+`),
+  };
+}
 function getTemplate(template: string, data: Record<string, unknown>): { subject: string; html: string } {
   switch (template) {
     case "welcome-back":
@@ -1124,6 +1151,8 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
         status: string;
         adminQueueUrl: string;
       });
+    case "ambassador-onboarding-invite":
+      return ambassadorOnboardingInviteTemplate(data as { name: string; onboardingUrl: string });
         default:
       throw new Error(`Unknown email template: ${template}`);
   }

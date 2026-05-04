@@ -302,7 +302,7 @@ export async function deactivateAmbassador(
 
 export async function createAmbassadorOnboardingLink(
   ambassadorId: string
-): Promise<{ url: string; expiresAt: number }> {
+): Promise<{ url: string; expiresAt: number; emailSent: boolean }> {
   const gate = await assertSuperAdmin();
   if (!gate.ok) throw new Error(gate.error);
 
@@ -348,7 +348,32 @@ export async function createAmbassadorOnboardingLink(
     type: 'account_onboarding',
   });
 
-  return { url: accountLink.url, expiresAt: accountLink.expires_at };
+
+  // Send onboarding email (non-blocking — link generation already succeeded)
+  let emailSent = false;
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const firstName = (ambassador as { full_name: string }).full_name.split(' ')[0] || 'Ambassador';
+    const emailRes = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({
+        to: (ambassador as { email: string }).email,
+        template: 'ambassador-onboarding-invite',
+        skipCc: true,
+        data: { name: firstName, onboardingUrl: accountLink.url },
+      }),
+    });
+    emailSent = emailRes.ok;
+    if (!emailRes.ok) console.error('Ambassador onboarding email failed:', await emailRes.text());
+  } catch (emailErr) {
+    console.error('Ambassador onboarding email error (non-blocking):', emailErr);
+  }
+
+  return { url: accountLink.url, expiresAt: accountLink.expires_at, emailSent };
 }
 
 export async function fireAmbassadorPayout(

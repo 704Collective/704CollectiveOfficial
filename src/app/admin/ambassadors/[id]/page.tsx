@@ -307,7 +307,11 @@ export default function AdminAmbassadorDetailPage() {
       const result = await createAmbassadorOnboardingLink(ambassador.id);
       await navigator.clipboard.writeText(result.url);
       window.open(result.url, '_blank');
-      toast.success(`Onboarding link generated and copied. Send to ${ambassador.email}.`);
+      if (result.emailSent) {
+        toast.success(`Onboarding link emailed to ${ambassador.email} (also copied to clipboard).`);
+      } else {
+        toast.warning(`Link generated and copied \u2014 email failed. Please send manually to ${ambassador.email}.`);
+      }
       await load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to generate onboarding link');
