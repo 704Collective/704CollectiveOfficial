@@ -1,4 +1,4 @@
-'use server';
+﻿'use server';
 
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
@@ -243,6 +243,42 @@ export async function denyReferral(
       status: 'denied',
       denied_at: new Date().toISOString(),
       denied_reason: cleanReason,
+    })
+    .eq('id', referralId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function churnReferral(
+  referralId: string,
+  reason?: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const gate = await assertAdmin();
+  if (!gate.ok) return gate;
+  if (!referralId) return { ok: false, error: 'Missing referral id' };
+
+  const { data: ref, error: fetchErr } = await gate.admin
+    .from('ambassador_referrals')
+    .select('id, status, paid_out_at')
+    .eq('id', referralId)
+    .maybeSingle();
+  if (fetchErr) return { ok: false, error: fetchErr.message };
+  if (!ref) return { ok: false, error: 'Referral not found' };
+
+  if (ref.paid_out_at) {
+    return { ok: false, error: 'Cannot churn a referral that has already been paid out' };
+  }
+
+  if (ref.status === 'churned') {
+    return { ok: false, error: 'Referral is already churned' };
+  }
+
+  const { error } = await gate.admin
+    .from('ambassador_referrals')
+    .update({
+      status: 'churned',
+      denied_at: new Date().toISOString(),
+      denied_reason: reason || 'Manually churned by admin',
     })
     .eq('id', referralId);
   if (error) return { ok: false, error: error.message };

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -33,7 +33,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { updateAmbassador, createAmbassadorOnboardingLink, fireAmbassadorPayout } from '@/app/actions/ambassadorActions';
+import { updateAmbassador, createAmbassadorOnboardingLink, fireAmbassadorPayout, churnReferral } from '@/app/actions/ambassadorActions';
 
 type Ambassador = {
   id: string;
@@ -85,6 +85,7 @@ const APPROVED_STATUSES = new Set([
   'paid_out',
   'converted',
 ]);
+const CHURN_ELIGIBLE = new Set(['pending', 'signed_up', 'approved', 'auto_approved', 'converted']);
 const STATUS_FILTERS = [
   { value: 'all', label: 'All' },
   { value: 'pending', label: 'Pending' },
@@ -198,6 +199,7 @@ export default function AdminAmbassadorDetailPage() {
   const [saving, setSaving] = useState(false);
   const [generatingLink, setGeneratingLink] = useState(false);
   const [firingPayoutId, setFiringPayoutId] = useState<string | null>(null);
+  const [churningId, setChurningId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -326,6 +328,25 @@ export default function AdminAmbassadorDetailPage() {
       toast.error(err instanceof Error ? err.message : 'Payout failed');
     } finally {
       setFiringPayoutId(null);
+    }
+  };
+
+  const handleChurn = async (referralId: string) => {
+    const reason = window.prompt(
+      'Mark this referral as churned? This means no commission will be paid.\n\nOptional reason (press OK to confirm):'
+    );
+    if (reason === null) return; // cancelled
+    setChurningId(referralId);
+    try {
+      const result = await churnReferral(referralId, reason.trim() || undefined);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success('Referral marked as churned');
+      await load();
+    } finally {
+      setChurningId(null);
     }
   };
 
@@ -553,24 +574,39 @@ export default function AdminAmbassadorDetailPage() {
                               {r.paid_out_at ? format(new Date(r.paid_out_at), 'MMM d') : '—'}
                             </TableCell>
                             <TableCell>
-                              {APPROVED_STATUSES.has(r.status) && !r.paid_out_at ? (
-                                amb.stripe_account_status === 'active' ? (
+                              <div className="flex flex-col gap-1 items-start">
+                                {APPROVED_STATUSES.has(r.status) && !r.paid_out_at ? (
+                                  amb.stripe_account_status === 'active' ? (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      disabled={firingPayoutId === r.id}
+                                      onClick={(e) => { e.stopPropagation(); void handleFirePayout(r.id, r.reward_cents); }}
+                                      className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-black gap-1"
+                                    >
+                                      {firingPayoutId === r.id ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                                      Fire payout
+                                    </Button>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground" title="Ambassador must complete Stripe onboarding first">
+                                      Pending onboarding
+                                    </span>
+                                  )
+                                ) : null}
+                                {CHURN_ELIGIBLE.has(r.status) && (
                                   <Button
                                     type="button"
                                     size="sm"
-                                    disabled={firingPayoutId === r.id}
-                                    onClick={(e) => { e.stopPropagation(); void handleFirePayout(r.id, r.reward_cents); }}
-                                    className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-black gap-1"
+                                    variant="outline"
+                                    disabled={churningId === r.id}
+                                    onClick={(e) => { e.stopPropagation(); void handleChurn(r.id); }}
+                                    className="h-7 text-xs text-amber-400 border-amber-500/30 hover:bg-amber-500/10 gap-1"
                                   >
-                                    {firingPayoutId === r.id ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                                    Fire payout
+                                    {churningId === r.id ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                                    Mark churned
                                   </Button>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground" title="Ambassador must complete Stripe onboarding first">
-                                    Pending onboarding
-                                  </span>
-                                )
-                              ) : null}
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
                           {isOpen && hasDetail && (
