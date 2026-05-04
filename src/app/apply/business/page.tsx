@@ -167,9 +167,13 @@ function BusinessApplicationInner() {
           method: 'GET',
         });
 
+        console.log('[payment-init] GET response:', { ok: checkRes.ok, status: checkRes.status });
+
         if (!checkRes.ok) throw new Error('Failed to check payment status');
 
         const checkData = await checkRes.json();
+
+        console.log('[payment-init] GET data:', checkData);
 
         if (cancelled) return;
 
@@ -184,9 +188,13 @@ function BusinessApplicationInner() {
 
         setHasExistingPayment(false);
 
+        console.log('[payment-init] About to call POST');
+
         const intentRes = await fetch('/api/business-application-payment', {
           method: 'POST',
         });
+
+        console.log('[payment-init] POST response:', { ok: intentRes.ok, status: intentRes.status });
 
         if (!intentRes.ok) {
           const errData = await intentRes.json().catch(() => ({}));
@@ -195,12 +203,17 @@ function BusinessApplicationInner() {
 
         const { clientSecret: cs } = await intentRes.json() as { clientSecret: string };
 
+        console.log('[payment-init] POST data parsed, clientSecret length:', cs?.length);
+
         if (cancelled) return;
+
+        console.log('[payment-init] About to setClientSecret and complete');
 
         setClientSecret(cs);
         setPaymentCheckLoading(false);
       } catch (err) {
         if (cancelled) return;
+        console.log('[payment-init] CATCH triggered with error:', err);
         const msg = err instanceof Error ? err.message : 'Unknown error';
         console.error('Payment init failed:', err);
         setPaymentInitError(msg);
