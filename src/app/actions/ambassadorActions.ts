@@ -443,7 +443,7 @@ export async function fireAmbassadorPayout(
 
   await supabase
     .from('ambassador_referrals')
-    .update({ paid_out_at: new Date().toISOString(), stripe_payout_id: transfer.id })
+    .update({ paid_out_at: new Date().toISOString(), stripe_transfer_id: transfer.id })
     .eq('id', ref.id);
 
   // ── Send payout email (non-blocking) ──
