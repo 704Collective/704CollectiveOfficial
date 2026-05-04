@@ -970,6 +970,64 @@ ${ctaButton('Complete Stripe Setup', url)}
 `),
   };
 }
+function ambassadorWeeklyPayoutTemplate(data: {
+  name: string;
+  totalCents: number;
+  conversionCount: number;
+  conversions: Array<{
+    refereeName: string;
+    refereeEmail: string;
+    date: string;
+    amountCents: number;
+  }>;
+  transferArrivalEstimate: string;
+}): { subject: string; html: string } {
+  const firstName = escapeHtml((data.name || 'Ambassador').split(' ')[0]);
+  const totalDollars = (Number(data.totalCents || 0) / 100).toFixed(2);
+  const count = Number(data.conversionCount || 0);
+  const arrival = escapeHtml(data.transferArrivalEstimate || 'within 2 business days');
+  const conversions = Array.isArray(data.conversions) ? data.conversions as Array<{
+    refereeName: string; refereeEmail: string; date: string; amountCents: number;
+  }> : [];
+
+  const rows = conversions.map((c) => `
+    <tr>
+      <td style="padding:10px 12px;font-size:13px;color:${BRAND.textSecondary};border-bottom:1px solid ${BRAND.border};">${escapeHtml(c.date || '')}</td>
+      <td style="padding:10px 12px;font-size:13px;color:${BRAND.text};border-bottom:1px solid ${BRAND.border};">${escapeHtml(c.refereeName || '')}</td>
+      <td style="padding:10px 12px;font-size:13px;color:${BRAND.textMuted};border-bottom:1px solid ${BRAND.border};">${escapeHtml(c.refereeEmail || '')}</td>
+      <td style="padding:10px 12px;font-size:13px;color:${BRAND.accent};text-align:right;border-bottom:1px solid ${BRAND.border};font-weight:600;">$${(Number(c.amountCents || 0) / 100).toFixed(2)}</td>
+    </tr>`).join('');
+
+  return {
+    subject: `You earned $${totalDollars} this week from 704 Collective referrals`,
+    html: baseLayout(`
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${firstName},</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.65;color:${BRAND.textSecondary};">
+  Great news! You earned <strong style="color:${BRAND.text};">$${totalDollars}</strong> this week from
+  <strong style="color:${BRAND.text};">${count} referral conversion${count !== 1 ? 's' : ''}</strong>.
+  Your funds will arrive in your bank account <strong style="color:${BRAND.text};">${arrival}</strong>.
+</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 28px;background:rgba(255,255,255,0.05);border-radius:10px;border:1px solid ${BRAND.border};overflow:hidden;">
+  <thead>
+    <tr style="background:rgba(255,255,255,0.05);">
+      <th style="padding:10px 12px;font-size:11px;font-weight:700;color:${BRAND.textMuted};text-transform:uppercase;letter-spacing:0.06em;text-align:left;border-bottom:1px solid ${BRAND.border};">Date</th>
+      <th style="padding:10px 12px;font-size:11px;font-weight:700;color:${BRAND.textMuted};text-transform:uppercase;letter-spacing:0.06em;text-align:left;border-bottom:1px solid ${BRAND.border};">Member</th>
+      <th style="padding:10px 12px;font-size:11px;font-weight:700;color:${BRAND.textMuted};text-transform:uppercase;letter-spacing:0.06em;text-align:left;border-bottom:1px solid ${BRAND.border};">Email</th>
+      <th style="padding:10px 12px;font-size:11px;font-weight:700;color:${BRAND.textMuted};text-transform:uppercase;letter-spacing:0.06em;text-align:right;border-bottom:1px solid ${BRAND.border};">Amount</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${rows}
+  </tbody>
+</table>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.65;color:${BRAND.textSecondary};">
+  Thanks for being part of the 704 Collective ambassador program! Keep referring great people and
+  we'll keep paying you out every week.
+</p>
+<p style="margin:0;font-size:14px;color:${BRAND.textMuted};">&#8212; The 704 Team</p>
+`),
+  };
+}
 function getTemplate(template: string, data: Record<string, unknown>): { subject: string; html: string } {
   switch (template) {
     case "welcome-back":
@@ -1153,6 +1211,12 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
       });
     case "ambassador-onboarding-invite":
       return ambassadorOnboardingInviteTemplate(data as { name: string; onboardingUrl: string });
+    case "ambassador-weekly-payout":
+      return ambassadorWeeklyPayoutTemplate(data as {
+        name: string; totalCents: number; conversionCount: number;
+        conversions: Array<{ refereeName: string; refereeEmail: string; date: string; amountCents: number }>;
+        transferArrivalEstimate: string;
+      });
         default:
       throw new Error(`Unknown email template: ${template}`);
   }
