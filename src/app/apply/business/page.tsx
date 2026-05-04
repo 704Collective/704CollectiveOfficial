@@ -1,7 +1,7 @@
 ﻿'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import { Button } from '@/components/ui/button';
@@ -99,6 +99,7 @@ function PaymentForm({ onSuccess }: { onSuccess: () => void }) {
 
 function BusinessApplicationInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const [step, setStep] = useState<Step>('apply');
   const [loading, setLoading] = useState(false);
@@ -111,9 +112,50 @@ function BusinessApplicationInner() {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentInitError, setPaymentInitError] = useState<string | null>(null);
 
+  // Referral code state
+  const [referralCode, setReferralCode] = useState('');
+  const [referralCodeInput, setReferralCodeInput] = useState('');
+  const [resolvedAmbassador, setResolvedAmbassador] = useState<{ id: string; full_name: string } | null>(null);
+  const [referralCodeError, setReferralCodeError] = useState<string | null>(null);
+  const [validatingCode, setValidatingCode] = useState(false);
+
   const set = (key: keyof FormData) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => setForm(prev => ({ ...prev, [key]: e.target.value }));
+
+  const validateReferralCode = useCallback(async (code: string) => {
+    const trimmed = code.trim();
+    if (!trimmed) {
+      setResolvedAmbassador(null);
+      setReferralCodeError(null);
+      setReferralCode('');
+      return;
+    }
+    setValidatingCode(true);
+    setReferralCodeError(null);
+    const { data, error } = await supabase.rpc('get_ambassador_by_code', {
+      p_code: trimmed,
+    });
+    setValidatingCode(false);
+    if (error || !data || (data as unknown[]).length === 0) {
+      setResolvedAmbassador(null);
+      setReferralCode('');
+      setReferralCodeError('Invalid or inactive code');
+      return;
+    }
+    const ambassador = (data as { id: string; full_name: string }[])[0];
+    setResolvedAmbassador({ id: ambassador.id, full_name: ambassador.full_name });
+    setReferralCode(trimmed);
+    setReferralCodeError(null);
+  }, []);
+
+  // Pre-fill referral code from ?ref= URL param
+  useEffect(() => {
+    const refFromUrl = searchParams.get('ref')?.trim();
+    if (!refFromUrl) return;
+    setReferralCodeInput(refFromUrl.toUpperCase());
+    void validateReferralCode(refFromUrl);
+  }, [searchParams, validateReferralCode]);
 
   // Pre-fill form fields when user is already logged in.
   useEffect(() => {
@@ -316,6 +358,8 @@ function BusinessApplicationInner() {
           anything_else: form.anythingElse.trim() || null,
           status: 'pending',
           profile_id: currentUserId,
+          ambassador_id: resolvedAmbassador?.id || null,
+          referral_code: referralCode || null,
         });
 
       if (appError) throw appError;
@@ -543,6 +587,47 @@ function BusinessApplicationInner() {
                 </p>
               </div>
             )}
+
+            {/* Referral code — optional, subtle, between account and application */}
+            <div className="space-y-3">
+              {resolvedAmbassador ? (
+                <div className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 space-y-0.5">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Referred By</p>
+                  <p className="text-base font-semibold text-primary">{resolvedAmbassador.full_name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    You&apos;ll receive the founding member rate of $250/month if approved.
+                  </p>
+                </div>
+              ) : (
+                <details className="group">
+                  <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-1">
+                    Have a referral code?
+                  </summary>
+                  <div className="mt-2.5 flex gap-2">
+                    <Input
+                      type="text"
+                      placeholder="Enter code"
+                      value={referralCodeInput}
+                      onChange={(e) => setReferralCodeInput(e.target.value.toUpperCase())}
+                      onBlur={(e) => void validateReferralCode(e.target.value)}
+                      className="uppercase"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void validateReferralCode(referralCodeInput)}
+                      disabled={validatingCode}
+                      className="shrink-0"
+                    >
+                      {validatingCode ? 'Checking...' : 'Apply'}
+                    </Button>
+                  </div>
+                  {referralCodeError && (
+                    <p className="text-xs text-red-400 mt-1.5">{referralCodeError}</p>
+                  )}
+                </details>
+              )}
+            </div>
 
             {/* Professional info */}
             <div className="space-y-4">
