@@ -115,24 +115,30 @@ function JoinInner() {
   // Validate an ambassador code against the public RPC. Stable identity so the
   // ?ref= bootstrap effect below has a clean dep list.
   const validateReferralCode = useCallback(async (code: string) => {
+    console.log('[join-ref] validateReferralCode CALLED with:', code);
     const trimmed = code.trim();
     if (!trimmed) {
+      console.log('[join-ref] Empty code, exiting');
       setResolvedAmbassador(null);
       setReferralCodeError(null);
       setReferralCode('');
       return;
     }
+    console.log('[join-ref] Calling RPC with p_code:', trimmed);
     setValidatingCode(true);
     setReferralCodeError(null);
     const { data, error } = await supabase.rpc('get_ambassador_by_code', { p_code: trimmed });
+    console.log('[join-ref] RPC response:', { data, error });
     setValidatingCode(false);
     if (error || !data || data.length === 0) {
+      console.log('[join-ref] No match — setting error');
       setResolvedAmbassador(null);
       setReferralCode('');
       setReferralCodeError('Invalid or inactive code');
       return;
     }
     const ambassador = data[0] as { id: string; full_name: string };
+    console.log('[join-ref] SUCCESS — ambassador:', ambassador);
     setResolvedAmbassador({ id: ambassador.id, full_name: ambassador.full_name });
     setReferralCode(trimmed);
     setReferralCodeError(null);
@@ -141,8 +147,10 @@ function JoinInner() {
   // Pre-fill from ?ref= and auto-validate.
   useEffect(() => {
     const refFromUrl = searchParams.get('ref')?.trim();
+    console.log('[join-ref] URL effect fired. refFromUrl:', refFromUrl);
     if (!refFromUrl) return;
     setReferralCodeInput(refFromUrl.toUpperCase());
+    console.log('[join-ref] About to call validateReferralCode');
     void validateReferralCode(refFromUrl);
   }, [searchParams, validateReferralCode]);
 
