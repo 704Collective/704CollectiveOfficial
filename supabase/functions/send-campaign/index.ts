@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+﻿import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -306,14 +306,24 @@ serve(async (req) => {
       .update({ status: "sending" })
       .eq("id", campaign_id);
 
-    // Build recipient list based on audience_type
+    // Normalize frontend value aliases to canonical names
+    const AUDIENCE_ALIAS: Record<string, string> = {
+      all_active:       "all_members",
+      social:           "social_members",
+      business:         "business_members",
+      all_members:      "all_members",
+      social_members:   "social_members",
+      business_members: "business_members",
+    };
+    const rawAudienceType: string = campaign.audience_type ?? "all_members";
+    const audienceType = AUDIENCE_ALIAS[rawAudienceType] ?? rawAudienceType;
+
     let recipients: Recipient[] = [];
-    const audienceType: string = campaign.audience_type ?? "all_members";
 
     if (audienceType === "self") {
       if (!campaign.created_by) {
         await supabase.from("email_campaigns").update({ status: "draft" }).eq("id", campaign_id);
-        return new Response(JSON.stringify({ error: "Cannot resolve sender — campaign has no created_by" }), {
+        return new Response(JSON.stringify({ error: "Cannot resolve sender - campaign has no created_by" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -331,22 +341,19 @@ serve(async (req) => {
         .select("id, email, full_name")
         .eq("role", "super_admin")
         .is("deleted_at", null);
-      recipients = (profiles ?? []).map((p) => ({
-        email: p.email,
-        name: p.full_name,
-        profile_id: p.id,
-      }));
+      recipients = (profiles ?? [])
+        .filter((p) => !!p.email)
+        .map((p) => ({ email: p.email, name: p.full_name, profile_id: p.id }));
     } else if (audienceType === "all_members") {
       const { data: profiles } = await supabase
         .from("profiles")
         .select("id, email, full_name")
+        .in("member_type", ["social", "business"])
         .in("subscription_status", ["active", "trialing"])
         .is("deleted_at", null);
-      recipients = (profiles ?? []).map((p) => ({
-        email: p.email,
-        name: p.full_name,
-        profile_id: p.id,
-      }));
+      recipients = (profiles ?? [])
+        .filter((p) => !!p.email)
+        .map((p) => ({ email: p.email, name: p.full_name, profile_id: p.id }));
     } else if (audienceType === "social_members") {
       const { data: profiles } = await supabase
         .from("profiles")
@@ -354,11 +361,9 @@ serve(async (req) => {
         .eq("member_type", "social")
         .in("subscription_status", ["active", "trialing"])
         .is("deleted_at", null);
-      recipients = (profiles ?? []).map((p) => ({
-        email: p.email,
-        name: p.full_name,
-        profile_id: p.id,
-      }));
+      recipients = (profiles ?? [])
+        .filter((p) => !!p.email)
+        .map((p) => ({ email: p.email, name: p.full_name, profile_id: p.id }));
     } else if (audienceType === "business_members") {
       const { data: profiles } = await supabase
         .from("profiles")
@@ -366,23 +371,64 @@ serve(async (req) => {
         .eq("member_type", "business")
         .in("subscription_status", ["active", "trialing"])
         .is("deleted_at", null);
-      recipients = (profiles ?? []).map((p) => ({
-        email: p.email,
-        name: p.full_name,
-        profile_id: p.id,
-      }));
+      recipients = (profiles ?? [])
+        .filter((p) => !!p.email)
+        .map((p) => ({ email: p.email, name: p.full_name, profile_id: p.id }));
+    } else if (audienceType === "non_member") {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, email, full_name")
+        .in("member_type", ["social_non_member", "business_non_member"])
+        .is("deleted_at", null);
+      recipients = (profiles ?? [])
+        .filter((p) => !!p.email)
+        .map((p) => ({ email: p.email, name: p.full_name, profile_id: p.id }));
+    } else if (audienceType === "cancelled") {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, email, full_name")
+        .in("subscription_status", ["canceled", "cancel_at_period_end"])
+        .is("deleted_at", null);
+      recipients = (profiles ?? [])
+        .filter((p) => !!p.email)
+        .map((p) => ({ email: p.email, name: p.full_name, profile_id: p.id }));
+    } else if (audienceType === "event_guests") {
+      const eventId: string | null = campaign.audience_event_id ?? null;
+      if (!eventId) {
+        console.error("[send-campaign] event_guests audience requires an event_id but campaign.audience_event_id is null");
+        await supabase.from("email_campaigns").update({ status: "draft" }).eq("id", campaign_id);
+        return new Response(JSON.stringify({ error: "event_guests audience requires an event_id" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: participants } = await supabase
+        .from("event_participants_view")
+        .select("email, full_name, guest_name")
+        .eq("event_id", eventId)
+        .neq("status", "cancelled");
+      // Deduplicate by email
+      const seen = new Set<string>();
+      for (const p of participants ?? []) {
+        if (!p.email || seen.has(p.email.toLowerCase())) continue;
+        seen.add(p.email.toLowerCase());
+        recipients.push({
+          email: p.email,
+          name: p.full_name || p.guest_name || "Guest",
+        });
+      }
     } else if (audienceType === "all_contacts") {
       const { data: contacts } = await supabase
         .from("contacts")
         .select("id, email, first_name, last_name")
         .eq("unsubscribed", false);
-      recipients = (contacts ?? []).map((c) => ({
-        email: c.email,
-        name: [c.first_name, c.last_name].filter(Boolean).join(" ") || null,
-        contact_id: c.id,
-      }));
+      recipients = (contacts ?? [])
+        .filter((c) => !!c.email)
+        .map((c) => ({
+          email: c.email,
+          name: [c.first_name, c.last_name].filter(Boolean).join(" ") || null,
+          contact_id: c.id,
+        }));
     } else if (audienceType === "segment" && campaign.audience_segment_ids?.length) {
-      // contacts with specific tags
       const { data: taggedContacts } = await supabase
         .from("contact_tags")
         .select("contact_id, contacts(id, email, first_name, last_name)")
@@ -390,7 +436,7 @@ serve(async (req) => {
       const seen = new Set<string>();
       for (const row of taggedContacts ?? []) {
         const c = row.contacts as { id: string; email: string; first_name: string; last_name: string } | null;
-        if (c && !seen.has(c.id)) {
+        if (c && c.email && !seen.has(c.id)) {
           seen.add(c.id);
           recipients.push({
             email: c.email,
@@ -400,7 +446,6 @@ serve(async (req) => {
         }
       }
     }
-
     if (recipients.length === 0) {
       await supabase
         .from("email_campaigns")
