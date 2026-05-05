@@ -66,7 +66,8 @@ export function NewAmbassadorDialog({ open, onOpenChange, onCreated }: NewAmbass
         type,
       });
       if (!r.ok) {
-        toast.error(r.error);
+        console.error('[NewAmbassadorDialog] createAmbassador returned:', r);
+        toast.error(r.error ? r.error : 'Server action returned ok:false with no error message');
         return;
       }
       toast.success(`Invite sent to ${email.trim().toLowerCase()}`);
