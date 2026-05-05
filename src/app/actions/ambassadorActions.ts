@@ -181,6 +181,9 @@ export async function createAmbassador(input: {
     email,
     options: {
       redirectTo: `${siteUrl}/ambassadors/welcome`,
+      data: {
+        member_type: 'non_member',
+      },
     },
   });
 
