@@ -169,6 +169,7 @@ export default function AmbassadorDashboardPage() {
   const [ambassador, setAmbassador] = useState<AmbassadorRow | null>(null);
   const [referrals, setReferrals] = useState<ReferralRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAlsoMember, setIsAlsoMember] = useState(false);
 
   const loadData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -192,6 +193,19 @@ export default function AmbassadorDashboardPage() {
       .eq('ambassador_id', amb.id)
       .order('created_at', { ascending: false })
       .order('created_at', { ascending: false });
+
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('member_type, subscription_status')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profileData) {
+      const isPayingMember =
+        ['social', 'business'].includes(profileData.member_type ?? '') &&
+        ['active', 'trialing'].includes(profileData.subscription_status ?? '');
+      setIsAlsoMember(isPayingMember);
+    }
 
     setAmbassador(amb as AmbassadorRow);
     setReferrals((refs ?? []) as ReferralRow[]);
@@ -258,12 +272,22 @@ export default function AmbassadorDashboardPage() {
                   Your 704 Collective Ambassador Dashboard
                 </p>
               </div>
-              <button
-                onClick={handleSignOut}
-                style={{ padding: '9px 18px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'rgba(255,255,255,0.6)', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
-              >
-                Sign Out
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                {isAlsoMember && (
+                  <Link
+                    href="/dashboard"
+                    style={{ padding: '9px 18px', background: 'rgba(198,166,100,0.12)', border: '1px solid rgba(198,166,100,0.3)', borderRadius: '8px', color: '#C6A664', fontSize: '0.875rem', fontWeight: 600, whiteSpace: 'nowrap', textDecoration: 'none' }}
+                  >
+                    Member Dashboard
+                  </Link>
+                )}
+                <button
+                  onClick={handleSignOut}
+                  style={{ padding: '9px 18px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'rgba(255,255,255,0.6)', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  Sign Out
+                </button>
+              </div>
             </div>
 
             {/* ── SECTION 2: Referral Code + Link ──────────────────────────── */}

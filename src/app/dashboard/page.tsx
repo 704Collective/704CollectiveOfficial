@@ -196,6 +196,7 @@ function DashboardSuggestFromQuery({ onOpen }: { onOpen: () => void }) {
 export default function Dashboard() {
   const { user, profile, isActiveMember, isAdmin, loading, refreshProfile } = useAuth();
   const [calendarPromptDismissed, setCalendarPromptDismissed] = useState(false);
+  const [isAmbassador, setIsAmbassador] = useState(false);
 
   useEffect(() => {
     if ((profile as { calendar_token?: string | null } | null)?.calendar_token) {
@@ -262,6 +263,19 @@ export default function Dashboard() {
       .eq('id', user.id)
       .then(({ error }) => {
         if (error) console.error('[dashboard] last_seen update failed');
+      });
+  }, [user]);
+
+  // Check if this member is also an ambassador.
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('ambassadors')
+      .select('id')
+      .eq('profile_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setIsAmbassador(!!data);
       });
   }, [user]);
 
@@ -383,6 +397,37 @@ export default function Dashboard() {
       />
 
       <main id="main-content" className={cn(DASHBOARD_MAIN, 'space-y-6')}>
+
+        {/* Ambassador dual-role banner */}
+        {isAmbassador && (
+          <Link href="/ambassadors/dashboard">
+            <div
+              className="cursor-pointer transition hover:opacity-90"
+              style={{
+                background: 'linear-gradient(135deg, rgba(198,166,100,0.15) 0%, rgba(198,166,100,0.08) 100%)',
+                border: '1px solid rgba(198,166,100,0.3)',
+                borderRadius: '12px',
+                padding: '16px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '16px',
+              }}
+            >
+              <div>
+                <p style={{ fontSize: '0.875rem', fontWeight: 600, color: '#C6A664', margin: 0 }}>
+                  You&apos;re also an ambassador
+                </p>
+                <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.65)', margin: '2px 0 0' }}>
+                  Track your referrals and manage payouts in your ambassador dashboard.
+                </p>
+              </div>
+              <span style={{ color: '#C6A664', fontSize: '1.125rem', fontWeight: 600, flexShrink: 0 }}>
+                View dashboard →
+              </span>
+            </div>
+          </Link>
+        )}
 
         {/* Past due warning */}
         {isPastDue && (
