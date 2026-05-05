@@ -15,6 +15,7 @@ export default function AmbassadorLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -52,6 +53,55 @@ export default function AmbassadorLoginPage() {
       router.push('/ambassadors/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
+      setLoading(false);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    setLoading(true);
+    setError(null);
+    try {
+      const { error: oauthErr } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/ambassadors/dashboard`,
+        },
+      });
+      if (oauthErr) {
+        setError(oauthErr.message);
+        setLoading(false);
+      }
+      // On success the browser redirects to Google — no further code runs
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sign in failed');
+      setLoading(false);
+    }
+  }
+
+  async function handleMagicLink() {
+    if (!email.trim()) {
+      setError('Please enter your email above first');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const { error: otpErr } = await supabase.auth.signInWithOtp({
+        email: email.trim().toLowerCase(),
+        options: {
+          emailRedirectTo: `${window.location.origin}/ambassadors/dashboard`,
+          shouldCreateUser: false,
+        },
+      });
+      if (otpErr) {
+        setError(otpErr.message);
+        setLoading(false);
+        return;
+      }
+      setMagicLinkSent(true);
+      setLoading(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send magic link');
       setLoading(false);
     }
   }
@@ -219,6 +269,52 @@ export default function AmbassadorLoginPage() {
                     'Sign In'
                   )}
                 </button>
+
+                {magicLinkSent ? (
+                  <div style={{ textAlign: 'center', padding: '20px', background: 'rgba(198,166,100,0.1)', border: '1px solid rgba(198,166,100,0.3)', borderRadius: '8px', marginTop: '20px' }}>
+                    <p style={{ color: '#C6A664', fontWeight: 600, fontSize: '0.9375rem', margin: 0 }}>
+                      Check your email
+                    </p>
+                    <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.8125rem', margin: '6px 0 0' }}>
+                      We sent a magic login link to {email}. Click it to sign in. The link expires in 60 minutes.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {/* OR divider */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '20px 0' }}>
+                      <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.12)' }} />
+                      <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', fontWeight: 600 }}>OR</span>
+                      <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.12)' }} />
+                    </div>
+
+                    {/* Google OAuth */}
+                    <button
+                      type="button"
+                      onClick={() => void handleGoogleSignIn()}
+                      disabled={loading}
+                      style={{ width: '100%', padding: '12px', background: '#FFFFFF', color: '#1A1A1A', border: 'none', borderRadius: '8px', fontSize: '0.9375rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                        <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+                        <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
+                        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                      </svg>
+                      Continue with Google
+                    </button>
+
+                    {/* Magic link */}
+                    <button
+                      type="button"
+                      onClick={() => void handleMagicLink()}
+                      disabled={loading}
+                      style={{ width: '100%', marginTop: '10px', padding: '12px', background: 'transparent', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', fontSize: '0.9375rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.5 : 1 }}
+                    >
+                      Send me a magic link
+                    </button>
+                  </>
+                )}
               </form>
             </div>
 
