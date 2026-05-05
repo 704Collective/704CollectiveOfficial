@@ -1,4 +1,4 @@
-﻿import type { Metadata } from 'next';
+import type { Metadata } from 'next';
 import Nav from '@/components/Nav';
 import { Footer } from '@/components/Footer';
 import { createClient } from '@/lib/supabase/server';
@@ -70,6 +70,106 @@ function MedalIcon({ color }: { color: string }) {
 
 export default async function AmbassadorsPage() {
   const supabase = await createClient();
+
+  // Role gate: only ambassadors and admins can see the leaderboard.
+  const { data: { user } } = await supabase.auth.getUser();
+  let canViewLeaderboard = false;
+  if (user) {
+    const [profileRes, ambassadorRes] = await Promise.all([
+      supabase.from('profiles').select('role').eq('id', user.id).maybeSingle(),
+      supabase.from('ambassadors').select('id').eq('profile_id', user.id).maybeSingle(),
+    ]);
+    const role = profileRes.data?.role ?? null;
+    const isAdmin = role === 'admin' || role === 'super_admin';
+    const isAmbassador = !!ambassadorRes.data;
+    canViewLeaderboard = isAdmin || isAmbassador;
+  }
+
+  if (!canViewLeaderboard) {
+    return (
+      <>
+        <Nav />
+        <main id="main-content" style={{ backgroundColor: '#0a0a0a', minHeight: '100vh', paddingTop: '80px' }}>
+          <section style={{ padding: 'clamp(64px, 10vw, 120px) clamp(16px, 5vw, 24px)' }}>
+            <div style={{ maxWidth: '640px', margin: '0 auto', textAlign: 'center' }}>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '24px',
+                padding: '6px 14px',
+                background: 'rgba(198,166,100,0.12)',
+                border: '1px solid rgba(198,166,100,0.3)',
+                borderRadius: '100px',
+              }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="#C6A664" aria-hidden="true">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+                <span style={{ fontSize: '0.7rem', color: '#C6A664', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Ambassador Program</span>
+              </div>
+
+              <h1 style={{ fontSize: 'clamp(2rem, 6vw, 3.5rem)', fontWeight: 700, color: '#FFFFFF', lineHeight: 1.1, margin: '0 0 20px' }}>
+                704 Collective
+                <br />
+                <span style={{ color: '#C6A664' }}>Ambassador Program</span>
+              </h1>
+
+              <p style={{ fontSize: 'clamp(1rem, 2.5vw, 1.125rem)', color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, margin: '0 0 12px' }}>
+                Earn <strong style={{ color: '#C6A664' }}>$20</strong> for every Social member you refer,{' '}
+                <strong style={{ color: '#C6A664' }}>$125</strong> for every Business member.
+              </p>
+
+              <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6, margin: '0 0 40px' }}>
+                Interested in becoming an ambassador? Reach out to{' '}
+                <a href="mailto:hello@704collective.com" style={{ color: '#C6A664', textDecoration: 'none' }}>
+                  hello@704collective.com
+                </a>{' '}
+                to learn more.
+              </p>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                gap: '16px',
+                marginBottom: '40px',
+              }}>
+                {[
+                  { label: 'Per Social Referral', value: '$20' },
+                  { label: 'Per Business Referral', value: '$125' },
+                  { label: 'Payouts', value: 'Monthly' },
+                ].map((card) => (
+                  <div key={card.label} style={{
+                    padding: '20px',
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(198,166,100,0.15)',
+                    borderRadius: '12px',
+                  }}>
+                    <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#C6A664', marginBottom: '6px' }}>{card.value}</div>
+                    <div style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{card.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              <a
+                href="mailto:hello@704collective.com?subject=Ambassador%20Program%20Inquiry"
+                style={{
+                  display: 'inline-block',
+                  padding: '14px 32px',
+                  background: '#C6A664',
+                  color: '#0a0a0a',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  fontSize: '0.9375rem',
+                  textDecoration: 'none',
+                  letterSpacing: '0.02em',
+                }}
+              >
+                Get in Touch
+              </a>
+            </div>
+          </section>
+        </main>
+        <Footer />
+      </>
+    );
+  }
 
   const [monthlyRes, allTimeRes, activeCountRes] = await Promise.all([
     supabase.rpc('get_monthly_ambassador_leaderboard'),

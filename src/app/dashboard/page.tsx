@@ -197,6 +197,7 @@ export default function Dashboard() {
   const { user, profile, isActiveMember, isAdmin, loading, refreshProfile } = useAuth();
   const [calendarPromptDismissed, setCalendarPromptDismissed] = useState(false);
   const [isAmbassador, setIsAmbassador] = useState(false);
+  const [isAmbassadorLoaded, setIsAmbassadorLoaded] = useState(false);
 
   useEffect(() => {
     if ((profile as { calendar_token?: string | null } | null)?.calendar_token) {
@@ -276,8 +277,17 @@ export default function Dashboard() {
       .maybeSingle()
       .then(({ data }) => {
         setIsAmbassador(!!data);
+        setIsAmbassadorLoaded(true);
       });
   }, [user]);
+
+  // Redirect ambassador-only users (no paid subscription) to their dashboard.
+  useEffect(() => {
+    if (loading || !profile || !isAmbassadorLoaded) return;
+    if (isAmbassador && !isActiveMember) {
+      router.replace('/ambassadors/dashboard');
+    }
+  }, [loading, profile, isAmbassador, isAmbassadorLoaded, isActiveMember, router]);
 
   // Load business application when profile is available.
   useEffect(() => {
