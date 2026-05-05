@@ -185,15 +185,28 @@ export async function createAmbassador(input: {
   });
 
   if (linkError) {
-    // User already exists — link to their existing profile
+    console.error(`[createAmbassador] generateLink failed:`, {
+      message: linkError.message,
+      status: (linkError as { status?: number }).status,
+      name: linkError.name,
+      raw: JSON.stringify(linkError, Object.getOwnPropertyNames(linkError)),
+    });
+    // If the user already exists in Auth, generateLink errors — fall back to linking their existing profile
     const { data: existingProfile } = await gate.admin
       .from('profiles')
       .select('id')
       .eq('email', email)
       .maybeSingle();
     if (!existingProfile) {
-      return { ok: false, error: `Could not create invite: ` };
+      console.error(`[createAmbassador] FAILED: generateLink errored and no existing profile found`, {
+        email,
+        code,
+        linkErrorMessage: linkError.message,
+        linkErrorRaw: JSON.stringify(linkError, Object.getOwnPropertyNames(linkError)),
+      });
+      return { ok: false, error: `Invite failed: ${linkError.message || JSON.stringify(linkError, Object.getOwnPropertyNames(linkError))}` };
     }
+    console.log(`[createAmbassador] generateLink errored but existing profile found — proceeding as existing user`, { email, profileId: existingProfile.id });
     profileId = (existingProfile as { id: string }).id;
     isNewUser = false;
   } else {
