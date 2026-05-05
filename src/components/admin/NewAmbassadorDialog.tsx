@@ -32,6 +32,7 @@ const AMBASSADOR_TYPES = [
 ];
 
 export function NewAmbassadorDialog({ open, onOpenChange, onCreated }: NewAmbassadorDialogProps) {
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [type, setType] = useState('locator');
@@ -39,6 +40,7 @@ export function NewAmbassadorDialog({ open, onOpenChange, onCreated }: NewAmbass
 
   useEffect(() => {
     if (!open) {
+      setFullName('');
       setEmail('');
       setCode('');
       setType('locator');
@@ -49,14 +51,16 @@ export function NewAmbassadorDialog({ open, onOpenChange, onCreated }: NewAmbass
   const codeUpper = code.trim().toUpperCase();
   const codeValid = CODE_RE.test(codeUpper);
   const emailValid = EMAIL_RE.test(email.trim());
+  const nameValid = fullName.trim().length > 0;
 
-  const canSubmit = !submitting && emailValid && codeValid;
+  const canSubmit = !submitting && nameValid && emailValid && codeValid;
 
   const submit = async () => {
     if (!canSubmit) return;
     setSubmitting(true);
     try {
       const r = await createAmbassador({
+        full_name: fullName.trim(),
         email: email.trim().toLowerCase(),
         referral_code: codeUpper,
         type,
@@ -84,6 +88,21 @@ export function NewAmbassadorDialog({ open, onOpenChange, onCreated }: NewAmbass
         </DialogHeader>
 
         <div className="space-y-4">
+          <div>
+            <Label htmlFor="amb-name">Full Name *</Label>
+            <Input
+              id="amb-name"
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Adam Smith"
+              autoComplete="off"
+            />
+            {fullName.length > 0 && !nameValid && (
+              <p className="text-xs text-destructive mt-1">Full name is required.</p>
+            )}
+          </div>
+
           <div>
             <Label htmlFor="amb-email">Email</Label>
             <Input

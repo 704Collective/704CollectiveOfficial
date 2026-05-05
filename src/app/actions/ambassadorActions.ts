@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
@@ -126,6 +126,7 @@ async function getOrCreateAuthUser(
 }
 
 export async function createAmbassador(input: {
+  full_name: string;
   email: string;
   referral_code: string;
   type?: string | null;
@@ -140,6 +141,8 @@ export async function createAmbassador(input: {
     ? (input.type as typeof ALLOWED_TYPES[number])
     : 'locator';
 
+  const fullName = (input.full_name ?? '').trim();
+  if (!fullName) return { ok: false, error: 'Full name is required' };
   if (!email || !EMAIL_RE.test(email)) return { ok: false, error: 'Valid email is required' };
   if (!code || !CODE_RE.test(code)) {
     return { ok: false, error: 'Referral code must be 3-32 uppercase letters or digits' };
@@ -199,7 +202,7 @@ export async function createAmbassador(input: {
     .from('ambassadors')
     .insert({
       email,
-      full_name: '(Pending Setup)',
+      full_name: fullName,
       phone: null,
       referral_code: code,
       type,
@@ -216,6 +219,7 @@ export async function createAmbassador(input: {
 
   // Send branded invite email (non-blocking)
   try {
+    const firstName = fullName.split(' ')[0] || 'there';
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const loginUrl = `/ambassadors/login`;
     if (isNewUser && inviteUrl) {
@@ -226,7 +230,7 @@ export async function createAmbassador(input: {
           to: email,
           template: 'ambassador-invite',
           skipCc: true,
-          data: { name: '', email, referralCode: code, inviteUrl },
+          data: { name: firstName, email, referralCode: code, inviteUrl },
         }),
       });
     } else {
@@ -237,7 +241,7 @@ export async function createAmbassador(input: {
           to: email,
           template: 'ambassador-welcome-existing',
           skipCc: true,
-          data: { name: '', loginUrl },
+          data: { name: firstName, loginUrl },
         }),
       });
     }
