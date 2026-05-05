@@ -169,20 +169,16 @@ export async function createAmbassador(input: {
 
   // generateLink creates the auth user and returns the invite URL without sending
   // Supabase's default invitation email, so we can send our own branded email.
-
-  // DIAGNOSTIC: testing without data field
-  console.log(`[createAmbassador] DIAG: calling generateLink WITHOUT data`, {
-    email,
-    redirectTo: `${siteUrl}/ambassadors/welcome`
-  });
-
   const { data: linkData, error: linkError } = await gate.admin.auth.admin.generateLink({
     type: 'invite',
     email,
     options: {
       redirectTo: `${siteUrl}/ambassadors/welcome`,
       data: {
+        full_name: fullName,
         member_type: 'non_member',
+        ambassador_referral_code: code,
+        ambassador_type: type,
       },
     },
   });
@@ -248,9 +244,9 @@ export async function createAmbassador(input: {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const loginUrl = `/ambassadors/login`;
     if (isNewUser && inviteUrl) {
-      await fetch(`/functions/v1/send-email`, {
+      await fetch(`${supabaseUrl}/functions/v1/send-email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` },
         body: JSON.stringify({
           to: email,
           template: 'ambassador-invite',
@@ -259,9 +255,9 @@ export async function createAmbassador(input: {
         }),
       });
     } else {
-      await fetch(`/functions/v1/send-email`, {
+      await fetch(`${supabaseUrl}/functions/v1/send-email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` },
         body: JSON.stringify({
           to: email,
           template: 'ambassador-welcome-existing',
@@ -271,7 +267,7 @@ export async function createAmbassador(input: {
       });
     }
   } catch (emailErr) {
-    console.error('Invite email failed (non-blocking):', emailErr);
+    console.error('[createAmbassador] invite email send failed (non-blocking):', { emailErr, email, isNewUser });
   }
 
   return { ok: true, ambassador_id: data.id as string };
