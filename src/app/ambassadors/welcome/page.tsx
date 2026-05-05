@@ -41,6 +41,20 @@ export default function AmbassadorWelcomePage() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
+      // Exchange invite code for a session if present in the URL
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get('code');
+      if (code) {
+        const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(code);
+        if (cancelled) return;
+        if (exchangeErr) {
+          router.replace('/ambassadors/login?invite_error=' + encodeURIComponent(exchangeErr.message));
+          return;
+        }
+        // Clean the URL so the code is not visible or re-processed
+        window.history.replaceState({}, '', '/ambassadors/welcome');
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (cancelled) return;
       if (!user) { router.replace('/ambassadors/login'); return; }

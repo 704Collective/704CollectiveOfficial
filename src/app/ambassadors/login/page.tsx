@@ -1,14 +1,14 @@
-﻿'use client';
+'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/integrations/supabase/client';
 import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
-export default function AmbassadorLoginPage() {
+function AmbassadorLoginInner() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,6 +16,15 @@ export default function AmbassadorLoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+
+  // Show invite expiry error if redirected from /ambassadors/welcome
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const inviteError = searchParams.get('invite_error');
+    if (inviteError) {
+      setError('Your invite link has expired or is invalid. Please contact an admin to resend your invite.');
+    }
+  }, [searchParams]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -340,5 +349,17 @@ export default function AmbassadorLoginPage() {
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </MarketingPageRoot>
     </>
+  );
+}
+
+export default function AmbassadorLoginPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: '100dvh', backgroundColor: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: '48px', height: '48px', border: '2px solid rgba(255,255,255,0.1)', borderTopColor: '#C6A664', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+      </div>
+    }>
+      <AmbassadorLoginInner />
+    </Suspense>
   );
 }
