@@ -236,6 +236,14 @@ function ReferralPageInner() {
                 Referred by <span style={{ color: 'rgba(255,255,255,0.55)' }}>{resolvedAmbassador.full_name}</span>
               </p>
 
+              {/* Ambassador login */}
+              <p className="text-center" style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.55)', marginTop: '32px' }}>
+                Already an ambassador?{' '}
+                <Link href="/ambassadors/login" style={{ color: '#C6A664' }} className="hover:underline">
+                  Log in here
+                </Link>
+              </p>
+
             </div>
           </div>
         </MarketingPageRoot>
@@ -332,6 +340,14 @@ function ReferralPageInner() {
                 Apply for Business
               </Link>
               {' '}at our standard rates.
+            </p>
+
+            {/* Ambassador login */}
+            <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.55)', textAlign: 'center', marginTop: '32px' }}>
+              Already an ambassador?{' '}
+              <Link href="/ambassadors/login" style={{ color: '#C6A664' }} className="hover:underline">
+                Log in here
+              </Link>
             </p>
 
           </div>
