@@ -126,40 +126,86 @@ async function getOrCreateAuthUser(
 }
 
 export async function createAmbassador(input: {
-  full_name: string;
   email: string;
-  phone?: string | null;
   referral_code: string;
-  social_reward_cents: number;
-  business_reward_cents: number;
-  notes?: string | null;
+  type?: string | null;
 }): Promise<{ ok: true; ambassador_id: string } | { ok: false; error: string }> {
   const gate = await assertAdmin();
   if (!gate.ok) return gate;
 
-  const v = normalizeInput(input);
-  if (!v.ok) return v;
+  const email = (input.email ?? '').trim().toLowerCase();
+  const code = (input.referral_code ?? '').trim().toUpperCase();
+  const ALLOWED_TYPES = ['locator', 'member', 'partner'] as const;
+  const type: typeof ALLOWED_TYPES[number] = ALLOWED_TYPES.includes(input.type as typeof ALLOWED_TYPES[number])
+    ? (input.type as typeof ALLOWED_TYPES[number])
+    : 'locator';
+
+  if (!email || !EMAIL_RE.test(email)) return { ok: false, error: 'Valid email is required' };
+  if (!code || !CODE_RE.test(code)) {
+    return { ok: false, error: 'Referral code must be 3-32 uppercase letters or digits' };
+  }
 
   const { data: existing } = await gate.admin
     .from('ambassadors')
     .select('id')
-    .ilike('referral_code', v.values.referral_code)
+    .ilike('referral_code', code)
     .maybeSingle();
-  if (existing) return { ok: false, error: `Code "${v.values.referral_code}" is already in use` };
+  if (existing) return { ok: false, error: `Code "${code}" is already in use` };
 
-  // Get or create Auth user for this ambassador
-  let authResult: { userId: string; isNewUser: boolean; tempPassword?: string };
-  try {
-    authResult = await getOrCreateAuthUser(gate.admin, v.values.email, v.values.full_name, v.values.phone);
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Failed to provision Auth user' };
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://704collective.com';
+
+  let profileId: string;
+  let inviteUrl: string | null = null;
+  let isNewUser = false;
+
+  // generateLink creates the auth user and returns the invite URL without sending
+  // Supabase's default invitation email, so we can send our own branded email.
+  const { data: linkData, error: linkError } = await gate.admin.auth.admin.generateLink({
+    type: 'invite',
+    email,
+    options: {
+      redirectTo: `/ambassadors/welcome`,
+      data: {
+        full_name: '',
+        phone: '',
+        member_type: 'ambassador',
+        referral_code: code,
+        ambassador_type: type,
+      },
+    },
+  });
+
+  if (linkError) {
+    // User already exists — link to their existing profile
+    const { data: existingProfile } = await gate.admin
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+    if (!existingProfile) {
+      return { ok: false, error: `Could not create invite: ` };
+    }
+    profileId = (existingProfile as { id: string }).id;
+    isNewUser = false;
+  } else {
+    profileId = linkData.user.id;
+    inviteUrl = linkData.properties.action_link;
+    isNewUser = true;
   }
 
+  // Insert ambassador row. full_name is '(Pending Setup)' until the ambassador
+  // completes account setup via the invite link.
   const { data, error } = await gate.admin
     .from('ambassadors')
     .insert({
-      ...v.values,
-      profile_id: authResult.userId,
+      email,
+      full_name: '(Pending Setup)',
+      phone: null,
+      referral_code: code,
+      type,
+      social_reward_cents: 2000,
+      business_reward_cents: 12500,
+      profile_id: profileId,
       stripe_account_status: 'pending',
       is_active: true,
       created_by: gate.userId,
@@ -168,37 +214,37 @@ export async function createAmbassador(input: {
     .single();
   if (error || !data?.id) return { ok: false, error: error?.message ?? 'Insert failed' };
 
-  // Send welcome email (non-blocking)
+  // Send branded invite email (non-blocking)
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const firstName = v.values.full_name.split(' ')[0] || 'Ambassador';
-    const loginUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://704collective.com'}/ambassadors/login`;
-    if (authResult.isNewUser) {
-      await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+    const loginUrl = `/ambassadors/login`;
+    if (isNewUser && inviteUrl) {
+      await fetch(`/functions/v1/send-email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ` },
         body: JSON.stringify({
-          to: v.values.email,
-          template: 'ambassador-welcome-new',
+          to: email,
+          template: 'ambassador-invite',
           skipCc: true,
-          data: { name: firstName, email: v.values.email, tempPassword: authResult.tempPassword, loginUrl },
+          data: { name: '', email, referralCode: code, inviteUrl },
         }),
       });
     } else {
-      await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+      await fetch(`/functions/v1/send-email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ` },
         body: JSON.stringify({
-          to: v.values.email,
+          to: email,
           template: 'ambassador-welcome-existing',
           skipCc: true,
-          data: { name: firstName, loginUrl },
+          data: { name: '', loginUrl },
         }),
       });
     }
   } catch (emailErr) {
-    console.error('Welcome email failed (non-blocking):', emailErr);
+    console.error('Invite email failed (non-blocking):', emailErr);
   }
+
   return { ok: true, ambassador_id: data.id as string };
 }
 

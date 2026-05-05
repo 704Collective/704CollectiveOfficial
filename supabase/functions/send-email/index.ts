@@ -1095,6 +1095,37 @@ ${ctaButton('Go to Ambassador Dashboard', url)}
   };
 }
 
+function ambassadorInviteTemplate(data: { name: string; email: string; referralCode: string; inviteUrl: string }): { subject: string; html: string } {
+  const name = data.name || 'there';
+  return {
+    subject: "You've been invited to the 704 Collective Ambassador Program",
+    html: baseLayout(`
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name},</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">You've been invited to join the <strong>704 Collective Ambassador Program</strong> — Charlotte's most curated social &amp; business network.</p>
+<p style="margin:0 0 12px;font-size:15px;font-weight:600;color:${BRAND.text};">As an ambassador, you'll earn:</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+<tr><td style="padding:6px 0;font-size:15px;color:${BRAND.textSecondary};">&rarr;&nbsp;<strong style="color:${BRAND.accent};">$20</strong> for every social member you refer</td></tr>
+<tr><td style="padding:6px 0;font-size:15px;color:${BRAND.textSecondary};">&rarr;&nbsp;<strong style="color:${BRAND.accent};">$125</strong> for every business member you refer</td></tr>
+</table>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Payouts are deposited weekly to your bank account via Stripe.</p>
+<div style="background:rgba(198,166,100,0.1);border:1px solid rgba(198,166,100,0.3);border-radius:8px;padding:16px 20px;margin:0 0 28px;">
+<p style="margin:0;font-size:13px;font-weight:600;color:${BRAND.textMuted};text-transform:uppercase;letter-spacing:0.06em;">Your Referral Code</p>
+<p style="margin:6px 0 0;font-size:24px;font-weight:700;color:${BRAND.accent};font-family:ui-monospace,SFMono-Regular,monospace;letter-spacing:0.06em;">${data.referralCode}</p>
+</div>
+<p style="margin:0 0 8px;font-size:15px;font-weight:600;color:${BRAND.text};">Click below to complete your account setup:</p>
+${ctaButton('Set Up My Ambassador Account', data.inviteUrl)}
+<p style="margin:0 0 24px;font-size:13px;line-height:1.6;color:${BRAND.textMuted};font-style:italic;">This invite expires in 7 days.</p>
+<p style="margin:0 0 12px;font-size:15px;font-weight:600;color:${BRAND.text};">Once you're set up, you'll get:</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+<tr><td style="padding:5px 0;font-size:14px;color:${BRAND.textSecondary};">&rarr;&nbsp;A dashboard to track conversions and earnings</td></tr>
+<tr><td style="padding:5px 0;font-size:14px;color:${BRAND.textSecondary};">&rarr;&nbsp;Marketing materials (QR code, share links)</td></tr>
+<tr><td style="padding:5px 0;font-size:14px;color:${BRAND.textSecondary};">&rarr;&nbsp;Stripe Connect setup so we can pay you</td></tr>
+</table>
+<p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:${BRAND.textSecondary};">Questions? Reply to this email or reach out at <a href="mailto:hello@704collective.com" style="color:${BRAND.accent};">hello@704collective.com</a>.</p>
+<p style="margin:0;font-size:14px;color:${BRAND.textMuted};">&mdash; The 704 Team</p>
+`),
+  };
+}
 function getTemplate(template: string, data: Record<string, unknown>): { subject: string; html: string } {
   switch (template) {
     case "welcome-back":
@@ -1288,6 +1319,8 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
       return ambassadorWelcomeNewTemplate(data as { name: string; email: string; tempPassword: string; loginUrl: string });
     case "ambassador-welcome-existing":
       return ambassadorWelcomeExistingTemplate(data as { name: string; loginUrl: string });
+    case "ambassador-invite":
+      return ambassadorInviteTemplate(data as { name: string; email: string; referralCode: string; inviteUrl: string });
         default:
       throw new Error(`Unknown email template: ${template}`);
   }
