@@ -175,10 +175,9 @@ export async function createAmbassador(input: {
     options: {
       redirectTo: `/ambassadors/welcome`,
       data: {
-        full_name: '',
-        phone: '',
-        member_type: 'ambassador',
-        referral_code: code,
+        full_name: input.full_name.trim(),
+        member_type: 'non_member',
+        ambassador_referral_code: code,
         ambassador_type: type,
       },
     },
