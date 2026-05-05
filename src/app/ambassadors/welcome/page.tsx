@@ -63,11 +63,14 @@ export default function AmbassadorWelcomePage() {
         fullUrl, search, hash, code,
         pkceAttempted: false,
         pkceError: null as string | null,
+        implicitAttempted: false,
+        implicitError: null as string | null,
         hasUser: false,
         userId: null as string | null,
         finalAction: '',
       };
 
+      // FLOW 1: PKCE (?code= in query)
       if (code) {
         diag.pkceAttempted = true;
         const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(code);
@@ -79,13 +82,37 @@ export default function AmbassadorWelcomePage() {
         }
       }
 
+      // FLOW 2: Implicit (#access_token= in hash) — used for invite links
+      if (hash && hash.includes('access_token=')) {
+        diag.implicitAttempted = true;
+        const hashParams = new URLSearchParams(hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+
+        if (accessToken && refreshToken) {
+          const { error: setErr } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (cancelled) return;
+          if (setErr) {
+            diag.implicitError = setErr.message;
+          } else {
+            window.history.replaceState({}, '', '/ambassadors/welcome');
+          }
+        } else {
+          diag.implicitError = 'Hash present but missing access_token or refresh_token';
+        }
+      }
+
+      // Check if session exists
       const { data: { user } } = await supabase.auth.getUser();
       if (cancelled) return;
       diag.hasUser = !!user;
       diag.userId = user?.id ?? null;
 
       if (!user) {
-        diag.finalAction = 'No user — would normally redirect to /ambassadors/login';
+        diag.finalAction = 'No user after token processing — showing diagnostic';
         setDiagnostic(diag);
         setLoading(false);
         return;
