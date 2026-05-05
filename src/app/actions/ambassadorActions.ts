@@ -169,17 +169,18 @@ export async function createAmbassador(input: {
 
   // generateLink creates the auth user and returns the invite URL without sending
   // Supabase's default invitation email, so we can send our own branded email.
+
+  // DIAGNOSTIC: testing without data field
+  console.log(`[createAmbassador] DIAG: calling generateLink WITHOUT data`, {
+    email,
+    redirectTo: `${siteUrl}/ambassadors/welcome`
+  });
+
   const { data: linkData, error: linkError } = await gate.admin.auth.admin.generateLink({
     type: 'invite',
     email,
     options: {
-      redirectTo: `/ambassadors/welcome`,
-      data: {
-        full_name: input.full_name.trim(),
-        member_type: 'non_member',
-        ambassador_referral_code: code,
-        ambassador_type: type,
-      },
+      redirectTo: `${siteUrl}/ambassadors/welcome`,
     },
   });
 
