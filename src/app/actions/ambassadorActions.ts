@@ -142,7 +142,10 @@ export async function createAmbassador(input: {
     : 'locator';
 
   const fullName = (input.full_name ?? '').trim();
-  if (!fullName) return { ok: false, error: 'Full name is required' };
+  if (!fullName) {
+    console.error('[createAmbassador] FAILED at validation: full_name is empty', { input });
+    return { ok: false, error: 'Full name is required' };
+  }
   if (!email || !EMAIL_RE.test(email)) return { ok: false, error: 'Valid email is required' };
   if (!code || !CODE_RE.test(code)) {
     return { ok: false, error: 'Referral code must be 3-32 uppercase letters or digits' };
@@ -153,7 +156,10 @@ export async function createAmbassador(input: {
     .select('id')
     .ilike('referral_code', code)
     .maybeSingle();
-  if (existing) return { ok: false, error: `Code "${code}" is already in use` };
+  if (existing) {
+    console.error('[createAmbassador] FAILED at uniqueness check: code already in use', { code, existing });
+    return { ok: false, error: `Code "${code}" is already in use` };
+  }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://704collective.com';
 
@@ -215,7 +221,10 @@ export async function createAmbassador(input: {
     })
     .select('id')
     .single();
-  if (error || !data?.id) return { ok: false, error: error?.message ?? 'Insert failed' };
+  if (error || !data?.id) {
+    console.error('[createAmbassador] FAILED at ambassador INSERT:', { error, email, code });
+    return { ok: false, error: error?.message ?? 'Insert failed' };
+  }
 
   // Send branded invite email (non-blocking)
   try {
