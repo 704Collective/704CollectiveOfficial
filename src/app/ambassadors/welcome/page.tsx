@@ -37,52 +37,57 @@ export default function AmbassadorWelcomePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [diagnostic, setDiagnostic] = useState<{
+    fullUrl: string;
+    search: string;
+    hash: string;
+    code: string | null;
+    pkceAttempted: boolean;
+    pkceError: string | null;
+    hasUser: boolean;
+    userId: string | null;
+    finalAction: string;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      // Diagnostic: log URL state on arrival
       const fullUrl = window.location.href;
       const search = window.location.search;
       const hash = window.location.hash;
-      console.log('[welcome] URL on arrival:', { fullUrl, search, hash });
 
-      // FLOW 1 (PKCE): ?code= in query string
       const url = new URL(window.location.href);
       const code = url.searchParams.get('code');
 
+      const diag = {
+        fullUrl, search, hash, code,
+        pkceAttempted: false,
+        pkceError: null as string | null,
+        hasUser: false,
+        userId: null as string | null,
+        finalAction: '',
+      };
+
       if (code) {
-        console.log('[welcome] PKCE flow detected, exchanging code for session');
+        diag.pkceAttempted = true;
         const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(code);
         if (cancelled) return;
         if (exchangeErr) {
-          console.error('[welcome] exchangeCodeForSession failed:', exchangeErr);
-          router.replace('/ambassadors/login?invite_error=' + encodeURIComponent(exchangeErr.message));
-          return;
+          diag.pkceError = exchangeErr.message;
+        } else {
+          window.history.replaceState({}, '', '/ambassadors/welcome');
         }
-        console.log('[welcome] PKCE session established');
-        window.history.replaceState({}, '', '/ambassadors/welcome');
-      }
-      // FLOW 2 (Implicit): #access_token=... in hash
-      else if (hash && hash.includes('access_token=')) {
-        console.log('[welcome] Implicit flow detected (hash with access_token)');
-        // The Supabase JS client auto-handles the hash when detectSessionInUrl is true.
-        // Wait briefly for the SDK to process it, then clean the URL.
-        await new Promise(resolve => setTimeout(resolve, 200));
-        if (cancelled) return;
-        window.history.replaceState({}, '', '/ambassadors/welcome');
-      }
-      else {
-        console.log('[welcome] No code or hash found, proceeding to auth check');
       }
 
-      // Now check if session exists
       const { data: { user } } = await supabase.auth.getUser();
-      console.log('[welcome] auth.getUser result:', { hasUser: !!user, userId: user?.id });
       if (cancelled) return;
+      diag.hasUser = !!user;
+      diag.userId = user?.id ?? null;
+
       if (!user) {
-        console.log('[welcome] No user, redirecting to login');
-        router.replace('/ambassadors/login');
+        diag.finalAction = 'No user — would normally redirect to /ambassadors/login';
+        setDiagnostic(diag);
+        setLoading(false);
         return;
       }
 
@@ -94,11 +99,14 @@ export default function AmbassadorWelcomePage() {
 
       if (cancelled) return;
       if (!amb) {
+        diag.finalAction = 'User exists but no ambassador row — signing out';
+        setDiagnostic(diag);
+        setLoading(false);
         await supabase.auth.signOut();
-        router.replace('/ambassadors/login');
         return;
       }
 
+      diag.finalAction = 'Success — proceeding to setup form';
       setUserId(user.id);
       setAmbassador(amb as AmbassadorRow);
       if (amb.full_name && amb.full_name !== '(Pending Setup)') setFullName(amb.full_name);
@@ -161,6 +169,37 @@ export default function AmbassadorWelcomePage() {
         <Nav />
         <div style={{ minHeight: '100dvh', backgroundColor: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ width: '36px', height: '36px', border: '2px solid rgba(255,255,255,0.1)', borderTopColor: '#C6A664', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </>
+    );
+  }
+
+  if (diagnostic) {
+    return (
+      <>
+        <Nav />
+        <div style={{ minHeight: '100dvh', backgroundColor: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div style={{
+            maxWidth: '600px',
+            width: '100%',
+            padding: '24px',
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,80,80,0.4)',
+            borderRadius: '12px',
+            color: '#fff',
+            fontFamily: 'monospace',
+            fontSize: '0.8125rem',
+            lineHeight: '1.6',
+          }}>
+            <h3 style={{ color: '#ff6666', marginTop: 0 }}>Welcome page diagnostic</h3>
+            <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+              {JSON.stringify(diagnostic, null, 2)}
+            </pre>
+            <p style={{ marginTop: '20px', color: 'rgba(255,255,255,0.65)' }}>
+              Screenshot this and send it to support.
+            </p>
+          </div>
         </div>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </>
