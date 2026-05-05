@@ -41,23 +41,50 @@ export default function AmbassadorWelcomePage() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      // Exchange invite code for a session if present in the URL
+      // Diagnostic: log URL state on arrival
+      const fullUrl = window.location.href;
+      const search = window.location.search;
+      const hash = window.location.hash;
+      console.log('[welcome] URL on arrival:', { fullUrl, search, hash });
+
+      // FLOW 1 (PKCE): ?code= in query string
       const url = new URL(window.location.href);
       const code = url.searchParams.get('code');
+
       if (code) {
+        console.log('[welcome] PKCE flow detected, exchanging code for session');
         const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(code);
         if (cancelled) return;
         if (exchangeErr) {
+          console.error('[welcome] exchangeCodeForSession failed:', exchangeErr);
           router.replace('/ambassadors/login?invite_error=' + encodeURIComponent(exchangeErr.message));
           return;
         }
-        // Clean the URL so the code is not visible or re-processed
+        console.log('[welcome] PKCE session established');
         window.history.replaceState({}, '', '/ambassadors/welcome');
       }
+      // FLOW 2 (Implicit): #access_token=... in hash
+      else if (hash && hash.includes('access_token=')) {
+        console.log('[welcome] Implicit flow detected (hash with access_token)');
+        // The Supabase JS client auto-handles the hash when detectSessionInUrl is true.
+        // Wait briefly for the SDK to process it, then clean the URL.
+        await new Promise(resolve => setTimeout(resolve, 200));
+        if (cancelled) return;
+        window.history.replaceState({}, '', '/ambassadors/welcome');
+      }
+      else {
+        console.log('[welcome] No code or hash found, proceeding to auth check');
+      }
 
+      // Now check if session exists
       const { data: { user } } = await supabase.auth.getUser();
+      console.log('[welcome] auth.getUser result:', { hasUser: !!user, userId: user?.id });
       if (cancelled) return;
-      if (!user) { router.replace('/ambassadors/login'); return; }
+      if (!user) {
+        console.log('[welcome] No user, redirecting to login');
+        router.replace('/ambassadors/login');
+        return;
+      }
 
       const { data: amb } = await supabase
         .from('ambassadors')
