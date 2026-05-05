@@ -115,30 +115,24 @@ function JoinInner() {
   // Validate an ambassador code against the public RPC. Stable identity so the
   // ?ref= bootstrap effect below has a clean dep list.
   const validateReferralCode = useCallback(async (code: string) => {
-    console.log('[join-ref] validateReferralCode CALLED with:', code);
     const trimmed = code.trim();
     if (!trimmed) {
-      console.log('[join-ref] Empty code, exiting');
       setResolvedAmbassador(null);
       setReferralCodeError(null);
       setReferralCode('');
       return;
     }
-    console.log('[join-ref] Calling RPC with p_code:', trimmed);
     setValidatingCode(true);
     setReferralCodeError(null);
     const { data, error } = await supabase.rpc('get_ambassador_by_code', { p_code: trimmed });
-    console.log('[join-ref] RPC response:', { data, error });
     setValidatingCode(false);
     if (error || !data || data.length === 0) {
-      console.log('[join-ref] No match — setting error');
       setResolvedAmbassador(null);
       setReferralCode('');
       setReferralCodeError('Invalid or inactive code');
       return;
     }
     const ambassador = data[0] as { id: string; full_name: string };
-    console.log('[join-ref] SUCCESS — ambassador:', ambassador);
     setResolvedAmbassador({ id: ambassador.id, full_name: ambassador.full_name });
     setReferralCode(trimmed);
     setReferralCodeError(null);
@@ -147,10 +141,8 @@ function JoinInner() {
   // Pre-fill from ?ref= and auto-validate.
   useEffect(() => {
     const refFromUrl = searchParams.get('ref')?.trim();
-    console.log('[join-ref] URL effect fired. refFromUrl:', refFromUrl);
     if (!refFromUrl) return;
     setReferralCodeInput(refFromUrl.toUpperCase());
-    console.log('[join-ref] About to call validateReferralCode');
     void validateReferralCode(refFromUrl);
   }, [searchParams, validateReferralCode]);
 
@@ -309,7 +301,7 @@ function JoinInner() {
                   fontSize: '1rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6,
                   marginBottom: '32px', textAlign: 'center',
                 }}>
-                  Join Charlotte{"'"}s most curated social club for {SOCIAL_TIER.monthlyPriceFull}. Cancel anytime.
+                  Join Charlotte{"'"}s most curated social club for {resolvedAmbassador ? '$35/month' : SOCIAL_TIER.monthlyPriceFull}. Cancel anytime.
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -609,8 +601,23 @@ function JoinInner() {
                       704 Social
                     </h2>
                     <p style={{ fontSize: '2rem', fontWeight: 700, color: '#C6A664', margin: 0 }}>
-                      {SOCIAL_TIER.monthlyPrice}<span style={{ fontSize: '1rem', fontWeight: 400, color: 'rgba(255,255,255,0.45)' }}>/month</span>
+                      {resolvedAmbassador ? (
+                        <>
+                          <span style={{ textDecoration: 'line-through', opacity: 0.5, fontSize: '1.5rem', marginRight: '0.5rem' }}>
+                            {SOCIAL_TIER.monthlyPrice}
+                          </span>
+                          <span>$35</span>
+                        </>
+                      ) : (
+                        <span>{SOCIAL_TIER.monthlyPrice}</span>
+                      )}
+                      <span style={{ fontSize: '1rem', fontWeight: 400, color: 'rgba(255,255,255,0.45)' }}>/month</span>
                     </p>
+                    {resolvedAmbassador && (
+                      <p style={{ fontSize: '0.875rem', color: '#C6A664', marginTop: '0.5rem', margin: '4px 0 0' }}>
+                        Founding member rate — locked in for life
+                      </p>
+                    )}
                     <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', margin: '0 0 16px' }}>
                       Cancel anytime
                     </p>
