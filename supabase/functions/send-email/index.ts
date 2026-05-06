@@ -131,7 +131,7 @@ function welcomeNewTemplate(data: { name: string; calendarUrl: string; origin?: 
     html: baseLayout(`
 <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name},</p>
 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Welcome to 704 Collective. You just joined a room full of people who are actually worth knowing in Charlotte.</p>
-<p style="margin:0 0 12px;font-size:15px;font-weight:600;color:${BRAND.text};">Here's what to do next:</p>
+<p style="margin:0 0 12px;font-size:15px;font-weight:600;color:${BRAND.text};">You'll receive a confirmation email. In the meantime, here's what to do next:</p>
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
 <tr><td style="padding:8px 0;font-size:15px;color:${BRAND.textSecondary};">&rarr;&nbsp;<a href="${base}/events" style="color:${BRAND.accent};text-decoration:underline;">Browse upcoming events and grab your spot</a></td></tr>
 <tr><td style="padding:8px 0;font-size:15px;color:${BRAND.textSecondary};">&rarr;&nbsp;<a href="${data.calendarUrl}" style="color:${BRAND.accent};text-decoration:underline;">Subscribe to the member calendar</a></td></tr>
