@@ -117,7 +117,6 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
           className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
         >
           <img src="/logo-dark.svg" alt="704 Collective" width={32} height={32} className="h-8 w-8 rounded-lg" />
-          <span className="text-lg font-semibold text-foreground">704 Collective</span>
         </button>
       </div>
 

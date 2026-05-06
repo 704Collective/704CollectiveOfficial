@@ -7,7 +7,12 @@ export const organizationSchema704 = {
   '@type': 'Organization',
   name: '704 Collective',
   url: SITE_URL,
-  logo: `${SITE_URL}/logo.png`,
+  logo: {
+    '@type': 'ImageObject',
+    url: `${SITE_URL}/logo.png`,
+    width: 600,
+    height: 600,
+  },
   description:
     "Charlotte's two-track social club and business membership community",
   address: {

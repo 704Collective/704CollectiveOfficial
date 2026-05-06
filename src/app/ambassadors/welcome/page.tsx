@@ -191,7 +191,6 @@ export default function AmbassadorWelcomePage() {
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
               <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', textDecoration: 'none', marginBottom: '20px' }}>
                 <img src="/logo-nav.svg" alt="704 Collective" width={40} height={40} />
-                <span style={{ color: '#FFFFFF', fontSize: 'clamp(1.25rem, 5vw, 1.5rem)', fontWeight: 600 }}>704 Collective</span>
               </Link>
               <div style={{ marginTop: '4px' }}>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', background: 'rgba(198,166,100,0.1)', border: '1px solid rgba(198,166,100,0.25)', borderRadius: '100px', marginBottom: '12px' }}>

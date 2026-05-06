@@ -343,9 +343,6 @@ function Login() {
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
             <img src="/logo-nav.svg" alt="704 Collective" width={40} height={40} />
-            <span style={{ color: '#FFFFFF', fontSize: 'clamp(1.25rem, 5vw, 1.5rem)', fontWeight: 600 }}>
-              704 Collective
-            </span>
           </Link>
           <p style={{ marginTop: '8px', color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.9375rem' }}>
             Welcome back
