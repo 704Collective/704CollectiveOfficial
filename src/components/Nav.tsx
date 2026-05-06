@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useLayoutEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -69,7 +68,7 @@ export default function Nav() {
       >
         {/* Logo */}
         <Link href="/" style={{ display: "flex", alignItems: "center" }}>
-          <Image src="/logo-nav.png" alt="704 Collective" width={56} height={56} priority />
+          <img src="/logo-nav.svg" alt="704 Collective" width={56} height={56} className="h-14 w-14" />
         </Link>
 
         {/* Desktop Links */}
