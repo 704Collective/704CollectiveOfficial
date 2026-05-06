@@ -724,3 +724,92 @@ export async function fireAllPendingPayouts(): Promise<{
 
   return result;
 }
+
+export async function getMyStripeAccountStatus(): Promise<
+  | { ok: true; status: string; requirements: string[]; chargesEnabled: boolean; payoutsEnabled: boolean }
+  | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Not authenticated' };
+
+  const admin = serviceClient();
+  const { data: amb } = await admin
+    .from('ambassadors')
+    .select('id, stripe_account_id, stripe_account_status')
+    .eq('profile_id', user.id)
+    .maybeSingle();
+
+  if (!amb || !amb.stripe_account_id) {
+    return { ok: false, error: 'No Stripe account exists yet' };
+  }
+
+  try {
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeKey) return { ok: false, error: 'Stripe key missing' };
+
+    const stripe = new Stripe(stripeKey);
+    const account = await stripe.accounts.retrieve(amb.stripe_account_id as string);
+
+    let status: string;
+    if (account.charges_enabled && account.payouts_enabled) {
+      status = 'active';
+    } else if (account.requirements?.disabled_reason) {
+      status = 'restricted';
+    } else {
+      status = 'pending';
+    }
+
+    if (status !== (amb as { stripe_account_status?: string | null }).stripe_account_status) {
+      await admin
+        .from('ambassadors')
+        .update({ stripe_account_status: status })
+        .eq('id', (amb as { id: string }).id);
+    }
+
+    const currentlyDue = account.requirements?.currently_due ?? [];
+    const pastDue = account.requirements?.past_due ?? [];
+    const allRequirements = Array.from(new Set([...currentlyDue, ...pastDue]));
+
+    const friendlyMap: Record<string, string> = {
+      'business_profile.url': 'Business website',
+      'business_profile.mcc': 'Business industry',
+      'business_profile.product_description': 'Business description',
+      'business_type': 'Business type',
+      'external_account': 'Bank account',
+      'individual.first_name': 'Your first name',
+      'individual.last_name': 'Your last name',
+      'individual.dob.day': 'Date of birth',
+      'individual.dob.month': 'Date of birth',
+      'individual.dob.year': 'Date of birth',
+      'individual.address.line1': 'Home address',
+      'individual.address.city': 'Home address',
+      'individual.address.state': 'Home address',
+      'individual.address.postal_code': 'Home address',
+      'individual.id_number': 'Social Security Number',
+      'individual.ssn_last_4': 'Last 4 of SSN',
+      'individual.email': 'Email',
+      'individual.phone': 'Phone number',
+      'tos_acceptance.date': 'Terms of Service acceptance',
+      'tos_acceptance.ip': 'Terms of Service acceptance',
+      'representative': 'Representative information',
+      'settings.payouts.statement_descriptor': 'Statement descriptor',
+    };
+
+    const requirements = allRequirements
+      .map(field => friendlyMap[field] ?? field)
+      .filter((v, i, arr) => arr.indexOf(v) === i);
+
+    return {
+      ok: true,
+      status,
+      requirements,
+      chargesEnabled: account.charges_enabled ?? false,
+      payoutsEnabled: account.payouts_enabled ?? false,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Failed to fetch Stripe account';
+    console.error('[getMyStripeAccountStatus] failed:', err);
+    return { ok: false, error: msg };
+  }
+}

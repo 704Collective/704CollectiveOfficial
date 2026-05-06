@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
+import { getMyStripeAccountStatus } from '@/app/actions/ambassadorActions';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -170,6 +171,8 @@ export default function AmbassadorDashboardPage() {
   const [referrals, setReferrals] = useState<ReferralRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAlsoMember, setIsAlsoMember] = useState(false);
+  const [stripeReqs, setStripeReqs] = useState<string[]>([]);
+  const [reqsLoading, setReqsLoading] = useState(false);
 
   const loadData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -213,6 +216,20 @@ export default function AmbassadorDashboardPage() {
   }, [router]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    if (!ambassador) return;
+    if (!ambassador.stripe_account_id) return;
+    if (ambassador.stripe_account_status === 'active') return;
+
+    setReqsLoading(true);
+    getMyStripeAccountStatus().then(result => {
+      if (result.ok) {
+        setStripeReqs(result.requirements);
+      }
+      setReqsLoading(false);
+    });
+  }, [ambassador]);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -354,6 +371,27 @@ export default function AmbassadorDashboardPage() {
             {/* ── SECTION 4: Stripe Connect ─────────────────────────────────── */}
             <div style={{ marginBottom: '32px' }}>
               <StripeStatusCard status={ambassador.stripe_account_status} accountId={ambassador.stripe_account_id} />
+              {!reqsLoading && stripeReqs.length > 0 && ambassador.stripe_account_status !== 'active' && (
+                <div style={{
+                  marginTop: '16px',
+                  padding: '16px',
+                  background: 'rgba(245, 158, 11, 0.1)',
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  borderRadius: '8px',
+                }}>
+                  <p style={{ color: '#FCD34D', fontWeight: 600, fontSize: '0.875rem', margin: '0 0 8px' }}>
+                    Stripe still needs the following from you:
+                  </p>
+                  <ul style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.8125rem', paddingLeft: '20px', margin: 0 }}>
+                    {stripeReqs.map((req, i) => (
+                      <li key={i} style={{ marginBottom: '4px' }}>{req}</li>
+                    ))}
+                  </ul>
+                  <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem', margin: '12px 0 0' }}>
+                    Click &ldquo;Continue Stripe Setup&rdquo; below to add the missing info.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* ── SECTION 5: Recent Referrals ───────────────────────────────── */}
