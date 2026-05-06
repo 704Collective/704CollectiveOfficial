@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -29,13 +28,10 @@ export default function NotFound() {
         className="flex min-h-screen flex-col items-center justify-center bg-[#0d0d0d] px-6 pt-24 pb-16 text-center"
       >
         <div className="mb-8 relative w-40 h-14 mx-auto">
-          <Image
-            src="/logo-white.png"
+          <img
+            src="/logo-nav.svg"
             alt="704 Collective"
-            fill
-            className="object-contain"
-            sizes="160px"
-            priority
+            className="object-contain w-full h-full"
           />
         </div>
         <h1 className="text-2xl font-semibold text-[#FAF6F0] mb-2">Page not found</h1>

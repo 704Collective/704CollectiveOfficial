@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import Image from 'next/image';
 import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import { CheckCircle2 } from 'lucide-react';
@@ -18,7 +17,7 @@ export default function PartnerApplySubmittedPage() {
       <div className="min-h-screen bg-[#0a0a0a] pt-24 pb-16 px-4 flex flex-col items-center justify-center">
         <div className="max-w-md text-center">
           <Link href="/" className="inline-block mb-8">
-            <Image src="/logo-nav.png" alt="704 Collective" width={56} height={56} />
+            <img src="/logo-nav.svg" alt="704 Collective" width={56} height={56} />
           </Link>
           <div className="w-16 h-16 rounded-full bg-[#C6A664]/15 flex items-center justify-center mx-auto mb-6">
             <CheckCircle2 className="w-9 h-9 text-[#C6A664]" strokeWidth={2} />

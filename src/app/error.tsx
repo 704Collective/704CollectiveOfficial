@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,13 +30,10 @@ export default function GlobalError({
   return (
     <div className="min-h-screen bg-[#0d0d0d] flex flex-col items-center justify-center px-6 py-16 text-center">
       <div className="mb-8 relative w-40 h-14 mx-auto">
-        <Image
-          src="/logo-white.png"
+        <img
+          src="/logo-nav.svg"
           alt="704 Collective"
-          fill
-          className="object-contain"
-          sizes="160px"
-          priority
+          className="object-contain w-full h-full"
         />
       </div>
       <h1 className="text-2xl font-semibold text-[#FAF6F0] mb-2">Something went wrong</h1>

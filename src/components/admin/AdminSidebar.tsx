@@ -2,7 +2,6 @@
 
 import React, { useMemo } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Calendar, Users, FileText, DollarSign, Mail,
@@ -117,7 +116,7 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
           }}
           className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
         >
-          <Image src="/logo.png" alt="704 Collective" width={32} height={32} className="h-8 w-8 rounded-lg" />
+          <img src="/logo-dark.svg" alt="704 Collective" width={32} height={32} className="h-8 w-8 rounded-lg" />
           <span className="text-lg font-semibold text-foreground">704 Collective</span>
         </button>
       </div>

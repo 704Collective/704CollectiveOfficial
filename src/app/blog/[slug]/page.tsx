@@ -331,7 +331,7 @@ export default async function BlogPostPage({ params }: Props) {
                             />
                           ) : (
                             <div className="absolute inset-0 flex items-center justify-center opacity-30">
-                              <Image src="/logo-nav.png" alt="" width={48} height={48} />
+                              <img src="/logo-nav.svg" alt="" width={48} height={48} />
                             </div>
                           )}
                         </div>

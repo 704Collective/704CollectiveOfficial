@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { Skeleton } from '@/components/ui/skeleton';
-import Image from 'next/image';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 export default function PaymentSuccessPage() {
@@ -69,7 +68,7 @@ function PaymentSuccess() {
         <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-lg">
           <div className="container flex h-16 items-center">
             <Link href="/" className="flex items-center gap-2">
-              <Image src="/logo.png" alt="704 Collective" height={36} width={36} className="h-9 w-auto" />
+              <img src="/logo-dark.svg" alt="704 Collective" height={36} width={36} className="h-9 w-auto" />
               <span className="text-foreground text-lg font-medium">Social</span>
             </Link>
           </div>
@@ -117,7 +116,7 @@ function PaymentSuccess() {
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-lg">
         <div className="container flex h-16 items-center">
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="704 Collective" height={36} width={36} className="h-9 w-auto" />
+            <img src="/logo-dark.svg" alt="704 Collective" height={36} width={36} className="h-9 w-auto" />
             <span className="text-foreground text-lg font-medium">Social</span>
           </Link>
         </div>

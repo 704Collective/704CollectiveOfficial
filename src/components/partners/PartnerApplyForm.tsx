@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Nav from '@/components/Nav';
@@ -131,7 +130,7 @@ export function PartnerApplyForm({
         <div className="max-w-lg mx-auto">
           <div className="text-center mb-8">
             <Link href="/" className="inline-flex items-center gap-2">
-              <Image src="/logo-nav.png" alt="704 Collective" width={48} height={48} />
+              <img src="/logo-nav.svg" alt="704 Collective" width={48} height={48} />
             </Link>
             <h1 className="mt-4 text-2xl font-semibold text-white">Partner application</h1>
             {superAdminInvite && (

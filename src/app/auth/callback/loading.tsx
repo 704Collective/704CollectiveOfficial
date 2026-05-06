@@ -1,4 +1,3 @@
-import Image from 'next/image';
 
 /**
  * Shown automatically by Next.js while the /auth/callback segment loads.
@@ -17,13 +16,12 @@ export default function AuthCallbackLoading() {
         pointerEvents: 'none',
       }}
     >
-      <Image
-        src="/logo.png"
+      <img
+        src="/logo-nav.svg"
         alt="704 Collective"
         width={72}
         height={72}
         style={{ borderRadius: '18px', marginBottom: '32px' }}
-        priority
       />
 
       {/* Gold spinner */}

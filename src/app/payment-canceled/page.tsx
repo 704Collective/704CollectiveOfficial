@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { XCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import Image from 'next/image';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 export default function PaymentCanceled() {
@@ -16,7 +15,7 @@ export default function PaymentCanceled() {
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-lg">
         <div className="container flex h-16 items-center">
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="704 Collective" height={36} width={36} className="h-9 w-auto" />
+              <img src="/logo-dark.svg" alt="704 Collective" height={36} width={36} className="h-9 w-auto" />
             <span className="text-foreground text-lg font-medium">Social</span>
           </Link>
         </div>

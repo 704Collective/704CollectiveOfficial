@@ -146,7 +146,7 @@ export default async function BlogPage() {
                     }}
                   >
                     <Image
-                      src="/logo-nav.png"
+                      src="/logo-nav.svg"
                       alt="704 Collective"
                       width={120}
                       height={120}
@@ -225,7 +225,7 @@ export default async function BlogPage() {
                           ) : (
                             <div className="absolute inset-0 flex items-center justify-center">
                               <Image
-                                src="/logo-nav.png"
+                                src="/logo-nav.svg"
                                 alt=""
                                 width={64}
                                 height={64}

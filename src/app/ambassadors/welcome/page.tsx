@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import Nav from '@/components/Nav';
@@ -191,7 +190,7 @@ export default function AmbassadorWelcomePage() {
             {/* Logo + heading */}
             <div style={{ textAlign: 'center', marginBottom: '32px' }}>
               <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', textDecoration: 'none', marginBottom: '20px' }}>
-                <Image src="/logo-nav.png" alt="704 Collective" width={40} height={40} />
+                <img src="/logo-nav.svg" alt="704 Collective" width={40} height={40} />
                 <span style={{ color: '#FFFFFF', fontSize: 'clamp(1.25rem, 5vw, 1.5rem)', fontWeight: 600 }}>704 Collective</span>
               </Link>
               <div style={{ marginTop: '4px' }}>
