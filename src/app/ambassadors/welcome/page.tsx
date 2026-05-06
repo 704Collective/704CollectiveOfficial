@@ -37,54 +37,26 @@ export default function AmbassadorWelcomePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
-  const [diagnostic, setDiagnostic] = useState<{
-    fullUrl: string;
-    search: string;
-    hash: string;
-    code: string | null;
-    pkceAttempted: boolean;
-    pkceError: string | null;
-    hasUser: boolean;
-    userId: string | null;
-    finalAction: string;
-  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const fullUrl = window.location.href;
-      const search = window.location.search;
-      const hash = window.location.hash;
-
       const url = new URL(window.location.href);
       const code = url.searchParams.get('code');
-
-      const diag = {
-        fullUrl, search, hash, code,
-        pkceAttempted: false,
-        pkceError: null as string | null,
-        implicitAttempted: false,
-        implicitError: null as string | null,
-        hasUser: false,
-        userId: null as string | null,
-        finalAction: '',
-      };
+      const hash = window.location.hash;
 
       // FLOW 1: PKCE (?code= in query)
       if (code) {
-        diag.pkceAttempted = true;
         const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(code);
         if (cancelled) return;
         if (exchangeErr) {
-          diag.pkceError = exchangeErr.message;
+          console.error('[welcome] PKCE exchange failed', { error: exchangeErr.message });
         } else {
           window.history.replaceState({}, '', '/ambassadors/welcome');
         }
       }
-
       // FLOW 2: Implicit (#access_token= in hash) — used for invite links
-      if (hash && hash.includes('access_token=')) {
-        diag.implicitAttempted = true;
+      else if (hash && hash.includes('access_token=')) {
         const hashParams = new URLSearchParams(hash.substring(1));
         const accessToken = hashParams.get('access_token');
         const refreshToken = hashParams.get('refresh_token');
@@ -96,44 +68,43 @@ export default function AmbassadorWelcomePage() {
           });
           if (cancelled) return;
           if (setErr) {
-            diag.implicitError = setErr.message;
+            console.error('[welcome] setSession failed', { error: setErr.message });
           } else {
             window.history.replaceState({}, '', '/ambassadors/welcome');
+            // Wait briefly to let the session cookie propagate before getUser
+            await new Promise(resolve => setTimeout(resolve, 250));
           }
         } else {
-          diag.implicitError = 'Hash present but missing access_token or refresh_token';
+          console.error('[welcome] hash present but missing tokens', { hash });
         }
       }
 
-      // Check if session exists
+      // Now check if session exists
       const { data: { user } } = await supabase.auth.getUser();
       if (cancelled) return;
-      diag.hasUser = !!user;
-      diag.userId = user?.id ?? null;
 
       if (!user) {
-        diag.finalAction = 'No user after token processing — showing diagnostic';
-        setDiagnostic(diag);
-        setLoading(false);
+        console.error('[welcome] No user after token processing — redirecting to login');
+        router.replace('/ambassadors/login');
         return;
       }
 
+      // User exists — proceed with ambassador lookup
       const { data: amb } = await supabase
         .from('ambassadors')
-        .select('id, email, full_name, phone, referral_code')
+        .select('id, email, full_name, phone, referral_code, type')
         .eq('profile_id', user.id)
         .maybeSingle();
 
       if (cancelled) return;
       if (!amb) {
-        diag.finalAction = 'User exists but no ambassador row — signing out';
-        setDiagnostic(diag);
-        setLoading(false);
+        console.error('[welcome] User exists but no ambassador row — signing out');
         await supabase.auth.signOut();
+        router.replace('/ambassadors/login');
         return;
       }
 
-      diag.finalAction = 'Success — proceeding to setup form';
+      // ALL GOOD — set state and show form
       setUserId(user.id);
       setAmbassador(amb as AmbassadorRow);
       if (amb.full_name && amb.full_name !== '(Pending Setup)') setFullName(amb.full_name);
@@ -142,6 +113,7 @@ export default function AmbassadorWelcomePage() {
     })();
     return () => { cancelled = true; };
   }, [router]);
+
 
   const inputStyle = (field: string): React.CSSProperties => ({
     width: '100%',
@@ -202,36 +174,6 @@ export default function AmbassadorWelcomePage() {
     );
   }
 
-  if (diagnostic) {
-    return (
-      <>
-        <Nav />
-        <div style={{ minHeight: '100dvh', backgroundColor: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-          <div style={{
-            maxWidth: '600px',
-            width: '100%',
-            padding: '24px',
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,80,80,0.4)',
-            borderRadius: '12px',
-            color: '#fff',
-            fontFamily: 'monospace',
-            fontSize: '0.8125rem',
-            lineHeight: '1.6',
-          }}>
-            <h3 style={{ color: '#ff6666', marginTop: 0 }}>Welcome page diagnostic</h3>
-            <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-              {JSON.stringify(diagnostic, null, 2)}
-            </pre>
-            <p style={{ marginTop: '20px', color: 'rgba(255,255,255,0.65)' }}>
-              Screenshot this and send it to support.
-            </p>
-          </div>
-        </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </>
-    );
-  }
 
   const labelStyle: React.CSSProperties = {
     display: 'block', marginBottom: '6px', fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)',

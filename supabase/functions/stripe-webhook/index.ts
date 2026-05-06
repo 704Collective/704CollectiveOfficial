@@ -397,6 +397,16 @@ async function handleCheckoutCompleted(
     // Best-effort: any failure here is logged but does not block the rest of
     // the checkout pipeline (the member should still get their welcome email
     // even if referral attribution silently fails — admins can backfill later).
+    console.log("[AMB-DIAG] Entering ambassador attribution", {
+      sessionId: session.id,
+      metadataPresent: !!session.metadata,
+      metadataKeys: session.metadata ? Object.keys(session.metadata) : [],
+      ambassadorIdFromMeta: session.metadata?.ambassador_id || null,
+      referralCodeFromMeta: session.metadata?.referral_code || null,
+      ambassadorTierFromMeta: session.metadata?.ambassador_tier || null,
+      userId: userId,
+      customerEmail,
+    });
     const ambassadorIdFromMeta = session.metadata?.ambassador_id || null;
     const referralCodeFromMeta = session.metadata?.referral_code || null;
     const ambassadorTierFromMeta = session.metadata?.ambassador_tier || "social";
@@ -404,6 +414,7 @@ async function handleCheckoutCompleted(
     if (ambassadorIdFromMeta && userId) {
       try {
         // Re-validate ambassador (defense in depth — metadata could be stale
+        console.log("[AMB-DIAG] Inside if block, querying ambassadors table");
         // by the time the webhook fires).
         const { data: amb } = await supabase
           .from("ambassadors")
@@ -414,6 +425,9 @@ async function handleCheckoutCompleted(
 
         if (!amb) {
           log("Ambassador not found or inactive on referral creation", { ambassadorIdFromMeta });
+          console.log("[AMB-DIAG] Ambassador NOT found by id+is_active query", {
+            ambassadorIdFromMeta,
+          });
         } else {
           const ambRow = amb as {
             id: string;
@@ -421,6 +435,10 @@ async function handleCheckoutCompleted(
             social_reward_cents: number;
             business_reward_cents: number;
           };
+          console.log("[AMB-DIAG] Ambassador found:", {
+            ambId: ambRow.id,
+            ambEmail: ambRow.email,
+          });
 
           const rewardCents = ambassadorTierFromMeta === "business"
             ? ambRow.business_reward_cents
@@ -429,13 +447,6 @@ async function handleCheckoutCompleted(
           // Anti-abuse signals — light-weight checks that admins can review
           // before approving the referral.
           const flags: Record<string, boolean> = {};
-          if (ambRow.email) {
-            const ambDomain = ambRow.email.split("@")[1]?.toLowerCase();
-            const refDomain = customerEmail.split("@")[1]?.toLowerCase();
-            if (ambDomain && refDomain && ambDomain === refDomain) {
-              flags.same_email_domain = true;
-            }
-          }
           // Stripe Checkout sessions don't expose the cardholder fingerprint
           // directly; we'd need to inflate the payment_intent.charges to get
           // it. Defer card-level fraud checks to admin review for now.
@@ -444,6 +455,14 @@ async function handleCheckoutCompleted(
           const hasFlags = Object.keys(flags).length > 0;
           const initialStatus = hasFlags ? "flagged_self_refer" : "signed_up";
 
+          console.log("[AMB-DIAG] About to INSERT ambassador_referrals row", {
+            ambassador_id: ambRow.id,
+            referred_user_id: userId,
+            referred_email: customerEmail,
+            tier: ambassadorTierFromMeta,
+            status: initialStatus,
+            reward_cents: rewardCents,
+          });
           const { data: refRow, error: refErr } = await supabase
             .from("ambassador_referrals")
             .insert({
@@ -465,9 +484,16 @@ async function handleCheckoutCompleted(
             .single();
 
           if (refErr) {
+            console.log("[AMB-DIAG] INSERT FAILED:", {
+              error: refErr.message,
+              code: (refErr as { code?: string }).code,
+              details: (refErr as { details?: string }).details,
+              hint: (refErr as { hint?: string }).hint,
+            });
             log("Failed to insert ambassador referral", { error: refErr.message });
           } else if (refRow) {
             // Stamp the linkage + locked-in pricing flag on the profile so
+            console.log("[AMB-DIAG] INSERT SUCCEEDED:", { referralId: refRow.id });
             // downstream admin tooling can see who referred whom.
             await supabase
               .from("profiles")
@@ -555,8 +581,17 @@ async function handleCheckoutCompleted(
         }
       } catch (refError) {
         const msg = refError instanceof Error ? refError.message : String(refError);
+        console.log("[AMB-DIAG] EXCEPTION caught:", {
+          error: msg,
+          stack: refError instanceof Error ? refError.stack : null,
+        });
         log("Ambassador referral processing failed (non-blocking)", { error: msg });
       }
+    } else {
+      console.log("[AMB-DIAG] Skipped if block — missing ambassadorIdFromMeta or userId", {
+        hasAmbassadorId: !!ambassadorIdFromMeta,
+        hasUserId: !!userId,
+      });
     }
 
     // ── Welcome email (only for new or reactivated) ──
