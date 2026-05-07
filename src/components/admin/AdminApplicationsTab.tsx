@@ -107,33 +107,42 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
   // ── Action mutation ──────────────────────────────────────────────────────
   const actionMutation = useMutation({
     mutationFn: async ({ appId, action, notesText, reason }: { appId: string; action: 'reviewing' | 'approved' | 'denied' | 'waitlisted'; notesText: string; reason?: string }) => {
-      const app = selectedApp;
-      if (!app) throw new Error('No application selected');
-
-      // Update application status + notes
-      const { error: updateErr } = await supabase
-        .from('business_applications')
-        .update({
-          status: action,
-          admin_notes: notesText || null,
-          reviewed_at: new Date().toISOString(),
-        })
-        .eq('id', appId);
-      if (updateErr) throw updateErr;
+      if (!selectedApp) throw new Error('No application selected');
 
       if (action === 'approved') {
-        // Create the Supabase user + profile, charge the card
-        await supabase.functions.invoke('approve-business-application', {
-          body: { application_id: appId },
-        });
-      } else if (action === 'denied' || action === 'waitlisted') {
-        await supabase.functions.invoke('deny-business-application', {
-          body: {
-            application_id: appId,
-            action,
-            reason: reason || null,
-          },
-        });
+        // DO NOT touch business_applications here — the edge function writes all DB fields
+        // atomically only after Stripe succeeds, so a failure leaves status='pending' and
+        // the admin can safely retry.
+        const { data: fnData, error: fnError } = await supabase.functions.invoke(
+          'approve-business-application',
+          { body: { application_id: appId } },
+        );
+        // If the function threw a network/invocation error, fnError is set.
+        // The function also returns { error } in the body on a 500, so prefer that message.
+        if (fnError) {
+          const msg = (fnData as { error?: string } | null)?.error ?? fnError.message ?? 'Approval failed';
+          throw new Error(msg);
+        }
+        if ((fnData as { success?: boolean } | null)?.success !== true) {
+          throw new Error((fnData as { error?: string } | null)?.error ?? 'Approval failed');
+        }
+      } else {
+        // reviewing / denied / waitlisted — no Stripe involvement, safe to write directly
+        const { error: updateErr } = await supabase
+          .from('business_applications')
+          .update({
+            status: action,
+            admin_notes: notesText || null,
+            reviewed_at: new Date().toISOString(),
+          })
+          .eq('id', appId);
+        if (updateErr) throw updateErr;
+
+        if (action === 'denied' || action === 'waitlisted') {
+          await supabase.functions.invoke('deny-business-application', {
+            body: { application_id: appId, action, reason: reason || null },
+          });
+        }
       }
     },
     onSuccess: (_, { action }) => {
