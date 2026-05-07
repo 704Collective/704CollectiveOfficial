@@ -79,7 +79,35 @@ export async function POST(req: NextRequest) {
       .filter((t: any) => t.guest_email)
       .map((t: any) => ({ email: t.guest_email as string, name: t.guest_name || 'Guest' }));
 
-    const allRecipients = [...memberEmails, ...guestEmails];
+    // Fetch Public RSVPs — non-members who RSVP'd through the public event page.
+    // Uses service-role client because RLS may block anon reads on this table.
+    // Errors are non-fatal: log and fall back to members + guests only.
+    let publicRsvpEmails: { email: string; name: string }[] = [];
+    const { data: publicRsvps, error: rsvpErr } = await admin
+      .from('event_public_rsvps')
+      .select('first_name, last_name, email')
+      .eq('event_id', event_id)
+      .eq('status', 'rsvp');
+
+    if (rsvpErr) {
+      console.error('[MESSAGE-ATTENDEES] event_public_rsvps query error (non-fatal):', rsvpErr.message);
+    } else {
+      publicRsvpEmails = (publicRsvps ?? [])
+        .filter((r: any) => r.email)
+        .map((r: any) => ({
+          email: r.email as string,
+          name: `${r.first_name ?? ''} ${r.last_name ?? ''}`.trim() || 'Guest',
+        }));
+    }
+
+    // Merge members, ticket guests, and public RSVPs; dedupe by email (case-insensitive).
+    // First-seen entry wins, so a member ticket always beats a public RSVP for the same address.
+    const seenEmails = new Map<string, { email: string; name: string }>();
+    for (const recipient of [...memberEmails, ...guestEmails, ...publicRsvpEmails]) {
+      const key = recipient.email.toLowerCase().trim();
+      if (!seenEmails.has(key)) seenEmails.set(key, recipient);
+    }
+    const allRecipients = Array.from(seenEmails.values());
 
     if (allRecipients.length === 0) {
       return NextResponse.json({ success: true, sent: 0, message: 'No attendees to message' });
