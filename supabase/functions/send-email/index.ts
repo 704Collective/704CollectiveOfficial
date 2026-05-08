@@ -1126,6 +1126,25 @@ ${ctaButton('Set Up My Ambassador Account', data.inviteUrl)}
 `),
   };
 }
+function adminCustomTemplate(data: {
+  recipientName: string;
+  subject: string;
+  bodyText: string;
+  origin?: string;
+}): { subject: string; html: string } {
+  const name = escapeHtml(data.recipientName || "there");
+  const safeBody = escapeHtml(data.bodyText || "");
+  return {
+    subject: data.subject,
+    html: baseLayout(
+      `<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name},</p>
+<div style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};white-space:pre-wrap;">${safeBody}</div>
+<p style="margin:0;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">— 704 Collective</p>`,
+      data.origin,
+    ),
+  };
+}
+
 function getTemplate(template: string, data: Record<string, unknown>): { subject: string; html: string } {
   switch (template) {
     case "welcome-back":
@@ -1321,7 +1340,9 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
       return ambassadorWelcomeExistingTemplate(data as { name: string; loginUrl: string });
     case "ambassador-invite":
       return ambassadorInviteTemplate(data as { name: string; email: string; referralCode: string; inviteUrl: string });
-        default:
+    case "admin-custom":
+      return adminCustomTemplate(data as { recipientName: string; subject: string; bodyText: string; origin?: string });
+    default:
       throw new Error(`Unknown email template: ${template}`);
   }
 }
@@ -1372,6 +1393,7 @@ serve(async (req) => {
       "partner-team-reply-partner", "partner-account-deletion-request", "social-signup-confirmation",
       "business-application-member-confirm", "business-application-admin-notify", "business-membership-approved",
       "business-application-decision", "welcome-onboarding-complete",
+      "admin-custom",
     ];
 
     // ── Parse body first so we can check template ──

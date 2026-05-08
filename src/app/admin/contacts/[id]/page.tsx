@@ -13,6 +13,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { toast } from 'sonner';
 
 interface GuestPassEventRow {
@@ -101,6 +103,13 @@ export default function AdminContactDetailPage() {
     company: '',
   });
   const [savingSettings, setSavingSettings] = useState(false);
+
+  // Email modal state
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
+  const [welcomeTemplate, setWelcomeTemplate] = useState<'welcome-new' | 'welcome-back'>('welcome-new');
+  const [customSubject, setCustomSubject] = useState('');
+  const [customBody, setCustomBody] = useState('');
 
   const load = useCallback(async () => {
     const parsed = parseContactRouteId(raw);
@@ -425,6 +434,58 @@ export default function AdminContactDetailPage() {
     void load();
   };
 
+  const handleSendEmail = async (mode: 'welcome' | 'custom') => {
+    setEmailSending(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error('Not authenticated');
+
+      const recipientEmail = String(row?.email ?? '');
+      const recipientName = String(profile?.full_name || contactRow?.full_name || recipientEmail || 'there');
+      const recipientUserId = profile?.id as string | undefined;
+
+      let payload: Record<string, unknown>;
+      if (mode === 'welcome') {
+        payload = {
+          recipient_email: recipientEmail,
+          recipient_name: recipientName,
+          template: welcomeTemplate,
+          recipient_user_id: recipientUserId,
+        };
+      } else {
+        payload = {
+          recipient_email: recipientEmail,
+          recipient_name: recipientName,
+          template: 'admin-custom',
+          subject: customSubject.trim(),
+          body_text: customBody.trim(),
+        };
+      }
+
+      const res = await fetch('/api/admin/send-user-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json() as { error?: string };
+      if (!res.ok) throw new Error(json.error || 'Failed to send email');
+
+      toast.success('Email sent');
+      setEmailModalOpen(false);
+      setCustomSubject('');
+      setCustomBody('');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to send email');
+    } finally {
+      setEmailSending(false);
+    }
+  };
+
   if (!parsed) {
     return <p className="text-sm text-muted-foreground">Invalid contact link.</p>;
   }
@@ -497,8 +558,9 @@ export default function AdminContactDetailPage() {
                   </p>
                 )}
               </div>
-              <Button variant="outline" size="sm" asChild>
-                <a href={`mailto:${email}`}>Send Email</a>
+              <Button variant="outline" size="sm" onClick={() => setEmailModalOpen(true)}>
+                <Mail className="w-4 h-4 mr-1.5" />
+                Send Email
               </Button>
             </CardContent>
           </Card>
@@ -814,6 +876,110 @@ export default function AdminContactDetailPage() {
               )}
             </TabsContent>
           </Tabs>
+
+          {/* Send Email modal */}
+          <Dialog
+            open={emailModalOpen}
+            onOpenChange={(open) => {
+              setEmailModalOpen(open);
+              if (!open) { setCustomSubject(''); setCustomBody(''); }
+            }}
+          >
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Send Email</DialogTitle>
+                <DialogDescription>{name || email}</DialogDescription>
+              </DialogHeader>
+
+              <Tabs defaultValue="welcome">
+                <TabsList className="w-full">
+                  <TabsTrigger value="welcome" className="flex-1">Welcome Email</TabsTrigger>
+                  <TabsTrigger value="custom" className="flex-1">Custom Email</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="welcome" className="mt-4 space-y-4">
+                  {!profile ? (
+                    <p className="text-sm text-muted-foreground">Welcome emails can only be sent to members.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <p className="text-sm font-medium">Template</p>
+                      <Select
+                        value={welcomeTemplate}
+                        onValueChange={(v) => setWelcomeTemplate(v as 'welcome-new' | 'welcome-back')}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="welcome-new">Welcome (new member)</SelectItem>
+                          <SelectItem value="welcome-back">Welcome Back (reactivated)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  <DialogFooter className="gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEmailModalOpen(false)}
+                      disabled={emailSending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => { void handleSendEmail('welcome'); }}
+                      disabled={emailSending || !profile}
+                      className="bg-amber-500 hover:bg-amber-600 text-black"
+                    >
+                      {emailSending ? 'Sending...' : 'Send'}
+                    </Button>
+                  </DialogFooter>
+                </TabsContent>
+
+                <TabsContent value="custom" className="mt-4 space-y-4">
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-medium">Subject</p>
+                    <Input
+                      value={customSubject}
+                      onChange={(e) => setCustomSubject(e.target.value)}
+                      placeholder="Email subject"
+                      disabled={emailSending}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-medium">Message</p>
+                    <Textarea
+                      value={customBody}
+                      onChange={(e) => setCustomBody(e.target.value)}
+                      placeholder="Type your message..."
+                      rows={8}
+                      className="resize-none"
+                      disabled={emailSending}
+                    />
+                  </div>
+                  <DialogFooter className="gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEmailModalOpen(false)}
+                      disabled={emailSending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => { void handleSendEmail('custom'); }}
+                      disabled={emailSending || !customSubject.trim() || !customBody.trim()}
+                      className="bg-amber-500 hover:bg-amber-600 text-black"
+                    >
+                      {emailSending ? 'Sending...' : 'Send'}
+                    </Button>
+                  </DialogFooter>
+                </TabsContent>
+              </Tabs>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>
