@@ -151,7 +151,45 @@ Deno.serve(async (req) => {
         guest_email: t.guest_email          ?? null,
       }));
 
-      const html = buildAttendeeListHtml(event, attendees);
+      // Fetch Public RSVPs — non-members who RSVP'd via the public event page.
+      // Mapped into guest_name/guest_email slots so buildAttendeeListHtml renders
+      // them correctly without any template changes (it already does
+      // `a.full_name || a.guest_name` and `a.email || a.guest_email`).
+      const { data: publicRsvps, error: rsvpErr } = await supabase
+        .from("event_public_rsvps")
+        .select("first_name, last_name, email")
+        .eq("event_id", event.id)
+        .eq("status", "rsvp");
+
+      if (rsvpErr) {
+        log("event_public_rsvps query error (non-fatal)", { event: event.id, msg: rsvpErr.message });
+      } else {
+        const publicRsvpRows: AttendeeRow[] = (publicRsvps || [])
+          .filter((r: any) => r.email)
+          .map((r: any) => ({
+            full_name:   null,
+            email:       null,
+            guest_name:  `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() || null,
+            guest_email: r.email as string,
+          }));
+        log("Public RSVPs fetched", { event: event.id, count: publicRsvpRows.length });
+        attendees.push(...publicRsvpRows);
+      }
+
+      // Dedupe by lowercased email — first-seen entry wins, so a member ticket
+      // always beats a public RSVP if the same address appears in both sources.
+      const seenEmails = new Map<string, AttendeeRow>();
+      for (const a of attendees) {
+        const key = (a.email || a.guest_email || "").toLowerCase().trim();
+        if (key && !seenEmails.has(key)) seenEmails.set(key, a);
+        else if (!key && !seenEmails.has(`__nomail_${seenEmails.size}`)) {
+          // Preserve rows with no email (unlikely but defensive)
+          seenEmails.set(`__nomail_${seenEmails.size}`, a);
+        }
+      }
+      const dedupedAttendees = Array.from(seenEmails.values());
+
+      const html = buildAttendeeListHtml(event, dedupedAttendees);
       await sendEmail(`[Attendee List] ${event.title} — starting soon`, html);
 
       // Mark as sent (cache for 4 hours)
@@ -163,7 +201,7 @@ Deno.serve(async (req) => {
           { onConflict: "cache_key" }
         );
 
-      log("Attendee list sent", { event: event.title, attendees: attendees.length });
+      log("Attendee list sent", { event: event.title, attendees: dedupedAttendees.length });
       sent++;
     }
 
