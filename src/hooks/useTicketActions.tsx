@@ -20,6 +20,7 @@ export interface TicketActionEvent {
   location_name: string | null;
   location_address?: string | null;
   is_members_only: boolean | null;
+  access_level: string | null;
 }
 
 interface UseTicketActionsReturn {
@@ -105,6 +106,29 @@ export function useTicketActions(): UseTicketActionsReturn {
       if (!isActiveMember) {
         toast.info('Join as a member for free tickets!');
         return false;
+      }
+
+      // ── Access level gate ──────────────────────────────────────────────────
+      // Runs after the isActiveMember + duplicate checks, before any DB write.
+      const memberType = (p?.member_type ?? null) as string | null;
+      const userRole = (p?.role ?? null) as string | null;
+      const isAdminUser = userRole === 'admin' || userRole === 'super_admin';
+      if (!isAdminUser) {
+        const al = event.access_level;
+        if (al === 'business_only') {
+          if (memberType !== 'business') {
+            toast.error('This event is for business members only');
+            return false;
+          }
+        } else if (al === 'social_only') {
+          if (memberType !== 'social' && memberType !== 'business') {
+            toast.error('This event is for members only');
+            return false;
+          }
+        } else if (memberType === 'partner') {
+          // Partners use a separate event flow; exclude silently from all-access events.
+          return false;
+        }
       }
 
       setRsvpLoadingId(event.id);

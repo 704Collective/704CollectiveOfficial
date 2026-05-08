@@ -40,6 +40,7 @@ interface Event {
   category: string | null;
   allows_guest_passes: boolean | null;
   access_type?: 'members_only' | 'public_ticketed' | 'public_free';
+  access_level: string | null;
 }
 
 export default function EventDetail() {
@@ -152,7 +153,7 @@ export default function EventDetail() {
           }
           setWaitlistPosition(wl.position);
           setWaitlistId(wl.id);
-          toast.success(`Event is full — you're #${wl.position} on the waitlist!`);
+          toast.success(`Event is full â€” you're #${wl.position} on the waitlist!`);
           return;
         }
         toast.error('Failed to RSVP. Please try again.');
@@ -284,7 +285,7 @@ export default function EventDetail() {
   };
 
   const renderTicketCard = () => {
-    // STATE 7: Attended — past event with checked_in_at OR status='attended'
+    // STATE 7: Attended â€” past event with checked_in_at OR status='attended'
     const isAttended = ticketStatus === 'attended' || checkedInAt;
     if (hasTicket && isAttended) return (
       <div style={{ textAlign: 'center' }}>
@@ -320,7 +321,7 @@ export default function EventDetail() {
     if (!user) {
       if (event.access_type === 'public_free') return (
         <div style={{ width: '100%', boxSizing: 'border-box' }}>
-          <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '6px' }}>RSVP — no account needed</h3>
+          <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '6px' }}>RSVP â€” no account needed</h3>
           <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', marginBottom: '18px' }}>Free event, open to everyone.</p>
           {publicRsvpFull ? (
             <div style={{ textAlign: 'center', padding: '16px 0' }}>
@@ -338,12 +339,12 @@ export default function EventDetail() {
             </div>
           ) : publicRsvpState === 'success' ? (
             <div style={{ textAlign: 'center', padding: '16px 0' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '8px' }}>✓</div>
+              <div style={{ fontSize: '2rem', marginBottom: '8px' }}>âœ“</div>
               <p style={{ fontSize: '1rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '4px' }}>See you there.</p>
               <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', marginBottom: '20px' }}>Confirmation sent to {publicRsvpEmail}.</p>
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px' }}>
                 <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.5)', marginBottom: '10px' }}>Curious about membership?</p>
-                <Link href="/join" style={{ ...linkBtn, border: '1px solid #C6A664', color: '#C6A664' }}>Learn about 704 Collective →</Link>
+                <Link href="/join" style={{ ...linkBtn, border: '1px solid #C6A664', color: '#C6A664' }}>Learn about 704 Collective â†’</Link>
               </div>
             </div>
           ) : (
@@ -419,6 +420,37 @@ export default function EventDetail() {
       );
     }
     if (isActiveMember) {
+      // â”€â”€ Access level gate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // Only shown when user does not already have a ticket (hasTicket is checked above).
+      const userMemberType = (profile?.member_type ?? '') as string;
+      const userRole = (profile?.role ?? '') as string;
+      const isAdminOverride = userRole === 'admin' || userRole === 'super_admin';
+      const isBusinessOnly = event.access_level === 'business_only';
+      const isSocialOnly = event.access_level === 'social_only';
+      const isAccessAll = !event.access_level || event.access_level === 'all';
+      const canRsvp =
+        isAdminOverride ||
+        (isAccessAll && userMemberType !== 'partner') ||
+        (isBusinessOnly && userMemberType === 'business') ||
+        (isSocialOnly && (userMemberType === 'social' || userMemberType === 'business'));
+      if (!canRsvp) return (
+        <div style={{ borderRadius: '12px', backgroundColor: 'rgba(255,255,255,0.04)', padding: '20px', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
+          <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#C6A664', backgroundColor: 'rgba(198,166,100,0.08)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>
+            {isBusinessOnly ? 'Business Members Only' : 'Members Only'}
+          </span>
+          <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, margin: (isBusinessOnly && userMemberType === 'social') ? '0 0 16px' : '0' }}>
+            {isBusinessOnly
+              ? 'This event is reserved for our business members.'
+              : 'This event is reserved for paying members.'}
+          </p>
+          {isBusinessOnly && userMemberType === 'social' && (
+            <Link href="/apply/business" style={{ fontSize: '0.8125rem', color: '#C6A664', textDecoration: 'underline', textUnderlineOffset: '3px' }}>
+              Apply for business membership
+            </Link>
+          )}
+        </div>
+      );
+
       if (isAtCapacity) return (
         <div style={{ textAlign: 'center' }}>
           <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#E57373', backgroundColor: 'rgba(229,115,115,0.06)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Event Full</span>
@@ -439,7 +471,7 @@ export default function EventDetail() {
         </div>
       );
 
-      // STATE 3: Member Paid — member price > 0
+      // STATE 3: Member Paid â€” member price > 0
       return (
         <div style={{ textAlign: 'center' }}>
           <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#C6A664', backgroundColor: 'rgba(198,166,100,0.08)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Member Price</span>
@@ -450,7 +482,7 @@ export default function EventDetail() {
           {standardPrice <= memberPrice && (
             <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', marginBottom: '18px' }}>One-time ticket</p>
           )}
-          <button onClick={handlePurchaseTicket} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> Redirecting...</> : `Purchase ticket — ${formatPrice(memberPrice)}`}</button>
+          <button onClick={handlePurchaseTicket} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> Redirecting...</> : `Purchase ticket â€” ${formatPrice(memberPrice)}`}</button>
         </div>
       );
     }
@@ -458,7 +490,7 @@ export default function EventDetail() {
       <div style={{ textAlign: 'center' }}>
         <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#4CAF50', backgroundColor: 'rgba(76,175,80,0.06)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Free Event</span>
         <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>Free Entry</h3>
-        <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>RSVP — open to everyone.</p>
+        <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>RSVP â€” open to everyone.</p>
         <button onClick={handleMemberRegisterWithWaitlistFallback} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> RSVPing...</> : 'RSVP for Free'}</button>
       </div>
     );
@@ -476,7 +508,7 @@ export default function EventDetail() {
 
   const getMobileCTAText = () => {
     if (event.access_type === 'public_free') {
-      if (!user) return 'RSVP — No Account Needed';
+      if (!user) return 'RSVP â€” No Account Needed';
       return isAtCapacity ? 'Join Waitlist' : 'RSVP for Free';
     }
     if (!user) return event.is_members_only ? 'Sign In to RSVP' : 'Purchase Ticket';
@@ -539,7 +571,7 @@ export default function EventDetail() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9375rem' }}>
                   <Clock style={{ width: '15px', height: '15px', color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
-                  <span style={{ color: 'rgba(255,255,255,0.55)' }}>{format(eventDate, 'h:mm a')} – {format(endDate, 'h:mm a')}</span>
+                  <span style={{ color: 'rgba(255,255,255,0.55)' }}>{format(eventDate, 'h:mm a')} â€“ {format(endDate, 'h:mm a')}</span>
                 </div>
                 {event.location_name && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9375rem' }}>
