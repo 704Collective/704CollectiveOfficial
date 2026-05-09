@@ -21,6 +21,7 @@ export interface TicketActionEvent {
   location_address?: string | null;
   is_members_only: boolean | null;
   access_level: string | null;
+  ticket_mode: string | null;
 }
 
 interface UseTicketActionsReturn {
@@ -129,6 +130,13 @@ export function useTicketActions(): UseTicketActionsReturn {
           // Partners use a separate event flow; exclude silently from all-access events.
           return false;
         }
+      }
+
+      // ── Ticket mode gate ───────────────────────────────────────────────────
+      // 'all' mode events require purchase through the checkout flow, not a free RSVP.
+      if (event.ticket_mode === 'all' && !isAdminUser) {
+        toast.info('This event is ticketed for all members. Purchase your ticket to attend.');
+        return false;
       }
 
       setRsvpLoadingId(event.id);

@@ -41,6 +41,7 @@ interface Event {
   allows_guest_passes: boolean | null;
   access_type?: 'members_only' | 'public_ticketed' | 'public_free';
   access_level: string | null;
+  ticket_mode: 'none' | 'public_only' | 'all' | null;
 }
 
 export default function EventDetail() {
@@ -153,7 +154,7 @@ export default function EventDetail() {
           }
           setWaitlistPosition(wl.position);
           setWaitlistId(wl.id);
-          toast.success(`Event is full â€” you're #${wl.position} on the waitlist!`);
+          toast.success(`Event is full Ã¢â‚¬â€ you're #${wl.position} on the waitlist!`);
           return;
         }
         toast.error('Failed to RSVP. Please try again.');
@@ -275,6 +276,15 @@ export default function EventDetail() {
   const resolveMemberPrice = (): number | null => {
     if (!event) return null;
     const memberType = (profile?.member_type ?? '') as string;
+    const role = (profile?.role ?? '') as string;
+
+    // Admins always attend free
+    if (role === 'admin' || role === 'super_admin') return null;
+
+    // 'none' and 'public_only' modes: members RSVP free
+    if (!event.ticket_mode || event.ticket_mode === 'none' || event.ticket_mode === 'public_only') return null;
+
+    // 'all' mode: everyone pays at their tier price
     if (memberType === 'business' || memberType === 'partner') {
       return event.business_member_price ?? event.social_member_price ?? event.ticket_price ?? 0;
     }
@@ -285,7 +295,7 @@ export default function EventDetail() {
   };
 
   const renderTicketCard = () => {
-    // STATE 7: Attended â€” past event with checked_in_at OR status='attended'
+    // STATE 7: Attended Ã¢â‚¬â€ past event with checked_in_at OR status='attended'
     const isAttended = ticketStatus === 'attended' || checkedInAt;
     if (hasTicket && isAttended) return (
       <div style={{ textAlign: 'center' }}>
@@ -321,7 +331,7 @@ export default function EventDetail() {
     if (!user) {
       if (event.access_type === 'public_free') return (
         <div style={{ width: '100%', boxSizing: 'border-box' }}>
-          <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '6px' }}>RSVP â€” no account needed</h3>
+          <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '6px' }}>RSVP Ã¢â‚¬â€ no account needed</h3>
           <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', marginBottom: '18px' }}>Free event, open to everyone.</p>
           {publicRsvpFull ? (
             <div style={{ textAlign: 'center', padding: '16px 0' }}>
@@ -339,12 +349,12 @@ export default function EventDetail() {
             </div>
           ) : publicRsvpState === 'success' ? (
             <div style={{ textAlign: 'center', padding: '16px 0' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '8px' }}>âœ“</div>
+              <div style={{ fontSize: '2rem', marginBottom: '8px' }}>Ã¢Å“â€œ</div>
               <p style={{ fontSize: '1rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '4px' }}>See you there.</p>
               <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', marginBottom: '20px' }}>Confirmation sent to {publicRsvpEmail}.</p>
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px' }}>
                 <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.5)', marginBottom: '10px' }}>Curious about membership?</p>
-                <Link href="/join" style={{ ...linkBtn, border: '1px solid #C6A664', color: '#C6A664' }}>Learn about 704 Collective â†’</Link>
+                <Link href="/join" style={{ ...linkBtn, border: '1px solid #C6A664', color: '#C6A664' }}>Learn about 704 Collective Ã¢â€ â€™</Link>
               </div>
             </div>
           ) : (
@@ -420,7 +430,7 @@ export default function EventDetail() {
       );
     }
     if (isActiveMember) {
-      // â”€â”€ Access level gate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // Ã¢â€â‚¬Ã¢â€â‚¬ Access level gate Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
       // Only shown when user does not already have a ticket (hasTicket is checked above).
       const userMemberType = (profile?.member_type ?? '') as string;
       const userRole = (profile?.role ?? '') as string;
@@ -471,7 +481,7 @@ export default function EventDetail() {
         </div>
       );
 
-      // STATE 3: Member Paid â€” member price > 0
+      // STATE 3: Member Paid Ã¢â‚¬â€ member price > 0
       return (
         <div style={{ textAlign: 'center' }}>
           <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#C6A664', backgroundColor: 'rgba(198,166,100,0.08)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Member Price</span>
@@ -482,7 +492,7 @@ export default function EventDetail() {
           {standardPrice <= memberPrice && (
             <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', marginBottom: '18px' }}>One-time ticket</p>
           )}
-          <button onClick={handlePurchaseTicket} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> Redirecting...</> : `Purchase ticket â€” ${formatPrice(memberPrice)}`}</button>
+          <button onClick={handlePurchaseTicket} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> Redirecting...</> : `Purchase ticket Ã¢â‚¬â€ ${formatPrice(memberPrice)}`}</button>
         </div>
       );
     }
@@ -490,7 +500,7 @@ export default function EventDetail() {
       <div style={{ textAlign: 'center' }}>
         <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#4CAF50', backgroundColor: 'rgba(76,175,80,0.06)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Free Event</span>
         <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>Free Entry</h3>
-        <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>RSVP â€” open to everyone.</p>
+        <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>RSVP Ã¢â‚¬â€ open to everyone.</p>
         <button onClick={handleMemberRegisterWithWaitlistFallback} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> RSVPing...</> : 'RSVP for Free'}</button>
       </div>
     );
@@ -508,7 +518,7 @@ export default function EventDetail() {
 
   const getMobileCTAText = () => {
     if (event.access_type === 'public_free') {
-      if (!user) return 'RSVP â€” No Account Needed';
+      if (!user) return 'RSVP Ã¢â‚¬â€ No Account Needed';
       return isAtCapacity ? 'Join Waitlist' : 'RSVP for Free';
     }
     if (!user) return event.is_members_only ? 'Sign In to RSVP' : 'Purchase Ticket';
@@ -571,7 +581,7 @@ export default function EventDetail() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9375rem' }}>
                   <Clock style={{ width: '15px', height: '15px', color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
-                  <span style={{ color: 'rgba(255,255,255,0.55)' }}>{format(eventDate, 'h:mm a')} â€“ {format(endDate, 'h:mm a')}</span>
+                  <span style={{ color: 'rgba(255,255,255,0.55)' }}>{format(eventDate, 'h:mm a')} Ã¢â‚¬â€œ {format(endDate, 'h:mm a')}</span>
                 </div>
                 {event.location_name && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9375rem' }}>
@@ -629,7 +639,10 @@ export default function EventDetail() {
         {!hasTicket && !waitlistPosition && (
           <div className="mobile-sticky-cta" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40, backgroundColor: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(12px)', borderTop: '1px solid rgba(255,255,255,0.06)', padding: '14px 24px', display: 'none' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', maxWidth: '500px', margin: '0 auto' }}>
-              <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: (isActiveMember || event.access_type === 'public_free') ? '#4CAF50' : '#FFFFFF' }}>{isActiveMember || ticketPrice <= 0 || event.access_type === 'public_free' ? 'Free' : formatPrice(ticketPrice)}</div>
+              <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: (event.ticket_mode === 'all' && isActiveMember) ? '#C6A664' : (isActiveMember || event.access_type === 'public_free') ? '#4CAF50' : '#FFFFFF' }}>
+                {(event.ticket_mode === 'all' && isActiveMember)
+                  ? formatPrice(resolveMemberPrice() ?? ticketPrice)
+                  : (isActiveMember || ticketPrice <= 0 || event.access_type === 'public_free' ? 'Free' : formatPrice(ticketPrice))}</div>
               <button onClick={handleMobileCTA} disabled={isActionLoading} style={{ flex: 1, padding: '14px 24px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, backgroundColor: '#FFF', color: '#000', border: 'none', cursor: isActionLoading ? 'wait' : 'pointer', opacity: isActionLoading ? 0.6 : 1 }}>
                 {isActionLoading ? 'Loading...' : getMobileCTAText()}
               </button>

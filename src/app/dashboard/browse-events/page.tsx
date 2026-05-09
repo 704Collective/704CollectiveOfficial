@@ -38,6 +38,7 @@ interface Event {
   category: string | null;
   tags: string[] | null;
   access_level: string | null;
+  ticket_mode: string | null;
 }
 
 const supabase = createClient();

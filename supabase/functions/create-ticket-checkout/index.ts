@@ -42,12 +42,20 @@ serve(async (req) => {
 
     const { data: eventData, error: eventError } = await supabaseAdmin
       .from("events")
-      .select("ticket_price, social_member_price, business_member_price, access_type")
+      .select("ticket_mode, ticket_price, social_member_price, business_member_price, access_type")
       .eq("id", eventId)
       .single();
 
     if (eventError || !eventData) {
       throw new Error(`Event not found: ${eventId}`);
+    }
+
+    // D2: Guard against non-ticketed events
+    if (!eventData.ticket_mode || eventData.ticket_mode === "none") {
+      return new Response(
+        JSON.stringify({ error: "This event is not ticketed — please RSVP for free." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // --- Auth: getClaims (optional — supports guest checkout) ---
@@ -99,20 +107,35 @@ serve(async (req) => {
         memberType = memberProfile?.member_type ?? null;
       }
       logStep("Member type resolved", { memberType, isActiveMember });
+
+      // D3: Members should not pay for public_only events — they RSVP free
+      if (eventData.ticket_mode === "public_only" && isActiveMember && memberType != null) {
+        return new Response(
+          JSON.stringify({ error: "Members do not need to purchase a ticket for this event — RSVP for free." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
-    // --- Tier-aware price resolution ---
+    // --- Tier-aware price resolution keyed on ticket_mode ---
     let resolvedPrice: number;
-    if (memberType === "business" || memberType === "partner") {
-      resolvedPrice =
-        eventData.business_member_price ??
-        eventData.social_member_price ??
-        eventData.ticket_price ??
-        0;
-    } else if (memberType === "social") {
-      resolvedPrice = eventData.social_member_price ?? eventData.ticket_price ?? 0;
-    } else {
+    if (eventData.ticket_mode === "public_only") {
+      // Only guests reach this point (members blocked above); always charge public price
       resolvedPrice = eventData.ticket_price ?? 0;
+    } else {
+      // ticket_mode === 'all': tier-based pricing
+      if (memberType === "business" || memberType === "partner") {
+        resolvedPrice =
+          eventData.business_member_price ??
+          eventData.social_member_price ??
+          eventData.ticket_price ??
+          0;
+      } else if (memberType === "social") {
+        resolvedPrice = eventData.social_member_price ?? eventData.ticket_price ?? 0;
+      } else {
+        // guest / non-member
+        resolvedPrice = eventData.ticket_price ?? 0;
+      }
     }
 
     if (resolvedPrice <= 0) {
@@ -182,6 +205,7 @@ serve(async (req) => {
         user_id: userId || "",
         ticket_type: "paid",
         origin: origin,
+        ticket_mode: eventData.ticket_mode ?? "unknown",
         resolved_price_cents: String(resolvedPrice),
         member_type_at_purchase: memberType ?? "guest",
       },

@@ -63,6 +63,7 @@ interface Event {
   event_type?: string | null;
   access_type?: string | null;
   access_level?: string | null;
+  ticket_mode?: 'none' | 'public_only' | 'all' | null;
   social_member_price?: number | null;
   business_member_price?: number | null;
   sponsor_slots_enabled?: boolean | null;
@@ -91,6 +92,7 @@ interface EventForm {
   capacity: string;
   access_type: AccessType;
   access_level: AccessLevel;
+  ticket_mode: 'none' | 'public_only' | 'all';
   public_ticket_price: string;
   social_member_price: string;
   business_member_price: string;
@@ -119,7 +121,7 @@ const getDefaultEventForm = (): EventForm => ({
   membership_tier: 'social',
   title: '', description: '', start_time: getDefaultStartTime(), end_time: getDefaultEndTime(getDefaultStartTime()),
   location_name: '', location_address: '', image_url: '', capacity: '',
-  access_type: 'members_only', access_level: 'all',
+  access_type: 'members_only', access_level: 'all', ticket_mode: 'none',
   public_ticket_price: '0', social_member_price: '0', business_member_price: '0',
   category: 'other', recurrence_rule: 'none', recurrence_end_type: 'occurrences', recurrence_occurrences: 4,
   recurrence_end_date: '', tags: [], allows_guest_passes: true,
@@ -471,6 +473,10 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
     const tier = event.event_type === 'business' || event.is_business_only ? 'business' : 'social';
     const accessType = (event.access_type as AccessType) || (event.is_members_only ? 'members_only' : 'public_ticketed');
     const accessLevel = (event.access_level as AccessLevel) || (event.is_business_only ? 'business_only' : 'all');
+    const ticketMode: 'none' | 'public_only' | 'all' =
+      event.ticket_mode === 'none' || event.ticket_mode === 'public_only' || event.ticket_mode === 'all'
+        ? event.ticket_mode
+        : (accessType === 'public_ticketed' && (event.ticket_price ?? 0) > 0 ? 'public_only' : 'none');
     setForm({
       membership_tier: tier,
       title: event.title, description: event.description || '', start_time: new Date(event.start_time),
@@ -479,6 +485,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       capacity: event.capacity?.toString() || '',
       access_type: accessType === 'public_free' || accessType === 'public_ticketed' ? accessType : 'members_only',
       access_level: accessLevel,
+      ticket_mode: ticketMode,
       public_ticket_price: pub,
       social_member_price: soc,
       business_member_price: bus,
@@ -511,6 +518,10 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
     const tier = event.event_type === 'business' || event.is_business_only ? 'business' : 'social';
     const accessType = (event.access_type as AccessType) || (event.is_members_only ? 'members_only' : 'public_ticketed');
     const accessLevel = (event.access_level as AccessLevel) || (event.is_business_only ? 'business_only' : 'all');
+    const ticketMode: 'none' | 'public_only' | 'all' =
+      event.ticket_mode === 'none' || event.ticket_mode === 'public_only' || event.ticket_mode === 'all'
+        ? event.ticket_mode
+        : (accessType === 'public_ticketed' && (event.ticket_price ?? 0) > 0 ? 'public_only' : 'none');
     setEditingEvent(null);
     setForm({
       membership_tier: tier,
@@ -520,6 +531,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       capacity: event.capacity?.toString() || '',
       access_type: accessType,
       access_level: accessLevel,
+      ticket_mode: ticketMode,
       public_ticket_price: pub,
       social_member_price: soc,
       business_member_price: bus,
@@ -559,6 +571,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       event_type,
       access_type: form.access_type,
       access_level: form.access_type === 'members_only' ? form.access_level : 'all',
+      ticket_mode: form.ticket_mode,
       ticket_price: form.access_type === 'public_free' ? 0 : pubCents,
       social_member_price: form.access_type === 'public_free' ? null : socCents,
       business_member_price: form.access_type === 'public_free' ? null : busCents,
@@ -592,6 +605,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       is_members_only, is_business_only, event_type,
       access_type: form.access_type,
       access_level: form.access_type === 'members_only' ? form.access_level : 'all',
+      ticket_mode: form.ticket_mode,
       ticket_price: form.access_type === 'public_free' ? 0 : pubCents,
       social_member_price: form.access_type === 'public_free' ? null : socCents,
       business_member_price: form.access_type === 'public_free' ? null : busCents,
@@ -692,6 +706,22 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       const bp = parseFloat(form.business_member_price);
       if ([pp, sp, bp].some(v => isNaN(v) || v < 0)) {
         toast.error('Prices cannot be negative');
+        return;
+      }
+    }
+    if (form.ticket_mode === 'public_only') {
+      const pp = parseFloat(form.public_ticket_price);
+      if (isNaN(pp) || pp <= 0) {
+        toast.error('Public ticket price must be greater than $0 for ticketed events');
+        return;
+      }
+    }
+    if (form.ticket_mode === 'all') {
+      const pp = parseFloat(form.public_ticket_price);
+      const sp = parseFloat(form.social_member_price);
+      const bp = parseFloat(form.business_member_price);
+      if (isNaN(pp) || pp <= 0 || isNaN(sp) || sp <= 0 || isNaN(bp) || bp <= 0) {
+        toast.error('All three prices must be greater than $0 when all attendees are ticketed');
         return;
       }
     }
@@ -1119,6 +1149,17 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
               </div>
             )}
             <div className="space-y-2">
+              <Label>Ticket pricing mode</Label>
+              <Select value={form.ticket_mode} onValueChange={v => setForm(prev => ({ ...prev, ticket_mode: v as 'none' | 'public_only' | 'all' }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No ticket — free event</SelectItem>
+                  <SelectItem value="public_only">Ticketed for public only (members free, public pays)</SelectItem>
+                  <SelectItem value="all">Ticketed for all (everyone pays, members pay less)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="capacity">Capacity</Label>
               <Input id="capacity" type="number" value={form.capacity} onChange={e => setForm(prev => ({ ...prev, capacity: e.target.value }))} placeholder="Leave empty for unlimited" />
             </div>
@@ -1126,20 +1167,30 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
               <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
                 Free events have no ticket price. Anyone can RSVP without an account.
               </div>
+            ) : form.ticket_mode === 'none' ? (
+              <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                No ticket required — members and guests RSVP for free.
+              </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="pub_price">Public Ticket Price ($)</Label>
-                  <Input id="pub_price" type="number" step="0.01" value={form.public_ticket_price} onChange={e => setForm(prev => ({ ...prev, public_ticket_price: e.target.value }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="soc_price">Social Member Price ($)</Label>
-                  <Input id="soc_price" type="number" step="0.01" value={form.social_member_price} onChange={e => setForm(prev => ({ ...prev, social_member_price: e.target.value }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bus_price">Business Member Price ($)</Label>
-                  <Input id="bus_price" type="number" step="0.01" value={form.business_member_price} onChange={e => setForm(prev => ({ ...prev, business_member_price: e.target.value }))} />
-                </div>
+                {(form.ticket_mode === 'public_only' || form.ticket_mode === 'all') && (
+                  <div className="space-y-2">
+                    <Label htmlFor="pub_price">Public Ticket Price ($)</Label>
+                    <Input id="pub_price" type="number" step="0.01" value={form.public_ticket_price} onChange={e => setForm(prev => ({ ...prev, public_ticket_price: e.target.value }))} />
+                  </div>
+                )}
+                {form.ticket_mode === 'all' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="soc_price">Social Member Price ($)</Label>
+                      <Input id="soc_price" type="number" step="0.01" value={form.social_member_price} onChange={e => setForm(prev => ({ ...prev, social_member_price: e.target.value }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bus_price">Business Member Price ($)</Label>
+                      <Input id="bus_price" type="number" step="0.01" value={form.business_member_price} onChange={e => setForm(prev => ({ ...prev, business_member_price: e.target.value }))} />
+                    </div>
+                  </>
+                )}
               </div>
             )}
             <div className="flex items-center gap-3">
