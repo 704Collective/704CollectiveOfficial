@@ -20,6 +20,54 @@ const SERVICE_KEY    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ANON_KEY       = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SITE_URL       = "https://704collective.com";
 
+/**
+ * Returns a human-readable relative date phrase for an event start time.
+ * Examples: "today", "tomorrow", "on Friday", "on Monday, June 2"
+ * Always uses Eastern Time for the comparison and display.
+ */
+function relativeDateLabel(startTime: string): { phrase: string; dayLabel: string } {
+  const eventDate = new Date(startTime);
+
+  // Get today in ET
+  const nowEt     = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const todayEt   = new Date(nowEt.getFullYear(), nowEt.getMonth(), nowEt.getDate());
+  const tomorrowEt = new Date(todayEt);
+  tomorrowEt.setDate(tomorrowEt.getDate() + 1);
+
+  // Convert event date to ET-aligned day
+  const eventEt  = new Date(eventDate.toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const eventDay = new Date(eventEt.getFullYear(), eventEt.getMonth(), eventEt.getDate());
+
+  const msPerDay  = 24 * 60 * 60 * 1000;
+  const diffDays  = Math.round((eventDay.getTime() - todayEt.getTime()) / msPerDay);
+
+  let phrase: string;
+  let dayLabel: string;
+
+  if (diffDays === 0) {
+    phrase   = "today";
+    dayLabel = "today";
+  } else if (diffDays === 1) {
+    phrase   = "tomorrow";
+    dayLabel = "tomorrow";
+  } else if (diffDays > 1 && diffDays < 7) {
+    const weekday = eventDate.toLocaleString("en-US", { timeZone: "America/New_York", weekday: "long" });
+    phrase   = `on ${weekday}`;
+    dayLabel = `this ${weekday}`;
+  } else {
+    const formatted = eventDate.toLocaleString("en-US", {
+      timeZone: "America/New_York",
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    });
+    phrase   = `on ${formatted}`;
+    dayLabel = formatted;
+  }
+
+  return { phrase, dayLabel };
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -57,28 +105,32 @@ function chunks<T>(arr: T[], n: number): T[][] {
   return out;
 }
 
-function registeredHtml(memberName: string, event: EventRow): string {
+function registeredHtml(memberName: string, event: EventRow, phrase: string, dayLabel: string): string {
   const name = memberName || "there";
-  return `<!DOCTYPE html><html><body style="font-family:sans-serif;background:#1A1A1A;color:#FAF6F0;padding:32px;">
-<h2 style="color:#C6A664;">You're going today!</h2>
-<p>Hey ${name}, just a reminder — you're registered for <strong>${event.title}</strong> today.</p>
+  return `<!DOCTYPE html><html><body style="font-family:sans-serif;background:#1A1A1A;color:#FAF6F0;padding:32px;text-align:center;">
+<img src="https://704collective.com/logo.png" alt="704 Collective" width="120" style="display:block;margin:0 auto 24px;" />
+<div style="text-align:left;">
+<h2 style="color:#C6A664;">You're going ${dayLabel}!</h2>
+<p>Hey ${name}, just a reminder — you're registered for <strong>${event.title}</strong> ${phrase}.</p>
 <p>📅 ${new Date(event.start_time).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })}</p>
 ${event.location_name ? `<p>📍 ${event.location_name}</p>` : ""}
 <a href="${SITE_URL}/events/${event.id}" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#C6A664;color:#1A1A1A;text-decoration:none;border-radius:8px;font-weight:600;">View Event</a>
 <p style="margin-top:24px;font-size:13px;color:#A0A0A0;">See you there! — 704 Collective</p>
-</body></html>`;
+</div></body></html>`;
 }
 
-function joinUsHtml(memberName: string, event: EventRow): string {
+function joinUsHtml(memberName: string, event: EventRow, phrase: string, dayLabel: string): string {
   const name = memberName || "there";
-  return `<!DOCTYPE html><html><body style="font-family:sans-serif;background:#1A1A1A;color:#FAF6F0;padding:32px;">
-<h2 style="color:#C6A664;">Join us today!</h2>
-<p>Hey ${name}, <strong>${event.title}</strong> is happening today. RSVP now to secure your spot!</p>
+  return `<!DOCTYPE html><html><body style="font-family:sans-serif;background:#1A1A1A;color:#FAF6F0;padding:32px;text-align:center;">
+<img src="https://704collective.com/logo.png" alt="704 Collective" width="120" style="display:block;margin:0 auto 24px;" />
+<div style="text-align:left;">
+<h2 style="color:#C6A664;">Join us ${dayLabel}!</h2>
+<p>Hey ${name}, <strong>${event.title}</strong> is happening ${phrase}. RSVP now to secure your spot!</p>
 <p>📅 ${new Date(event.start_time).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })}</p>
 ${event.location_name ? `<p>📍 ${event.location_name}</p>` : ""}
 <a href="${SITE_URL}/events/${event.id}" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#C6A664;color:#1A1A1A;text-decoration:none;border-radius:8px;font-weight:600;">RSVP Now</a>
 <p style="margin-top:24px;font-size:13px;color:#A0A0A0;">Hope to see you there! — 704 Collective</p>
-</body></html>`;
+</div></body></html>`;
 }
 
 interface EventRow {
@@ -98,6 +150,8 @@ interface ProfileRow {
 
 async function processEvent(supabase: ReturnType<typeof createClient>, event: EventRow): Promise<number> {
   log("Processing event", { id: event.id, title: event.title });
+
+  const { phrase, dayLabel } = relativeDateLabel(event.start_time);
 
   // Fetch all confirmed ticket holders for this event
   const { data: tickets } = await supabase
@@ -131,15 +185,15 @@ async function processEvent(supabase: ReturnType<typeof createClient>, event: Ev
       registeredEmails.push({
         from: "704 Collective <hello@704collective.com>",
         to: member.email,
-        subject: `You're registered for ${event.title} today!`,
-        html: registeredHtml(name, event),
+        subject: `You're registered for ${event.title} ${dayLabel}!`,
+        html: registeredHtml(name, event, phrase, dayLabel),
       });
     } else {
       joinUsEmails.push({
         from: "704 Collective <hello@704collective.com>",
         to: member.email,
-        subject: `Join us today — ${event.title}`,
-        html: joinUsHtml(name, event),
+        subject: `Join us ${dayLabel} — ${event.title}`,
+        html: joinUsHtml(name, event, phrase, dayLabel),
       });
     }
   }
@@ -150,8 +204,8 @@ async function processEvent(supabase: ReturnType<typeof createClient>, event: Ev
       registeredEmails.push({
         from: "704 Collective <hello@704collective.com>",
         to: ticket.guest_email,
-        subject: `You're registered for ${event.title} today!`,
-        html: registeredHtml("Guest", event),
+        subject: `You're registered for ${event.title} ${dayLabel}!`,
+        html: registeredHtml("Guest", event, phrase, dayLabel),
       });
     }
   }
