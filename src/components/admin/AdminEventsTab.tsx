@@ -34,7 +34,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import {
   Calendar, Plus, Pencil, Trash2, Search, Copy, Lock,
-  ChevronLeft, ChevronRight, MoreHorizontal, ArrowLeft, Upload, X as XIcon, Gift, Mail, Check, UserPlus, Bell, ExternalLink, Send, Loader2,
+  ChevronLeft, ChevronRight, MoreHorizontal, ArrowLeft, Upload, X as XIcon, Gift, Mail, Check, UserPlus, Bell, ExternalLink, Send, Loader2, FlaskConical,
 } from 'lucide-react';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -411,6 +411,26 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       } else {
         toast.error('Failed to send reminders');
       }
+    },
+  });
+
+  const testReminderMutation = useMutation({
+    mutationFn: async (event: Event) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.email) throw new Error('Not authenticated');
+      const res = await supabase.functions.invoke('event-reminder', {
+        body: { event_id: event.id, test_recipient_email: session.user.email },
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+      });
+      if (res.error) throw res.error;
+      return res.data as { sent: number; isTestMode: boolean };
+    },
+    onSuccess: (result) => {
+      toast.success(`Test sent! Check your inbox for ${result.sent} preview email${result.sent !== 1 ? 's' : ''}`);
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : '';
+      toast.error(`Failed to send test: ${msg || 'Unknown error'}`);
     },
   });
 
@@ -887,6 +907,15 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                                   Send Reminder to All
                                 </DropdownMenuItem>
                               )}
+                              {isUpcoming && (
+                                <DropdownMenuItem
+                                  disabled={testReminderMutation.isPending || reminderMutation.isPending}
+                                  onClick={e => { e.stopPropagation(); testReminderMutation.mutate(event); }}
+                                >
+                                  {testReminderMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FlaskConical className="w-4 h-4 mr-2" />}
+                                  Send test to myself
+                                </DropdownMenuItem>
+                              )}
                               {rsvpCount > 0 && (
                                 <DropdownMenuItem onClick={e => { e.stopPropagation(); setMessageEvent(event); setMessageSubject(''); setMessageBody(''); }}>
                                   <Send className="w-4 h-4 mr-2" /> Message Attendees
@@ -985,6 +1014,15 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                               >
                                 {sentReminders[event.id] ? <Check className="w-4 h-4 mr-2 text-green-400" /> : <Bell className="w-4 h-4 mr-2" />}
                                 Send Reminder to All
+                              </DropdownMenuItem>
+                            )}
+                            {isUpcoming && (
+                              <DropdownMenuItem
+                                disabled={testReminderMutation.isPending || reminderMutation.isPending}
+                                onClick={() => testReminderMutation.mutate(event)}
+                              >
+                                {testReminderMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FlaskConical className="w-4 h-4 mr-2" />}
+                                Send test to myself
                               </DropdownMenuItem>
                             )}
                             {rsvpCount > 0 && (

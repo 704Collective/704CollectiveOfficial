@@ -12,6 +12,19 @@
  * Sends in Resend batch chunks of ≤ 100.
  */
 
+/**
+ * TEST MODE PATTERN
+ *
+ * Any admin-facing send function can support a test_recipient_email
+ * parameter. When present, the function should render the exact same
+ * email content it would normally produce, but route it only to that
+ * one address (bypassing audience fanout). Subject lines should be
+ * prefixed with "[TEST] " for clarity.
+ *
+ * This pattern will be added to send-campaign and other send functions
+ * as their admin UIs need preview capability.
+ */
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
@@ -148,10 +161,36 @@ interface ProfileRow {
   marketing_unsubscribed: boolean | null;
 }
 
-async function processEvent(supabase: ReturnType<typeof createClient>, event: EventRow): Promise<number> {
-  log("Processing event", { id: event.id, title: event.title });
+async function processEvent(
+  supabase: ReturnType<typeof createClient>,
+  event: EventRow,
+  isTestMode = false,
+  testRecipient = "",
+): Promise<number> {
+  log("Processing event", { id: event.id, title: event.title, isTestMode });
 
   const { phrase, dayLabel } = relativeDateLabel(event.start_time);
+
+  // ── Test mode: send both preview templates to the requester only ───────────
+  if (isTestMode) {
+    const testEmails = [
+      {
+        from: "704 Collective <hello@704collective.com>",
+        to: testRecipient,
+        subject: `[TEST] You're registered for ${event.title} ${dayLabel}!`,
+        html: registeredHtml("Admin (Test)", event, phrase, dayLabel),
+      },
+      {
+        from: "704 Collective <hello@704collective.com>",
+        to: testRecipient,
+        subject: `[TEST] Join us ${dayLabel} — ${event.title}`,
+        html: joinUsHtml("Admin (Test)", event, phrase, dayLabel),
+      },
+    ];
+    await sendBatch(testEmails);
+    log("Test emails sent", { to: testRecipient, count: testEmails.length });
+    return testEmails.length;
+  }
 
   // Fetch all confirmed ticket holders for this event
   const { data: tickets } = await supabase
@@ -223,6 +262,8 @@ Deno.serve(async (req) => {
 
   // Allow manual admin invocation with a specific event_id
   let specificEventId: string | null = null;
+  let isTestMode = false;
+  let testRecipient = "";
 
   if (req.method === "POST") {
     // Validate caller is admin
@@ -249,6 +290,19 @@ Deno.serve(async (req) => {
     try {
       const body = await req.json();
       specificEventId = body?.event_id ?? null;
+
+      // A1/A2: Test mode — route emails to requester only
+      const rawTestEmail: unknown = body?.test_recipient_email;
+      if (typeof rawTestEmail === "string" && rawTestEmail.trim().length > 0) {
+        const trimmed = rawTestEmail.trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+          return new Response(JSON.stringify({ error: "Invalid test_recipient_email" }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        isTestMode = true;
+        testRecipient = trimmed;
+      }
     } catch { /* ignore */ }
   }
 
@@ -285,10 +339,10 @@ Deno.serve(async (req) => {
 
     let totalSent = 0;
     for (const event of events) {
-      totalSent += await processEvent(supabase, event);
+      totalSent += await processEvent(supabase, event, isTestMode, testRecipient);
     }
 
-    return new Response(JSON.stringify({ success: true, events: events.length, sent: totalSent }), {
+    return new Response(JSON.stringify({ success: true, events: events.length, sent: totalSent, isTestMode }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
