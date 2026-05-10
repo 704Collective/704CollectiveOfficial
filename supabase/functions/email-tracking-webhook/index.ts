@@ -111,7 +111,7 @@ serve(async (req) => {
     const { data: existing } = await supabase
       .from("email_log")
       .select("id, open_count")
-      .eq("resend_message_id", resendMessageId)
+      .eq("resend_id", resendMessageId)
       .single();
 
     if (existing) {
@@ -122,13 +122,13 @@ serve(async (req) => {
           opened_at: created_at,
           open_count: (existing.open_count ?? 0) + 1,
         })
-        .eq("resend_message_id", resendMessageId);
+        .eq("resend_id", resendMessageId);
     }
   } else {
     await supabase
       .from("email_log")
       .update(updates)
-      .eq("resend_message_id", resendMessageId);
+      .eq("resend_id", resendMessageId);
   }
 
   // If bounced or complained, mark the contact/profile as unsubscribed
@@ -166,7 +166,7 @@ serve(async (req) => {
     const { data: logRow } = await supabase
       .from("email_log")
       .select("campaign_id")
-      .eq("resend_message_id", resendMessageId)
+      .eq("resend_id", resendMessageId)
       .single();
 
     if (logRow?.campaign_id) {
