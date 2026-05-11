@@ -94,7 +94,7 @@ export function AdminProspectsTab({ onNavigateToDashboard }: AdminProspectsTabPr
                     <TableCell className="font-medium">{prospect.full_name}</TableCell>
                     <TableCell>{prospect.email}</TableCell>
                     <TableCell><Badge variant="secondary" className="capitalize">{prospect.status || 'new'}</Badge></TableCell>
-                    <TableCell>{prospect.created_at ? format(new Date(prospect.created_at), 'MMM d, yyyy') : '—'}</TableCell>
+                    <TableCell>{prospect.created_at ? format(new Date(prospect.created_at), 'MMM d, yyyy') : '-'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

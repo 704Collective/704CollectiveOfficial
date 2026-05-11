@@ -637,7 +637,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
         </div>
       </div>
 
-      {/* Desktop: one row, equal columns — fits all tabs without horizontal scroll or clipping. */}
+      {/* Desktop: one row, equal columns - fits all tabs without horizontal scroll or clipping. */}
       <div className={cn(DASHBOARD_NAV_DESKTOP, 'hidden border-b border-border sm:block')}>
         <nav
           className="grid w-full min-w-0 gap-x-0.5 gap-y-0 py-2 sm:gap-x-1 lg:gap-x-1.5"

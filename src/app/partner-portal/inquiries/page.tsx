@@ -273,7 +273,7 @@ export default function PartnerInquiriesPage() {
                   <SelectContent>
                     {events.map((e) => (
                       <SelectItem key={e.id} value={e.id}>
-                        {e.title} — {format(new Date(e.start_time), 'MMM d, yyyy')}
+                        {e.title} - {format(new Date(e.start_time), 'MMM d, yyyy')}
                       </SelectItem>
                     ))}
                   </SelectContent>

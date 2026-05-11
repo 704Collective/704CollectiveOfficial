@@ -105,7 +105,7 @@ serve(async (req) => {
         validatedReferralCode = ambData.referral_code;
         logStep("Ambassador validated", { ambassador_id: validatedAmbassadorId, code: validatedReferralCode });
       } else {
-        logStep("Ambassador validation failed — falling back to standard price", {
+        logStep("Ambassador validation failed - falling back to standard price", {
           provided_id: rawAmbassadorId,
           provided_code: rawReferralCode,
         });

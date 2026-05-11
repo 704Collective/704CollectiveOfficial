@@ -249,7 +249,7 @@ export default async function AmbassadorsPage() {
 
               {monthly.length === 0 ? (
                 <div style={{ padding: '72px 24px', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '0.9375rem' }}>
-                  Nobody on the leaderboard yet — be the first!
+                  Nobody on the leaderboard yet - be the first!
                 </div>
               ) : (
                 monthly.map((row, i) => {

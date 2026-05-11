@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
 
       if (profileErr || !recipientProfile) {
         return NextResponse.json(
-          { error: 'Cannot send welcome email — recipient is not a member or profile not found' },
+          { error: 'Cannot send welcome email - recipient is not a member or profile not found' },
           { status: 400 }
         );
       }

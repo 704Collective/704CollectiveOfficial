@@ -66,7 +66,7 @@ export default function SettingsPage() {
         ? 'Partner'
         : 'Social';
   const monthlyPrice =
-    p?.member_type === 'business' ? '$300' : p?.member_type === 'partner' ? '—' : SOCIAL_TIER.monthlyPrice;
+    p?.member_type === 'business' ? '$300' : p?.member_type === 'partner' ? '-' : SOCIAL_TIER.monthlyPrice;
 
   const handleSaveProfile = async () => {
     if (!user) return;
@@ -332,7 +332,7 @@ export default function SettingsPage() {
           )}
         </section>
 
-        {/* Danger Zone — shown for Stripe subscribers AND override members */}
+        {/* Danger Zone - shown for Stripe subscribers AND override members */}
         {isActiveMember && user && (hasStripeSubscription || !!p?.membership_override) && (
           <section className="card-elevated p-6 border-destructive/30 bg-destructive/5">
             <MembershipDangerZone

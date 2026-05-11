@@ -62,7 +62,7 @@ export function PromoBanner() {
       }}
     >
       <span className="promo-banner-inner">
-        Social rate ends May 1st — join at $35/mo before it{"'"}s $49.{' '}
+        Social rate ends May 1st - join at $35/mo before it{"'"}s $49.{' '}
         <Link
           href="/social"
           style={{ fontWeight: 700, textDecoration: 'underline', color: '#C6A664' }}

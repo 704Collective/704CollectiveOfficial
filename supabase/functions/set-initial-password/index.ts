@@ -177,7 +177,7 @@ serve(async (req) => {
 
     // ── Safety check: only allow for users who have never signed in ──
     if (user.last_sign_in_at) {
-      log("User has already signed in — rejecting", { userId: user.id });
+      log("User has already signed in - rejecting", { userId: user.id });
       return new Response(
         JSON.stringify({ error: "already_setup" }),
         { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }

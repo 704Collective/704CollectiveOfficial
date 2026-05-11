@@ -505,7 +505,7 @@ function AnalyticsDialog({ open, onClose, campaign }: { open: boolean; onClose: 
             { label: 'Sent',      value: campaign.sent_count.toLocaleString(),  sub: 'emails delivered' },
             { label: 'Opened',    value: campaign.open_count.toLocaleString(),   sub: `${openRate}% open rate` },
             { label: 'Clicked',   value: campaign.click_count.toLocaleString(), sub: `${clickRate}% click rate` },
-            { label: 'Sent Date', value: campaign.sent_at ? format(new Date(campaign.sent_at), 'MMM d, yyyy') : '—', sub: '' },
+            { label: 'Sent Date', value: campaign.sent_at ? format(new Date(campaign.sent_at), 'MMM d, yyyy') : '-', sub: '' },
           ].map(s => (
             <div key={s.label} className="bg-muted/40 rounded-xl p-4 text-center">
               <p className="text-2xl font-bold text-foreground">{s.value}</p>
@@ -713,7 +713,7 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
       }
     } catch (err) {
       console.error('[Send Now] fetch threw:', err);
-      toast.error('Send failed — network error');
+      toast.error('Send failed - network error');
     } finally {
       setSending(false);
     }
@@ -880,7 +880,7 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
                 disabled={eventsLoading}
               >
                 <SelectTrigger className="text-sm">
-                  <SelectValue placeholder={eventsLoading ? 'Loading events…' : '— Select an event —'} />
+                  <SelectValue placeholder={eventsLoading ? 'Loading events…' : '- Select an event -'} />
                 </SelectTrigger>
                 <SelectContent>
                   {events.map(ev => (
@@ -1114,7 +1114,7 @@ export default function CrmCampaignsPage() {
         )}
       </div>
 
-      {/* Table — desktop */}
+      {/* Table - desktop */}
       <div className="hidden sm:block bg-card border border-border rounded-xl overflow-hidden">
         <div className="overflow-x-auto min-w-0">
         <table className="w-full text-sm">
@@ -1154,7 +1154,7 @@ export default function CrmCampaignsPage() {
                 const openRate  = c.sent_count > 0 ? Math.round((c.open_count  / c.sent_count) * 100) : null;
                 const clickRate = c.sent_count > 0 ? Math.round((c.click_count / c.sent_count) * 100) : null;
                 const date = c.sent_at ?? c.scheduled_for ?? c.created_at;
-                const audienceLabel = AUDIENCE_OPTIONS.find(a => a.value === c.audience?.type)?.label ?? c.audience?.type ?? '—';
+                const audienceLabel = AUDIENCE_OPTIONS.find(a => a.value === c.audience?.type)?.label ?? c.audience?.type ?? '-';
 
                 return (
                   <tr key={c.id} className="border-b border-border hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => setEditCampaign(c)}>
@@ -1169,13 +1169,13 @@ export default function CrmCampaignsPage() {
                     <td className="px-4 py-3">
                       <span className="text-xs text-muted-foreground flex items-center gap-1.5"><Users className="w-3 h-3" />{audienceLabel}</span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{date ? format(new Date(date), 'MMM d, yyyy') : '—'}</td>
-                    <td className="px-4 py-3 text-right text-sm text-foreground">{c.sent_count > 0 ? c.sent_count.toLocaleString() : '—'}</td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{date ? format(new Date(date), 'MMM d, yyyy') : '-'}</td>
+                    <td className="px-4 py-3 text-right text-sm text-foreground">{c.sent_count > 0 ? c.sent_count.toLocaleString() : '-'}</td>
                     <td className="px-4 py-3 text-right text-sm">
-                      {openRate !== null ? <span className="text-emerald-400 font-medium">{openRate}%</span> : <span className="text-muted-foreground">—</span>}
+                      {openRate !== null ? <span className="text-emerald-400 font-medium">{openRate}%</span> : <span className="text-muted-foreground">-</span>}
                     </td>
                     <td className="px-4 py-3 text-right text-sm">
-                      {clickRate !== null ? <span className="text-blue-400 font-medium">{clickRate}%</span> : <span className="text-muted-foreground">—</span>}
+                      {clickRate !== null ? <span className="text-blue-400 font-medium">{clickRate}%</span> : <span className="text-muted-foreground">-</span>}
                     </td>
                     <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                       <DropdownMenu>
@@ -1201,7 +1201,7 @@ export default function CrmCampaignsPage() {
         </div>
       </div>
 
-      {/* Cards — mobile */}
+      {/* Cards - mobile */}
       <div className="sm:hidden space-y-3">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-28 bg-muted animate-pulse rounded-xl" />)

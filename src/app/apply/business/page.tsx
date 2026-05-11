@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -429,7 +429,7 @@ function BusinessApplicationInner() {
               </div>
             )}
 
-            {/* Existing payment method detected — transitioning */}
+            {/* Existing payment method detected - transitioning */}
             {!paymentCheckLoading && hasExistingPayment === true && (
               <div className="flex flex-col items-center space-y-4 py-8 text-center">
                 <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
@@ -438,17 +438,17 @@ function BusinessApplicationInner() {
                   </svg>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Payment method on file — finalizing your application...
+                  Payment method on file - finalizing your application...
                 </p>
               </div>
             )}
 
-            {/* No existing payment method — show Stripe Elements */}
+            {/* No existing payment method - show Stripe Elements */}
             {!paymentCheckLoading && hasExistingPayment === false && clientSecret && (
               <>
                 <div className="text-center space-y-2">
                   <h1 className="text-2xl font-semibold text-foreground">
-                    Application Pending — Save Payment Method to Submit
+                    Application Pending - Save Payment Method to Submit
                   </h1>
                 </div>
                 <div className="text-sm text-muted-foreground leading-relaxed space-y-3">
@@ -487,7 +487,7 @@ function BusinessApplicationInner() {
                   <PaymentForm onSuccess={() => setStep('done')} />
                 </Elements>
                 <p className="text-center text-xs text-muted-foreground">
-                  📧 Don&apos;t forget to verify your email by clicking the link we sent —
+                  📧 Don&apos;t forget to verify your email by clicking the link we sent -
                   required to access your member portal after approval.
                 </p>
               </>
@@ -517,7 +517,7 @@ function BusinessApplicationInner() {
               <h1 className="text-2xl font-semibold text-foreground mb-2">You&apos;re All Set!</h1>
               <p className="text-muted-foreground text-sm leading-relaxed">
                 Your application has been submitted and your payment method is on file. You&apos;ll
-                receive an email when our team reviews your application — usually within 2-3 business
+                receive an email when our team reviews your application - usually within 2-3 business
                 days. If approved, your card will be charged the monthly rate at that time.
               </p>
             </div>
@@ -546,7 +546,7 @@ function BusinessApplicationInner() {
 
           <form onSubmit={handleApply} className="space-y-8">
 
-            {/* Account section — only shown to new (not logged-in) users */}
+            {/* Account section - only shown to new (not logged-in) users */}
             {!user && (
               <div className="space-y-4">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Create Your Account</p>
@@ -588,7 +588,7 @@ function BusinessApplicationInner() {
               </div>
             )}
 
-            {/* Referral code — optional, subtle, between account and application */}
+            {/* Referral code - optional, subtle, between account and application */}
             <div className="space-y-3">
               {resolvedAmbassador ? (
                 <div className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 space-y-0.5">

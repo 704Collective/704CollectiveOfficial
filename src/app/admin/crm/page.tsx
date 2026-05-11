@@ -357,14 +357,14 @@ export default function CrmDashboardPage() {
         </div>
       </div>
 
-      {/* Row 1 — Stat Cards */}
+      {/* Row 1 - Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {statCards.filter(card => card.label !== 'MRR' || isSuperAdmin).map((card) => (
           <StatCardWidget key={card.label} card={card} />
         ))}
       </div>
 
-      {/* Row 2 — Charts */}
+      {/* Row 2 - Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* Member Growth */}
@@ -385,7 +385,7 @@ export default function CrmDashboardPage() {
           )}
         </div>
 
-        {/* Revenue — super_admin only */}
+        {/* Revenue - super_admin only */}
         {isSuperAdmin && (
           <div className="bg-card border border-border rounded-xl p-5">
             <SectionHeader title="Revenue" action="View financials" onAction={() => router.push('/admin?section=financials')} />
@@ -406,7 +406,7 @@ export default function CrmDashboardPage() {
         )}
       </div>
 
-      {/* Row 3 — Activity + Pipeline */}
+      {/* Row 3 - Activity + Pipeline */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* Recent Activity */}
@@ -465,7 +465,7 @@ export default function CrmDashboardPage() {
         </div>
       </div>
 
-      {/* Row 4 — Email */}
+      {/* Row 4 - Email */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* Last Campaign */}
@@ -490,8 +490,8 @@ export default function CrmDashboardPage() {
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {[
-                  { label: 'Open Rate', value: lastCampaign.sent_count > 0 ? `${Math.round((lastCampaign.open_count / lastCampaign.sent_count) * 100)}%` : '—' },
-                  { label: 'Click Rate', value: lastCampaign.sent_count > 0 ? `${Math.round((lastCampaign.click_count / lastCampaign.sent_count) * 100)}%` : '—' },
+                  { label: 'Open Rate', value: lastCampaign.sent_count > 0 ? `${Math.round((lastCampaign.open_count / lastCampaign.sent_count) * 100)}%` : '-' },
+                  { label: 'Click Rate', value: lastCampaign.sent_count > 0 ? `${Math.round((lastCampaign.click_count / lastCampaign.sent_count) * 100)}%` : '-' },
                   { label: 'Sent', value: lastCampaign.sent_count.toLocaleString() },
                 ].map((stat) => (
                   <div key={stat.label} className="bg-muted/40 rounded-lg p-3 text-center">

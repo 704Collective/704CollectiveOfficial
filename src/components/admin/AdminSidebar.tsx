@@ -87,7 +87,7 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
         type="button"
         disabled
         title={tooltip}
-        aria-label={`${label} — ${tooltip}`}
+        aria-label={`${label} - ${tooltip}`}
         className={cn(NAV_BASE, 'border-transparent text-muted-foreground/40 cursor-not-allowed select-none')}
       >
         <Icon className="w-4 h-4 shrink-0" />
@@ -134,13 +134,13 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
         </div>
       )}
 
-      {/* Main nav — fixed height scroll container so it never recalculates */}
+      {/* Main nav - fixed height scroll container so it never recalculates */}
       <nav
         className="flex-1 min-h-0 px-3 py-3 overflow-y-auto"
         style={{ overscrollBehavior: 'contain', willChange: 'transform' }}
       >
 
-        {/* ── Group 1 — no heading ── */}
+        {/* ── Group 1 - no heading ── */}
         <div className="space-y-0.5">
           {sectionBtn({ icon: LayoutDashboard, label: 'Dashboard',    section: 'dashboard'    })}
           {sectionBtn({ icon: Calendar,        label: 'Events',       section: 'events'       })}
@@ -153,7 +153,7 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
           {linkBtn('/admin/crm', BarChart2, 'CRM')}
         </div>
 
-        {/* ── Group 2 — BUSINESS ── */}
+        {/* ── Group 2 - BUSINESS ── */}
         <div className="mt-5 pt-3 border-t border-border">
           {groupHeading('Business')}
           <div className="space-y-0.5">
@@ -166,7 +166,7 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
           </div>
         </div>
 
-        {/* ── Group 3 — CONTENT ── */}
+        {/* ── Group 3 - CONTENT ── */}
         {isAdminOrSuper && (
           <div className="mt-5 pt-3 border-t border-border">
             {groupHeading('Content')}
@@ -179,7 +179,7 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
           </div>
         )}
 
-        {/* ── Group 4 — SYSTEM ── */}
+        {/* ── Group 4 - SYSTEM ── */}
         {isAdminOrSuper && (
           <div className="mt-5 pt-3 border-t border-border">
             {groupHeading('System')}

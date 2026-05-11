@@ -95,7 +95,7 @@ export function MembershipStatusBar({
         <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.5)', marginTop: '8px' }}>
           Your membership ends{' '}
           {subscriptionEndsAt ? format(new Date(subscriptionEndsAt), 'MMMM d, yyyy') : 'at the end of your billing period'}
-          {' — '}
+          {' - '}
           <button
             type="button"
             onClick={onManageBilling}

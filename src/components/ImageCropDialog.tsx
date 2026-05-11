@@ -94,7 +94,7 @@ export function ImageCropDialog({ imageUrl, open, onSave, onClose, saving }: Ima
   const applyPreset = (index: number) => {
     setActivePreset(index);
     const preset = ASPECT_PRESETS[index];
-    if (!preset.ratio) return; // free — keep current
+    if (!preset.ratio) return; // free - keep current
     const ratio = preset.ratio;
     let cw = displaySize.width * 0.8;
     let ch = cw / ratio;

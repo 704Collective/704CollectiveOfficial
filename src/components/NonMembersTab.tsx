@@ -212,7 +212,7 @@ export function NonMemberDashboard({ profile, application }: NonMemberDashboardP
               <ul className="space-y-2">
                 {(isSocialNonMember ? SOCIAL_PERKS : BUSINESS_PERKS).map((perk, i) => (
                   <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                    <span className="text-primary mt-0.5 shrink-0">—</span>
+                    <span className="text-primary mt-0.5 shrink-0">-</span>
                     {perk}
                   </li>
                 ))}

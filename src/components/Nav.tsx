@@ -199,7 +199,7 @@ export default function Nav() {
           }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
 
-            {/* Membership group — EXCEPTION: 704 Social stays as /social */}
+            {/* Membership group - EXCEPTION: 704 Social stays as /social */}
             <div style={{ padding: "16px 0", borderBottom: "1px solid rgba(255, 255, 255, 0.06)" }}>
               <span style={{ color: "rgba(255, 255, 255, 0.4)", fontSize: "0.6875rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em" }}>
                 Membership

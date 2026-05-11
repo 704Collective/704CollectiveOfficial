@@ -245,7 +245,7 @@ export function AddMembersToEventDialog({
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{member.full_name || '—'}</p>
+                      <p className="text-sm font-medium truncate">{member.full_name || '-'}</p>
                       <p className="text-xs text-muted-foreground truncate">{member.email}</p>
                     </div>
                     <div className="shrink-0">

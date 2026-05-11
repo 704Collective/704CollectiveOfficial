@@ -174,7 +174,7 @@ export function AdminSuggestionsTab({ onNavigateToDashboard }: AdminSuggestionsT
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
-                      {/* Mark read / unread — all admins */}
+                      {/* Mark read / unread - all admins */}
                       <Button
                         variant="ghost"
                         size="icon"
@@ -192,7 +192,7 @@ export function AdminSuggestionsTab({ onNavigateToDashboard }: AdminSuggestionsT
                         }
                       </Button>
 
-                      {/* Delete — super admin only */}
+                      {/* Delete - super admin only */}
                       {isSuperAdmin && (
                         <Button
                           variant="ghost"

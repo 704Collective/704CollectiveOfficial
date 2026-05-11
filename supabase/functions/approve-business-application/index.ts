@@ -75,16 +75,16 @@ serve(async (req) => {
 
     // ── Step 2: Idempotency guard ────────────────────────────────────────────
     if (app.status !== "pending") {
-      console.log("[APPROVE] Refusing to re-approve — current status:", app.status);
+      console.log("[APPROVE] Refusing to re-approve - current status:", app.status);
       return new Response(
-        JSON.stringify({ error: `Application is already ${app.status} — cannot approve again` }),
+        JSON.stringify({ error: `Application is already ${app.status} - cannot approve again` }),
         { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     // ── Step 3: Load profile by profile_id ──────────────────────────────────
     if (!app.profile_id) {
-      throw new Error("Application has no profile_id — cannot locate the applicant's account");
+      throw new Error("Application has no profile_id - cannot locate the applicant's account");
     }
 
     const { data: profile, error: profileErr } = await supabase
@@ -94,7 +94,7 @@ serve(async (req) => {
       .single();
 
     if (profileErr || !profile) {
-      throw new Error(`Profile not found for profile_id ${app.profile_id} — applicant account may be missing`);
+      throw new Error(`Profile not found for profile_id ${app.profile_id} - applicant account may be missing`);
     }
 
     console.log("[APPROVE] Profile found:", profile.id, "member_type:", profile.member_type, "sub_status:", profile.subscription_status);
@@ -102,14 +102,14 @@ serve(async (req) => {
     // ── Step 4: Resolve Stripe customer ID ──────────────────────────────────
     const stripeCustomerId: string | null = profile.stripe_customer_id ?? app.stripe_customer_id ?? null;
     if (!stripeCustomerId) {
-      throw new Error("No Stripe customer ID found on profile or application — card setup may be incomplete");
+      throw new Error("No Stripe customer ID found on profile or application - card setup may be incomplete");
     }
 
     console.log("[APPROVE] stripeCustomerId:", stripeCustomerId);
 
     // ── Step 5: Retrieve SetupIntent and validate saved card ─────────────────
     if (!app.stripe_setup_intent_id) {
-      throw new Error("No SetupIntent ID found on application — card was never saved");
+      throw new Error("No SetupIntent ID found on application - card was never saved");
     }
 
     console.log("[APPROVE] Retrieving SetupIntent:", app.stripe_setup_intent_id);
@@ -125,7 +125,7 @@ serve(async (req) => {
 
     if (setupIntent.status !== "succeeded" || !pmRaw) {
       throw new Error(
-        `Card was not saved successfully — SetupIntent status is '${setupIntent.status}' (expected 'succeeded')`
+        `Card was not saved successfully - SetupIntent status is '${setupIntent.status}' (expected 'succeeded')`
       );
     }
 
@@ -181,7 +181,7 @@ serve(async (req) => {
       profile.subscription_status === "active" &&
       profile.subscription_id
     ) {
-      console.log("[APPROVE] Active social member detected — fetching subscription for proration:", profile.subscription_id);
+      console.log("[APPROVE] Active social member detected - fetching subscription for proration:", profile.subscription_id);
 
       const stripeRes = await fetch(
         `https://api.stripe.com/v1/subscriptions/${profile.subscription_id}?expand[]=items.data.price`,
@@ -232,7 +232,7 @@ serve(async (req) => {
         const cancelResult = await cancelRes.json();
         console.log("[APPROVE] Social sub cancelled, status:", cancelResult.status);
       } else {
-        console.log("[APPROVE] Social sub has no period data — skipping proration");
+        console.log("[APPROVE] Social sub has no period data - skipping proration");
       }
     }
 
@@ -262,7 +262,7 @@ serve(async (req) => {
     }
 
     // ── Step 10: Create business subscription ────────────────────────────────
-    console.log("[APPROVE] Creating business subscription — customer:", stripeCustomerId, "price:", businessPriceId);
+    console.log("[APPROVE] Creating business subscription - customer:", stripeCustomerId, "price:", businessPriceId);
 
     const subBody = new URLSearchParams({
       customer: stripeCustomerId,
@@ -287,7 +287,7 @@ serve(async (req) => {
 
     const piStatus = sub.latest_invoice?.payment_intent?.status ?? "unknown";
     console.log(
-      "[APPROVE] Subscription response — id:", sub.id,
+      "[APPROVE] Subscription response - id:", sub.id,
       "status:", sub.status,
       "invoice pi_status:", piStatus
     );
@@ -302,7 +302,7 @@ serve(async (req) => {
     if (sub.status !== "active" && sub.status !== "trialing") {
       if (piStatus === "requires_action") {
         throw new Error(
-          "Card requires authentication — applicant needs to re-confirm their card before approval"
+          "Card requires authentication - applicant needs to re-confirm their card before approval"
         );
       }
       throw new Error(
@@ -362,7 +362,7 @@ serve(async (req) => {
 
     // ── Step 14: Welcome posts on social + business feeds ────────────────────
     const firstName = (app.first_name || "").trim() || "there";
-    const welcomeContent = `Welcome ${firstName}! Just joined 704 Business — say hi below.`;
+    const welcomeContent = `Welcome ${firstName}! Just joined 704 Business - say hi below.`;
     const imageUrls = profile.avatar_url ? [profile.avatar_url] : [];
     const nowIso = new Date().toISOString();
 

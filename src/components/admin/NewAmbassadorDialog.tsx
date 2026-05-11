@@ -134,7 +134,7 @@ export function NewAmbassadorDialog({ open, onOpenChange, onCreated }: NewAmbass
                 ? 'Letters and numbers only. 3–32 characters.'
                 : codeValid
                   ? <><span>Ambassadors will share: </span><span className="font-mono font-semibold text-amber-500">{codeUpper}</span></>
-                  : <span className="text-destructive">Use 3–32 uppercase letters or digits — no spaces or symbols.</span>}
+                  : <span className="text-destructive">Use 3–32 uppercase letters or digits - no spaces or symbols.</span>}
             </p>
           </div>
 

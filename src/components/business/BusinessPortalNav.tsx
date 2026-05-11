@@ -50,7 +50,7 @@ export function BusinessPortalNav() {
             );
           })}
 
-          {/* Notification bell — pinned to the right */}
+          {/* Notification bell - pinned to the right */}
           <div className="ml-auto flex items-center pl-4 py-2 shrink-0">
             <NotificationBell />
           </div>

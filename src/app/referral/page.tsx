@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -19,7 +19,7 @@ const SOCIAL_BENEFITS = [
   'Monthly curated social events',
   'Access to the member directory & feed',
   'Priority event registration',
-  'Founding member rate — locked in for life',
+  'Founding member rate - locked in for life',
 ];
 
 // ── Business tier benefits shown on the referral page ─────────────
@@ -122,7 +122,7 @@ function ReferralPageInner() {
                   {resolvedAmbassador.full_name} thinks you&apos;d love 704 Collective.
                 </h1>
                 <p className="text-base" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                  Your referral code unlocks founding member rates — claimed below.
+                  Your referral code unlocks founding member rates - claimed below.
                 </p>
               </div>
 
@@ -158,7 +158,7 @@ function ReferralPageInner() {
                       $35<span className="text-base font-normal" style={{ color: 'rgba(255,255,255,0.55)' }}>/month</span>
                     </div>
                     <p className="text-xs mt-1" style={{ color: '#C6A664' }}>
-                      Founding rate — locked in for life
+                      Founding rate - locked in for life
                     </p>
                   </div>
                   <ul className="space-y-2 mb-6 flex-1">
@@ -207,7 +207,7 @@ function ReferralPageInner() {
                       $250<span className="text-base font-normal" style={{ color: 'rgba(255,255,255,0.55)' }}>/month</span>
                     </div>
                     <p className="text-xs mt-1" style={{ color: '#C6A664' }}>
-                      Founding rate — locked through 2026
+                      Founding rate - locked through 2026
                     </p>
                   </div>
                   <ul className="space-y-2 mb-6 flex-1">

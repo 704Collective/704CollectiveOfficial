@@ -70,7 +70,7 @@ const INDUSTRIES = [
 ];
 
 function formatCurrency(n: number | null) {
-  if (!n) return '—';
+  if (!n) return '-';
   return `$${n.toLocaleString()}/mo`;
 }
 
@@ -356,7 +356,7 @@ function DealDetailDialog({
                 <Select value={form.industry || 'none'} onValueChange={v => setForm(p => ({ ...p, industry: v === 'none' ? '' : v }))}>
                   <SelectTrigger className="text-sm"><SelectValue placeholder="Select industry" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">— None —</SelectItem>
+                    <SelectItem value="none">- None -</SelectItem>
                     {INDUSTRIES.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -653,10 +653,10 @@ export default function CrmPipelinePage() {
                           <td className="px-4 py-3">
                             {deal.contact ? (
                               <div>
-                                <p className="text-sm text-foreground">{deal.contact.full_name ?? '—'}</p>
+                                <p className="text-sm text-foreground">{deal.contact.full_name ?? '-'}</p>
                                 <p className="text-xs text-muted-foreground">{deal.contact.email}</p>
                               </div>
-                            ) : <span className="text-muted-foreground">—</span>}
+                            ) : <span className="text-muted-foreground">-</span>}
                           </td>
                           <td className="px-4 py-3">
                             <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${stage?.bg} ${stage?.color} ${stage?.border}`}>
@@ -664,7 +664,7 @@ export default function CrmPipelinePage() {
                             </span>
                           </td>
                           <td className="px-4 py-3 text-sm text-primary font-medium">{formatCurrency(deal.value)}</td>
-                          <td className="px-4 py-3 text-xs text-muted-foreground">{deal.industry ?? '—'}</td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">{deal.industry ?? '-'}</td>
                           <td className="px-4 py-3 text-xs text-muted-foreground">{daysAgo(deal.applied_at)}</td>
                           <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                             <DropdownMenu>

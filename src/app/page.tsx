@@ -193,7 +193,7 @@ export default async function Home() {
                   margin: "0 auto 40px auto",
                 }}
               >
-                Charlotte&apos;s members-only community for young professionals — built around 10 curated experiences every month and the people worth knowing in this city.
+                Charlotte&apos;s members-only community for young professionals - built around 10 curated experiences every month and the people worth knowing in this city.
               </p>
             </FadeUp>
 
@@ -265,7 +265,7 @@ export default async function Home() {
             >
               <FadeUp delay={0.2}>
                 <p style={{ marginBottom: "20px" }}>
-                  704 Collective is Charlotte&apos;s membership community — built two ways.
+                  704 Collective is Charlotte&apos;s membership community - built two ways.
                 </p>
               </FadeUp>
 
@@ -294,7 +294,7 @@ export default async function Home() {
               </FadeUp>
             </div>
 
-            {/* Photo Slideshow — crossfade */}
+            {/* Photo Slideshow - crossfade */}
             <div style={{ marginTop: '48px', width: '100%', maxWidth: '900px', margin: '48px auto 0', position: 'relative', borderRadius: '16px', overflow: 'hidden' }}>
               <style>{`
                 .slide-img {
@@ -489,11 +489,11 @@ export default async function Home() {
                 {[
                   {
                     title: "Curated Social Events",
-                    desc: "10 planned events every month — happy hours, dinners, rooftop nights, and more.",
+                    desc: "10 planned events every month - happy hours, dinners, rooftop nights, and more.",
                   },
                   {
                     title: "Wellness & Adventure",
-                    desc: "Cold plunge, hot yoga, hikes, pickleball — activities that actually get you moving.",
+                    desc: "Cold plunge, hot yoga, hikes, pickleball - activities that actually get you moving.",
                   },
                   {
                     title: "Priority Access",
@@ -591,7 +591,7 @@ export default async function Home() {
                   },
                   {
                     title: "Closed-Door Networking",
-                    desc: "Invite-only rooms. No cold intros — just warm, curated connections.",
+                    desc: "Invite-only rooms. No cold intros - just warm, curated connections.",
                   },
                   {
                     title: "Referral Network",
@@ -698,7 +698,7 @@ export default async function Home() {
             >
               {[
                 {
-                  quote: "704 makes it so easy to hit fun events — especially the health and wellness ones, my personal fave — and I get to meet so many new people every time!!",
+                  quote: "704 makes it so easy to hit fun events - especially the health and wellness ones, my personal fave - and I get to meet so many new people every time!!",
                   name: "Sydney",
                   role: "Member",
                   avatar: "https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/Sydney.jpg",
@@ -818,7 +818,7 @@ export default async function Home() {
                   margin: "0 auto",
                 }}
               >
-                Whether you&apos;re here for the social life or the business edge — there&apos;s a place for you.
+                Whether you&apos;re here for the social life or the business edge - there&apos;s a place for you.
               </p>
             </FadeUp>
 
@@ -1168,7 +1168,7 @@ export default async function Home() {
                 {
                   num: "02",
                   title: "Built for Charlotte",
-                  desc: "Born from CLTBucketlist — 500,000 members deep. We didn't move here and start a community. We built one from the city we already knew.",
+                  desc: "Born from CLTBucketlist - 500,000 members deep. We didn't move here and start a community. We built one from the city we already knew.",
                 },
                 {
                   num: "03",
@@ -1267,11 +1267,11 @@ export default async function Home() {
               {[
                 {
                   q: "What is 704 Collective?",
-                  a: "704 Collective is Charlotte's members-only community for young professionals — two tracks, one community. 704 Social is built around 10 curated experiences every month and the friendships that come from actually showing up. 704 Business is the professional side — mastermind sessions, keynote rooms, referral networks, and direct access to Charlotte's most driven founders and operators.",
+                  a: "704 Collective is Charlotte's members-only community for young professionals - two tracks, one community. 704 Social is built around 10 curated experiences every month and the friendships that come from actually showing up. 704 Business is the professional side - mastermind sessions, keynote rooms, referral networks, and direct access to Charlotte's most driven founders and operators.",
                 },
                 {
                   q: "What does my membership cover?",
-                  a: "Social members get full access to all 10+ monthly events — happy hours, dinners, wellness days, adventures, and member-only experiences. Business members get everything in Social plus mastermind roundtables, keynote speakers, a private Slack community, featured placements, and more.",
+                  a: "Social members get full access to all 10+ monthly events - happy hours, dinners, wellness days, adventures, and member-only experiences. Business members get everything in Social plus mastermind roundtables, keynote speakers, a private Slack community, featured placements, and more.",
                 },
                 {
                   q: "What kind of events do you host?",
@@ -1287,11 +1287,11 @@ export default async function Home() {
                 },
                 {
                   q: "Do I need to apply?",
-                  a: "For 704 Social, no. Just join and you're in immediately. For 704 Business, yes — we review every application personally to keep the room intentional. Takes about 3 minutes.",
+                  a: "For 704 Social, no. Just join and you're in immediately. For 704 Business, yes - we review every application personally to keep the room intentional. Takes about 3 minutes.",
                 },
                 {
                   q: "Can I bring guests?",
-                  a: "Business members get a guest pass every month. Social members can bring guests to select events — check each event for guest policy details.",
+                  a: "Business members get a guest pass every month. Social members can bring guests to select events - check each event for guest policy details.",
                 },
                 {
                   q: "What if I'm new to Charlotte?",
@@ -1299,7 +1299,7 @@ export default async function Home() {
                 },
                 {
                   q: "How is this different from other Charlotte groups?",
-                  a: "We keep events small — 20 to 40 people — so you actually meet someone. No name tags, no elevator pitches, no awkward circles. And we've been building in Charlotte for years through CLTBucketlist, so we know this city and the people in it.",
+                  a: "We keep events small - 20 to 40 people - so you actually meet someone. No name tags, no elevator pitches, no awkward circles. And we've been building in Charlotte for years through CLTBucketlist, so we know this city and the people in it.",
                 },
                 {
                   q: "Is there a contract or cancellation fee?",

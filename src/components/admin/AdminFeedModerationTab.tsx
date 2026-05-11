@@ -105,7 +105,7 @@ export function AdminFeedModerationTab({ onNavigateToDashboard }: AdminFeedModer
                   </span>
                 </div>
                 <p className="text-sm text-foreground line-clamp-4 whitespace-pre-wrap break-words">
-                  {post.content?.trim() || '—'}
+                  {post.content?.trim() || '-'}
                 </p>
               </div>
               <Button

@@ -147,7 +147,7 @@ export function AdminNonMembersTab({ onNavigateToDashboard }: AdminNonMembersTab
                       {member.title && <span className="block text-xs text-muted-foreground">{member.title}</span>}
                     </TableCell>
                     <TableCell className="py-3 text-muted-foreground">{member.email}</TableCell>
-                    <TableCell className="py-3 text-muted-foreground">{member.company ?? '—'}</TableCell>
+                    <TableCell className="py-3 text-muted-foreground">{member.company ?? '-'}</TableCell>
                     <TableCell className="py-3">
                       <Badge variant="outline" className="text-xs capitalize">{member.member_type ?? 'lead'}</Badge>
                     </TableCell>

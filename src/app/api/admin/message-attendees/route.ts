@@ -8,6 +8,25 @@ const supabaseAdmin = () =>
     { auth: { persistSession: false } }
   );
 
+/** Call the centralised send-email render endpoint to get subject + HTML. */
+async function renderTemplate(
+  template: string,
+  data: Record<string, unknown>,
+): Promise<{ subject: string; html: string }> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const res = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${serviceKey}`,
+    },
+    body: JSON.stringify({ mode: 'render', template, data }),
+  });
+  if (!res.ok) throw new Error(`Failed to render template ${template}: ${await res.text()}`);
+  return res.json() as Promise<{ success: true; subject: string; html: string }>;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get('authorization');
@@ -46,7 +65,7 @@ export async function POST(req: NextRequest) {
     // Fetch event details
     const { data: event } = await admin
       .from('events')
-      .select('title')
+      .select('id, title')
       .eq('id', event_id)
       .maybeSingle();
 
@@ -79,9 +98,7 @@ export async function POST(req: NextRequest) {
       .filter((t: any) => t.guest_email)
       .map((t: any) => ({ email: t.guest_email as string, name: t.guest_name || 'Guest' }));
 
-    // Fetch Public RSVPs — non-members who RSVP'd through the public event page.
-    // Uses service-role client because RLS may block anon reads on this table.
-    // Errors are non-fatal: log and fall back to members + guests only.
+    // Fetch Public RSVPs
     let publicRsvpEmails: { email: string; name: string }[] = [];
     const { data: publicRsvps, error: rsvpErr } = await admin
       .from('event_public_rsvps')
@@ -100,8 +117,7 @@ export async function POST(req: NextRequest) {
         }));
     }
 
-    // Merge members, ticket guests, and public RSVPs; dedupe by email (case-insensitive).
-    // First-seen entry wins, so a member ticket always beats a public RSVP for the same address.
+    // Merge and dedupe by email (case-insensitive). First-seen wins.
     const seenEmails = new Map<string, { email: string; name: string }>();
     for (const recipient of [...memberEmails, ...guestEmails, ...publicRsvpEmails]) {
       const key = recipient.email.toLowerCase().trim();
@@ -118,28 +134,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'RESEND_API_KEY not configured' }, { status: 500 });
     }
 
-    const escHtml = (s: string) =>
-      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const eventUrl = `https://704collective.com/events/${event.id}`;
 
-    const emailHtml = (name: string) => `<!DOCTYPE html><html>
-<body style="font-family:'Plus Jakarta Sans',sans-serif;background:#1A1A1A;color:#FAF6F0;padding:32px;">
-<img src="https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/704-logo.png" alt="704 Collective" width="120" style="margin-bottom:24px;" />
-<h2 style="color:#C6A664;margin:0 0 8px;">Message from 704 Collective</h2>
-<p style="color:#D8D8D8;margin:0 0 8px;">Hey ${escHtml(name)},</p>
-<p style="color:#D8D8D8;margin:0 0 24px;">This is a message from the organizers of <strong>${escHtml(event.title)}</strong>:</p>
-<div style="background:#2E2E2E;border-radius:8px;padding:20px;margin:0 0 24px;white-space:pre-wrap;color:#FAF6F0;">${escHtml(message)}</div>
-<p style="font-size:13px;color:#A0A0A0;">- 704 Collective Team</p>
-</body></html>`;
+    // Render the template once — the message body is the same for all recipients
+    const { subject: renderedSubject, html } = await renderTemplate('admin-message-to-attendees', {
+      adminMessage: message,
+      eventTitle:   event.title,
+      eventUrl,
+    });
+
+    // Override subject with the admin-supplied subject (prefixed with event title)
+    const finalSubject = `[${event.title}] ${subject}`;
 
     // Send in batches of 100
     const CHUNK = 100;
     let sent = 0;
     for (let i = 0; i < allRecipients.length; i += CHUNK) {
-      const batch = allRecipients.slice(i, i + CHUNK).map(({ email, name }) => ({
+      const batch = allRecipients.slice(i, i + CHUNK).map(({ email }) => ({
         from: '704 Collective <hello@704collective.com>',
         to: email,
-        subject: `[${event.title}] ${subject}`,
-        html: emailHtml(name),
+        subject: finalSubject,
+        html,
       }));
 
       const res = await fetch('https://api.resend.com/emails/batch', {

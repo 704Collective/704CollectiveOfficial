@@ -31,18 +31,18 @@ export const metadata: Metadata = {
 const pillars = [
   {
     num: "01",
-    title: "Curated — Not Open Door",
-    body: "Every member is reviewed. You're not joining a room full of strangers — you're joining a room where everyone belongs there.",
+    title: "Curated - Not Open Door",
+    body: "Every member is reviewed. You're not joining a room full of strangers - you're joining a room where everyone belongs there.",
   },
   {
     num: "02",
     title: "Built-In Reach",
-    body: "Your membership connects you to 500,000+ CLTBucketlist followers across Instagram, TikTok, and beyond — real Charlotte visibility.",
+    body: "Your membership connects you to 500,000+ CLTBucketlist followers across Instagram, TikTok, and beyond - real Charlotte visibility.",
   },
   {
     num: "03",
     title: "Real Relationships",
-    body: "Monthly member events, mastermind sessions, and a private community designed for genuine connection — not card collecting.",
+    body: "Monthly member events, mastermind sessions, and a private community designed for genuine connection - not card collecting.",
   },
   {
     num: "04",
@@ -66,7 +66,7 @@ const stats = [
   {
     number: "500K+",
     label: "COMMUNITY REACH",
-    desc: "Built on CLTBucketlist's audience — real Charlotte people who trust this brand across Instagram, TikTok, and beyond.",
+    desc: "Built on CLTBucketlist's audience - real Charlotte people who trust this brand across Instagram, TikTok, and beyond.",
   },
   {
     number: "Curated",
@@ -245,7 +245,7 @@ export default function BusinessPage() {
                   lineHeight: 1.7,
                 }}
               >
-                704 Business is the high-performance division of the Collective — built for entrepreneurs, founders, and elite professionals who are serious about growth in the Queen City.
+                704 Business is the high-performance division of the Collective - built for entrepreneurs, founders, and elite professionals who are serious about growth in the Queen City.
               </p>
             </FadeUp>
 
@@ -316,7 +316,7 @@ export default function BusinessPage() {
                   marginBottom: "0",
                 }}
               >
-                704 Business was born from CLTBucketlist — Charlotte&apos;s most trusted lifestyle brand with over 500,000 community members. We built something the city was missing: a curated professional network where trust is built before the meeting happens.
+                704 Business was born from CLTBucketlist - Charlotte&apos;s most trusted lifestyle brand with over 500,000 community members. We built something the city was missing: a curated professional network where trust is built before the meeting happens.
               </p>
             </FadeUp>
 
@@ -413,7 +413,7 @@ export default function BusinessPage() {
                     lineHeight: 1.7,
                   }}
                 >
-                  We&apos;re not a chamber. We&apos;re not a coworking space. We&apos;re a collective of Charlotte&apos;s most driven founders, entrepreneurs, and professionals — people who move fast, think big, and actually show up.
+                  We&apos;re not a chamber. We&apos;re not a coworking space. We&apos;re a collective of Charlotte&apos;s most driven founders, entrepreneurs, and professionals - people who move fast, think big, and actually show up.
                 </p>
               </FadeUp>
             </div>
@@ -512,7 +512,7 @@ export default function BusinessPage() {
                     lineHeight: 1.6,
                   }}
                 >
-                  Every benefit is designed to give you visibility, access, and real connections — nothing filler.
+                  Every benefit is designed to give you visibility, access, and real connections - nothing filler.
                 </p>
               </FadeUp>
             </div>
@@ -791,7 +791,7 @@ export default function BusinessPage() {
                   margin: "0 auto 8px auto",
                 }}
               >
-                704 Business is a curated community of Charlotte&apos;s most ambitious professionals who are serious about growth — personally and professionally.
+                704 Business is a curated community of Charlotte&apos;s most ambitious professionals who are serious about growth - personally and professionally.
               </p>
             </FadeUp>
 

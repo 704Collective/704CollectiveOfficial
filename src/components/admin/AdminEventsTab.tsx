@@ -1191,7 +1191,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
               <Select value={form.ticket_mode} onValueChange={v => setForm(prev => ({ ...prev, ticket_mode: v as 'none' | 'public_only' | 'all' }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No ticket — free event</SelectItem>
+                  <SelectItem value="none">No ticket - free event</SelectItem>
                   <SelectItem value="public_only">Ticketed for public only (members free, public pays)</SelectItem>
                   <SelectItem value="all">Ticketed for all (everyone pays, members pay less)</SelectItem>
                 </SelectContent>
@@ -1207,7 +1207,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
               </div>
             ) : form.ticket_mode === 'none' ? (
               <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                No ticket required — members and guests RSVP for free.
+                No ticket required - members and guests RSVP for free.
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

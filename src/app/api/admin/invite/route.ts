@@ -2,72 +2,41 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
 
-const BRAND = {
-  color: '#1A1A1A',
-  surface: '#2E2E2E',
-  accent: '#C6A664',
-  accentText: '#1A1A1A',
-  text: '#FAF6F0',
-  textSecondary: '#D8D8D8',
-  textMuted: '#A0A0A0',
-  border: 'rgba(255,255,255,0.10)',
-  logoUrl:
-    'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/704-logo.png',
-  fontStack:
-    "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-};
-
-function escapeHtml(s: string) {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+/** Call the centralised send-email render endpoint to get subject + HTML. */
+async function renderTemplate(
+  template: string,
+  data: Record<string, unknown>,
+): Promise<{ subject: string; html: string }> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const res = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${serviceKey}`,
+    },
+    body: JSON.stringify({ mode: 'render', template, data }),
+  });
+  if (!res.ok) throw new Error(`Failed to render template ${template}: ${await res.text()}`);
+  return res.json() as Promise<{ success: true; subject: string; html: string }>;
 }
 
-function adminInviteEmailHtml(name: string, ctaUrl: string, origin: string) {
-  const safeName = escapeHtml(name || 'there');
-  const safeCta = escapeHtml(ctaUrl);
-  const safeOrigin = escapeHtml(origin);
-  return `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background-color:${BRAND.color};font-family:${BRAND.fontStack};color:${BRAND.text};">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.color};">
-<tr><td align="center" style="padding:40px 16px;">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:${BRAND.surface};border-radius:12px;overflow:hidden;border:1px solid ${BRAND.border};">
-<tr><td align="center" style="padding:32px 40px 24px;border-bottom:1px solid ${BRAND.border};">
-<a href="${safeOrigin}" target="_blank" style="text-decoration:none;border:none;">
-<img src="${BRAND.logoUrl}" alt="704 Collective" width="160" style="display:block;max-width:160px;height:auto;border:0;" />
-</a>
-</td></tr>
-<tr><td style="padding:32px 40px;">
-<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${safeName}!</p>
-<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">You have been invited to join <strong style="color:${BRAND.text};">704 Collective</strong> as an admin. Use the button below to finish setting up your account.</p>
-<table role="presentation" cellpadding="0" cellspacing="0" style="margin:28px 0;">
-<tr><td align="center" style="background-color:${BRAND.accent};border-radius:8px;">
-<a href="${safeCta}" target="_blank" style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:600;color:${BRAND.accentText};text-decoration:none;border-radius:8px;">Set up your admin access</a>
-</td></tr>
-</table>
-<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">If you did not expect this invitation, you can ignore this email.</p>
-</td></tr>
-<tr><td style="padding:24px 40px;border-top:1px solid ${BRAND.border};">
-<p style="margin:0;font-size:13px;color:${BRAND.textMuted};text-align:center;">704 Collective &middot; Charlotte, NC</p>
-</td></tr>
-</table>
-</td></tr>
-</table>
-</body>
-</html>`;
-}
-
-async function sendBrandedAdminInviteEmail(to: string, name: string, ctaUrl: string, origin: string) {
+async function sendAdminInviteEmail(to: string, name: string, inviteUrl: string) {
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
   if (!RESEND_API_KEY) {
-    console.error('[admin/invite] RESEND_API_KEY not configured; skipping branded email');
+    console.error('[admin/invite] RESEND_API_KEY not configured; skipping invite email');
     return;
   }
-  const html = adminInviteEmailHtml(name, ctaUrl, origin);
+
+  let subject: string;
+  let html: string;
+  try {
+    ({ subject, html } = await renderTemplate('admin-invite-link', { name, inviteUrl }));
+  } catch (err) {
+    console.error('[admin/invite] renderTemplate failed, skipping email:', err);
+    return;
+  }
+
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -77,7 +46,7 @@ async function sendBrandedAdminInviteEmail(to: string, name: string, ctaUrl: str
     body: JSON.stringify({
       from: '704 Collective <hello@704collective.com>',
       to,
-      subject: 'You have been invited to join 704 Collective as an admin',
+      subject,
       html,
     }),
   });
@@ -188,12 +157,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: upErr.message }, { status: 400 });
     }
 
-    await sendBrandedAdminInviteEmail(
-      cleanEmail,
-      displayName,
-      redirectTo,
-      siteBase,
-    );
+    await sendAdminInviteEmail(cleanEmail, displayName, redirectTo);
 
     return NextResponse.json({ success: true, isNewUser: false, user: { id: existing.id } });
   }
@@ -217,7 +181,7 @@ export async function POST(req: NextRequest) {
     console.error('[admin/invite] profile upsert', profileErr.message);
   }
 
-  await sendBrandedAdminInviteEmail(cleanEmail, displayName, redirectTo, siteBase);
+  await sendAdminInviteEmail(cleanEmail, displayName, redirectTo);
 
   return NextResponse.json({ success: true, isNewUser: true, user: invitedUser });
 }

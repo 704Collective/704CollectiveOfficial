@@ -176,7 +176,7 @@ export function GuestPassSection({ userId }: GuestPassSectionProps) {
               <SelectContent>
                 {rsvpdEvents.map((event) => (
                   <SelectItem key={event.id} value={event.id}>
-                    {event.title} — {format(new Date(event.start_time), 'MMM d')}
+                    {event.title} - {format(new Date(event.start_time), 'MMM d')}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -39,7 +39,7 @@ serve(async (req) => {
     const timestamp = req.headers.get("svix-timestamp") ?? req.headers.get("webhook-timestamp");
 
     if (!signature || !msgId || !timestamp) {
-      console.warn("Missing webhook signature headers — rejecting");
+      console.warn("Missing webhook signature headers - rejecting");
       return new Response("Unauthorized", { status: 401 });
     }
 
@@ -67,7 +67,7 @@ serve(async (req) => {
       return new Response("Unauthorized", { status: 401 });
     }
   } else {
-    console.warn("RESEND_WEBHOOK_SECRET not set — skipping signature verification");
+    console.warn("RESEND_WEBHOOK_SECRET not set - skipping signature verification");
   }
 
   let payload: ResendWebhookPayload;

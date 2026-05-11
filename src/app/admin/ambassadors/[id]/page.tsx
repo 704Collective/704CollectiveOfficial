@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -566,7 +566,7 @@ export default function AdminAmbassadorDetailPage() {
                               {format(new Date(r.created_at), 'MMM d, yyyy')}
                             </TableCell>
                             <TableCell>
-                              <div className="font-medium">{r.referred_full_name ?? '—'}</div>
+                              <div className="font-medium">{r.referred_full_name ?? '-'}</div>
                               <div className="text-xs text-muted-foreground">{r.referred_email}</div>
                             </TableCell>
                             <TableCell>
@@ -575,7 +575,7 @@ export default function AdminAmbassadorDetailPage() {
                             <TableCell><StatusBadge status={r.status} /></TableCell>
                             <TableCell className="text-right tabular-nums">{dollars(r.reward_cents)}</TableCell>
                             <TableCell className="text-muted-foreground text-sm">
-                              {r.paid_out_at ? format(new Date(r.paid_out_at), 'MMM d') : '—'}
+                              {r.paid_out_at ? format(new Date(r.paid_out_at), 'MMM d') : '-'}
                             </TableCell>
                             <TableCell>
                               <div className="flex flex-col gap-1 items-start">
@@ -678,7 +678,7 @@ export default function AdminAmbassadorDetailPage() {
                           </TableCell>
                           <TableCell className="text-right tabular-nums font-medium">{dollars(p.amount_cents)}</TableCell>
                           <TableCell className="font-mono text-xs text-muted-foreground">
-                            {p.stripe_transfer_id ?? p.stripe_payout_id ?? '—'}
+                            {p.stripe_transfer_id ?? p.stripe_payout_id ?? '-'}
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-1">

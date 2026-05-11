@@ -300,7 +300,7 @@ export function AdminOverviewTab({
           <div className="flex items-center gap-3 min-w-0">
             <DollarSign className="w-5 h-5 text-red-400 shrink-0" aria-hidden />
             <p className="text-sm text-foreground">
-              <span className="font-semibold text-red-400">{data.pastDueCount}</span> past-due subscription{data.pastDueCount === 1 ? '' : 's'} — billing failed
+              <span className="font-semibold text-red-400">{data.pastDueCount}</span> past-due subscription{data.pastDueCount === 1 ? '' : 's'} - billing failed
             </p>
           </div>
           <span className="text-sm font-medium text-red-400 shrink-0 inline-flex items-center gap-0.5">
@@ -328,7 +328,7 @@ export function AdminOverviewTab({
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Financials — super_admin only */}
+        {/* Financials - super_admin only */}
         {isSuperAdmin && (
           <div className="rounded-xl border border-border bg-card p-5 flex flex-col min-h-[220px]">
             <div className="flex items-start justify-between mb-3">
@@ -346,13 +346,13 @@ export function AdminOverviewTab({
             ) : (
               <>
                 <p className="text-3xl font-bold tabular-nums">
-                  {mrr != null ? `$${mrr.toLocaleString()}` : '—'}
+                  {mrr != null ? `$${mrr.toLocaleString()}` : '-'}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">Monthly recurring revenue</p>
                 <div className="mt-4 flex items-center gap-2 text-sm flex-wrap">
                   <span className="text-muted-foreground">Last 30 days</span>
                   <span className="font-medium text-foreground">
-                    {last30RevenueDollars != null ? `$${last30RevenueDollars.toLocaleString()}` : '—'}
+                    {last30RevenueDollars != null ? `$${last30RevenueDollars.toLocaleString()}` : '-'}
                   </span>
                   {momPercent != null && (
                     <span
@@ -444,7 +444,7 @@ export function AdminOverviewTab({
                         {label}
                       </span>
                       <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        {m.created_at ? format(new Date(m.created_at), 'MMM d') : '—'}
+                        {m.created_at ? format(new Date(m.created_at), 'MMM d') : '-'}
                       </span>
                     </div>
                   </li>

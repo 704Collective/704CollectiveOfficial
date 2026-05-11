@@ -47,7 +47,7 @@ async function findProfileByCustomerId(
       .limit(1);
 
     if (deletedData && deletedData.length > 0) {
-      log("Skipping webhook — profile is soft-deleted", {
+      log("Skipping webhook - profile is soft-deleted", {
         stripeCustomerId,
         profileId: deletedData[0].id,
         deletedAt: deletedData[0].deleted_at,
@@ -84,7 +84,7 @@ async function insertNewSocialMemberWelcomePost(
 
   const firstName = (p?.full_name || fallbackName || "").trim().split(/\s+/)[0] || "there";
   const content =
-    `🎉 Welcome ${firstName} to 704 Collective! They just joined the community — drop a hello below and make them feel at home!`;
+    `🎉 Welcome ${firstName} to 704 Collective! They just joined the community - drop a hello below and make them feel at home!`;
   const image_urls = p?.avatar_url ? [p.avatar_url] : [];
 
   const { error: postErr } = await supabase.from("posts").insert({
@@ -172,7 +172,7 @@ async function handleCheckoutCompleted(
 
   const socialProductId = Deno.env.get("STRIPE_SOCIAL_PRODUCT_ID");
   if (!socialProductId) {
-    log("WARNING: STRIPE_SOCIAL_PRODUCT_ID not set — skipping onboarding pipeline (fail-safe)");
+    log("WARNING: STRIPE_SOCIAL_PRODUCT_ID not set - skipping onboarding pipeline (fail-safe)");
   }
 
   let isSocialMembership = false;
@@ -208,7 +208,7 @@ async function handleCheckoutCompleted(
   let memberAction: "new" | "reactivated" | "existing_active" | "skipped" = "skipped";
 
   if (isSocialMembership) {
-    log("Social Membership checkout — running onboarding pipeline", { email: customerEmail });
+    log("Social Membership checkout - running onboarding pipeline", { email: customerEmail });
 
     // Check for existing profile (including soft-deleted)
     const { data: allProfiles } = await supabase
@@ -588,7 +588,7 @@ async function handleCheckoutCompleted(
         log("Ambassador referral processing failed (non-blocking)", { error: msg });
       }
     } else {
-      console.log("[AMB-DIAG] Skipped if block — missing ambassadorIdFromMeta or userId", {
+      console.log("[AMB-DIAG] Skipped if block - missing ambassadorIdFromMeta or userId", {
         hasAmbassadorId: !!ambassadorIdFromMeta,
         hasUserId: !!userId,
       });
@@ -630,7 +630,7 @@ async function handleCheckoutCompleted(
       log("Skipping welcome email for existing active member", { userId });
     }
   } else {
-    log("Non-social checkout — skipping onboarding pipeline", { lineItemName });
+    log("Non-social checkout - skipping onboarding pipeline", { lineItemName });
   }
 
   // ── Phase C: Payment Logging (always runs) ───────────────────────────

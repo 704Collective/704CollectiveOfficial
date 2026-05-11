@@ -368,7 +368,7 @@ export function AdminMemberProfileSheet({
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{(ticket.events as any)?.title || 'Unknown Event'}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {(ticket.events as any)?.start_time ? format(new Date((ticket.events as any).start_time), 'MMM d, yyyy') : '—'}
+                        {(ticket.events as any)?.start_time ? format(new Date((ticket.events as any).start_time), 'MMM d, yyyy') : '-'}
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-1">
@@ -421,11 +421,11 @@ export function AdminMemberProfileSheet({
                   <div className="grid grid-cols-1 gap-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Email confirmed</span>
-                      <span>{details?.emailConfirmedAt ? format(new Date(details.emailConfirmedAt), 'MMM d, yyyy') : '—'}</span>
+                      <span>{details?.emailConfirmedAt ? format(new Date(details.emailConfirmedAt), 'MMM d, yyyy') : '-'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Last sign in</span>
-                      <span>{details?.lastSignInAt ? format(new Date(details.lastSignInAt), 'MMM d, yyyy h:mm a') : '—'}</span>
+                      <span>{details?.lastSignInAt ? format(new Date(details.lastSignInAt), 'MMM d, yyyy h:mm a') : '-'}</span>
                     </div>
                     {details?.stripeCustomerId && (
                       <div className="flex justify-between items-center">

@@ -584,7 +584,7 @@ export default function ImportMembers() {
                               <Badge variant="destructive">Failed</Badge>
                             )}
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{r.error || "—"}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{r.error || "-"}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

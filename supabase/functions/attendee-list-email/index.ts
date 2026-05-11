@@ -5,6 +5,9 @@
  * Sends a formatted attendee list to hello@704collective.com.
  * Uses financial_cache to track which events have already been sent
  * (to prevent duplicate sends).
+ *
+ * HTML is rendered via the centralised send-email render endpoint so the
+ * attendee list email shares the same baseLayout as all other 704 emails.
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
@@ -20,10 +23,27 @@ const corsHeaders = {
 };
 
 const log = (step: string, d?: unknown) =>
-  console.log(`[ATTENDEE-LIST-EMAIL] ${step}${d ? " — " + JSON.stringify(d) : ""}`);
+  console.log(`[ATTENDEE-LIST-EMAIL] ${step}${d ? " - " + JSON.stringify(d) : ""}`);
 
 function supabaseAdmin() {
   return createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
+}
+
+/** Call the centralised send-email render endpoint to get subject + HTML. */
+async function renderTemplate(
+  template: string,
+  data: Record<string, unknown>,
+): Promise<{ subject: string; html: string }> {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${SERVICE_KEY}`,
+    },
+    body: JSON.stringify({ mode: "render", template, data }),
+  });
+  if (!res.ok) throw new Error(`Failed to render template ${template}: ${await res.text()}`);
+  return res.json() as Promise<{ success: true; subject: string; html: string }>;
 }
 
 async function sendEmail(subject: string, html: string) {
@@ -44,43 +64,6 @@ async function sendEmail(subject: string, html: string) {
     const err = await res.text();
     log("Resend error", { status: res.status, err });
   }
-}
-
-function buildAttendeeListHtml(event: EventRow, attendees: AttendeeRow[]): string {
-  const startFormatted = new Date(event.start_time).toLocaleString("en-US", {
-    timeZone: "America/New_York",
-    weekday: "long", month: "long", day: "numeric",
-    hour: "numeric", minute: "2-digit",
-  });
-
-  const rows = attendees.map((a) => {
-    const name  = a.full_name || a.guest_name || "(No name)";
-    const email = a.email     || a.guest_email || "";
-    return `<tr>
-      <td style="padding:8px 12px;border-bottom:1px solid #333;">${name}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #333;color:#A0A0A0;">${email}</td>
-    </tr>`;
-  }).join("");
-
-  return `<!DOCTYPE html><html>
-<body style="font-family:sans-serif;background:#1A1A1A;color:#FAF6F0;padding:32px;">
-<img src="https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/704-logo.png" alt="704 Collective" width="120" style="margin-bottom:24px;" />
-<h2 style="color:#C6A664;margin:0 0 8px;">Attendee List</h2>
-<h3 style="margin:0 0 16px;">${event.title}</h3>
-<p style="color:#D8D8D8;margin:0 0 4px;">📅 ${startFormatted}</p>
-${event.location_name ? `<p style="color:#D8D8D8;margin:0 0 16px;">📍 ${event.location_name}</p>` : ""}
-<p style="margin:0 0 16px;"><strong style="color:#C6A664;">${attendees.length}</strong> total RSVPs</p>
-<table style="width:100%;border-collapse:collapse;background:#2E2E2E;border-radius:8px;overflow:hidden;">
-<thead>
-<tr style="background:#3A3A3A;">
-<th style="padding:10px 12px;text-align:left;color:#C6A664;">Name</th>
-<th style="padding:10px 12px;text-align:left;color:#C6A664;">Email</th>
-</tr>
-</thead>
-<tbody>${rows || '<tr><td colspan="2" style="padding:16px;color:#A0A0A0;text-align:center;">No attendees yet</td></tr>'}</tbody>
-</table>
-<p style="margin-top:24px;font-size:13px;color:#A0A0A0;">Sent automatically by 704 Collective — 60 minutes before the event.</p>
-</body></html>`;
 }
 
 interface EventRow {
@@ -151,10 +134,7 @@ Deno.serve(async (req) => {
         guest_email: t.guest_email          ?? null,
       }));
 
-      // Fetch Public RSVPs — non-members who RSVP'd via the public event page.
-      // Mapped into guest_name/guest_email slots so buildAttendeeListHtml renders
-      // them correctly without any template changes (it already does
-      // `a.full_name || a.guest_name` and `a.email || a.guest_email`).
+      // Fetch Public RSVPs
       const { data: publicRsvps, error: rsvpErr } = await supabase
         .from("event_public_rsvps")
         .select("first_name, last_name, email")
@@ -176,21 +156,31 @@ Deno.serve(async (req) => {
         attendees.push(...publicRsvpRows);
       }
 
-      // Dedupe by lowercased email — first-seen entry wins, so a member ticket
-      // always beats a public RSVP if the same address appears in both sources.
+      // Dedupe by lowercased email
       const seenEmails = new Map<string, AttendeeRow>();
       for (const a of attendees) {
         const key = (a.email || a.guest_email || "").toLowerCase().trim();
         if (key && !seenEmails.has(key)) seenEmails.set(key, a);
         else if (!key && !seenEmails.has(`__nomail_${seenEmails.size}`)) {
-          // Preserve rows with no email (unlikely but defensive)
           seenEmails.set(`__nomail_${seenEmails.size}`, a);
         }
       }
       const dedupedAttendees = Array.from(seenEmails.values());
 
-      const html = buildAttendeeListHtml(event, dedupedAttendees);
-      await sendEmail(`[Attendee List] ${event.title} — starting soon`, html);
+      // Map to the template's expected format
+      const templateAttendees = dedupedAttendees.map(a => ({
+        name:    a.full_name || a.guest_name || "(No name)",
+        email:   a.email     || a.guest_email || "",
+        isGuest: !a.full_name,
+      }));
+
+      const { subject, html } = await renderTemplate("attendee-list-summary", {
+        eventTitle:     event.title,
+        eventStartTime: event.start_time,
+        attendees:      templateAttendees,
+      });
+
+      await sendEmail(`[Attendee List] ${event.title} - starting soon`, html);
 
       // Mark as sent (cache for 4 hours)
       const expiresAt = new Date(now.getTime() + 4 * 60 * 60 * 1000);

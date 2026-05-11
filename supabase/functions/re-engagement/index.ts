@@ -92,7 +92,7 @@ serve(async (_req) => {
 
       if ((recentTickets ?? 0) > 0 || recentlyActive) {
         skipped++;
-        continue; // Active enough — skip
+        continue; // Active enough - skip
       }
 
       // Check if we already sent a re-engagement email in the last 30 days
@@ -129,7 +129,7 @@ serve(async (_req) => {
         <img src="${SITE_URL}/logo.png" alt="704 Collective" style="height:40px;margin-bottom:32px;" />
         <h2 style="color:#1A1A1A;margin-bottom:8px;">Hey ${firstName}, it's been a while!</h2>
         <p style="color:#2E2E2E;line-height:1.6;">
-          We noticed you haven't been to an event in a bit — and we miss seeing you around. 
+          We noticed you haven't been to an event in a bit - and we miss seeing you around. 
           704 Collective is all about real connections in Charlotte, and there's always something worth showing up for.
         </p>
         ${eventTeaser}
@@ -141,9 +141,9 @@ serve(async (_req) => {
           : ""
         }
         <p style="color:#2E2E2E;line-height:1.6;margin-top:24px;">
-          Questions or feedback? Just reply to this email — we read everything.
+          Questions or feedback? Just reply to this email - we read everything.
         </p>
-        <p style="color:#2E2E2E;margin-top:8px;">— The 704 Collective Team</p>
+        <p style="color:#2E2E2E;margin-top:8px;">- The 704 Collective Team</p>
         <p style="color:#999;font-size:12px;margin-top:48px;">
           704 Collective · Charlotte, NC<br/>
           You're receiving this because you're an active member.<br/>

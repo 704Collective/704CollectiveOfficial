@@ -12,86 +12,23 @@ const log = (step: string, details?: unknown) => {
   console.log(`[GUEST-FOLLOWUP] ${step}${d}`);
 };
 
-// ── Brand constants (mirrored from send-email) ──
-const BRAND = {
-  color: "#1A1A1A",
-  surface: "#2E2E2E",
-  accent: "#D4A853",
-  accentText: "#1A1A1A",
-  text: "#FAF6F0",
-  textSecondary: "#D8D8D8",
-  textMuted: "#A0A0A0",
-  border: "rgba(255,255,255,0.10)",
-  logoUrl: "https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/704-logo.png",
-  fontStack: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-};
-
-function baseLayout(content: string, origin?: string): string {
-  const homeUrl = origin || "#";
-  return `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background-color:${BRAND.color};font-family:${BRAND.fontStack};color:${BRAND.text};">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.color};">
-<tr><td align="center" style="padding:40px 16px;">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:${BRAND.surface};border-radius:12px;overflow:hidden;border:1px solid ${BRAND.border};">
-<tr><td align="center" style="padding:32px 40px 24px;border-bottom:1px solid ${BRAND.border};">
-<a href="${homeUrl}" target="_blank" style="text-decoration:none;border:none;">
-<img src="${BRAND.logoUrl}" alt="704 Collective" width="160" style="display:block;max-width:160px;height:auto;border:0;" />
-</a>
-</td></tr>
-<tr><td style="padding:32px 40px;">
-${content}
-</td></tr>
-<tr><td style="padding:24px 40px;border-top:1px solid ${BRAND.border};">
-<p style="margin:0;font-size:13px;color:${BRAND.textMuted};text-align:center;">704 Collective &middot; Charlotte, NC</p>
-</td></tr>
-</table>
-</td></tr>
-</table>
-</body>
-</html>`;
-}
-
-function ctaButton(text: string, url: string): string {
-  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:28px 0;">
-<tr><td align="center" style="background-color:${BRAND.accent};border-radius:8px;">
-<a href="${url}" target="_blank" style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:600;color:${BRAND.accentText};text-decoration:none;border-radius:8px;">${text}</a>
-</td></tr>
-</table>`;
-}
-
-const MEMBERSHIP_URL = "https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04";
-
-function buildGuestFollowupEmail(data: { guestName: string; memberName: string; eventName: string; origin?: string }): { subject: string; html: string } {
-  const guestName = data.guestName || "there";
-  const base = data.origin || "#";
-  return {
-    subject: `Thanks for joining us at ${data.eventName}!`,
-    html: baseLayout(`
-<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${guestName}!</p>
-<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Thanks for coming to <strong>${data.eventName}</strong> with us! We hope you had a great time.</p>
-<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">You were invited by <strong>${data.memberName}</strong> — shout out to them for bringing you along.</p>
-<p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Loved it? Join 704 Collective and get free access to all our events, plus a community of young professionals in Charlotte.</p>
-${ctaButton("Become a Member", MEMBERSHIP_URL)}
-<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">Questions? Contact <a href="mailto:hello@704collective.com" style="color:${BRAND.accent};">hello@704collective.com</a></p>
-`, base),
-  };
-}
-
-function buildTicketFollowupEmail(data: { guestName: string; eventName: string; origin?: string }): { subject: string; html: string } {
-  const guestName = data.guestName || "there";
-  const base = data.origin || "#";
-  return {
-    subject: `Thanks for joining us at ${data.eventName}!`,
-    html: baseLayout(`
-<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${guestName}!</p>
-<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Thanks for coming to <strong>${data.eventName}</strong>! We hope you had an amazing time.</p>
-<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Want to skip the ticket line next time? Members get <strong>free access to all events</strong>, plus you'll be part of Charlotte's best community for young professionals.</p>
-${ctaButton("Become a Member", MEMBERSHIP_URL)}
-<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">Questions? Contact <a href="mailto:hello@704collective.com" style="color:${BRAND.accent};">hello@704collective.com</a></p>
-`, base),
-  };
+/** Call the centralised send-email render endpoint to get subject + HTML. */
+async function renderTemplate(
+  supabaseUrl: string,
+  serviceKey: string,
+  template: string,
+  data: Record<string, unknown>,
+): Promise<{ subject: string; html: string }> {
+  const res = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${serviceKey}`,
+    },
+    body: JSON.stringify({ mode: "render", template, data }),
+  });
+  if (!res.ok) throw new Error(`Failed to render template ${template}: ${await res.text()}`);
+  return res.json() as Promise<{ success: true; subject: string; html: string }>;
 }
 
 // ── Resend batch helper ──
@@ -145,12 +82,13 @@ serve(async (req) => {
     // ── Admin auth check ──
     const authHeader = req.headers.get("Authorization") || "";
     const token = authHeader.replace("Bearer ", "");
+    const supabaseUrl    = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     // Allow service role (for cron/internal calls) or admin JWT
     if (token !== serviceRoleKey) {
       const supabaseAuth = createClient(
-        Deno.env.get("SUPABASE_URL")!,
+        supabaseUrl,
         Deno.env.get("SUPABASE_ANON_KEY") ?? "",
         { global: { headers: { Authorization: authHeader } } }
       );
@@ -160,7 +98,7 @@ serve(async (req) => {
           status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const supabaseAdmin = createClient(Deno.env.get("SUPABASE_URL")!, serviceRoleKey);
+      const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
       const { data: roleData } = await supabaseAdmin
         .from("user_roles")
         .select("role")
@@ -174,7 +112,6 @@ serve(async (req) => {
       }
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     // Parse optional event_id from body
@@ -257,7 +194,7 @@ serve(async (req) => {
     const { data: guestTickets, error: ticketError } = await ticketQuery;
     if (ticketError) throw ticketError;
 
-    const allPasses = passes || [];
+    const allPasses  = passes || [];
     const allTickets = guestTickets || [];
 
     if (allPasses.length === 0 && allTickets.length === 0) {
@@ -304,43 +241,43 @@ serve(async (req) => {
     const baseUrl = origin || "https://704collective.com";
 
     // ── Build batch emails for guest pass follow-ups ──
-    const passEmails: { from: string; to: string[]; subject: string; html: string }[] = [];
-    const passIdMap: Map<string, string> = new Map(); // email -> pass.id
-
-    for (const pass of allPasses) {
-      const eventName = eventsMap[pass.event_id] || "our event";
+    // Reuses the existing "guest-followup" template in send-email which
+    // accepts { guestName, memberName, eventName, origin }
+    const passEmailPromises = allPasses.map(async (pass: any) => {
+      const eventName  = eventsMap[pass.event_id] || "our event";
       const memberName = membersMap[pass.member_id] || "a member";
-      const { subject, html } = buildGuestFollowupEmail({
-        guestName: pass.guest_name,
+      const { subject, html } = await renderTemplate(supabaseUrl, serviceRoleKey, "guest-followup", {
+        guestName:  pass.guest_name,
         memberName,
         eventName,
-        origin: baseUrl,
+        origin:     baseUrl,
       });
-      passEmails.push({ from: "704 Collective <hello@704collective.com>", to: [pass.guest_email], subject, html });
-      passIdMap.set(pass.guest_email, pass.id);
-    }
+      return { from: "704 Collective <hello@704collective.com>", to: [pass.guest_email], subject, html };
+    });
 
     // ── Build batch emails for ticket follow-ups ──
-    const ticketEmails: { from: string; to: string[]; subject: string; html: string }[] = [];
-    const ticketIdMap: Map<string, string> = new Map(); // email -> ticket.id
-
-    for (const ticket of allTickets) {
+    // Reuses the existing "ticket-followup" template in send-email which
+    // accepts { guestName, eventName, origin }
+    const ticketEmailPromises = allTickets.map(async (ticket: any) => {
       const eventName = eventsMap[ticket.event_id] || "our event";
-      const { subject, html } = buildTicketFollowupEmail({
+      const { subject, html } = await renderTemplate(supabaseUrl, serviceRoleKey, "ticket-followup", {
         guestName: ticket.guest_name || "there",
         eventName,
-        origin: baseUrl,
+        origin:    baseUrl,
       });
-      ticketEmails.push({ from: "704 Collective <hello@704collective.com>", to: [ticket.guest_email], subject, html });
-      ticketIdMap.set(ticket.guest_email, ticket.id);
-    }
+      return { from: "704 Collective <hello@704collective.com>", to: [ticket.guest_email], subject, html };
+    });
+
+    const [passEmails, ticketEmails] = await Promise.all([
+      Promise.all(passEmailPromises),
+      Promise.all(ticketEmailPromises),
+    ]);
 
     // Send all via batch API
     const allEmails = [...passEmails, ...ticketEmails];
     const { sent, failed } = await sendResendBatch(resendKey, allEmails);
 
     // Mark followup_sent_at for successfully sent items
-    // Since batch API is all-or-nothing per chunk, mark all if batch succeeded
     if (sent > 0) {
       const now = new Date().toISOString();
 

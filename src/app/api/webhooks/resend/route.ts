@@ -5,7 +5,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const log = (step: string, details?: unknown) => {
-  const suffix = details !== undefined ? ` — ${JSON.stringify(details)}` : '';
+  const suffix = details !== undefined ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[RESEND-WEBHOOK] ${step}${suffix}`);
 };
 
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     const timestamp  = req.headers.get('svix-timestamp')  ?? req.headers.get('webhook-timestamp');
 
     if (!signature || !msgId || !timestamp) {
-      log('Missing webhook signature headers — rejecting');
+      log('Missing webhook signature headers - rejecting');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
       const sigs = signature.split(' ');
       const valid = sigs.some((s) => s === computedSig);
       if (!valid) {
-        log('Webhook signature mismatch — rejecting');
+        log('Webhook signature mismatch - rejecting');
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
       log('Signature verified');
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
   } else {
-    log('RESEND_WEBHOOK_SECRET not set — skipping signature verification');
+    log('RESEND_WEBHOOK_SECRET not set - skipping signature verification');
   }
 
   // ── Parse body ────────────────────────────────────────────────────────────

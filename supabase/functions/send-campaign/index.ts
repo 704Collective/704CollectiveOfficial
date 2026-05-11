@@ -130,7 +130,7 @@ function renderBlock(block: Block, ctx: RenderContext): string {
             <p style="margin:0 0 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:17px;font-weight:700;color:#1A1A1A;line-height:1.3;">${escapeHtml(e.name)}</p>
             ${e.time ? `<p style="margin:0 0 4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#444;"><strong>Time:</strong> ${escapeHtml(e.time)}</p>` : ''}
             ${e.location ? `<p style="margin:0 0 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#444;"><strong>Location:</strong> ${escapeHtml(e.location)}</p>` : ''}
-            <a href="${escapeHtml(e.url)}" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#C6A664;text-decoration:none;font-weight:600;">RSVP →</a>
+            <a href="${escapeHtml(e.url)}" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#C6A664;text-decoration:none;font-weight:600;">RSVP &#8594;</a>
           </td></tr>
         </table>`).join('');
 
@@ -152,7 +152,7 @@ function renderBlock(block: Block, ctx: RenderContext): string {
           ${escapeHtml(c.org || '704 Collective, Charlotte, NC')}
         </td></tr>
         <tr><td align="center" style="padding:0 0 24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:#888;">
-          <a href="{{unsubscribe_url}}" style="color:#888;text-decoration:underline;">Unsubscribe</a> · <a href="${ctx.siteUrl}/settings" style="color:#888;text-decoration:underline;">Manage preferences</a>
+          <a href="{{unsubscribe_url}}" style="color:#888;text-decoration:underline;">Unsubscribe</a> &middot; <a href="${ctx.siteUrl}/settings" style="color:#888;text-decoration:underline;">Manage preferences</a>
         </td></tr>
       </table>`;
 
@@ -201,14 +201,41 @@ function renderBlocks(blocks: Block[] | null | undefined, ctx: RenderContext): s
 
 // ===== End renderer =====
 
+/** Call the centralised send-email render endpoint to get subject + HTML.
+ *  For campaigns the "campaign-broadcast" template is a passthrough that
+ *  returns bodyHtml unchanged — the benefit is that all email sends are
+ *  routed through the same central function for future extensibility. */
+async function renderCampaignTemplate(
+  supabaseUrl: string,
+  serviceKey: string,
+  subject: string,
+  bodyHtml: string,
+  previewText?: string,
+): Promise<{ subject: string; html: string }> {
+  const res = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${serviceKey}`,
+    },
+    body: JSON.stringify({
+      mode: 'render',
+      template: 'campaign-broadcast',
+      data: { subject, bodyHtml, previewText: previewText || '' },
+    }),
+  });
+  if (!res.ok) throw new Error(`Failed to render campaign-broadcast template: ${await res.text()}`);
+  return res.json() as Promise<{ success: true; subject: string; html: string }>;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const supabaseUrl    = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
     const SITE_URL = Deno.env.get("SITE_URL") ?? "https://704collective.com";
@@ -259,12 +286,16 @@ serve(async (req) => {
     // ── TEST SEND: single recipient, no DB updates ───────────────────────────
     if (test_email) {
       const trackingPixel = `<img src="${SITE_URL}/api/track/open?c=${campaign_id}&e=${encodeURIComponent(test_email)}" width="1" height="1" style="display:none" />`;
-      const renderedHtml = renderBlocks(campaign.body_json as Block[], {
+      const renderedBlocks = renderBlocks(campaign.body_json as Block[], {
         isTest: true,
         senderName: senderDisplayName,
         siteUrl: SITE_URL,
       });
-      const finalHtml = renderedHtml
+      const { html: centralHtml } = await renderCampaignTemplate(
+        supabaseUrl, serviceRoleKey,
+        subject, renderedBlocks, campaign.preview_text || '',
+      );
+      const finalHtml = centralHtml
         .replace(/{{first_name}}/gi, 'Preview')
         .replace(/{{name}}/gi, 'Preview')
         .replace(/{{sender_name}}/gi, senderDisplayName)
@@ -406,7 +437,6 @@ serve(async (req) => {
         .select("email, full_name, guest_name")
         .eq("event_id", eventId)
         .neq("status", "cancelled");
-      // Deduplicate by email
       const seen = new Set<string>();
       for (const p of participants ?? []) {
         if (!p.email || seen.has(p.email.toLowerCase())) continue;
@@ -446,6 +476,7 @@ serve(async (req) => {
         }
       }
     }
+
     if (recipients.length === 0) {
       await supabase
         .from("email_campaigns")
@@ -506,13 +537,18 @@ serve(async (req) => {
       });
     }
 
-    // Render HTML once — shared across all recipients (per-recipient tokens are replaced inside the loop)
-    const renderedHtml = renderBlocks(campaignBlocks, {
+    // Render blocks once, then route through centralised template for future-proof delivery
+    const renderedBlocks = renderBlocks(campaignBlocks, {
       isTest: false,
       upcomingEvents,
       senderName: senderDisplayName,
       siteUrl: SITE_URL,
     });
+
+    const { html: centralHtml } = await renderCampaignTemplate(
+      supabaseUrl, serviceRoleKey,
+      subject, renderedBlocks, campaign.preview_text || '',
+    );
 
     // Batch send (Resend batch endpoint, max 100 per call)
     const BATCH_SIZE = 100;
@@ -526,7 +562,7 @@ serve(async (req) => {
         const unsubToken = btoa(`${r.email}:${campaign_id}`);
         const unsubUrl = `${unsubscribeBase}?token=${unsubToken}`;
         const trackingPixel = `<img src="${SITE_URL}/api/track/open?c=${campaign_id}&e=${encodeURIComponent(r.email)}" width="1" height="1" style="display:none" />`;
-        const body = renderedHtml
+        const body = centralHtml
           .replace(/{{first_name}}/gi, r.name?.split(" ")[0] ?? "Member")
           .replace(/{{name}}/gi, r.name ?? "Member")
           .replace(/{{sender_name}}/gi, senderDisplayName)
@@ -574,13 +610,9 @@ serve(async (req) => {
       const { error: logError } = await supabase.from("email_log").insert(logRows);
       if (logError) {
         console.error("[send-campaign] email_log insert failed:", logError);
-        // Don't throw — emails were sent successfully, just log the failure
       }
     }
 
-    // Mark as 'failed' only if we had recipients but zero went through.
-    // Partial deliveries still count as 'sent' (the sent_count column tracks
-    // the actual number).
     const finalStatus = (totalSent === 0 && finalRecipients.length > 0)
       ? "failed"
       : "sent";
@@ -592,7 +624,7 @@ serve(async (req) => {
         sent_at: new Date().toISOString(),
         recipient_count: finalRecipients.length,
         sent_count: totalSent,
-        delivered_count: totalSent,  // webhook events will update this to true delivery count
+        delivered_count: totalSent,
       })
       .eq("id", campaign_id);
 

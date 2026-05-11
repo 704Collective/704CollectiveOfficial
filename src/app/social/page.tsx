@@ -53,7 +53,7 @@ const communityPillars = [
   },
   {
     title: 'Charlotte-First',
-    desc: 'Born from CLTBucketlist — Charlotte\'s most trusted lifestyle brand with 500,000+ community members. We know this city.',
+    desc: 'Born from CLTBucketlist - Charlotte\'s most trusted lifestyle brand with 500,000+ community members. We know this city.',
   },
 ];
 
@@ -64,7 +64,7 @@ const rightForYou = [
   'Want to DO stuff, not just talk about doing stuff',
   'Tried the free 600-person meetups and felt overwhelmed',
   'Want real friends, not LinkedIn connections',
-  'Need variety more than just bars on a Friday night — coffee meetups, game nights, workouts, adventures',
+  'Need variety more than just bars on a Friday night - coffee meetups, game nights, workouts, adventures',
   `Most events in Charlotte cost $15-25. We're doing 10+ for ${SOCIAL_TIER.monthlyPrice}`,
 ];
 
@@ -199,7 +199,7 @@ export default function SocialPage() {
                   margin: '0 auto 40px auto',
                 }}
               >
-                10+ curated events every month. Happy hours, dinners, wellness days, outdoor adventures, and member-only experiences — all planned for you. No application needed. Just join, show up, and meet your people.
+                10+ curated events every month. Happy hours, dinners, wellness days, outdoor adventures, and member-only experiences - all planned for you. No application needed. Just join, show up, and meet your people.
               </p>
             </FadeUp>
 
@@ -276,7 +276,7 @@ export default function SocialPage() {
                 {
                   num: '2',
                   title: 'Show Up',
-                  desc: '10+ events per month. Happy hours, dinners, adventures — we plan everything so you just walk in.',
+                  desc: '10+ events per month. Happy hours, dinners, adventures - we plan everything so you just walk in.',
                 },
                 {
                   num: '3',
@@ -367,7 +367,7 @@ export default function SocialPage() {
                   margin: '0 auto 48px auto',
                 }}
               >
-                Founders, creatives, tech professionals, finance people, stay-at-home parents, couples, bartenders — and everything in between. Some are Charlotte natives, some moved here last year. What they have in common: they&apos;re intentional about building real relationships.
+                Founders, creatives, tech professionals, finance people, stay-at-home parents, couples, bartenders - and everything in between. Some are Charlotte natives, some moved here last year. What they have in common: they&apos;re intentional about building real relationships.
               </p>
             </FadeUp>
 
@@ -611,7 +611,7 @@ export default function SocialPage() {
             >
               {[
                 {
-                  quote: '704 makes it so easy to hit fun events — especially the health and wellness ones, my personal fave — and I get to meet so many new people every time!!',
+                  quote: '704 makes it so easy to hit fun events - especially the health and wellness ones, my personal fave - and I get to meet so many new people every time!!',
                   name: 'Sydney',
                   role: 'Social Member',
                   avatar: 'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/Sydney.jpg',

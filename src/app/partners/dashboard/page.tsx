@@ -265,7 +265,7 @@ export default function DashboardPage() {
               fontWeight: 600,
             }}
           >
-            {partner?.business_name || application?.business_name || "—"}
+            {partner?.business_name || application?.business_name || "-"}
           </p>
         </div>
       </div>
@@ -302,8 +302,8 @@ export default function DashboardPage() {
             {[
               { label: "Contact", value: application.contact_name },
               { label: "Email", value: application.email },
-              { label: "Phone", value: application.phone || "—" },
-              { label: "Website", value: application.website || "—" },
+              { label: "Phone", value: application.phone || "-" },
+              { label: "Website", value: application.website || "-" },
               {
                 label: "Submitted",
                 value: new Date(application.created_at).toLocaleDateString(

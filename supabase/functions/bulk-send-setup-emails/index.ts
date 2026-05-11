@@ -12,66 +12,23 @@ const log = (step: string, details?: unknown) => {
   console.log(`[BULK-SETUP] ${step}${d}`);
 };
 
-// ── Brand constants (mirrored from send-email) ──
-const BRAND = {
-  color: "#1A1A1A",
-  surface: "#2E2E2E",
-  accent: "#D4A853",
-  accentText: "#1A1A1A",
-  text: "#FAF6F0",
-  textSecondary: "#D8D8D8",
-  textMuted: "#A0A0A0",
-  border: "rgba(255,255,255,0.10)",
-  logoUrl: "https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/704-logo.png",
-  fontStack: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-};
-
-function baseLayout(content: string, origin?: string): string {
-  const homeUrl = origin || "#";
-  return `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background-color:${BRAND.color};font-family:${BRAND.fontStack};color:${BRAND.text};">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.color};">
-<tr><td align="center" style="padding:40px 16px;">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:${BRAND.surface};border-radius:12px;overflow:hidden;border:1px solid ${BRAND.border};">
-<tr><td align="center" style="padding:32px 40px 24px;border-bottom:1px solid ${BRAND.border};">
-<a href="${homeUrl}" target="_blank" style="text-decoration:none;border:none;">
-<img src="${BRAND.logoUrl}" alt="704 Collective" width="160" style="display:block;max-width:160px;height:auto;border:0;" />
-</a>
-</td></tr>
-<tr><td style="padding:32px 40px;">
-${content}
-</td></tr>
-<tr><td style="padding:24px 40px;border-top:1px solid ${BRAND.border};">
-<p style="margin:0;font-size:13px;color:${BRAND.textMuted};text-align:center;">704 Collective &middot; Charlotte, NC</p>
-</td></tr>
-</table>
-</td></tr>
-</table>
-</body>
-</html>`;
-}
-
-function ctaButton(text: string, url: string): string {
-  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:28px 0;">
-<tr><td align="center" style="background-color:${BRAND.accent};border-radius:8px;">
-<a href="${url}" target="_blank" style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:600;color:${BRAND.accentText};text-decoration:none;border-radius:8px;">${text}</a>
-</td></tr>
-</table>`;
-}
-
-function buildPasswordSetupEmail(data: { name: string; setupLink: string; origin?: string }): { subject: string; html: string } {
-  const name = data.name || "there";
-  return {
-    subject: "Set up your 704 Collective account",
-    html: baseLayout(`
-<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name}!</p>
-<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Your 704 Collective membership has been set up. Click the button below to create your password and access your account.</p>
-${ctaButton("Set Your Password", data.setupLink)}
-<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">This link expires in 1 hour. If it's expired, you can request a new one instantly from the setup page.</p>
-`, data.origin),
-  };
+/** Call the centralised send-email render endpoint to get subject + HTML. */
+async function renderTemplate(
+  supabaseUrl: string,
+  serviceKey: string,
+  template: string,
+  data: Record<string, unknown>,
+): Promise<{ subject: string; html: string }> {
+  const res = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${serviceKey}`,
+    },
+    body: JSON.stringify({ mode: "render", template, data }),
+  });
+  if (!res.ok) throw new Error(`Failed to render template ${template}: ${await res.text()}`);
+  return res.json() as Promise<{ success: true; subject: string; html: string }>;
 }
 
 const BATCH_SIZE = 50;
@@ -208,7 +165,6 @@ serve(async (req) => {
     const results: { email: string; status: string; error?: string }[] = [];
     let sent = 0;
     let errors = 0;
-    let processed = 0;
 
     // Process in chunks of BATCH_SIZE
     for (let chunkStart = 0; chunkStart < remainingEligible.length; chunkStart += BATCH_SIZE) {
@@ -252,7 +208,11 @@ serve(async (req) => {
           }
 
           const firstName = profile.full_name?.split(" ")[0] || "there";
-          const { subject, html } = buildPasswordSetupEmail({ name: firstName, setupLink, origin });
+          const { subject, html } = await renderTemplate(supabaseUrl, serviceRoleKey, "bulk-setup-reminder", {
+            name: firstName,
+            setupLink,
+          });
+
           batchEmails.push({
             from: "704 Collective <hello@704collective.com>",
             to: [profile.email],
@@ -304,8 +264,6 @@ serve(async (req) => {
           }
         }
       }
-
-      processed += chunk.length;
 
       // 1-second delay between chunks
       if (chunkStart + BATCH_SIZE < remainingEligible.length) {

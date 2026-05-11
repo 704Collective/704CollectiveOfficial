@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
         console.error(`Stripe cancellation error (non-blocking): ${msg}`);
       }
     } else {
-      console.error('STRIPE_SECRET_KEY not set — could not cancel subscription');
+      console.error('STRIPE_SECRET_KEY not set - could not cancel subscription');
     }
 
     // Soft delete: set deleted_at timestamp + clear subscription data

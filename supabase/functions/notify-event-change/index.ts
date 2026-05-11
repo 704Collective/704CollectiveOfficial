@@ -12,81 +12,23 @@ const log = (step: string, details?: unknown) => {
   console.log(`[NOTIFY-EVENT-CHANGE] ${step}${d}`);
 };
 
-// ── Brand constants (mirrored from send-email) ──
-const BRAND = {
-  color: "#1A1A1A",
-  surface: "#2E2E2E",
-  accent: "#D4A853",
-  accentText: "#1A1A1A",
-  text: "#FAF6F0",
-  textSecondary: "#D8D8D8",
-  textMuted: "#A0A0A0",
-  border: "rgba(255,255,255,0.10)",
-  logoUrl: "https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/704-logo.png",
-  fontStack: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-};
-
-function baseLayout(content: string, origin?: string): string {
-  const homeUrl = origin || "#";
-  return `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background-color:${BRAND.color};font-family:${BRAND.fontStack};color:${BRAND.text};">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.color};">
-<tr><td align="center" style="padding:40px 16px;">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:${BRAND.surface};border-radius:12px;overflow:hidden;border:1px solid ${BRAND.border};">
-<tr><td align="center" style="padding:32px 40px 24px;border-bottom:1px solid ${BRAND.border};">
-<a href="${homeUrl}" target="_blank" style="text-decoration:none;border:none;">
-<img src="${BRAND.logoUrl}" alt="704 Collective" width="160" style="display:block;max-width:160px;height:auto;border:0;" />
-</a>
-</td></tr>
-<tr><td style="padding:32px 40px;">
-${content}
-</td></tr>
-<tr><td style="padding:24px 40px;border-top:1px solid ${BRAND.border};">
-<p style="margin:0;font-size:13px;color:${BRAND.textMuted};text-align:center;">704 Collective &middot; Charlotte, NC</p>
-</td></tr>
-</table>
-</td></tr>
-</table>
-</body>
-</html>`;
-}
-
-function ctaButton(text: string, url: string): string {
-  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:28px 0;">
-<tr><td align="center" style="background-color:${BRAND.accent};border-radius:8px;">
-<a href="${url}" target="_blank" style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:600;color:${BRAND.accentText};text-decoration:none;border-radius:8px;">${text}</a>
-</td></tr>
-</table>`;
-}
-
-function buildEventChangeHtml(data: {
-  name: string; eventName: string;
-  oldDate: string; oldTime: string; newDate: string; newTime: string;
-  newLocation?: string; eventUrl: string; origin?: string;
-}): { subject: string; html: string } {
-  const name = data.name || "there";
-  return {
-    subject: `📅 Schedule Change: ${data.eventName}`,
-    html: baseLayout(`
-<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name}!</p>
-<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Heads up — <strong>${data.eventName}</strong> has been rescheduled.</p>
-<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:${BRAND.color};border-radius:8px;border:1px solid ${BRAND.border};">
-<tr><td style="padding:20px 24px;">
-<p style="margin:0 0 12px;font-size:13px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:${BRAND.textMuted};">Updated Schedule</p>
-<table role="presentation" cellpadding="0" cellspacing="0">
-<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textMuted};text-decoration:line-through;">📅&nbsp;&nbsp;${data.oldDate} at ${data.oldTime}</td></tr>
-<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.accent};font-weight:600;">📅&nbsp;&nbsp;${data.newDate} at ${data.newTime}</td></tr>
-${data.newLocation ? `<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">📍&nbsp;&nbsp;${data.newLocation}</td></tr>` : ""}
-</table>
-</td></tr>
-</table>
-<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Your RSVP is still confirmed — no action needed unless the new time doesn't work for you.</p>
-${ctaButton("View Event Details", data.eventUrl)}
-<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">Can't make it anymore? You can cancel your RSVP on the event page.</p>
-`, data.origin),
-  };
+/** Call the centralised send-email render endpoint to get subject + HTML. */
+async function renderTemplate(
+  supabaseUrl: string,
+  serviceKey: string,
+  template: string,
+  data: Record<string, unknown>,
+): Promise<{ subject: string; html: string }> {
+  const res = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${serviceKey}`,
+    },
+    body: JSON.stringify({ mode: "render", template, data }),
+  });
+  if (!res.ok) throw new Error(`Failed to render template ${template}: ${await res.text()}`);
+  return res.json() as Promise<{ success: true; subject: string; html: string }>;
 }
 
 // ── Resend batch helper ──
@@ -97,7 +39,6 @@ async function sendResendBatch(
   let sent = 0;
   let failed = 0;
 
-  // Chunk into groups of 100
   for (let i = 0; i < emails.length; i += 100) {
     const chunk = emails.slice(i, i + 100);
     try {
@@ -124,7 +65,6 @@ async function sendResendBatch(
       failed += chunk.length;
     }
 
-    // 500ms delay between batches
     if (i + 100 < emails.length) {
       await new Promise(r => setTimeout(r, 500));
     }
@@ -133,6 +73,9 @@ async function sendResendBatch(
   return { sent, failed };
 }
 
+// Name placeholder for single render + per-recipient replacement
+const NAME_PLACEHOLDER = "[[RECIPIENT_NAME]]";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -140,9 +83,9 @@ serve(async (req) => {
 
   try {
     // Auth: require admin
-    const authHeader = req.headers.get("Authorization") || "";
+    const authHeader  = req.headers.get("Authorization") || "";
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnon = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseAnon   = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const userClient = createClient(supabaseUrl, supabaseAnon, {
@@ -203,7 +146,7 @@ serve(async (req) => {
     }
 
     // Get profile info for member ticket holders
-    const memberUserIds = tickets.filter(t => t.user_id).map(t => t.user_id!);
+    const memberUserIds = tickets.filter((t: any) => t.user_id).map((t: any) => t.user_id!);
     let profileMap: Record<string, { full_name: string | null; email: string }> = {};
 
     if (memberUserIds.length > 0) {
@@ -220,28 +163,31 @@ serve(async (req) => {
       }
     }
 
-    // Format dates for the email
-    const formatDate = (iso: string) => {
-      const d = new Date(iso);
-      return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "America/New_York" });
-    };
-    const formatTime = (iso: string) => {
-      const d = new Date(iso);
-      return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
-    };
+    // Format dates for the change message
+    const formatDate = (iso: string) => new Date(iso).toLocaleDateString("en-US", {
+      weekday: "long", month: "long", day: "numeric", year: "numeric",
+      timeZone: "America/New_York",
+    });
+    const formatTime = (iso: string) => new Date(iso).toLocaleTimeString("en-US", {
+      hour: "numeric", minute: "2-digit", timeZone: "America/New_York",
+    });
 
     const oldDate = formatDate(oldStartTime);
     const oldTime = formatTime(oldStartTime);
     const newDate = formatDate(newStartTime);
     const newTime = formatTime(newStartTime);
-    const baseUrl = origin || "https://704collective.com";
+
+    const baseUrl  = origin || "https://704collective.com";
     const eventUrl = `${baseUrl}/events/${eventId}`;
+
+    // Build the change message that summarises what changed
+    const changeMessage = `This event has been rescheduled from ${oldDate} at ${oldTime} to ${newDate} at ${newTime}.${newLocation ? ` New location: ${newLocation}.` : ""}`;
 
     // Build recipient list (dedup by email)
     const recipients: { email: string; name: string }[] = [];
     const seenEmails = new Set<string>();
 
-    for (const ticket of tickets) {
+    for (const ticket of tickets as any[]) {
       if (ticket.user_id && profileMap[ticket.user_id]) {
         const profile = profileMap[ticket.user_id];
         if (!seenEmails.has(profile.email)) {
@@ -256,27 +202,32 @@ serve(async (req) => {
 
     log(`Building batch for ${recipients.length} recipients`);
 
-    // Build batch email array
     const resendKey = Deno.env.get("RESEND_API_KEY");
     if (!resendKey) throw new Error("RESEND_API_KEY not set");
 
-    const emailMessages = recipients.map(recipient => {
-      const { subject, html } = buildEventChangeHtml({
-        name: recipient.name,
-        eventName,
-        oldDate,
-        oldTime,
-        newDate,
-        newTime,
-        newLocation: newLocation || undefined,
+    // Render template once with placeholder name — replace per recipient
+    const { subject, html: htmlTemplate } = await renderTemplate(
+      supabaseUrl,
+      serviceRoleKey,
+      "event-change-notification",
+      {
+        name:          NAME_PLACEHOLDER,
+        eventTitle:    eventName,
         eventUrl,
-        origin: baseUrl,
-      });
+        changeMessage,
+        newStartTime,
+        newLocation:   newLocation || undefined,
+      },
+    );
+
+    const emailMessages = recipients.map(recipient => {
+      const safeName = recipient.name
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       return {
         from: "704 Collective <hello@704collective.com>",
         to: [recipient.email],
         subject,
-        html,
+        html: htmlTemplate.replace(NAME_PLACEHOLDER, safeName),
       };
     });
 

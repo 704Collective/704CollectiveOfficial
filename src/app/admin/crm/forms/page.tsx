@@ -80,7 +80,7 @@ const FIELD_TYPES: { value: FieldType; label: string }[] = [
 ];
 
 const MAPS_TO_OPTIONS = [
-  { value: '', label: '— None —' },
+  { value: '', label: '- None -' },
   { value: 'email',     label: 'Contact: Email' },
   { value: 'full_name', label: 'Contact: Full Name' },
   { value: 'phone',     label: 'Contact: Phone' },

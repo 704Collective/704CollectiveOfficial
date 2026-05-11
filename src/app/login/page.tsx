@@ -366,7 +366,7 @@ function Login() {
         {/* Card */}
         <div style={{ backgroundColor: '#1A1A1A', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', padding: 'clamp(24px, 6vw, 40px) clamp(20px, 5vw, 32px)' }}>
 
-          {/* ── MAGIC LINK MODE (legacy — accessible from Google hint) ── */}
+          {/* ── MAGIC LINK MODE (legacy - accessible from Google hint) ── */}
           {magicLinkMode ? (
             <div>
               <button
@@ -603,7 +603,7 @@ function Login() {
                     {errors.password && <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '6px' }}>{errors.password}</p>}
                   </div>
 
-                  {/* Google hint — shown when email exists but password fails */}
+                  {/* Google hint - shown when email exists but password fails */}
                   {showGoogleHint && (
                     <div style={{ backgroundColor: 'rgba(198,166,100,0.08)', border: '1px solid rgba(198,166,100,0.25)', borderRadius: '10px', padding: '14px 16px', marginBottom: '16px' }}>
                       <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.55, marginBottom: '10px' }}>

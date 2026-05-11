@@ -311,17 +311,17 @@ export default function AdminInvoicesPage() {
                       listingCompany(inv.profiles?.partner_listings) ||
                       inv.profiles?.full_name ||
                       inv.profiles?.email ||
-                      '—';
+                      '-';
                     return (
                       <TableRow key={inv.id}>
                         <TableCell className="font-medium">{company}</TableCell>
-                        <TableCell className="text-muted-foreground">{inv.events?.title ?? '—'}</TableCell>
+                        <TableCell className="text-muted-foreground">{inv.events?.title ?? '-'}</TableCell>
                         <TableCell className="text-right tabular-nums">
                           ${Number(inv.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell>{statusBadge(inv.status)}</TableCell>
                         <TableCell className="text-muted-foreground text-sm">
-                          {inv.due_date ? format(new Date(inv.due_date), 'MMM d, yyyy') : '—'}
+                          {inv.due_date ? format(new Date(inv.due_date), 'MMM d, yyyy') : '-'}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex flex-wrap justify-end gap-2">
@@ -476,7 +476,7 @@ export default function AdminInvoicesPage() {
               </p>
               <p>
                 <span className="text-muted-foreground">Event: </span>
-                {detail.events?.title ?? '—'}
+                {detail.events?.title ?? '-'}
               </p>
               <p>
                 <span className="text-muted-foreground">Amount: </span>${Number(detail.amount).toFixed(2)}
@@ -487,7 +487,7 @@ export default function AdminInvoicesPage() {
               </p>
               <p>
                 <span className="text-muted-foreground">Due: </span>
-                {detail.due_date ? format(new Date(detail.due_date), 'PPP') : '—'}
+                {detail.due_date ? format(new Date(detail.due_date), 'PPP') : '-'}
               </p>
               <p className="whitespace-pre-wrap">
                 <span className="text-muted-foreground">Description: </span>

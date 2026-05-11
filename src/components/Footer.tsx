@@ -63,7 +63,7 @@ export function Footer() {
           ))}
         </nav>
 
-        {/* Copyright + Socials — wraps on small screens */}
+        {/* Copyright + Socials - wraps on small screens */}
         <div
           style={{
             display: 'flex',

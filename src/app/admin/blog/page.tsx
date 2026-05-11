@@ -162,11 +162,11 @@ export default function AdminBlogListPage() {
                       })()}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm max-w-[180px] truncate" title={post.focus_keyword ?? ''}>
-                      {post.focus_keyword?.trim() || '—'}
+                      {post.focus_keyword?.trim() || '-'}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{post.author ?? '—'}</TableCell>
+                    <TableCell className="text-muted-foreground">{post.author ?? '-'}</TableCell>
                     <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                      {post.created_at ? format(new Date(post.created_at), 'MMM d, yyyy') : '—'}
+                      {post.created_at ? format(new Date(post.created_at), 'MMM d, yyyy') : '-'}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>

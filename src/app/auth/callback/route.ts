@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!code) {
-    console.error('[auth/callback] No code in request — redirecting to login');
+    console.error('[auth/callback] No code in request - redirecting to login');
     return NextResponse.redirect(new URL('/login?error=oauth', origin));
   }
 

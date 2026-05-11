@@ -354,7 +354,7 @@ export default function AdminPartnersPage() {
                 {apps.map((r) => (
                   <TableRow key={r.id} className="cursor-pointer" onClick={() => setSelectedApp(r)}>
                     <TableCell className="font-medium">{r.company_name}</TableCell>
-                    <TableCell>{r.profiles?.email ?? '—'}</TableCell>
+                    <TableCell>{r.profiles?.email ?? '-'}</TableCell>
                     <TableCell>{(r.partner_types ?? []).join(', ')}</TableCell>
                     <TableCell>{format(new Date(r.applied_at), 'MMM d, yyyy')}</TableCell>
                     <TableCell>
@@ -387,7 +387,7 @@ export default function AdminPartnersPage() {
                 <TableRow key={r.id}>
                   <TableCell>{r.partner_listings?.company_name ?? r.full_name ?? r.email}</TableCell>
                   <TableCell>{(r.partner_types ?? []).join(', ')}</TableCell>
-                  <TableCell>{r.is_featured_partner ? <Star className="w-4 h-4 text-amber-500 fill-amber-500" /> : '—'}</TableCell>
+                  <TableCell>{r.is_featured_partner ? <Star className="w-4 h-4 text-amber-500 fill-amber-500" /> : '-'}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex flex-wrap justify-end gap-2">
                       <Button size="sm" variant="outline" onClick={() => openListing(r)}>
@@ -527,7 +527,7 @@ export default function AdminPartnersPage() {
                   <span className="text-muted-foreground">Phone:</span> {selectedApp.phone}
                 </p>
                 <p>
-                  <span className="text-muted-foreground">Website:</span> {selectedApp.website ?? '—'}
+                  <span className="text-muted-foreground">Website:</span> {selectedApp.website ?? '-'}
                 </p>
                 <p className="whitespace-pre-wrap">{selectedApp.description}</p>
                 <div className="flex flex-wrap gap-2">

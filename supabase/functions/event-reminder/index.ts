@@ -1,15 +1,21 @@
 /**
- * event-reminder â€” daily cron at 11:00 UTC (7 am ET).
+ * event-reminder — daily cron at 11:00 UTC (7 am ET).
  *
  * Also callable manually by admins via POST with { event_id } to target
  * a specific event.
  *
  * For each published event today:
- *  - Members who RSVPed â†’ "You're registered for today" email
- *  - Active members without an RSVP â†’ "Join us today" email
+ *  - Members who RSVPed → "You're registered for today" email
+ *  - Active members without an RSVP → "Join us today" email
  *
  * Respects marketing_unsubscribed on profiles.
- * Sends in Resend batch chunks of â‰¤ 100.
+ * Sends in Resend batch chunks of ≤ 100.
+ *
+ * HTML rendering is centralised via the send-email/render endpoint so all
+ * emails share the same baseLayout (UTF-8 charset, 600px centered, branded
+ * logo, proper footer). Templates are rendered ONCE per event with a
+ * placeholder name ([[NAME]]) that is replaced per-recipient — preserving
+ * batch performance.
  */
 
 /**
@@ -20,9 +26,6 @@
  * email content it would normally produce, but route it only to that
  * one address (bypassing audience fanout). Subject lines should be
  * prefixed with "[TEST] " for clarity.
- *
- * This pattern will be added to send-campaign and other send functions
- * as their admin UIs need preview capability.
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
@@ -32,6 +35,9 @@ const SUPABASE_URL   = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ANON_KEY       = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SITE_URL       = "https://704collective.com";
+
+// Placeholder replaced per-recipient after template render
+const NAME_PLACEHOLDER = "[[NAME]]";
 
 /**
  * Returns a human-readable relative date phrase for an event start time.
@@ -87,13 +93,30 @@ const corsHeaders = {
 };
 
 const log = (step: string, d?: unknown) =>
-  console.log(`[EVENT-REMINDER] ${step}${d ? " â€” " + JSON.stringify(d) : ""}`);
+  console.log(`[EVENT-REMINDER] ${step}${d ? " - " + JSON.stringify(d) : ""}`);
 
 function supabaseAdmin() {
   return createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 }
 
-/** Send a batch of â‰¤100 emails via Resend batch API. */
+/** Call the centralised send-email render endpoint to get subject + HTML. */
+async function renderTemplate(
+  template: string,
+  data: Record<string, unknown>,
+): Promise<{ subject: string; html: string }> {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${SERVICE_KEY}`,
+    },
+    body: JSON.stringify({ mode: "render", template, data }),
+  });
+  if (!res.ok) throw new Error(`Failed to render template ${template}: ${await res.text()}`);
+  return res.json() as Promise<{ success: true; subject: string; html: string }>;
+}
+
+/** Send a batch of ≤100 emails via Resend batch API. */
 async function sendBatch(emails: { from: string; to: string; subject: string; html: string }[]) {
   if (emails.length === 0) return 0;
   const res = await fetch("https://api.resend.com/emails/batch", {
@@ -118,32 +141,8 @@ function chunks<T>(arr: T[], n: number): T[][] {
   return out;
 }
 
-function registeredHtml(memberName: string, event: EventRow, phrase: string, dayLabel: string): string {
-  const name = memberName || "there";
-  return `<!DOCTYPE html><html><body style="font-family:sans-serif;background:#1A1A1A;color:#FAF6F0;padding:32px;text-align:center;">
-<img src="https://704collective.com/logo-white.png" alt="704 Collective" width="120" style="display:block;margin:0 auto 24px;" />
-<div style="text-align:left;">
-<h2 style="color:#C6A664;">You're going ${dayLabel}!</h2>
-<p>Hey ${name}, just a reminder â€” you're registered for <strong>${event.title}</strong> ${phrase}.</p>
-<p>ðŸ“… ${new Date(event.start_time).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })}</p>
-${event.location_name ? `<p>ðŸ“ ${event.location_name}</p>` : ""}
-<a href="${SITE_URL}/events/${event.id}" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#C6A664;color:#1A1A1A;text-decoration:none;border-radius:8px;font-weight:600;">View Event</a>
-<p style="margin-top:24px;font-size:13px;color:#A0A0A0;">See you there! â€” 704 Collective</p>
-</div></body></html>`;
-}
-
-function joinUsHtml(memberName: string, event: EventRow, phrase: string, dayLabel: string): string {
-  const name = memberName || "there";
-  return `<!DOCTYPE html><html><body style="font-family:sans-serif;background:#1A1A1A;color:#FAF6F0;padding:32px;text-align:center;">
-<img src="https://704collective.com/logo-white.png" alt="704 Collective" width="120" style="display:block;margin:0 auto 24px;" />
-<div style="text-align:left;">
-<h2 style="color:#C6A664;">Join us ${dayLabel}!</h2>
-<p>Hey ${name}, <strong>${event.title}</strong> is happening ${phrase}. RSVP now to secure your spot!</p>
-<p>ðŸ“… ${new Date(event.start_time).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })}</p>
-${event.location_name ? `<p>ðŸ“ ${event.location_name}</p>` : ""}
-<a href="${SITE_URL}/events/${event.id}" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#C6A664;color:#1A1A1A;text-decoration:none;border-radius:8px;font-weight:600;">RSVP Now</a>
-<p style="margin-top:24px;font-size:13px;color:#A0A0A0;">Hope to see you there! â€” 704 Collective</p>
-</div></body></html>`;
+function escapeForHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 interface EventRow {
@@ -171,26 +170,71 @@ async function processEvent(
 
   const { phrase, dayLabel } = relativeDateLabel(event.start_time);
 
-  // â”€â”€ Test mode: send both preview templates to the requester only â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Test mode: send both preview templates to the requester only ───────
   if (isTestMode) {
+    const [registeredRender, joinUsRender] = await Promise.all([
+      renderTemplate("event-reminder-registered", {
+        name: "Admin (Test)",
+        eventTitle: event.title,
+        eventStartTime: event.start_time,
+        locationName: event.location_name,
+        eventUrl: `${SITE_URL}/events/${event.id}`,
+        phrase,
+        dayLabel,
+      }),
+      renderTemplate("event-reminder-join-us", {
+        name: "Admin (Test)",
+        eventTitle: event.title,
+        eventStartTime: event.start_time,
+        locationName: event.location_name,
+        eventUrl: `${SITE_URL}/events/${event.id}`,
+        phrase,
+        dayLabel,
+      }),
+    ]);
+
     const testEmails = [
       {
         from: "704 Collective <hello@704collective.com>",
         to: testRecipient,
-        subject: `[TEST] You're registered for ${event.title} ${dayLabel}!`,
-        html: registeredHtml("Admin (Test)", event, phrase, dayLabel),
+        subject: `[TEST] ${registeredRender.subject}`,
+        html: registeredRender.html,
       },
       {
         from: "704 Collective <hello@704collective.com>",
         to: testRecipient,
-        subject: `[TEST] Join us ${dayLabel} â€” ${event.title}`,
-        html: joinUsHtml("Admin (Test)", event, phrase, dayLabel),
+        subject: `[TEST] ${joinUsRender.subject}`,
+        html: joinUsRender.html,
       },
     ];
     await sendBatch(testEmails);
     log("Test emails sent", { to: testRecipient, count: testEmails.length });
     return testEmails.length;
   }
+
+  // ── Render templates once with placeholder — fast path ─────────────────
+  // NAME_PLACEHOLDER survives escapeHtml in the template (no special chars).
+  // We then replace it per-recipient with the HTML-safe member name.
+  const [registeredRender, joinUsRender] = await Promise.all([
+    renderTemplate("event-reminder-registered", {
+      name: NAME_PLACEHOLDER,
+      eventTitle: event.title,
+      eventStartTime: event.start_time,
+      locationName: event.location_name,
+      eventUrl: `${SITE_URL}/events/${event.id}`,
+      phrase,
+      dayLabel,
+    }),
+    renderTemplate("event-reminder-join-us", {
+      name: NAME_PLACEHOLDER,
+      eventTitle: event.title,
+      eventStartTime: event.start_time,
+      locationName: event.location_name,
+      eventUrl: `${SITE_URL}/events/${event.id}`,
+      phrase,
+      dayLabel,
+    }),
+  ]);
 
   // Fetch all confirmed ticket holders for this event
   const { data: tickets } = await supabase
@@ -219,20 +263,20 @@ async function processEvent(
   for (const member of activeMembers) {
     if (!member.email) continue;
     const isRsvped = rsvpedUserIds.has(member.id);
-    const name     = member.full_name || "Member";
+    const name     = escapeForHtml(member.full_name || "Member");
     if (isRsvped) {
       registeredEmails.push({
         from: "704 Collective <hello@704collective.com>",
         to: member.email,
-        subject: `You're registered for ${event.title} ${dayLabel}!`,
-        html: registeredHtml(name, event, phrase, dayLabel),
+        subject: registeredRender.subject,
+        html: registeredRender.html.replace(NAME_PLACEHOLDER, name),
       });
     } else {
       joinUsEmails.push({
         from: "704 Collective <hello@704collective.com>",
         to: member.email,
-        subject: `Join us ${dayLabel} â€” ${event.title}`,
-        html: joinUsHtml(name, event, phrase, dayLabel),
+        subject: joinUsRender.subject,
+        html: joinUsRender.html.replace(NAME_PLACEHOLDER, name),
       });
     }
   }
@@ -243,8 +287,8 @@ async function processEvent(
       registeredEmails.push({
         from: "704 Collective <hello@704collective.com>",
         to: ticket.guest_email,
-        subject: `You're registered for ${event.title} ${dayLabel}!`,
-        html: registeredHtml("Guest", event, phrase, dayLabel),
+        subject: registeredRender.subject,
+        html: registeredRender.html.replace(NAME_PLACEHOLDER, "Guest"),
       });
     }
   }
@@ -291,7 +335,7 @@ Deno.serve(async (req) => {
       const body = await req.json();
       specificEventId = body?.event_id ?? null;
 
-      // A1/A2: Test mode â€” route emails to requester only
+      // Test mode — route emails to requester only
       const rawTestEmail: unknown = body?.test_recipient_email;
       if (typeof rawTestEmail === "string" && rawTestEmail.trim().length > 0) {
         const trimmed = rawTestEmail.trim();

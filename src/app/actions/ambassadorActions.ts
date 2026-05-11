@@ -205,7 +205,7 @@ export async function createAmbassador(input: {
       });
       return { ok: false, error: `Invite failed: ${linkError.message || JSON.stringify(linkError, Object.getOwnPropertyNames(linkError))}` };
     }
-    console.log(`[createAmbassador] generateLink errored but existing profile found — proceeding as existing user`, { email, profileId: existingProfile.id });
+    console.log(`[createAmbassador] generateLink errored but existing profile found - proceeding as existing user`, { email, profileId: existingProfile.id });
     profileId = (existingProfile as { id: string }).id;
     isNewUser = false;
   } else {

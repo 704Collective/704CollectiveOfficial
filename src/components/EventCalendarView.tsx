@@ -169,7 +169,7 @@ export function EventCalendarView({
                 {format(day, 'd')}
               </span>
 
-              {/* Event dots — up to 3 */}
+              {/* Event dots - up to 3 */}
               {hasEvents && (
                 <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap', justifyContent: 'center' }}>
                   {dayEvents.slice(0, 3).map((ev, i) => (

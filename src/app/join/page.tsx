@@ -448,7 +448,7 @@ function JoinInner() {
                     )}
                   </button>
 
-                  {/* Ambassador referral — social proof when resolved, collapsed
+                  {/* Ambassador referral - social proof when resolved, collapsed
                       input otherwise. Pre-filled from ?ref= on mount. */}
                   {resolvedAmbassador ? (
                     <div style={{
@@ -506,7 +506,7 @@ function JoinInner() {
                     </details>
                   )}
 
-                  {/* SMS consent — optional opt-in (Twilio A2P 10DLC compliance) */}
+                  {/* SMS consent - optional opt-in (Twilio A2P 10DLC compliance) */}
                   <div style={{
                     marginBottom: '4px',
                     padding: '14px 16px',
@@ -615,7 +615,7 @@ function JoinInner() {
                     </p>
                     {resolvedAmbassador && (
                       <p style={{ fontSize: '0.875rem', color: '#C6A664', marginTop: '0.5rem', margin: '4px 0 0' }}>
-                        Referral rate — locked in for life
+                        Referral rate - locked in for life
                       </p>
                     )}
                     <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', margin: '0 0 16px' }}>
@@ -680,7 +680,7 @@ function JoinInner() {
                     </p>
                     {resolvedAmbassador && (
                       <p style={{ fontSize: '0.875rem', color: '#C6A664', marginTop: '0.5rem', margin: '4px 0 0' }}>
-                        Referral rate — locked in until 2027
+                        Referral rate - locked in until 2027
                       </p>
                     )}
                     <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', margin: '0 0 16px' }}>

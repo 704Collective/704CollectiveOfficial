@@ -174,7 +174,7 @@ export function EventAttendeesDialog({
         {/* Header */}
         <DialogHeader className="flex-shrink-0 px-6 pt-5 pb-4 border-b border-border">
           <DialogTitle className="pr-6 text-base truncate line-clamp-1">
-            Attendees &mdash; {eventTitle}
+            Attendees - {eventTitle}
           </DialogTitle>
           <DialogDescription asChild>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">

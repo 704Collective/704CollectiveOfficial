@@ -157,7 +157,7 @@ function PaymentSuccess() {
                 <>
                   <li className="flex items-start gap-3">
                     <Mail className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                    <span>Check your email — click the confirmation link to get instant access to your dashboard</span>
+                    <span>Check your email - click the confirmation link to get instant access to your dashboard</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <Check className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />

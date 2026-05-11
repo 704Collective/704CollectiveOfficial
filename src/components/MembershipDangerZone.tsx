@@ -206,7 +206,7 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
               </DialogHeader>
 
               <div className="space-y-5 py-2">
-                {/* Q1 — reason */}
+                {/* Q1 - reason */}
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Why are you cancelling?</Label>
                   <div className="space-y-2">
@@ -226,7 +226,7 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
                   </div>
                 </div>
 
-                {/* Q2 — feedback */}
+                {/* Q2 - feedback */}
                 <div className="space-y-2">
                   <Label htmlFor="surveyFeedback" className="text-sm font-medium">
                     Any feedback for us? <span className="text-muted-foreground font-normal">(optional)</span>
@@ -241,7 +241,7 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
                   />
                 </div>
 
-                {/* Q3 — would rejoin */}
+                {/* Q3 - would rejoin */}
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Would you consider rejoining in the future?</Label>
                   <div className="flex gap-3">

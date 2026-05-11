@@ -176,9 +176,9 @@ export default function AdminContactDetailPage() {
               // Enrich with event + inviter names
               const enriched = await Promise.all(
                 (gpeRows as GuestPassEventRow[]).map(async (row) => {
-                  let eventTitle = '—';
+                  let eventTitle = '-';
                   let eventDate = '';
-                  let inviterName = '—';
+                  let inviterName = '-';
 
                   if (row.event_id) {
                     const { data: ev } = await supabase
@@ -538,7 +538,7 @@ export default function AdminContactDetailPage() {
                   {initials(name, email)}
                 </div>
                 <div>
-                  <p className="font-semibold">{name || '—'}</p>
+                  <p className="font-semibold">{name || '-'}</p>
                   <p className="text-sm text-muted-foreground">{email}</p>
                 </div>
               </div>
@@ -591,24 +591,24 @@ export default function AdminContactDetailPage() {
                 <Card>
                   <CardContent className="p-5 space-y-2 text-sm">
                     <p className="text-xs uppercase tracking-wider text-muted-foreground/70 mb-2">Membership Info</p>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Type</span><span className="font-medium">{(row as { member_type?: string }).member_type || '—'}</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Since</span><span className="font-medium">{(row as { member_since?: string }).member_since ? format(new Date((row as { member_since?: string }).member_since!), 'MMM d, yyyy') : '—'}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Type</span><span className="font-medium">{(row as { member_type?: string }).member_type || '-'}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Since</span><span className="font-medium">{(row as { member_since?: string }).member_since ? format(new Date((row as { member_since?: string }).member_since!), 'MMM d, yyyy') : '-'}</span></div>
                     <div className="flex justify-between gap-2"><span className="text-muted-foreground">Manual Override</span><span className="font-medium">{(row as { membership_override?: boolean }).membership_override ? 'Yes' : 'No'}</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Phone</span><span className="font-medium">{(row as { phone?: string }).phone || '—'}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Phone</span><span className="font-medium">{(row as { phone?: string }).phone || '-'}</span></div>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="p-5 space-y-2 text-sm">
                     <p className="text-xs uppercase tracking-wider text-muted-foreground/70 mb-2">Portal Status</p>
                     <div className="flex justify-between gap-2"><span className="text-muted-foreground">Account Created</span><span className="font-medium">{isMember ? 'Yes' : 'No'}</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Last Login</span><span className="font-medium">—</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Source</span><span className="font-medium capitalize">{(row as { source?: string }).source?.replace(/_/g, ' ') || '—'}</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Source Detail</span><span className="font-medium capitalize">{(row as { source_detail?: string }).source_detail?.replace(/_/g, ' ') || '—'}</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Created</span><span className="font-medium">{(row as { created_at?: string }).created_at ? format(new Date((row as { created_at?: string }).created_at!), 'MMM d, yyyy') : '—'}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Last Login</span><span className="font-medium">-</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Source</span><span className="font-medium capitalize">{(row as { source?: string }).source?.replace(/_/g, ' ') || '-'}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Source Detail</span><span className="font-medium capitalize">{(row as { source_detail?: string }).source_detail?.replace(/_/g, ' ') || '-'}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Created</span><span className="font-medium">{(row as { created_at?: string }).created_at ? format(new Date((row as { created_at?: string }).created_at!), 'MMM d, yyyy') : '-'}</span></div>
                   </CardContent>
                 </Card>
 
-                {/* Lead Sources — guest pass event tracking */}
+                {/* Lead Sources - guest pass event tracking */}
                 {(!isMember && guestPassEvents.length > 0) && (
                   <Card className="md:col-span-2">
                     <CardContent className="p-5">
@@ -643,7 +643,7 @@ export default function AdminContactDetailPage() {
                       <p className="text-xs uppercase tracking-wider text-muted-foreground/70">Guest Passes</p>
                       <Gift className="w-4 h-4 text-muted-foreground" />
                     </div>
-                    <p className="text-lg font-semibold">{guestPassEvents.length > 0 ? guestPassEvents.length : '—'}</p>
+                    <p className="text-lg font-semibold">{guestPassEvents.length > 0 ? guestPassEvents.length : '-'}</p>
                     {guestPassEvents.length > 0 && (
                       <p className="text-xs text-muted-foreground mt-1">event{guestPassEvents.length !== 1 ? 's' : ''} sourced via guest pass</p>
                     )}
@@ -659,7 +659,7 @@ export default function AdminContactDetailPage() {
 
                   {!resolvedContactId ? (
                     <p className="text-sm text-muted-foreground">
-                      No linked contact record. Notes are stored against the contact row — link this profile to a contact to start tracking notes.
+                      No linked contact record. Notes are stored against the contact row - link this profile to a contact to start tracking notes.
                     </p>
                   ) : (
                     <>
@@ -777,7 +777,7 @@ export default function AdminContactDetailPage() {
                       <DollarSign className="w-4 h-4" />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{p.description || 'Payment'}</p>
-                        <p className="text-xs text-muted-foreground">{p.created_at ? format(new Date(p.created_at), 'MMM d, yyyy') : '—'}</p>
+                        <p className="text-xs text-muted-foreground">{p.created_at ? format(new Date(p.created_at), 'MMM d, yyyy') : '-'}</p>
                       </div>
                       <p className="font-medium">${(p.amount / 100).toFixed(2)}</p>
                       <span className="text-xs rounded-full px-2 py-0.5 bg-green-500/20 text-green-400 border border-green-500/30">Succeeded</span>
@@ -805,7 +805,7 @@ export default function AdminContactDetailPage() {
                       value={settingsForm.email}
                       onChange={(e) => setSettingsForm({ ...settingsForm, email: e.target.value })}
                     />
-                    <p className="text-[11px] text-muted-foreground mt-1">Updating the email here only changes the profile/contact record — the auth login email is unchanged.</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">Updating the email here only changes the profile/contact record - the auth login email is unchanged.</p>
                   </div>
                   <div>
                     <Label>Phone</Label>

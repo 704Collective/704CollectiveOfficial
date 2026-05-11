@@ -147,7 +147,7 @@ export function AdminFinancialsTab({ onNavigateToDashboard }: AdminFinancialsTab
             <h2 className="text-xl font-semibold">Financials</h2>
             {data.last_updated && (
               <p className="text-xs text-muted-foreground">
-                {data.cached && <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs mr-1">Cached</span>}Updated {data.last_updated && !isNaN(new Date(data.last_updated).getTime()) ? format(new Date(data.last_updated), 'MMM d h:mm a') : '—'}
+                {data.cached && <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs mr-1">Cached</span>}Updated {data.last_updated && !isNaN(new Date(data.last_updated).getTime()) ? format(new Date(data.last_updated), 'MMM d h:mm a') : '-'}
               </p>
             )}
           </div>
@@ -254,7 +254,7 @@ export function AdminFinancialsTab({ onNavigateToDashboard }: AdminFinancialsTab
               <div key={i} className="flex justify-between border-b border-border py-2 text-sm last:border-0">
                 <div className="min-w-0">
                   <p className="text-foreground font-medium truncate">{payment.name || payment.email}</p>
-                  <p className="text-xs text-muted-foreground">{payment.created && !isNaN(new Date(payment.created * 1000).getTime()) ? format(new Date(payment.created * 1000), 'MMM d, yyyy') : '—'}</p>
+                  <p className="text-xs text-muted-foreground">{payment.created && !isNaN(new Date(payment.created * 1000).getTime()) ? format(new Date(payment.created * 1000), 'MMM d, yyyy') : '-'}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-foreground font-medium">${(payment.amount / 100).toFixed(2)}</span>

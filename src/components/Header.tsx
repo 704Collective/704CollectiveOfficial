@@ -115,14 +115,14 @@ export function Header() {
         )}
       >
 
-        {/* Left — logo */}
+        {/* Left - logo */}
         <div className="flex min-w-0 shrink-0 items-center">
           <Link href="/" className="flex items-center gap-2">
             <img src="/logo-nav.svg" alt="704 Collective" className="h-8 w-auto sm:h-9" height={36} width={36} />
           </Link>
         </div>
 
-        {/* Center — public / marketing nav (hidden on member dashboard) */}
+        {/* Center - public / marketing nav (hidden on member dashboard) */}
         {!dashboardMemberHeader && (
           <nav className="hidden min-w-0 flex-1 items-center justify-center gap-6 md:flex">
             {!user && (
@@ -142,9 +142,9 @@ export function Header() {
           </nav>
         )}
 
-        {/* Right — avatar / mobile menu */}
+        {/* Right - avatar / mobile menu */}
         <div className={cn('flex shrink-0 items-center gap-2', !dashboardMemberHeader && 'md:ml-auto')}>
-          {/* Mobile hamburger (not used on member dashboard — bell + avatar shown instead) */}
+          {/* Mobile hamburger (not used on member dashboard - bell + avatar shown instead) */}
           {!dashboardMemberHeader && (
             <Sheet>
             <SheetTrigger asChild>
@@ -489,7 +489,7 @@ export function Header() {
             </Sheet>
           )}
 
-          {/* Notification bell — always visible for logged-in dashboard pages; desktop-only elsewhere */}
+          {/* Notification bell - always visible for logged-in dashboard pages; desktop-only elsewhere */}
           {user && (
             <div className={cn(dashboardMemberHeader ? 'flex' : 'hidden md:flex')}>
               <NotificationDropdown user={user} />

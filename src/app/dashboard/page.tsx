@@ -533,22 +533,22 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Hubs preview — business members and admins only */}
+        {/* Hubs preview - business members and admins only */}
         {isActiveMember && (p.member_type === 'business' || isAdmin) && (
           <SectionErrorBoundary>
             <HubsPreviewWidget userId={user.id} />
           </SectionErrorBoundary>
         )}
 
-        {/* Feed previews — shown for active members only */}
+        {/* Feed previews - shown for active members only */}
         {isActiveMember && (
           <>
-            {/* Social feed preview — all active members */}
+            {/* Social feed preview - all active members */}
             <SectionErrorBoundary>
               <FeedPreviewWidget feedType="social" href="/dashboard/social-feed" />
             </SectionErrorBoundary>
 
-            {/* Business feed preview — business members, admins, super admins */}
+            {/* Business feed preview - business members, admins, super admins */}
             {(p.member_type === 'business' || isAdmin) && (
               <SectionErrorBoundary>
                 <FeedPreviewWidget feedType="business" href="/dashboard/business-feed" />
@@ -557,7 +557,7 @@ export default function Dashboard() {
           </>
         )}
 
-        {/* Calendar sync — RSVPed events only; prompt setup if no token yet */}
+        {/* Calendar sync - RSVPed events only; prompt setup if no token yet */}
         {isActiveMember && supabaseUrl && (
           <div id="calendar-section" className="scroll-mt-28 space-y-2">
             <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
@@ -599,7 +599,7 @@ export default function Dashboard() {
           </SectionErrorBoundary>
         )}
 
-        {/* Membership card + wallet — stacked and centered on all breakpoints (desktop included) */}
+        {/* Membership card + wallet - stacked and centered on all breakpoints (desktop included) */}
         {isActiveMember && (
           <div
             id="wallet-section"
@@ -621,7 +621,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Business membership nudge for active social members — hidden from admins */}
+        {/* Business membership nudge for active social members - hidden from admins */}
         {isActiveMember && p.member_type === 'social' && !isAdmin && (
           <div style={{
             backgroundColor: '#1A1A1A',
@@ -675,7 +675,7 @@ export default function Dashboard() {
           </SectionErrorBoundary>
         </div>
 
-        {/* Suggest an Event — bottom CTA for active members */}
+        {/* Suggest an Event - bottom CTA for active members */}
         {isActiveMember && (
           <div className="rounded-xl border border-border bg-card/50 p-4 flex items-center justify-between gap-4">
             <div>

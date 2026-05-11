@@ -6,6 +6,25 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/** Call the centralised send-email render endpoint to get subject + HTML. */
+async function renderTemplate(
+  supabaseUrl: string,
+  serviceKey: string,
+  template: string,
+  data: Record<string, unknown>,
+): Promise<{ subject: string; html: string }> {
+  const res = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${serviceKey}`,
+    },
+    body: JSON.stringify({ mode: 'render', template, data }),
+  });
+  if (!res.ok) throw new Error(`Failed to render template ${template}: ${await res.text()}`);
+  return res.json() as Promise<{ success: true; subject: string; html: string }>;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -29,7 +48,6 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     // Find all business members with incomplete profiles
-    // A profile is incomplete if missing: avatar_url, company_name, title, bio
     const { data: incompleteMembers, error } = await supabase
       .from('profiles')
       .select(`
@@ -67,78 +85,26 @@ serve(async (req) => {
       );
     }
 
-    // Build missing fields list per member for personalized email
-    const buildMissingFields = (member: any): string[] => {
-      const bp = member.business_profiles?.[0];
-      return [
-        !member.avatar_url && 'Profile photo (headshot)',
-        !bp?.company_name?.trim() && 'Company name',
-        !bp?.title?.trim() && 'Title / Role',
-        !bp?.bio?.trim() && 'Biography',
-      ].filter(Boolean) as string[];
-    };
+    const portalUrl = `${siteUrl}/business-portal/profile`;
 
-    // Send emails in batch via Resend
-    const emails = needsReminder.map((member: any) => {
-      const firstName = member.full_name?.split(' ')[0] || 'there';
-      const missingFields = buildMissingFields(member);
-      const missingList = missingFields.map(f => `<li style="margin-bottom:4px;">${f}</li>`).join('');
-
+    // Build batch emails using centralised template
+    const emailPromises = needsReminder.map(async (member: any) => {
+      const firstName   = member.full_name?.split(' ')[0] || 'there';
+      const companyName = member.business_profiles?.[0]?.company_name || undefined;
+      const { subject, html } = await renderTemplate(supabaseUrl, serviceRoleKey, 'business-profile-reminder', {
+        name: firstName,
+        companyName,
+        portalUrl,
+      });
       return {
-        from: 'no-reply@704collective.com',
+        from: '704 Collective <hello@704collective.com>',
         to: member.email,
-        subject: 'Complete your 704 Collective business profile',
-        html: `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
-<body style="margin:0;padding:0;background-color:#0a0a0a;font-family:'Plus Jakarta Sans',sans-serif;">
-  <div style="max-width:560px;margin:0 auto;padding:40px 24px;">
-
-    <!-- Logo -->
-    <div style="text-align:center;margin-bottom:32px;">
-      <img src="${siteUrl}/og-image.png" alt="704 Collective" style="height:40px;width:auto;" />
-    </div>
-
-    <!-- Card -->
-    <div style="background-color:#111111;border:1px solid rgba(198,166,100,0.2);border-radius:14px;padding:32px;">
-      <p style="font-size:0.6875rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#C6A664;margin:0 0 12px;">
-        Business Portal
-      </p>
-      <h1 style="font-size:1.5rem;font-weight:700;color:#FFFFFF;margin:0 0 16px;line-height:1.3;">
-        Hey ${firstName}, your profile isn't visible yet
-      </h1>
-      <p style="font-size:0.9375rem;color:rgba(255,255,255,0.55);line-height:1.7;margin:0 0 24px;">
-        You're missing a few required fields before you appear in the 704 Collective business member directory. Other members won't be able to find or connect with you until your profile is complete.
-      </p>
-
-      <!-- Missing fields -->
-      <div style="background-color:rgba(198,166,100,0.06);border:1px solid rgba(198,166,100,0.2);border-radius:10px;padding:16px 20px;margin-bottom:24px;">
-        <p style="font-size:0.8125rem;font-weight:600;color:#C6A664;margin:0 0 10px;">Still needed:</p>
-        <ul style="margin:0;padding-left:20px;color:rgba(255,255,255,0.6);font-size:0.875rem;line-height:1.6;">
-          ${missingList}
-        </ul>
-      </div>
-
-      <!-- CTA -->
-      <a href="${siteUrl}/business-portal/profile"
-        style="display:block;text-align:center;background-color:#C6A664;color:#1A1A1A;font-weight:700;font-size:0.9375rem;padding:14px 24px;border-radius:10px;text-decoration:none;">
-        Complete My Profile →
-      </a>
-    </div>
-
-    <!-- Footer -->
-    <div style="text-align:center;margin-top:24px;">
-      <p style="font-size:0.75rem;color:rgba(255,255,255,0.2);margin:0;">
-        704 Collective · Charlotte, NC
-      </p>
-    </div>
-  </div>
-</body>
-</html>
-        `.trim(),
+        subject,
+        html,
       };
     });
+
+    const emails = await Promise.all(emailPromises);
 
     // Send in batches of 100 via Resend batch API
     let totalSent = 0;

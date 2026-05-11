@@ -67,7 +67,7 @@ serve(async (_req) => {
         to: to.name ? `${to.name} <${to.email}>` : to.email,
         subject,
         html,
-        text: `${subject}\n\n704 Collective membership — manage your account: ${SITE_URL}/dashboard/settings`,
+        text: `${subject}\n\n704 Collective membership - manage your account: ${SITE_URL}/dashboard/settings`,
       }),
     });
 
@@ -118,7 +118,7 @@ serve(async (_req) => {
         <img src="${SITE_URL}/logo.png" alt="704 Collective" style="height:40px;margin-bottom:32px;" />
         <h2 style="color:#1A1A1A;margin-bottom:8px;">Hey ${firstName},</h2>
         <p style="color:#2E2E2E;line-height:1.6;">
-          Just a heads-up — your 704 Collective ${isBusiness ? "Business" : "Social"} membership renews on 
+          Just a heads-up - your 704 Collective ${isBusiness ? "Business" : "Social"} membership renews on 
           <strong>${renewDate}</strong>.
         </p>
         <p style="color:#2E2E2E;line-height:1.6;">
@@ -169,7 +169,7 @@ serve(async (_req) => {
           Your card on file will be charged ${isBusiness ? "$300.00" : "$30.00"}.
         </p>
         <p style="color:#2E2E2E;line-height:1.6;">
-          If you need to make any changes, now's the time — reply to this email and we'll help.
+          If you need to make any changes, now's the time - reply to this email and we'll help.
         </p>
         <a href="${SITE_URL}/dashboard"
            style="display:inline-block;margin-top:24px;padding:12px 24px;background:#C6A664;color:#1A1A1A;text-decoration:none;border-radius:6px;font-weight:600;">
@@ -216,7 +216,7 @@ serve(async (_req) => {
              </p>`
           : `<a href="${SITE_URL}/join/checkout"
                 style="display:inline-block;margin-top:24px;padding:12px 24px;background:#C6A664;color:#1A1A1A;text-decoration:none;border-radius:6px;font-weight:600;">
-               Renew My Membership — $49/mo
+               Renew My Membership - $49/mo
              </a>`
         }
         <p style="color:#999;font-size:12px;margin-top:48px;">

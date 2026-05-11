@@ -434,7 +434,7 @@ export default function AmbassadorDashboardPage() {
                       <TierBadge tier={r.tier} />
                       <StatusBadge status={r.status} />
                       <span style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.55)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                        {r.reward_cents != null ? usd(r.reward_cents) : '—'}
+                        {r.reward_cents != null ? usd(r.reward_cents) : '-'}
                       </span>
                     </div>
                   ))}
@@ -448,7 +448,7 @@ export default function AmbassadorDashboardPage() {
               <a href="mailto:hello@704collective.com" style={{ color: 'rgba(198,166,100,0.6)', textDecoration: 'none' }}>
                 hello@704collective.com
               </a>{' '}
-              — we&apos;re happy to help.
+              - we&apos;re happy to help.
             </p>
 
           </div>

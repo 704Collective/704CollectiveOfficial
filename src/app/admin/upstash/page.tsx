@@ -45,7 +45,7 @@ export default function AdminUpstashPage() {
       try {
         const res = await fetch('/api/admin/upstash-metrics');
         if (!res.ok) {
-          if (!cancelled) setErr('Upstash metrics unavailable — will activate after DNS cutover.');
+          if (!cancelled) setErr('Upstash metrics unavailable - will activate after DNS cutover.');
           return;
         }
         const j = (await res.json()) as Metrics;
@@ -54,7 +54,7 @@ export default function AdminUpstashPage() {
           setErr(null);
         }
       } catch {
-        if (!cancelled) setErr('Upstash metrics unavailable — will activate after DNS cutover.');
+        if (!cancelled) setErr('Upstash metrics unavailable - will activate after DNS cutover.');
       } finally {
         if (!cancelled) setFetching(false);
       }
@@ -111,7 +111,7 @@ export default function AdminUpstashPage() {
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <StatCard
                 label="Cache hit rate"
-                value={data.cacheHitRate != null ? `${data.cacheHitRate}%` : '—'}
+                value={data.cacheHitRate != null ? `${data.cacheHitRate}%` : '-'}
                 hint="Feed requests served from cache vs database"
               />
               <StatCard
@@ -167,9 +167,9 @@ export default function AdminUpstashPage() {
                     data.recentRateLimitEvents.map((r, i) => (
                       <TableRow key={`${r.ip}-${r.route}-${i}`}>
                         <TableCell className="font-mono text-xs">{r.ip}</TableCell>
-                        <TableCell className="text-xs max-w-[200px] truncate">{r.route || '—'}</TableCell>
+                        <TableCell className="text-xs max-w-[200px] truncate">{r.route || '-'}</TableCell>
                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                          {r.timestamp || '—'}
+                          {r.timestamp || '-'}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{r.count}</TableCell>
                       </TableRow>

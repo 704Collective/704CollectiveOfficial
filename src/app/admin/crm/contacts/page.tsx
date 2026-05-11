@@ -846,7 +846,7 @@ export default function CrmContactsPage() {
         </div>
       )}
 
-      {/* Table — desktop */}
+      {/* Table - desktop */}
       <div className="hidden sm:block bg-card border border-border rounded-xl overflow-hidden">
         <div className="overflow-x-auto min-w-0">
           <table className="w-full text-sm">
@@ -907,7 +907,7 @@ export default function CrmContactsPage() {
                       />
                     </td>
                     <td className="px-4 py-3">
-                      <div className="font-medium text-foreground">{c.full_name ?? '—'}</div>
+                      <div className="font-medium text-foreground">{c.full_name ?? '-'}</div>
                       <div className="text-xs text-muted-foreground">{c.email}</div>
                       {c.company && <div className="text-xs text-muted-foreground/60">{c.company}</div>}
                     </td>
@@ -924,12 +924,12 @@ export default function CrmContactsPage() {
                     <td className="px-4 py-3">
                       <LeadScoreDot score={c.lead_score ?? 0} />
                     </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{capitalize(c.source ?? '—')}</td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{capitalize(c.source ?? '-')}</td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {c.last_activity_at ? format(new Date(c.last_activity_at), 'MMM d, yyyy') : '—'}
+                      {c.last_activity_at ? format(new Date(c.last_activity_at), 'MMM d, yyyy') : '-'}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {c.created_at ? format(new Date(c.created_at), 'MMM d, yyyy') : '—'}
+                      {c.created_at ? format(new Date(c.created_at), 'MMM d, yyyy') : '-'}
                     </td>
                     <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                       <DropdownMenu>
@@ -966,7 +966,7 @@ export default function CrmContactsPage() {
         </div>
       </div>
 
-      {/* Cards — mobile */}
+      {/* Cards - mobile */}
       <div className="sm:hidden space-y-3">
         {loading ? (
           Array.from({ length: 5 }).map((_, i) => (

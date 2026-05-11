@@ -146,8 +146,8 @@ ${footerNoteHtml}
 
 function ctaButton(text: string, url: string): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:28px 0;">
-<tr><td align="center" style="background-color:${BRAND.accent};border-radius:8px;">
-<a href="${url}" target="_blank" style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:600;color:${BRAND.accentText};text-decoration:none;border-radius:8px;">${text}</a>
+<tr><td align="center" style="background-color:#FAF6F0;border-radius:8px;">
+<a href="${url}" target="_blank" style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:600;color:#1A1A1A;text-decoration:none;border-radius:8px;">${text}</a>
 </td></tr>
 </table>`;
 }
@@ -159,7 +159,7 @@ function welcomeBackTemplate(data: { name: string; calendarUrl: string; origin?:
   return {
     subject: "You're back - welcome home",
     html: baseLayout({
-      title: "Welcome Back — 704 Collective",
+      title: "Welcome Back - 704 Collective",
       previewText: "Welcome back. We kept the lights on for you.",
       content: `
 <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name},</p>
@@ -184,7 +184,7 @@ function welcomeNewTemplate(data: { name: string; calendarUrl: string; origin?: 
     subject: "You're in. Welcome to 704 Collective.",
     html: baseLayout({
       title: "Welcome to 704 Collective",
-      previewText: "You're in. Welcome to 704 Collective — Charlotte's community of people worth knowing.",
+      previewText: "You're in. Welcome to 704 Collective - Charlotte's community of people worth knowing.",
       content: `
 <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name},</p>
 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Welcome to 704 Collective. You just joined a room full of people who are actually worth knowing in Charlotte.</p>
@@ -220,7 +220,7 @@ function publicRsvpConfirmationTemplate(data: {
       content: `
 <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name}!</p>
 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">You're confirmed for <strong>${data.eventName}</strong>. We'll see you there.</p>
-<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:${BRAND.color};border-radius:8px;border:1px solid ${BRAND.border};">
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:rgba(255,255,255,0.04);border-radius:8px;border:1px solid ${BRAND.border};">
 <tr><td style="padding:20px 24px;">
 <table role="presentation" cellpadding="0" cellspacing="0">
 <tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">&#128197;&nbsp;&nbsp;${data.eventDate}</td></tr>
@@ -232,7 +232,7 @@ function publicRsvpConfirmationTemplate(data: {
 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">704 Collective is Charlotte's community for young professionals who want to meet people worth knowing. We host events, dinners, and experiences throughout the year.</p>
 <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Want access to more events like this?</p>
 ${ctaButton("Learn About 704 Collective", `${base}/join`)}
-<p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">No pressure — just glad you're coming.</p>`,
+<p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">No pressure - just glad you're coming.</p>`,
     }),
   };
 }
@@ -242,8 +242,8 @@ function passwordSetupTemplate(data: { name: string; setupLink: string; origin?:
   return {
     subject: "Set up your 704 Collective account",
     html: baseLayout({
-      title: "Set Up Your Account — 704 Collective",
-      previewText: "Your 704 Collective account is ready — set your password to get started.",
+      title: "Set Up Your Account - 704 Collective",
+      previewText: "Your 704 Collective account is ready - set your password to get started.",
       content: `
 <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name},</p>
 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Your 704 Collective account is ready - you just need to set a password.</p>
@@ -333,7 +333,7 @@ ${icsUrl ? `<td style="padding:0 6px;">
       content: `
 <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name}!</p>
 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">You're confirmed for <strong>${data.eventName}</strong>!</p>
-<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:${BRAND.color};border-radius:8px;border:1px solid ${BRAND.border};">
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:rgba(255,255,255,0.04);border-radius:8px;border:1px solid ${BRAND.border};">
 <tr><td style="padding:20px 24px;">
 <table role="presentation" cellpadding="0" cellspacing="0">
 <tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">&#128197;&nbsp;&nbsp;${data.eventDate}</td></tr>
@@ -377,9 +377,9 @@ function guestPassTemplate(data: {
 
   const personalMessageBlock = data.personalMessage
     ? `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;">
-<tr><td style="padding:16px 20px;background-color:${BRAND.color};border-left:3px solid ${BRAND.accent};border-radius:0 6px 6px 0;">
+<tr><td style="padding:16px 20px;background-color:rgba(255,255,255,0.04);border-left:3px solid ${BRAND.accent};border-radius:0 6px 6px 0;">
 <p style="margin:0;font-size:14px;font-style:italic;color:${BRAND.textSecondary};">"${escapeHtml(data.personalMessage)}"</p>
-<p style="margin:8px 0 0;font-size:13px;color:${BRAND.textMuted};">— ${escapeHtml(inviterName)}</p>
+<p style="margin:8px 0 0;font-size:13px;color:${BRAND.textMuted};">- ${escapeHtml(inviterName)}</p>
 </td></tr>
 </table>`
     : "";
@@ -395,7 +395,7 @@ function guestPassTemplate(data: {
   <strong style="color:${BRAND.text};">${escapeHtml(inviterName)}</strong> has invited you to join them at
   <strong style="color:${BRAND.text};">${escapeHtml(eventTitle)}</strong>
 </p>
-<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:${BRAND.color};border-radius:8px;border:1px solid ${BRAND.border};">
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:rgba(255,255,255,0.04);border-radius:8px;border:1px solid ${BRAND.border};">
 <tr><td style="padding:20px 24px;">
 <p style="margin:0 0 12px;font-size:17px;font-weight:600;color:${BRAND.text};">${escapeHtml(eventTitle)}</p>
 <table role="presentation" cellpadding="0" cellspacing="0">
@@ -440,7 +440,7 @@ function guestFollowupTemplate(data: {
       content: `
 <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${guestName}!</p>
 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Thanks for coming to <strong>${data.eventName}</strong> with us! We hope you had a great time.</p>
-<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">You were invited by <strong>${data.memberName}</strong> — shout out to them for bringing you along.</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">You were invited by <strong>${data.memberName}</strong> - shout out to them for bringing you along.</p>
 <p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Loved it? Join 704 Collective and get free access to all our events, plus a community of young professionals in Charlotte.</p>
 ${ctaButton("Become a Member", "https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04")}
 <p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">Questions? Contact <a href="mailto:hello@704collective.com" style="color:${BRAND.accent};">hello@704collective.com</a></p>`,
@@ -476,12 +476,12 @@ function welcomeSetupTemplate(data: { name: string; setupLink: string; calendarU
   return {
     subject: "You're in. Let's get you set up.",
     html: baseLayout({
-      title: "Welcome to 704 Collective — Set Up Your Account",
+      title: "Welcome to 704 Collective - Set Up Your Account",
       previewText: "Welcome to 704 Collective. Set up your account to RSVP to events and connect with members.",
       content: `
 <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name},</p>
 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Welcome to 704 Collective. You just joined a room full of people who are actually worth knowing in Charlotte.</p>
-<p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">First thing — set up your account so you can RSVP to events, get your member QR code, and see who else is in here.</p>
+<p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">First thing - set up your account so you can RSVP to events, get your member QR code, and see who else is in here.</p>
 ${ctaButton("Set Up Your Account", data.setupLink)}
 <p style="margin:0 0 28px;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">This link expires in 1 hour, so handle it now.</p>
 <p style="margin:0 0 12px;font-size:15px;font-weight:600;color:${BRAND.text};">Once you're in:</p>
@@ -504,7 +504,7 @@ function adminInviteTemplate(data: { name: string; setupLink?: string | null; lo
     return {
       subject: "You've been invited as an admin on 704 Collective",
       html: baseLayout({
-        title: "Admin Invitation — 704 Collective",
+        title: "Admin Invitation - 704 Collective",
         previewText: "You've been invited as an admin for 704 Collective. Set up your account to get started.",
         content: `
 <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name}!</p>
@@ -520,7 +520,7 @@ ${ctaButton("Set Up Your Account", data.setupLink!)}
   return {
     subject: "You've been made an admin on 704 Collective",
     html: baseLayout({
-      title: "Admin Access — 704 Collective",
+      title: "Admin Access - 704 Collective",
       previewText: "You've been given admin access to 704 Collective.",
       content: `
 <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name}!</p>
@@ -550,8 +550,8 @@ function eventChangeTemplate(data: {
       previewText: `Heads up: ${data.eventName} has been rescheduled. See the new date inside.`,
       content: `
 <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name}!</p>
-<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Heads up — <strong>${data.eventName}</strong> has been rescheduled.</p>
-<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:${BRAND.color};border-radius:8px;border:1px solid ${BRAND.border};">
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Heads up - <strong>${data.eventName}</strong> has been rescheduled.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:rgba(255,255,255,0.04);border-radius:8px;border:1px solid ${BRAND.border};">
 <tr><td style="padding:20px 24px;">
 <p style="margin:0 0 12px;font-size:13px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:${BRAND.textMuted};">Updated Schedule</p>
 <table role="presentation" cellpadding="0" cellspacing="0">
@@ -561,7 +561,7 @@ ${data.newLocation ? `<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.
 </table>
 </td></tr>
 </table>
-<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Your RSVP is still confirmed — no action needed unless the new time doesn't work for you.</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Your RSVP is still confirmed - no action needed unless the new time doesn't work for you.</p>
 ${ctaButton("View Event Details", data.eventUrl)}
 <p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">Can't make it anymore? You can cancel your RSVP on the event page.</p>`,
     }),
@@ -628,7 +628,7 @@ function partnerApplicationSubmittedTemplate(data: { name: string; companyName: 
   return {
     subject: "We received your 704 Collective partner application",
     html: baseLayout({
-      title: "Application Received — 704 Collective",
+      title: "Application Received - 704 Collective",
       previewText: `Thanks for applying to partner with 704 Collective as ${data.companyName}.`,
       content: `
 <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hi ${data.name},</p>
@@ -668,7 +668,7 @@ function partnerApplicationDeniedTemplate(data: { name: string; reason: string; 
   return {
     subject: "Update on your 704 Collective partner application",
     html: baseLayout({
-      title: "Update on Your Application — 704 Collective",
+      title: "Update on Your Application - 704 Collective",
       previewText: "An update on your 704 Collective partner application.",
       content: `
 <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hi ${data.name},</p>
@@ -685,14 +685,14 @@ ${ctaButton("Visit 704 Collective", base)}`,
 function partnerWelcomeInviteTemplate(data: { name: string; dashboardUrl: string; origin?: string }): { subject: string; html: string } {
   const base = data.origin ?? "https://704collective.com";
   return {
-    subject: "You're approved — welcome to 704 Collective partners",
+    subject: "You're approved - welcome to 704 Collective partners",
     html: baseLayout({
       title: "Welcome to 704 Collective Partners",
       previewText: `Your partner invitation has been accepted. Welcome, ${data.name}!`,
       content: `
 <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hi ${data.name},</p>
 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">
-  Your partner invitation has been accepted. You're approved to collaborate with 704 Collective — we're excited to build with you in Charlotte.
+  Your partner invitation has been accepted. You're approved to collaborate with 704 Collective - we're excited to build with you in Charlotte.
 </p>
 ${ctaButton("Go to your dashboard", data.dashboardUrl)}
 <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">Log in with the email and password you used to apply.</p>`,
@@ -734,7 +734,7 @@ function partnerInquiryAdminReplyPartnerTemplate(data: {
   return {
     subject: "704 Collective replied to your inquiry",
     html: baseLayout({
-      title: "Reply to Your Inquiry — 704 Collective",
+      title: "Reply to Your Inquiry - 704 Collective",
       previewText: "The team sent a new message on your event inquiry thread.",
       content: `
 <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hi ${data.name},</p>
@@ -817,10 +817,10 @@ function socialSignupConfirmationTemplate(data: { name: string; origin?: string 
   const name = data.name || "there";
   const base = data.origin ?? "https://704collective.com";
   return {
-    subject: "You're signed up — confirm your email | 704 Collective",
+    subject: "You're signed up - confirm your email | 704 Collective",
     html: baseLayout({
-      title: "Confirm Your Email — 704 Collective",
-      previewText: "Thanks for signing up — check your inbox to confirm your email address.",
+      title: "Confirm Your Email - 704 Collective",
+      previewText: "Thanks for signing up - check your inbox to confirm your email address.",
       content: `
 <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name}!</p>
 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Thanks for creating your 704 Collective account. Use the confirmation link in your inbox to verify your email and continue.</p>
@@ -838,7 +838,7 @@ function businessApplicationMemberConfirmTemplate(data: {
   return {
     subject: "We received your 704 Business application",
     html: baseLayout({
-      title: "Business Application Received — 704 Collective",
+      title: "Business Application Received - 704 Collective",
       previewText: `Thanks for applying to 704 Business for ${data.company}. Our team will be in touch.`,
       content: `
 <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${data.name}!</p>
@@ -879,7 +879,7 @@ function businessMembershipApprovedTemplate(data: {
     ? `<div style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">${data.creditNoteHtml}</div>`
     : "";
   return {
-    subject: "You're in — welcome to 704 Business",
+    subject: "You're in - welcome to 704 Business",
     html: baseLayout({
       title: "Welcome to 704 Business",
       previewText: `Welcome, ${data.firstName}. Your 704 Business application has been approved.`,
@@ -903,7 +903,7 @@ function businessApplicationDecisionTemplate(data: {
   const isDenied = data.action === "denied";
   const subject = isDenied
     ? "Your 704 Business application"
-    : "You've been added to our waitlist — 704 Business";
+    : "You've been added to our waitlist - 704 Business";
   const reasonBlock = data.reason
     ? `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};"><strong>Note from our team:</strong> ${escapeHtml(data.reason)}</p>`
     : "";
@@ -911,11 +911,11 @@ function businessApplicationDecisionTemplate(data: {
     ? `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Thank you for applying to 704 Business. After reviewing your application, we've decided not to move forward at this time.</p>
 ${reasonBlock}
 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">You're welcome to join as a Social member while you stay connected to the community.</p>
-${ctaButton("Join Social — $49/mo", `${base}/join/checkout?email=${encodeURIComponent(data.checkoutEmail)}`)}`
+${ctaButton("Join Social - $49/mo", `${base}/join/checkout?email=${encodeURIComponent(data.checkoutEmail)}`)}`
     : `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Thank you for applying to 704 Business. We've added you to our waitlist and will reach out when a spot opens.</p>
 ${reasonBlock}
 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">In the meantime, you're welcome to join as a Social member.</p>
-${ctaButton("Join Social — $49/mo", `${base}/join/checkout?email=${encodeURIComponent(data.checkoutEmail)}`)}`;
+${ctaButton("Join Social - $49/mo", `${base}/join/checkout?email=${encodeURIComponent(data.checkoutEmail)}`)}`;
   return {
     subject,
     html: baseLayout({
@@ -938,9 +938,9 @@ function welcomeOnboardingCompleteTemplate(data: {
 }): { subject: string; html: string } {
   const base = data.origin ?? "https://704collective.com";
   return {
-    subject: "You're all set — welcome to 704 Collective",
+    subject: "You're all set - welcome to 704 Collective",
     html: baseLayout({
-      title: "You're All Set — 704 Collective",
+      title: "You're All Set - 704 Collective",
       previewText: `Hey ${data.name}! You've finished onboarding. Welcome to 704 Collective.`,
       content: `
 <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${data.name}!</p>
@@ -995,7 +995,7 @@ function ambassadorReferralReceivedTemplate(data: {
 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">
   ${isAutoApproved
     ? "&#10003; This referral has been automatically approved and your payout is being processed."
-    : "&#8987; This referral is being reviewed by our team. We&#39;ll notify you when it&#39;s approved — typically within 24 hours."}
+    : "&#8987; This referral is being reviewed by our team. We&#39;ll notify you when it&#39;s approved - typically within 24 hours."}
 </p>
 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">
   Track all your referrals at any time on the leaderboard:
@@ -1082,8 +1082,8 @@ function ambassadorAdminNotificationTemplate(data: {
 </td></tr>
 </table>
 ${needsAction
-  ? `<p style="margin:0 0 16px;font-size:15px;font-weight:600;color:#f87171;">ACTION REQUIRED &#8212; This referral needs review before payout.</p>${ctaButton("Review in Admin", adminUrl)}`
-  : `<p style="margin:0 0 16px;font-size:15px;color:${BRAND.textSecondary};">&#10003; No action required &#8212; auto-approved.</p>`}
+  ? `<p style="margin:0 0 16px;font-size:15px;font-weight:600;color:#f87171;">ACTION REQUIRED - This referral needs review before payout.</p>${ctaButton("Review in Admin", adminUrl)}`
+  : `<p style="margin:0 0 16px;font-size:15px;color:${BRAND.textSecondary};">&#10003; No action required - auto-approved.</p>`}
 <p style="margin:24px 0 0;font-size:12px;color:${BRAND.textMuted};">Sent automatically by the ambassador system.</p>`,
     }),
   };
@@ -1107,7 +1107,7 @@ function ambassadorOnboardingInviteTemplate(data: {
   please complete your Stripe Connect setup using the button below.
 </p>
 <p style="margin:0 0 24px;font-size:15px;line-height:1.65;color:${BRAND.textSecondary};">
-  This link expires after a few days, so set it up soon &mdash; you can always reach out to us if
+  This link expires after a few days, so set it up soon - you can always reach out to us if
   you need a fresh one.
 </p>
 ${ctaButton('Complete Stripe Setup', url)}
@@ -1115,7 +1115,7 @@ ${ctaButton('Complete Stripe Setup', url)}
   If the button above doesn't work, copy and paste this link into your browser:<br/>
   <span style="font-family:ui-monospace,SFMono-Regular,monospace;word-break:break-all;">${escapeHtml(url)}</span>
 </p>
-<p style="margin:0;font-size:14px;color:${BRAND.textMuted};">Thanks for being part of 704 Collective! &mdash; The 704 Team</p>`,
+<p style="margin:0;font-size:14px;color:${BRAND.textMuted};">Thanks for being part of 704 Collective! - The 704 Team</p>`,
     }),
   };
 }
@@ -1177,7 +1177,7 @@ function ambassadorWeeklyPayoutTemplate(data: {
   Thanks for being part of the 704 Collective ambassador program! Keep referring great people and
   we'll keep paying you out every week.
 </p>
-<p style="margin:0;font-size:14px;color:${BRAND.textMuted};">&#8212; The 704 Team</p>`,
+<p style="margin:0;font-size:14px;color:${BRAND.textMuted};">- The 704 Team</p>`,
     }),
   };
 }
@@ -1224,7 +1224,7 @@ ${ctaButton('Log In to Your Dashboard', url)}
 <p style="margin:24px 0 0;font-size:14px;line-height:1.65;color:${BRAND.textSecondary};">
   Once logged in, you'll set up your Stripe Connect account so we can send you weekly payouts when your referrals convert.
 </p>
-<p style="margin:24px 0 0;font-size:14px;color:${BRAND.textMuted};">&#8212; The 704 Team</p>`,
+<p style="margin:24px 0 0;font-size:14px;color:${BRAND.textMuted};">- The 704 Team</p>`,
     }),
   };
 }
@@ -1250,7 +1250,7 @@ ${ctaButton('Go to Ambassador Dashboard', url)}
 <p style="margin:24px 0 0;font-size:14px;line-height:1.65;color:${BRAND.textSecondary};">
   You'll set up your Stripe Connect account on your first visit so we can send you weekly payouts when your referrals convert.
 </p>
-<p style="margin:24px 0 0;font-size:14px;color:${BRAND.textMuted};">&#8212; The 704 Team</p>`,
+<p style="margin:24px 0 0;font-size:14px;color:${BRAND.textMuted};">- The 704 Team</p>`,
     }),
   };
 }
@@ -1264,7 +1264,7 @@ function ambassadorInviteTemplate(data: { name: string; email: string; referralC
       previewText: "You've been invited to the 704 Collective Ambassador Program. Earn weekly payouts for referrals.",
       content: `
 <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name},</p>
-<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">You've been invited to join the <strong>704 Collective Ambassador Program</strong> — Charlotte's most curated social &amp; business network.</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">You've been invited to join the <strong>704 Collective Ambassador Program</strong> - Charlotte's most curated social &amp; business network.</p>
 <p style="margin:0 0 12px;font-size:15px;font-weight:600;color:${BRAND.text};">As an ambassador, you'll earn:</p>
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
 <tr><td style="padding:6px 0;font-size:15px;color:${BRAND.textSecondary};">&rarr;&nbsp;<strong style="color:${BRAND.accent};">$20</strong> for every social member you refer</td></tr>
@@ -1285,7 +1285,7 @@ ${ctaButton('Set Up My Ambassador Account', data.inviteUrl)}
 <tr><td style="padding:5px 0;font-size:14px;color:${BRAND.textSecondary};">&rarr;&nbsp;Stripe Connect setup so we can pay you</td></tr>
 </table>
 <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:${BRAND.textSecondary};">Questions? Reply to this email or reach out at <a href="mailto:hello@704collective.com" style="color:${BRAND.accent};">hello@704collective.com</a>.</p>
-<p style="margin:0;font-size:14px;color:${BRAND.textMuted};">&mdash; The 704 Team</p>`,
+<p style="margin:0;font-size:14px;color:${BRAND.textMuted};">- The 704 Team</p>`,
     }),
   };
 }
@@ -1306,10 +1306,286 @@ function adminCustomTemplate(data: {
       content: `
 <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name},</p>
 <div style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};white-space:pre-wrap;">${safeBody}</div>
-<p style="margin:0;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">— 704 Collective</p>`,
+<p style="margin:0;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">- 704 Collective</p>`,
     }),
   };
 }
+
+// ── Helpers shared by the new batch-send templates ───────────────────────
+
+function fmtDateTimeET(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString("en-US", {
+      timeZone: "America/New_York",
+      weekday: "long", month: "long", day: "numeric",
+      hour: "numeric", minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function fmtDateET(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString("en-US", {
+      timeZone: "America/New_York",
+      weekday: "long", month: "long", day: "numeric", year: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function fmtTimeET(iso: string): string {
+  try {
+    return new Date(iso).toLocaleTimeString("en-US", {
+      timeZone: "America/New_York",
+      hour: "numeric", minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+// ── New templates for the 10 batch-send functions ────────────────────────
+
+function eventReminderRegisteredTemplate(data: {
+  name: string; eventTitle: string; eventStartTime: string;
+  locationName?: string | null; eventUrl: string; phrase: string; dayLabel: string;
+}): { subject: string; html: string } {
+  const name       = escapeHtml(data.name || "there");
+  const eventTitle = escapeHtml(data.eventTitle || "the event");
+  const phrase     = escapeHtml(data.phrase || "today");
+  const dayLabel   = escapeHtml(data.dayLabel || "today");
+  const formatted  = fmtDateTimeET(data.eventStartTime);
+  return {
+    subject: `You're registered for ${data.eventTitle} ${data.dayLabel}!`,
+    html: baseLayout({
+      title: `You're going ${data.dayLabel}!`,
+      previewText: `Your reminder for ${data.eventTitle}`,
+      content: `
+<h2 style="margin:0 0 16px;font-size:22px;font-weight:700;color:${BRAND.accent};">You're going ${dayLabel}!</h2>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Hey ${name}, just a reminder - you're registered for <strong style="color:${BRAND.text};">${eventTitle}</strong> ${phrase}.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:rgba(255,255,255,0.04);border-radius:8px;border:1px solid ${BRAND.border};">
+<tr><td style="padding:20px 24px;">
+<table role="presentation" cellpadding="0" cellspacing="0">
+<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">&#128197;&#160;&#160;${formatted}</td></tr>
+${data.locationName ? `<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">&#128205;&#160;&#160;${escapeHtml(String(data.locationName))}</td></tr>` : ""}
+</table>
+</td></tr>
+</table>
+${ctaButton("View Event", data.eventUrl)}
+<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">See you there! - 704 Collective</p>`,
+    }),
+  };
+}
+
+function eventReminderJoinUsTemplate(data: {
+  name: string; eventTitle: string; eventStartTime: string;
+  locationName?: string | null; eventUrl: string; phrase: string; dayLabel: string;
+}): { subject: string; html: string } {
+  const name       = escapeHtml(data.name || "there");
+  const eventTitle = escapeHtml(data.eventTitle || "the event");
+  const phrase     = escapeHtml(data.phrase || "today");
+  const dayLabel   = escapeHtml(data.dayLabel || "today");
+  const formatted  = fmtDateTimeET(data.eventStartTime);
+  return {
+    subject: `Join us ${data.dayLabel} - ${data.eventTitle}`,
+    html: baseLayout({
+      title: `Join us ${data.dayLabel}!`,
+      previewText: `${data.eventTitle} is coming up`,
+      content: `
+<h2 style="margin:0 0 16px;font-size:22px;font-weight:700;color:${BRAND.accent};">Join us ${dayLabel}!</h2>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Hey ${name}, <strong style="color:${BRAND.text};">${eventTitle}</strong> is happening ${phrase}. RSVP now to secure your spot!</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:rgba(255,255,255,0.04);border-radius:8px;border:1px solid ${BRAND.border};">
+<tr><td style="padding:20px 24px;">
+<table role="presentation" cellpadding="0" cellspacing="0">
+<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">&#128197;&#160;&#160;${formatted}</td></tr>
+${data.locationName ? `<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">&#128205;&#160;&#160;${escapeHtml(String(data.locationName))}</td></tr>` : ""}
+</table>
+</td></tr>
+</table>
+${ctaButton("RSVP Now", data.eventUrl)}
+<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">Hope to see you there! - 704 Collective</p>`,
+    }),
+  };
+}
+
+function adminMessageToAttendeesTemplate(data: {
+  adminMessage: string; eventTitle: string; eventUrl: string; senderName?: string;
+}): { subject: string; html: string } {
+  const safeMsg    = escapeHtml(data.adminMessage || "");
+  const eventTitle = escapeHtml(data.eventTitle || "the event");
+  const sender     = escapeHtml(data.senderName || "704 Collective");
+  return {
+    subject: `Message about ${data.eventTitle}`,
+    html: baseLayout({
+      title: `Message about ${data.eventTitle}`,
+      previewText: `An update about ${data.eventTitle}`,
+      content: `
+<h2 style="margin:0 0 8px;font-size:20px;font-weight:700;color:${BRAND.text};">A message from 704 Collective</h2>
+<p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Regarding <strong style="color:${BRAND.text};">${eventTitle}</strong>:</p>
+<div style="margin:0 0 24px;padding:20px 24px;background-color:rgba(255,255,255,0.04);border-radius:8px;border:1px solid ${BRAND.border};font-size:15px;line-height:1.7;color:${BRAND.textSecondary};white-space:pre-wrap;">${safeMsg}</div>
+${ctaButton("View Event", data.eventUrl)}
+<p style="margin:0;font-size:13px;color:${BRAND.textMuted};">- ${sender}</p>`,
+    }),
+  };
+}
+
+function attendeeListSummaryTemplate(data: {
+  eventTitle: string; eventStartTime: string;
+  attendees: Array<{ name: string; email: string; isGuest: boolean }>;
+}): { subject: string; html: string } {
+  const eventTitle = escapeHtml(data.eventTitle || "Event");
+  const formatted  = fmtDateTimeET(data.eventStartTime);
+  const list       = data.attendees || [];
+  const count      = list.length;
+  const rows = list.map(a =>
+    `<tr>
+<td style="padding:8px 12px;border-bottom:1px solid ${BRAND.border};font-size:14px;color:${BRAND.text};">${escapeHtml(a.name || "")}</td>
+<td style="padding:8px 12px;border-bottom:1px solid ${BRAND.border};font-size:14px;color:${BRAND.textMuted};">${escapeHtml(a.email || "")}</td>
+<td style="padding:8px 12px;border-bottom:1px solid ${BRAND.border};font-size:12px;color:${BRAND.textMuted};">${a.isGuest ? "Guest" : "Member"}</td>
+</tr>`
+  ).join("");
+  return {
+    subject: `Attendee list for ${data.eventTitle}`,
+    html: baseLayout({
+      title: `Attendee List: ${data.eventTitle}`,
+      previewText: `${count} attendee${count !== 1 ? "s" : ""} for ${data.eventTitle}`,
+      content: `
+<h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${BRAND.accent};">Attendee List</h2>
+<h3 style="margin:0 0 16px;font-size:17px;font-weight:600;color:${BRAND.text};">${eventTitle}</h3>
+<p style="margin:0 0 4px;font-size:15px;color:${BRAND.textSecondary};">&#128197;&#160;&#160;${formatted}</p>
+<p style="margin:0 0 20px;font-size:15px;font-weight:600;color:${BRAND.accent};">${count} total RSVP${count !== 1 ? "s" : ""}</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;background:${BRAND.surface};border-radius:8px;overflow:hidden;border:1px solid ${BRAND.border};">
+<thead><tr style="background:rgba(255,255,255,0.05);">
+<th style="padding:10px 12px;text-align:left;font-size:12px;font-weight:700;color:${BRAND.accent};text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid ${BRAND.border};">Name</th>
+<th style="padding:10px 12px;text-align:left;font-size:12px;font-weight:700;color:${BRAND.accent};text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid ${BRAND.border};">Email</th>
+<th style="padding:10px 12px;text-align:left;font-size:12px;font-weight:700;color:${BRAND.accent};text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid ${BRAND.border};">Type</th>
+</tr></thead>
+<tbody>${rows || `<tr><td colspan="3" style="padding:16px;color:${BRAND.textMuted};text-align:center;font-size:14px;">No attendees yet</td></tr>`}</tbody>
+</table>
+<p style="margin:20px 0 0;font-size:13px;color:${BRAND.textMuted};">Sent automatically 60 minutes before the event.</p>`,
+    }),
+  };
+}
+
+function bulkSetupReminderTemplate(data: { name: string; setupLink: string }): { subject: string; html: string } {
+  const name = escapeHtml(data.name || "there");
+  return {
+    subject: "Complete your 704 Collective profile",
+    html: baseLayout({
+      title: "Set Up Your 704 Collective Account",
+      previewText: "Action needed: set up your account to access your membership.",
+      content: `
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name}!</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Your 704 Collective membership is ready. Click below to create your password and get full access to events, the member directory, and your community portal.</p>
+${ctaButton("Set Up Your Account", data.setupLink)}
+<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">This link expires in 1 hour. If it's expired, you can request a new one from the setup page.</p>`,
+    }),
+  };
+}
+
+function businessProfileReminderTemplate(data: { name: string; companyName?: string; portalUrl: string }): { subject: string; html: string } {
+  const name    = escapeHtml(data.name || "there");
+  const company = data.companyName ? ` for ${escapeHtml(data.companyName)}` : "";
+  return {
+    subject: "Complete your business profile",
+    html: baseLayout({
+      title: "Complete Your Business Profile",
+      previewText: "Your business profile is incomplete - other members can't find you yet.",
+      content: `
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name},</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Your 704 Business profile${company} is missing a few required fields. Until it's complete, other members won't be able to find or connect with you in the directory.</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Head to the business portal to add your headshot, company details, title, and bio.</p>
+${ctaButton("Go to Business Portal", data.portalUrl)}
+<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">Questions? Reach out at <a href="mailto:hello@704collective.com" style="color:${BRAND.accent};">hello@704collective.com</a></p>`,
+    }),
+  };
+}
+
+function guestEventMatchTemplate(data: {
+  guestName: string; eventTitle: string; eventStartTime: string; eventUrl: string;
+}): { subject: string; html: string } {
+  const firstName  = escapeHtml(data.guestName || "");
+  const eventTitle = escapeHtml(data.eventTitle || "an event");
+  const formatted  = fmtDateTimeET(data.eventStartTime);
+  return {
+    subject: `${data.eventTitle} might be a fit for you`,
+    html: baseLayout({
+      title: "A New Event for You",
+      previewText: `${data.eventTitle} happening soon`,
+      content: `
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey${firstName ? ` ${firstName}` : ""}!</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">A new event is coming up at 704 Collective and we thought you'd want to know about it.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:rgba(255,255,255,0.04);border-radius:8px;border:1px solid ${BRAND.border};">
+<tr><td style="padding:20px 24px;">
+<p style="margin:0 0 10px;font-size:17px;font-weight:600;color:${BRAND.text};">${eventTitle}</p>
+<table role="presentation" cellpadding="0" cellspacing="0">
+<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">&#128197;&#160;&#160;${formatted}</td></tr>
+</table>
+</td></tr>
+</table>
+${ctaButton("View All Events", data.eventUrl)}
+<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">You're receiving this because you attended a past 704 Collective event as a guest. Questions? <a href="mailto:hello@704collective.com" style="color:${BRAND.accent};">hello@704collective.com</a></p>`,
+    }),
+  };
+}
+
+function eventChangeNotificationTemplate(data: {
+  name: string; eventTitle: string; eventUrl: string; changeMessage: string;
+  newStartTime?: string; newLocation?: string;
+}): { subject: string; html: string } {
+  const name        = escapeHtml(data.name || "there");
+  const eventTitle  = escapeHtml(data.eventTitle || "the event");
+  const safeMsg     = escapeHtml(data.changeMessage || "");
+  const newDetails  = [
+    data.newStartTime ? `<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.accent};font-weight:600;">&#128197;&#160;&#160;${fmtDateTimeET(data.newStartTime)}</td></tr>` : "",
+    data.newLocation  ? `<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">&#128205;&#160;&#160;${escapeHtml(data.newLocation)}</td></tr>` : "",
+  ].filter(Boolean).join("");
+  return {
+    subject: `Update: ${data.eventTitle}`,
+    html: baseLayout({
+      title: `Event Update: ${data.eventTitle}`,
+      previewText: `Important update about ${data.eventTitle}`,
+      content: `
+<h2 style="margin:0 0 16px;font-size:22px;font-weight:700;color:${BRAND.text};">Event update</h2>
+<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Hey ${name}, there's an update for <strong style="color:${BRAND.text};">${eventTitle}</strong>:</p>
+<div style="margin:0 0 24px;padding:20px 24px;background-color:rgba(255,255,255,0.04);border-radius:8px;border:1px solid ${BRAND.border};font-size:15px;line-height:1.7;color:${BRAND.textSecondary};white-space:pre-wrap;">${safeMsg}</div>
+${newDetails ? `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:rgba(255,255,255,0.04);border-radius:8px;border:1px solid ${BRAND.border};"><tr><td style="padding:20px 24px;"><p style="margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:${BRAND.textMuted};">Updated details</p><table role="presentation" cellpadding="0" cellspacing="0">${newDetails}</table></td></tr></table>` : ""}
+${ctaButton("View Event", data.eventUrl)}
+<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">Your RSVP is still confirmed unless you cancel on the event page.</p>`,
+    }),
+  };
+}
+
+function adminInviteLinkTemplate(data: { name: string; inviteUrl: string; senderName?: string }): { subject: string; html: string } {
+  const name = escapeHtml(data.name || "there");
+  return {
+    subject: "You're invited to 704 Collective",
+    html: baseLayout({
+      title: "You're Invited to 704 Collective",
+      previewText: "Welcome to 704 Collective",
+      content: `
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${name}!</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">You've been invited to join <strong style="color:${BRAND.text};">704 Collective</strong> as an admin. Use the button below to set up your account and access the admin dashboard.</p>
+${ctaButton("Accept Invite", data.inviteUrl)}
+<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">If you did not expect this invitation, you can safely ignore this email.</p>`,
+    }),
+  };
+}
+
+function campaignBroadcastTemplate(data: { subject: string; bodyHtml: string; previewText?: string }): { subject: string; html: string } {
+  // Campaigns render their own complete HTML (including logo, footer, layout).
+  // This template is a pass-through so campaign HTML is routed via the
+  // centralized render endpoint without double-wrapping in baseLayout.
+  return {
+    subject: data.subject,
+    html: data.bodyHtml,
+  };
+}
+
+// ── Template dispatcher ───────────────────────────────────────────────────
 
 function getTemplate(template: string, data: Record<string, unknown>): { subject: string; html: string } {
   switch (template) {
@@ -1508,6 +1784,45 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
       return ambassadorInviteTemplate(data as { name: string; email: string; referralCode: string; inviteUrl: string });
     case "admin-custom":
       return adminCustomTemplate(data as { recipientName: string; subject: string; bodyText: string; origin?: string });
+
+    // ── Centralised render targets for the 10 batch-send functions ──────────
+    case "event-reminder-registered":
+      return eventReminderRegisteredTemplate(data as {
+        name: string; eventTitle: string; eventStartTime: string;
+        locationName?: string | null; eventUrl: string; phrase: string; dayLabel: string;
+      });
+    case "event-reminder-join-us":
+      return eventReminderJoinUsTemplate(data as {
+        name: string; eventTitle: string; eventStartTime: string;
+        locationName?: string | null; eventUrl: string; phrase: string; dayLabel: string;
+      });
+    case "admin-message-to-attendees":
+      return adminMessageToAttendeesTemplate(data as {
+        adminMessage: string; eventTitle: string; eventUrl: string; senderName?: string;
+      });
+    case "attendee-list-summary":
+      return attendeeListSummaryTemplate(data as {
+        eventTitle: string; eventStartTime: string;
+        attendees: Array<{ name: string; email: string; isGuest: boolean }>;
+      });
+    case "bulk-setup-reminder":
+      return bulkSetupReminderTemplate(data as { name: string; setupLink: string });
+    case "business-profile-reminder":
+      return businessProfileReminderTemplate(data as { name: string; companyName?: string; portalUrl: string });
+    case "guest-event-match":
+      return guestEventMatchTemplate(data as {
+        guestName: string; eventTitle: string; eventStartTime: string; eventUrl: string;
+      });
+    case "event-change-notification":
+      return eventChangeNotificationTemplate(data as {
+        name: string; eventTitle: string; eventUrl: string; changeMessage: string;
+        newStartTime?: string; newLocation?: string;
+      });
+    case "admin-invite-link":
+      return adminInviteLinkTemplate(data as { name: string; inviteUrl: string; senderName?: string });
+    case "campaign-broadcast":
+      return campaignBroadcastTemplate(data as { subject: string; bodyHtml: string; previewText?: string });
+
     default:
       throw new Error(`Unknown email template: ${template}`);
   }
@@ -1562,8 +1877,32 @@ serve(async (req) => {
       "admin-custom",
     ];
 
-    // ── Parse body first so we can check template ──
-    const { to, template, data, skipCc } = await req.json();
+    // ── Parse body first so we can branch on mode ──
+    const body = await req.json();
+
+    // ── Render-only mode: return rendered HTML without sending ──────────────
+    if (body.mode === "render") {
+      if (!body.template || typeof body.template !== "string") {
+        return new Response(JSON.stringify({ error: "Missing template" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      try {
+        const { subject, html } = getTemplate(body.template, body.data ?? {});
+        return new Response(JSON.stringify({ success: true, subject, html }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    const { to, template, data, skipCc } = body;
 
     if (!to || !template) {
       return new Response(JSON.stringify({ error: "Missing 'to' or 'template'" }), {

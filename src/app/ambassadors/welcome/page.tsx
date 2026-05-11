@@ -83,7 +83,7 @@ export default function AmbassadorWelcomePage() {
       if (cancelled) return;
 
       if (!user) {
-        console.error('[welcome] No user after token processing — redirecting to login');
+        console.error('[welcome] No user after token processing - redirecting to login');
         router.replace('/ambassadors/login');
         return;
       }
@@ -97,7 +97,7 @@ export default function AmbassadorWelcomePage() {
 
       if (cancelled) return;
       if (!amb) {
-        console.error('[welcome] User exists but no ambassador row — signing out');
+        console.error('[welcome] User exists but no ambassador row - signing out');
         await supabase.auth.signOut();
         router.replace('/ambassadors/login');
         return;
@@ -205,7 +205,7 @@ export default function AmbassadorWelcomePage() {
             {/* Referral code box */}
             <div style={{ background: 'rgba(198,166,100,0.10)', border: '1px solid rgba(198,166,100,0.30)', borderRadius: '12px', padding: '16px', textAlign: 'center', marginBottom: '20px' }}>
               <p style={{ margin: '0 0 4px', fontSize: '0.6875rem', fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Your referral code</p>
-              <p style={{ margin: '0 0 4px', fontSize: '2rem', fontWeight: 700, color: '#C6A664', fontFamily: 'ui-monospace, SFMono-Regular, monospace', letterSpacing: '0.06em' }}>{ambassador?.referral_code ?? '—'}</p>
+              <p style={{ margin: '0 0 4px', fontSize: '2rem', fontWeight: 700, color: '#C6A664', fontFamily: 'ui-monospace, SFMono-Regular, monospace', letterSpacing: '0.06em' }}>{ambassador?.referral_code ?? '-'}</p>
               <p style={{ margin: 0, fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)' }}>Share this with anyone you refer.</p>
             </div>
 

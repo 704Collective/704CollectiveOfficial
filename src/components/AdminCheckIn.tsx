@@ -173,7 +173,7 @@ export function AdminCheckIn({ adminId }: AdminCheckInProps) {
             <SelectContent>
               {events.map(event => (
                 <SelectItem key={event.id} value={event.id}>
-                  {event.title} — {format(new Date(event.start_time), 'MMM d, yyyy')}
+                  {event.title} - {format(new Date(event.start_time), 'MMM d, yyyy')}
                 </SelectItem>
               ))}
             </SelectContent>

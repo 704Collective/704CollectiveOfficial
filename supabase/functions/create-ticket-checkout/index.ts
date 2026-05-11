@@ -53,7 +53,7 @@ serve(async (req) => {
     // D2: Guard against non-ticketed events
     if (!eventData.ticket_mode || eventData.ticket_mode === "none") {
       return new Response(
-        JSON.stringify({ error: "This event is not ticketed — please RSVP for free." }),
+        JSON.stringify({ error: "This event is not ticketed - please RSVP for free." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -111,7 +111,7 @@ serve(async (req) => {
       // D3: Members should not pay for public_only events — they RSVP free
       if (eventData.ticket_mode === "public_only" && isActiveMember && memberType != null) {
         return new Response(
-          JSON.stringify({ error: "Members do not need to purchase a ticket for this event — RSVP for free." }),
+          JSON.stringify({ error: "Members do not need to purchase a ticket for this event - RSVP for free." }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -140,7 +140,7 @@ serve(async (req) => {
 
     if (resolvedPrice <= 0) {
       return new Response(
-        JSON.stringify({ error: "This event is free for you — please RSVP instead." }),
+        JSON.stringify({ error: "This event is free for you - please RSVP instead." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

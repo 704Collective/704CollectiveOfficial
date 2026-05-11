@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
         .map((t) => {
           const emoji = priorityEmoji[t.priority || "medium"] || "🟡";
           const dueStr = t.due_date
-            ? ` — Due: ${new Date(t.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+            ? ` - Due: ${new Date(t.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
             : "";
           return `<li style="margin-bottom:8px;">${emoji} <strong>${t.title}</strong>${dueStr}</li>`;
         })
@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
               View Task Board →
             </a>
           </div>
-          <p style="margin-top:32px;font-size:13px;color:#888;">— 704 Collective</p>
+          <p style="margin-top:32px;font-size:13px;color:#888;">- 704 Collective</p>
         </div>
       `;
 

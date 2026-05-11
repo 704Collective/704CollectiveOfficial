@@ -357,7 +357,7 @@ function ContactsPageInner() {
                         {initials(row.full_name, row.email)}
                       </div>
                     </TableCell>
-                    <TableCell className="px-4 py-3 font-medium text-foreground">{row.full_name || '—'}</TableCell>
+                    <TableCell className="px-4 py-3 font-medium text-foreground">{row.full_name || '-'}</TableCell>
                     <TableCell className="px-4 py-3 text-sm text-muted-foreground">{row.email}</TableCell>
                     <TableCell className="px-4 py-3">
                       <div className="flex flex-wrap items-center gap-1">
@@ -376,7 +376,7 @@ function ContactsPageInner() {
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
-                      {row.created_at ? format(new Date(row.created_at), 'MMM d, yyyy') : '—'}
+                      {row.created_at ? format(new Date(row.created_at), 'MMM d, yyyy') : '-'}
                     </TableCell>
                   </TableRow>
                 );

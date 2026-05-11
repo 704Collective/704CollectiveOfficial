@@ -253,7 +253,7 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
                       </div>
                     </TableCell>
                     <TableCell className="py-3 text-muted-foreground">
-                      {app.company ?? '—'}
+                      {app.company ?? '-'}
                       {app.title && <span className="block text-xs">{app.title}</span>}
                     </TableCell>
                     <TableCell className="py-3">
@@ -262,7 +262,7 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
                     <TableCell className="py-3">
                       {app.card_saved
                         ? <Badge className="bg-green-500/10 text-green-400 text-xs">Saved</Badge>
-                        : <span className="text-xs text-muted-foreground">—</span>}
+                        : <span className="text-xs text-muted-foreground">-</span>}
                     </TableCell>
                     <TableCell className="py-3">
                       <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_CONFIG[app.status]?.color ?? 'bg-muted text-muted-foreground border border-border'}`}>

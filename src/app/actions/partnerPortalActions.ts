@@ -190,12 +190,12 @@ export async function submitPartnerEventInquiry(payload: {
   }
   if (payload.inquiryType === 'venue') {
     detailLines.push(
-      `<p><strong>Venue</strong><br/>${escapeHtml(venueAddress ?? '')}<br/>Capacity: ${venueCapacity ?? '—'}<br/>Hours: ${escapeHtml(venueHours ?? '')}<br/>Other: ${escapeHtml(venueOtherInfo ?? '')}</p>`
+      `<p><strong>Venue</strong><br/>${escapeHtml(venueAddress ?? '')}<br/>Capacity: ${venueCapacity ?? '-'}<br/>Hours: ${escapeHtml(venueHours ?? '')}<br/>Other: ${escapeHtml(venueOtherInfo ?? '')}</p>`
     );
   }
   if (payload.inquiryType === 'sponsor') {
     detailLines.push(
-      `<p><strong>Sponsor</strong><br/>Amount: ${amountOffering ?? '—'}<br/>Desired return: ${escapeHtml(desiredReturn ?? '')}<br/>Details: ${escapeHtml(customDetails ?? '')}</p>`
+      `<p><strong>Sponsor</strong><br/>Amount: ${amountOffering ?? '-'}<br/>Desired return: ${escapeHtml(desiredReturn ?? '')}<br/>Details: ${escapeHtml(customDetails ?? '')}</p>`
     );
   }
   if (payload.inquiryType === 'new_event' && customDetails) {
