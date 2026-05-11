@@ -1,15 +1,15 @@
 /**
- * event-reminder — daily cron at 11:00 UTC (7 am ET).
+ * event-reminder â€” daily cron at 11:00 UTC (7 am ET).
  *
  * Also callable manually by admins via POST with { event_id } to target
  * a specific event.
  *
  * For each published event today:
- *  - Members who RSVPed → "You're registered for today" email
- *  - Active members without an RSVP → "Join us today" email
+ *  - Members who RSVPed â†’ "You're registered for today" email
+ *  - Active members without an RSVP â†’ "Join us today" email
  *
  * Respects marketing_unsubscribed on profiles.
- * Sends in Resend batch chunks of ≤ 100.
+ * Sends in Resend batch chunks of â‰¤ 100.
  */
 
 /**
@@ -87,13 +87,13 @@ const corsHeaders = {
 };
 
 const log = (step: string, d?: unknown) =>
-  console.log(`[EVENT-REMINDER] ${step}${d ? " — " + JSON.stringify(d) : ""}`);
+  console.log(`[EVENT-REMINDER] ${step}${d ? " â€” " + JSON.stringify(d) : ""}`);
 
 function supabaseAdmin() {
   return createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 }
 
-/** Send a batch of ≤100 emails via Resend batch API. */
+/** Send a batch of â‰¤100 emails via Resend batch API. */
 async function sendBatch(emails: { from: string; to: string; subject: string; html: string }[]) {
   if (emails.length === 0) return 0;
   const res = await fetch("https://api.resend.com/emails/batch", {
@@ -121,28 +121,28 @@ function chunks<T>(arr: T[], n: number): T[][] {
 function registeredHtml(memberName: string, event: EventRow, phrase: string, dayLabel: string): string {
   const name = memberName || "there";
   return `<!DOCTYPE html><html><body style="font-family:sans-serif;background:#1A1A1A;color:#FAF6F0;padding:32px;text-align:center;">
-<img src="https://704collective.com/logo.png" alt="704 Collective" width="120" style="display:block;margin:0 auto 24px;" />
+<img src="https://704collective.com/logo-white.png" alt="704 Collective" width="120" style="display:block;margin:0 auto 24px;" />
 <div style="text-align:left;">
 <h2 style="color:#C6A664;">You're going ${dayLabel}!</h2>
-<p>Hey ${name}, just a reminder — you're registered for <strong>${event.title}</strong> ${phrase}.</p>
-<p>📅 ${new Date(event.start_time).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })}</p>
-${event.location_name ? `<p>📍 ${event.location_name}</p>` : ""}
+<p>Hey ${name}, just a reminder â€” you're registered for <strong>${event.title}</strong> ${phrase}.</p>
+<p>ðŸ“… ${new Date(event.start_time).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })}</p>
+${event.location_name ? `<p>ðŸ“ ${event.location_name}</p>` : ""}
 <a href="${SITE_URL}/events/${event.id}" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#C6A664;color:#1A1A1A;text-decoration:none;border-radius:8px;font-weight:600;">View Event</a>
-<p style="margin-top:24px;font-size:13px;color:#A0A0A0;">See you there! — 704 Collective</p>
+<p style="margin-top:24px;font-size:13px;color:#A0A0A0;">See you there! â€” 704 Collective</p>
 </div></body></html>`;
 }
 
 function joinUsHtml(memberName: string, event: EventRow, phrase: string, dayLabel: string): string {
   const name = memberName || "there";
   return `<!DOCTYPE html><html><body style="font-family:sans-serif;background:#1A1A1A;color:#FAF6F0;padding:32px;text-align:center;">
-<img src="https://704collective.com/logo.png" alt="704 Collective" width="120" style="display:block;margin:0 auto 24px;" />
+<img src="https://704collective.com/logo-white.png" alt="704 Collective" width="120" style="display:block;margin:0 auto 24px;" />
 <div style="text-align:left;">
 <h2 style="color:#C6A664;">Join us ${dayLabel}!</h2>
 <p>Hey ${name}, <strong>${event.title}</strong> is happening ${phrase}. RSVP now to secure your spot!</p>
-<p>📅 ${new Date(event.start_time).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })}</p>
-${event.location_name ? `<p>📍 ${event.location_name}</p>` : ""}
+<p>ðŸ“… ${new Date(event.start_time).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })}</p>
+${event.location_name ? `<p>ðŸ“ ${event.location_name}</p>` : ""}
 <a href="${SITE_URL}/events/${event.id}" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#C6A664;color:#1A1A1A;text-decoration:none;border-radius:8px;font-weight:600;">RSVP Now</a>
-<p style="margin-top:24px;font-size:13px;color:#A0A0A0;">Hope to see you there! — 704 Collective</p>
+<p style="margin-top:24px;font-size:13px;color:#A0A0A0;">Hope to see you there! â€” 704 Collective</p>
 </div></body></html>`;
 }
 
@@ -171,7 +171,7 @@ async function processEvent(
 
   const { phrase, dayLabel } = relativeDateLabel(event.start_time);
 
-  // ── Test mode: send both preview templates to the requester only ───────────
+  // â”€â”€ Test mode: send both preview templates to the requester only â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (isTestMode) {
     const testEmails = [
       {
@@ -183,7 +183,7 @@ async function processEvent(
       {
         from: "704 Collective <hello@704collective.com>",
         to: testRecipient,
-        subject: `[TEST] Join us ${dayLabel} — ${event.title}`,
+        subject: `[TEST] Join us ${dayLabel} â€” ${event.title}`,
         html: joinUsHtml("Admin (Test)", event, phrase, dayLabel),
       },
     ];
@@ -231,7 +231,7 @@ async function processEvent(
       joinUsEmails.push({
         from: "704 Collective <hello@704collective.com>",
         to: member.email,
-        subject: `Join us ${dayLabel} — ${event.title}`,
+        subject: `Join us ${dayLabel} â€” ${event.title}`,
         html: joinUsHtml(name, event, phrase, dayLabel),
       });
     }
@@ -291,7 +291,7 @@ Deno.serve(async (req) => {
       const body = await req.json();
       specificEventId = body?.event_id ?? null;
 
-      // A1/A2: Test mode — route emails to requester only
+      // A1/A2: Test mode â€” route emails to requester only
       const rawTestEmail: unknown = body?.test_recipient_email;
       if (typeof rawTestEmail === "string" && rawTestEmail.trim().length > 0) {
         const trimmed = rawTestEmail.trim();
