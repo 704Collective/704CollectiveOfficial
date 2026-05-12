@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { SOCIAL_TIER } from '@/lib/pricing';
+import { SOCIAL_TIER, FLASH_SALE } from '@/lib/pricing';
 import Nav from '@/components/Nav';
 import { Footer } from '@/components/Footer';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -89,8 +89,10 @@ export default function SocialPage() {
   usePageTitle('704 Social | Charlotte\'s Activity Club & Social Community');
   const { isActiveMember } = useAuth();
   const [mounted, setMounted] = useState(false);
+  const [flashSaleActive, setFlashSaleActive] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { setFlashSaleActive(FLASH_SALE.isActive()); }, []);
 
   return (
     <>
@@ -737,16 +739,38 @@ export default function SocialPage() {
                   704 Social
                 </h3>
                 <div style={{ marginBottom: '4px', marginTop: '8px' }}>
-                  <span style={{ fontSize: '2.75rem', fontWeight: 700, color: '#C6A664' }}>
-                    {SOCIAL_TIER.monthlyPrice}
-                  </span>
+                  {flashSaleActive ? (
+                    <>
+                      <span style={{ textDecoration: 'line-through', opacity: 0.5, fontSize: '2rem', marginRight: '0.4rem', fontWeight: 700, color: '#C6A664' }}>
+                        {SOCIAL_TIER.monthlyPrice}
+                      </span>
+                      <span style={{ fontSize: '2.75rem', fontWeight: 700, color: '#C6A664' }}>
+                        {FLASH_SALE.firstMonthPrice}
+                      </span>
+                    </>
+                  ) : (
+                    <span style={{ fontSize: '2.75rem', fontWeight: 700, color: '#C6A664' }}>
+                      {SOCIAL_TIER.monthlyPrice}
+                    </span>
+                  )}
                   <span style={{ fontSize: '1rem', color: 'rgba(255, 255, 255, 0.4)', marginLeft: '4px' }}>
                     / month
                   </span>
                 </div>
-                <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', marginBottom: '4px' }}>
-                  Cancel anytime
-                </p>
+                {flashSaleActive && (
+                  <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', margin: '-2px 0 4px', fontStyle: 'italic' }}>
+                    first month
+                  </p>
+                )}
+                {flashSaleActive ? (
+                  <p style={{ fontSize: '0.75rem', color: '#C6A664', marginBottom: '4px', lineHeight: 1.5 }}>
+                    Use code <strong style={{ color: '#FFFFFF' }}>{FLASH_SALE.promoCode}</strong> at checkout. Then $49/mo after. Ends May 14.
+                  </p>
+                ) : (
+                  <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', marginBottom: '4px' }}>
+                    Cancel anytime
+                  </p>
+                )}
                 <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.25)', marginBottom: '28px' }}>
                   Full access, no commitments
                 </p>

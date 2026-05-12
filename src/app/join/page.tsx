@@ -8,7 +8,7 @@ import { useCallback, useState, useEffect, Suspense } from 'react';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { addDays, format } from 'date-fns';
 import { Calendar, MapPin, Users, ArrowRight, Loader2 } from 'lucide-react';
-import { SOCIAL_TIER, BUSINESS_TIER } from '@/lib/pricing';
+import { SOCIAL_TIER, BUSINESS_TIER, FLASH_SALE } from '@/lib/pricing';
 import { supabase } from '@/integrations/supabase/client';
 import Nav from '@/components/Nav';
 import { Footer } from '@/components/Footer';
@@ -86,6 +86,10 @@ function JoinInner() {
 
   // Tier picker Social card loading state
   const [socialLoading, setSocialLoading] = useState(false);
+
+  // Flash-sale: evaluated client-side only to avoid SSR/hydration mismatch
+  const [flashSaleActive, setFlashSaleActive] = useState(false);
+  useEffect(() => { setFlashSaleActive(FLASH_SALE.isActive()); }, []);
 
   // Only redirect away if the user already has an active membership.
   // Non-members, canceled members, and new signups should stay on /join.
@@ -608,6 +612,13 @@ function JoinInner() {
                           </span>
                           <span>$35</span>
                         </>
+                      ) : flashSaleActive ? (
+                        <>
+                          <span style={{ textDecoration: 'line-through', opacity: 0.5, fontSize: '1.5rem', marginRight: '0.5rem' }}>
+                            {SOCIAL_TIER.monthlyPrice}
+                          </span>
+                          <span>{FLASH_SALE.firstMonthPrice}</span>
+                        </>
                       ) : (
                         <span>{SOCIAL_TIER.monthlyPrice}</span>
                       )}
@@ -618,9 +629,20 @@ function JoinInner() {
                         Referral rate - locked in for life
                       </p>
                     )}
-                    <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', margin: '0 0 16px' }}>
-                      Cancel anytime
-                    </p>
+                    {flashSaleActive && !resolvedAmbassador && (
+                      <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', margin: '-4px 0 0', fontStyle: 'italic' }}>
+                        first month
+                      </p>
+                    )}
+                    {flashSaleActive && !resolvedAmbassador ? (
+                      <p style={{ fontSize: '0.75rem', color: '#C6A664', margin: '0 0 16px', lineHeight: 1.5 }}>
+                        Use code <strong style={{ color: '#FFFFFF' }}>{FLASH_SALE.promoCode}</strong> at checkout. Then $49/mo after. Ends May 14.
+                      </p>
+                    ) : (
+                      <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', margin: '0 0 16px' }}>
+                        Cancel anytime
+                      </p>
+                    )}
                     <button
                       type="button"
                       onClick={handleSocialClick}
