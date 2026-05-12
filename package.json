@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "verify": "npm run typecheck && npm run test && npm run build",
     "test:e2e": "playwright test",
-    "lint:strict": "eslint ."
+    "lint:strict": "eslint .",
+    "check-mojibake": "node scripts/check-mojibake.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
