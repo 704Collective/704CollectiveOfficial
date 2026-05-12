@@ -510,6 +510,17 @@ function JoinInner() {
                     </details>
                   )}
 
+                  <details>
+                    <summary style={{ cursor: 'pointer', fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)' }}>
+                      Have a discount code?
+                    </summary>
+                    <p style={{ marginTop: '10px', marginBottom: 0, fontSize: '0.875rem', color: 'rgba(255,255,255,0.55)', lineHeight: 1.6 }}>
+                      Great! You{"'"}ll be able to apply your discount code on the next page during Stripe checkout. Just click{' '}
+                      <strong style={{ color: 'rgba(255,255,255,0.85)' }}>Continue to Checkout</strong>{' '}
+                      below and enter your code there.
+                    </p>
+                  </details>
+
                   {/* SMS consent - optional opt-in (Twilio A2P 10DLC compliance) */}
                   <div style={{
                     marginBottom: '4px',
