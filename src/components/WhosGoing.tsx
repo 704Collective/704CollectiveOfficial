@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getInitialsAvatarStyle } from '@/lib/avatarInitialsColor';
 
@@ -25,82 +26,63 @@ function twoInitials(fullName: string | null): string {
 }
 
 export function WhosGoing({ eventId }: WhosGoingProps) {
+  const { user, isActiveMember, isAdmin, isSuperAdmin, loading: authLoading } = useAuth();
+
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [memberCount, setMemberCount] = useState(0);
   const [publicCount, setPublicCount] = useState(0);
   const [guestCount, setGuestCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  const allowed = !!user && (isActiveMember || isAdmin || isSuperAdmin);
+
   useEffect(() => {
+    if (authLoading) return;
+
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    if (!allowed) {
+      setLoading(false);
+      return;
+    }
+
     fetchAttendees();
-  }, [eventId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId, user, isActiveMember, isAdmin, isSuperAdmin, authLoading]);
 
   const fetchAttendees = async () => {
-    // Count all three sources in parallel.
-    // members:   tickets (confirmed | rsvp) with a user_id
-    // public:    event_public_rsvps (rsvp)        - non-member RSVPs
-    // guests:    guest_passes (used)              - guests invited by members
-    const [memberRes, publicRes, guestRes] = await Promise.all([
-      supabase
-        .from('tickets')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_id', eventId)
-        .in('status', ['confirmed', 'rsvp'])
-        .not('user_id', 'is', null),
-      supabase
-        .from('event_public_rsvps')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_id', eventId)
-        .eq('status', 'rsvp'),
-      supabase
-        .from('guest_passes')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_id', eventId)
-        .eq('status', 'used'),
-    ]);
+    try {
+      const { data, error } = await supabase.rpc('get_event_attendees', { p_event_id: eventId });
 
-    const members = memberRes.count || 0;
-    const publics = publicRes.count || 0;
-    const guests = guestRes.count || 0;
+      if (error) {
+        // Permission denied / not authenticated - silently hide widget.
+        // The SECURITY DEFINER RPC raises a friendly exception for non-members;
+        // we don't want that surfaced as a console error.
+        setLoading(false);
+        return;
+      }
 
-    setMemberCount(members);
-    setPublicCount(publics);
-    setGuestCount(guests);
+      const result = data as {
+        member_count: number | string | null;
+        public_count: number | string | null;
+        guest_count: number | string | null;
+        total_count: number | string | null;
+        attendees: Attendee[] | null;
+      };
 
-    // Avatar row only shows member faces - we don't have profile pictures for
-    // anonymous public RSVPs or unnamed guest passes.
-    const { data, error } = await supabase
-      .from('tickets')
-      .select(`
-        user_id,
-        profiles!tickets_user_id_fkey (
-          id,
-          full_name,
-          avatar_url
-        )
-      `)
-      .eq('event_id', eventId)
-      .in('status', ['confirmed', 'rsvp'])
-      .not('user_id', 'is', null)
-      .limit(8);
-
-    if (!error && data) {
-      const attendeeList = data
-        .filter(t => {
-          const p = t.profiles as unknown as { id: string; full_name: string | null; avatar_url: string | null; deleted_at?: string | null } | null;
-          return p && !p.deleted_at;
-        })
-        .map(t => {
-          const p = t.profiles as unknown as { id: string; full_name: string | null; avatar_url: string | null };
-          return {
-            id: p.id,
-            full_name: p.full_name,
-            avatar_url: p.avatar_url,
-          };
-        });
-      setAttendees(attendeeList);
+      setMemberCount(Number(result?.member_count || 0));
+      setPublicCount(Number(result?.public_count || 0));
+      setGuestCount(Number(result?.guest_count || 0));
+      setTotalCount(Number(result?.total_count || 0));
+      setAttendees(Array.isArray(result?.attendees) ? result.attendees : []);
+      setLoading(false);
+    } catch {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const containerStyle: React.CSSProperties = {
@@ -110,6 +92,13 @@ export function WhosGoing({ eventId }: WhosGoingProps) {
     padding: '18px 20px',
     marginBottom: '16px',
   };
+
+  // Gate: widget never renders for logged-out or non-eligible users.
+  // The server-side RPC also enforces this, but bailing here avoids a
+  // round-trip and avoids flashing the skeleton.
+  if (!allowed) {
+    return null;
+  }
 
   if (loading) {
     return (
@@ -128,13 +117,11 @@ export function WhosGoing({ eventId }: WhosGoingProps) {
     );
   }
 
-  const peopleGoing = memberCount + publicCount;
-
-  if (peopleGoing === 0 && guestCount === 0) {
+  if (totalCount === 0 && guestCount === 0) {
     return null;
   }
 
-  // "+N" pill: how many people are NOT represented by an avatar.
+  // "+N" pill: people NOT represented by an avatar.
   // = (member tickets we didn't fetch) + (all public RSVPs, which have no avatars)
   const remainingMembers = Math.max(0, memberCount - attendees.length);
   const totalNotShown = remainingMembers + publicCount;
@@ -148,7 +135,7 @@ export function WhosGoing({ eventId }: WhosGoingProps) {
         </div>
 
         <p className="text-sm text-muted-foreground">
-          {peopleGoing} {peopleGoing === 1 ? 'person' : 'people'} going
+          {totalCount} {totalCount === 1 ? 'person' : 'people'} going
           {guestCount > 0 && ` - ${guestCount} guest${guestCount === 1 ? '' : 's'}`}
         </p>
 
