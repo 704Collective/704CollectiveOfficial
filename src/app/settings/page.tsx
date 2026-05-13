@@ -30,7 +30,21 @@ export default function Settings() {
   const [subscribeLoading, setSubscribeLoading] = useState(false);
 
   const p = profile as any;
-  const hasStripeSubscription = !!p?.stripe_customer_id && isActiveMember && !p?.membership_override;
+  // Only treat the user as having an actionable Stripe subscription when:
+  // - they have a Stripe customer
+  // - they are still an active member
+  // - they aren't on an admin override
+  // - their subscription is genuinely 'active' (not canceled/paused/past_due)
+  // - cancellation isn't already pending at period end
+  // This prevents the Cancel/Pause/Manage flows from being shown to users
+  // whose subscription was canceled in Stripe Dashboard but still in their
+  // grace period.
+  const hasStripeSubscription =
+    !!p?.stripe_customer_id
+    && isActiveMember
+    && !p?.membership_override
+    && p?.subscription_status === 'active'
+    && !p?.cancel_at_period_end;
 
   useEffect(() => {
     if (p) {

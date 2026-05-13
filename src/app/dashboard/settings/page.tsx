@@ -47,7 +47,14 @@ export default function SettingsPage() {
     }
   }, [profile]);
 
-  const hasStripeSubscription = !!(p?.subscription_id || p?.stripe_subscription_id);
+  // Same precedence as /settings: hide cancel/pause UI for canceled or
+  // already-pending-cancel subscriptions to avoid 500s from the edge functions.
+  const hasStripeSubscription =
+    !!p?.stripe_customer_id
+    && isActiveMember
+    && !p?.membership_override
+    && p?.subscription_status === 'active'
+    && !p?.cancel_at_period_end;
   const supabase = createClient();
 
   const memberSince = p?.member_since

@@ -104,7 +104,47 @@ serve(async (req) => {
     });
 
     if (subscriptions.data.length === 0) {
-      throw new Error("No active subscription found to cancel.");
+      logStep("No active subscription in Stripe - syncing profile state");
+
+      const { data: currentProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("subscription_status, subscription_ends_at, cancel_at_period_end")
+        .eq("id", userId)
+        .maybeSingle();
+
+      // Idempotent: profile already marked canceled -> just confirm.
+      if (currentProfile?.subscription_status === "canceled" || currentProfile?.cancel_at_period_end) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            already_canceled: true,
+            ends_at: currentProfile?.subscription_ends_at ?? null,
+            message: currentProfile?.subscription_ends_at
+              ? `Your membership is already canceled. You retain access until ${new Date(currentProfile.subscription_ends_at).toLocaleDateString()}.`
+              : "Your membership is already canceled.",
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        );
+      }
+
+      // Stripe was canceled out-of-band (e.g. admin via Dashboard).
+      // Sync the profile so UI stops showing an active state.
+      await supabaseAdmin
+        .from("profiles")
+        .update({
+          subscription_status: "canceled",
+          cancel_at_period_end: false,
+        })
+        .eq("id", userId);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          synced: true,
+          message: "Your subscription has been canceled.",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
     }
 
     const subscription = subscriptions.data[0];

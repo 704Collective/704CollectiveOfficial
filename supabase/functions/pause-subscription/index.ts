@@ -112,7 +112,34 @@ serve(async (req) => {
     });
 
     if (subscriptions.data.length === 0) {
-      throw new Error("No active subscription found to pause.");
+      logStep("No active subscription in Stripe - cannot pause");
+
+      const { data: currentProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("subscription_status, subscription_ends_at, subscription_paused_until")
+        .eq("id", userId)
+        .maybeSingle();
+
+      let message = "No active subscription to pause.";
+      if (currentProfile?.subscription_status === "canceled") {
+        message = "Your subscription is canceled and cannot be paused. Please rejoin to start a new subscription.";
+      } else if (currentProfile?.subscription_status === "paused") {
+        message = "Your subscription is already paused.";
+      }
+
+      // Return 200 with a helpful error message rather than 500.
+      // Frontend invoke() treats non-2xx as a transport error, which surfaces
+      // the unhelpful "Edge Function returned a non-2xx status code". By
+      // returning 200 with { success: false, error }, the frontend's existing
+      // `if (data?.error) throw new Error(data.error)` logic surfaces a useful
+      // message to the user.
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: message,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
     }
 
     const subscription = subscriptions.data[0];
