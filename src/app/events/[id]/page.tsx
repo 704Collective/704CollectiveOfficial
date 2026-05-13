@@ -104,8 +104,21 @@ export default function EventDetail() {
     setCheckedInAt(data?.checked_in_at || null);
   };
   const fetchTicketCount = async () => {
-    const { count } = await supabase.from('tickets').select('*', { count: 'exact', head: true }).eq('event_id', id).in('status', ['confirmed', 'rsvp']);
-    setTicketCount(count || 0);
+    // Capacity-relevant attendees come from THREE sources. Each one consumes
+    // a real seat at the event:
+    //   - tickets:            member RSVPs (confirmed | rsvp)
+    //   - event_public_rsvps: non-member RSVPs (rsvp)
+    //   - guest_passes:       guests invited by members (used)
+    const [memberRes, publicRes, guestRes] = await Promise.all([
+      supabase.from('tickets').select('*', { count: 'exact', head: true })
+        .eq('event_id', id).in('status', ['confirmed', 'rsvp']),
+      supabase.from('event_public_rsvps').select('*', { count: 'exact', head: true })
+        .eq('event_id', id).eq('status', 'rsvp'),
+      supabase.from('guest_passes').select('*', { count: 'exact', head: true })
+        .eq('event_id', id).eq('status', 'used'),
+    ]);
+    const total = (memberRes.count || 0) + (publicRes.count || 0) + (guestRes.count || 0);
+    setTicketCount(total);
   };
   const checkWaitlistStatus = async () => {
     if (!user) return;
