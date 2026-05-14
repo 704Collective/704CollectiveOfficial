@@ -120,6 +120,13 @@ function useWidgetData(type: WidgetType) {
             setData(totSent > 0 ? Math.round((totOpen / totSent) * 100) : 0);
             break;
           }
+          case 'email_click_rate': {
+            const { data: campaigns } = await supabase.from('email_campaigns').select('sent_count, click_count').eq('status', 'sent').gt('sent_count', 0);
+            const totSent = (campaigns ?? []).reduce((s, c) => s + c.sent_count, 0);
+            const totClick = (campaigns ?? []).reduce((s, c) => s + c.click_count, 0);
+            setData(totSent > 0 ? Math.round((totClick / totSent) * 100) : 0);
+            break;
+          }
           case 'conversion_rate': {
             const { count: contacts } = await supabase.from('contacts').select('id', { count: 'exact', head: true });
             const { count: converted } = await supabase.from('contacts').select('id', { count: 'exact', head: true }).not('converted_to_member_id', 'is', null);
@@ -176,7 +183,7 @@ function WidgetRenderer({ widget, onDelete, editMode }: { widget: Widget; onDele
     if (widget.widget_type === 'mrr' || widget.widget_type === 'pipeline_value') {
       return v >= 1000 ? `$${(v / 1000).toFixed(1)}k` : `$${v}`;
     }
-    if (widget.widget_type === 'email_open_rate' || widget.widget_type === 'conversion_rate') return `${v}%`;
+    if (widget.widget_type === 'email_open_rate' || widget.widget_type === 'email_click_rate' || widget.widget_type === 'conversion_rate') return `${v}%`;
     return v?.toLocaleString() ?? '0';
   };
 
