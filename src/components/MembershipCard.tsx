@@ -1,4 +1,10 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MembershipCardProps {
   name: string;
@@ -35,6 +41,128 @@ export function MembershipCard({
     memberType ?? (memberLabel.toLowerCase().includes('business') ? 'business' : 'social');
   const isBusiness =
     inferred === 'business' || brandSubtitle.toLowerCase().trim() === 'business';
+
+  // ── Apple Wallet integration ────────────────────────────────────────────
+  // Detect iOS so we only show the "Add to Apple Wallet" button on devices
+  // that can actually open .pkpass files. iPadOS 13+ reports as MacIntel,
+  // so we additionally probe for touch support.
+  const [isIos, setIsIos] = useState(false);
+  const [downloadingPass, setDownloadingPass] = useState(false);
+
+  useEffect(() => {
+    const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+    const ios =
+      /iPad|iPhone|iPod/.test(ua) ||
+      (ua.includes('Mac') && typeof document !== 'undefined' && 'ontouchend' in document);
+    setIsIos(ios);
+  }, []);
+
+  const handleAddToAppleWallet = async () => {
+    if (downloadingPass) return;
+    setDownloadingPass(true);
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      if (!accessToken) {
+        toast.error('Please sign in again to download your wallet pass.');
+        setDownloadingPass(false);
+        return;
+      }
+
+      // Raw fetch (not supabase.functions.invoke) so we can stream the binary
+      // .pkpass body straight into a Blob -> download anchor.
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/generate-apple-wallet-pass`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = 'Failed to generate wallet pass.';
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.error || errorMessage;
+        } catch {
+          // Response wasn't JSON, use default message
+        }
+        toast.error(errorMessage);
+        setDownloadingPass(false);
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '704-collective.pkpass';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Pass downloaded! Tap it to add to Apple Wallet.');
+    } catch (err) {
+      console.error('Wallet pass download failed:', err);
+      toast.error('Something went wrong. Please try again.');
+    } finally {
+      setDownloadingPass(false);
+    }
+  };
+
+  // Shared "Add to Apple Wallet" button - rendered as a sibling to the card
+  // div in both the social and business layouts. The enclosing wrapper has
+  // `space-y-3` for default spacing; we override with an explicit 20px top
+  // margin so the button sits a bit lower than other stacked siblings.
+  const appleWalletButton = isIos ? (
+    <div style={{ marginTop: '20px' }}>
+      <button
+        type="button"
+        onClick={handleAddToAppleWallet}
+        disabled={downloadingPass}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          width: '100%',
+          padding: '12px 24px',
+          backgroundColor: '#000000',
+          color: '#FFFFFF',
+          borderRadius: '8px',
+          fontSize: '0.9375rem',
+          fontWeight: 600,
+          border: 'none',
+          cursor: downloadingPass ? 'not-allowed' : 'pointer',
+          opacity: downloadingPass ? 0.6 : 1,
+          letterSpacing: '0.01em',
+          transition: 'opacity 200ms ease',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
+        }}
+      >
+        {downloadingPass ? (
+          <>
+            <Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} />
+            Generating pass...
+          </>
+        ) : (
+          <>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-2 13H7v-3h2.5c.7 1.2 2 2 3.5 2s2.8-.8 3.5-2H17v3zm-5-2c-1.1 0-2-.9-2-2 0-.6.2-1.1.6-1.4l1.4-1.4 1.4 1.4c.4.4.6.9.6 1.4 0 1.1-.9 2-2 2zm5-3h-2.6c-.4-1.2-1.5-2-2.9-2H7V7h10v6z" />
+            </svg>
+            Add to Apple Wallet
+          </>
+        )}
+      </button>
+    </div>
+  ) : null;
 
   if (isBusiness) {
     return (
@@ -97,6 +225,7 @@ export function MembershipCard({
             </div>
           </div>
         </div>
+        {appleWalletButton}
       </div>
     );
   }
@@ -152,6 +281,7 @@ export function MembershipCard({
           </div>
         </div>
       </div>
+      {appleWalletButton}
     </div>
   );
 }
