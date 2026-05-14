@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { isIosDevice, downloadAppleWalletPass } from '@/lib/appleWallet';
 
 interface MembershipCardProps {
   name: string;
@@ -44,74 +43,20 @@ export function MembershipCard({
 
   // ── Apple Wallet integration ────────────────────────────────────────────
   // Detect iOS so we only show the "Add to Apple Wallet" button on devices
-  // that can actually open .pkpass files. iPadOS 13+ reports as MacIntel,
-  // so we additionally probe for touch support.
+  // that can actually open .pkpass files. Mounted in useEffect to avoid
+  // hydration mismatch (isIosDevice returns false on the server).
   const [isIos, setIsIos] = useState(false);
   const [downloadingPass, setDownloadingPass] = useState(false);
 
   useEffect(() => {
-    const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
-    const ios =
-      /iPad|iPhone|iPod/.test(ua) ||
-      (ua.includes('Mac') && typeof document !== 'undefined' && 'ontouchend' in document);
-    setIsIos(ios);
+    setIsIos(isIosDevice());
   }, []);
 
   const handleAddToAppleWallet = async () => {
     if (downloadingPass) return;
     setDownloadingPass(true);
-
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
-
-      if (!accessToken) {
-        toast.error('Please sign in again to download your wallet pass.');
-        setDownloadingPass(false);
-        return;
-      }
-
-      // Raw fetch (not supabase.functions.invoke) so we can stream the binary
-      // .pkpass body straight into a Blob -> download anchor.
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/generate-apple-wallet-pass`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        let errorMessage = 'Failed to generate wallet pass.';
-        try {
-          const errorJson = JSON.parse(errorText);
-          errorMessage = errorJson.error || errorMessage;
-        } catch {
-          // Response wasn't JSON, use default message
-        }
-        toast.error(errorMessage);
-        setDownloadingPass(false);
-        return;
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = '704-collective.pkpass';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-
-      toast.success('Pass downloaded! Tap it to add to Apple Wallet.');
-    } catch (err) {
-      console.error('Wallet pass download failed:', err);
-      toast.error('Something went wrong. Please try again.');
+      await downloadAppleWalletPass();
     } finally {
       setDownloadingPass(false);
     }

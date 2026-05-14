@@ -2,12 +2,13 @@
 
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, Smartphone } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { GENERATE_WALLET_PASS_FUNCTION } from '@/lib/walletPass';
 import { toast } from 'sonner';
 import { markOnboardingWalletDone } from '@/lib/onboardingStorage';
 import { useAuth } from '@/hooks/useAuth';
+import { downloadAppleWalletPass } from '@/lib/appleWallet';
 
 function AppleIcon({ className }: { className?: string }) {
   return (
@@ -48,6 +49,7 @@ function preferSameTabWalletOpen(): boolean {
 
 export function WalletButtons({ compact = false }: { compact?: boolean }) {
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   const platform = useDevicePlatform();
   const { user } = useAuth();
 
@@ -118,13 +120,14 @@ export function WalletButtons({ compact = false }: { compact?: boolean }) {
     }
   };
 
-  // Apple Wallet not ready yet — show holding message immediately, no API call needed
-  const handleAppleWallet = () => {
-    toast("We're polishing the Apple experience - hang tight, 704 fam! Use the Google link or show your profile for now.", {
-      duration: 5000,
-      icon: <Smartphone className="w-4 h-4 shrink-0" />,
-      position: 'bottom-right',
-    });
+  const handleAppleWallet = async () => {
+    if (appleLoading) return;
+    setAppleLoading(true);
+    try {
+      await downloadAppleWalletPass();
+    } finally {
+      setAppleLoading(false);
+    }
   };
 
   const isApplePrimary = platform === 'apple';
@@ -136,8 +139,8 @@ export function WalletButtons({ compact = false }: { compact?: boolean }) {
           {googleLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <GoogleWalletIcon className="w-3.5 h-3.5" />}
           Google
         </Button>
-        <Button variant="outline" size="sm" className="text-xs px-3" onClick={handleAppleWallet}>
-          <AppleIcon className="w-3.5 h-3.5" />
+        <Button variant="outline" size="sm" className="text-xs px-3" onClick={handleAppleWallet} disabled={appleLoading}>
+          {appleLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <AppleIcon className="w-3.5 h-3.5" />}
           Apple
         </Button>
       </div>
@@ -148,8 +151,8 @@ export function WalletButtons({ compact = false }: { compact?: boolean }) {
     <div className="flex flex-col gap-2 mt-4">
       {isApplePrimary ? (
         <>
-          <Button variant="outline" className="w-full text-sm" onClick={handleAppleWallet}>
-            <AppleIcon className="w-4 h-4" />
+          <Button variant="outline" className="w-full text-sm" onClick={handleAppleWallet} disabled={appleLoading}>
+            {appleLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <AppleIcon className="w-4 h-4" />}
             Apple Wallet
           </Button>
           <Button variant="outline" className="w-full text-sm" onClick={handleGoogleWallet} disabled={googleLoading}>
@@ -163,8 +166,8 @@ export function WalletButtons({ compact = false }: { compact?: boolean }) {
             {googleLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <GoogleWalletIcon className="w-4 h-4" />}
             Google Wallet
           </Button>
-          <Button variant="outline" className="w-full text-sm" onClick={handleAppleWallet}>
-            <AppleIcon className="w-4 h-4" />
+          <Button variant="outline" className="w-full text-sm" onClick={handleAppleWallet} disabled={appleLoading}>
+            {appleLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <AppleIcon className="w-4 h-4" />}
             Apple Wallet
           </Button>
         </>
