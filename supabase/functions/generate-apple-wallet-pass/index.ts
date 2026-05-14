@@ -16,6 +16,14 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import forge from "npm:node-forge@1.3.1";
 import JSZip from "npm:jszip@3.10.1";
+import {
+  ICON_1X_BASE64,
+  ICON_2X_BASE64,
+  ICON_3X_BASE64,
+  LOGO_1X_BASE64,
+  LOGO_2X_BASE64,
+  base64ToUint8Array,
+} from "./embedded-assets.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,14 +36,8 @@ const logStep = (step: string, details?: unknown) => {
   console.log(`[APPLE-WALLET-PASS] ${step}${d}`);
 };
 
-// ── Apple WWDR G4 intermediate certificate ────────────────────────────────────
-// Public certificate, safe to embed. Expires 2030-12-10.
-// Source: https://www.apple.com/certificateauthority/AppleWWDRCAG4.cer  (DER)
-// To regenerate:
-//   curl -s https://www.apple.com/certificateauthority/AppleWWDRCAG4.cer \
-//     | openssl x509 -inform DER -outform PEM
-// Paste the resulting PEM (including BEGIN/END lines) between the backticks
-// below. The pass-signing chain cannot validate without this certificate.
+// Apple WWDR G4 intermediate certificate (expires 2030-12-10)
+// Source: https://www.apple.com/certificateauthority/AppleWWDRCAG4.cer
 const WWDR_G4_PEM = `-----BEGIN CERTIFICATE-----
 MIIEVTCCAz2gAwIBAgIUE9x3lVJx5T3GMujM/+Uh88zFztIwDQYJKoZIhvcNAQELBQAwYjELMAkG
 A1UEBhMCVVMxEzARBgNVBAoTCkFwcGxlIEluYy4xJjAkBgNVBAsTHUFwcGxlIENlcnRpZmljYXRp
@@ -59,7 +61,7 @@ ac3AfOriJP6YRLj477JxPxpd1F1+M02cHSS+APCQA1iZQT0xWmJArzmoUUOSqwSonMJNsUvSq3xK
 X+udO7xPiEAGE/+QF4oIRynoYpgppU8RBWk6z/Kf
 -----END CERTIFICATE-----`;
 
-// ── helpers ───────────────────────────────────────────────────────────────────
+// helpers
 
 async function sha1Hex(bytes: Uint8Array): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-1", bytes);
@@ -74,9 +76,16 @@ function forgeBinaryToUint8Array(s: string): Uint8Array {
   return out;
 }
 
-async function readAsset(filename: string): Promise<Uint8Array> {
-  const url = new URL(`./assets/${filename}`, import.meta.url);
-  return await Deno.readFile(url);
+// Synchronous: decodes a base64 constant — no I/O, no filesystem access.
+function loadAssetBytes(filename: string): Uint8Array {
+  switch (filename) {
+    case "icon.png":    return base64ToUint8Array(ICON_1X_BASE64);
+    case "icon@2x.png": return base64ToUint8Array(ICON_2X_BASE64);
+    case "icon@3x.png": return base64ToUint8Array(ICON_3X_BASE64);
+    case "logo.png":    return base64ToUint8Array(LOGO_1X_BASE64);
+    case "logo@2x.png": return base64ToUint8Array(LOGO_2X_BASE64);
+    default: throw new Error(`Unknown asset: ${filename}`);
+  }
 }
 
 function formatMonthYear(iso: string | null | undefined): string {
@@ -96,7 +105,7 @@ function shortId(uuid: string): string {
   return uuid.replace(/-/g, "").slice(-8).toUpperCase();
 }
 
-// ── main ──────────────────────────────────────────────────────────────────────
+// main
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -112,7 +121,7 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    // ── Required secrets ──────────────────────────────────────────────────
+    // Required secrets
     const passTypeIdentifier = Deno.env.get("APPLE_PASS_TYPE_ID");
     const teamIdentifier = Deno.env.get("APPLE_TEAM_ID");
     const certBase64 = Deno.env.get("APPLE_PASS_CERT_BASE64");
@@ -134,7 +143,7 @@ serve(async (req) => {
       );
     }
 
-    // ── Auth ──────────────────────────────────────────────────────────────
+    // Auth
     const authHeader = req.headers.get("Authorization") || "";
     if (!authHeader.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -164,7 +173,7 @@ serve(async (req) => {
     const userId = claimsData.claims.sub as string;
     logStep("User authenticated", { userId });
 
-    // ── Profile lookup + member gate ──────────────────────────────────────
+    // Profile lookup + member gate
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false },
     });
@@ -213,7 +222,7 @@ serve(async (req) => {
 
     logStep("Member verified", { member_type: profile.member_type, role });
 
-    // ── Build pass.json ───────────────────────────────────────────────────
+    // Build pass.json
     const memberSinceISO: string | null = (profile.member_since as string | null) ?? (profile.created_at as string | null) ?? null;
     const passJson = {
       formatVersion: 1,
@@ -260,40 +269,28 @@ serve(async (req) => {
     const passJsonBytes = new TextEncoder().encode(passJsonString);
     logStep("pass.json built", { size: passJsonBytes.length });
 
-    // ── Load asset PNGs ───────────────────────────────────────────────────
-    let icon: Uint8Array, icon2x: Uint8Array, icon3x: Uint8Array, logo: Uint8Array, logo2x: Uint8Array;
-    try {
-      [icon, icon2x, icon3x, logo, logo2x] = await Promise.all([
-        readAsset("icon.png"),
-        readAsset("icon@2x.png"),
-        readAsset("icon@3x.png"),
-        readAsset("logo.png"),
-        readAsset("logo@2x.png"),
-      ]);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      logStep("Failed to read assets", { error: msg });
-      return new Response(JSON.stringify({ error: "Failed to read pass assets" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Load asset PNGs from embedded base64 constants (no filesystem I/O)
+    const icon   = loadAssetBytes("icon.png");
+    const icon2x = loadAssetBytes("icon@2x.png");
+    const icon3x = loadAssetBytes("icon@3x.png");
+    const logo   = loadAssetBytes("logo.png");
+    const logo2x = loadAssetBytes("logo@2x.png");
     logStep("Assets loaded");
 
-    // ── Build manifest.json (SHA-1 of every file) ─────────────────────────
+    // Build manifest.json (SHA-1 of every file)
     const manifest: Record<string, string> = {
-      "pass.json": await sha1Hex(passJsonBytes),
-      "icon.png": await sha1Hex(icon),
-      "icon@2x.png": await sha1Hex(icon2x),
-      "icon@3x.png": await sha1Hex(icon3x),
-      "logo.png": await sha1Hex(logo),
-      "logo@2x.png": await sha1Hex(logo2x),
+      "pass.json":    await sha1Hex(passJsonBytes),
+      "icon.png":     await sha1Hex(icon),
+      "icon@2x.png":  await sha1Hex(icon2x),
+      "icon@3x.png":  await sha1Hex(icon3x),
+      "logo.png":     await sha1Hex(logo),
+      "logo@2x.png":  await sha1Hex(logo2x),
     };
     const manifestJsonString = JSON.stringify(manifest);
     const manifestJsonBytes = new TextEncoder().encode(manifestJsonString);
     logStep("manifest.json built");
 
-    // ── Decode .p12 and extract cert + private key ────────────────────────
+    // Decode .p12 and extract cert + private key
     let passTypeCert: forge.pki.Certificate;
     let passTypePrivateKey: forge.pki.PrivateKey;
     try {
@@ -330,7 +327,7 @@ serve(async (req) => {
       );
     }
 
-    // ── Sign manifest.json (PKCS#7 detached, DER) ─────────────────────────
+    // Sign manifest.json (PKCS#7 detached, DER)
     let signatureBytes: Uint8Array;
     try {
       const wwdrCert = forge.pki.certificateFromPem(WWDR_G4_PEM);
@@ -363,7 +360,7 @@ serve(async (req) => {
       });
     }
 
-    // ── Bundle as .pkpass (zip) ───────────────────────────────────────────
+    // Bundle as .pkpass (zip)
     let pkpassBytes: Uint8Array;
     try {
       const zip = new JSZip();
@@ -386,7 +383,7 @@ serve(async (req) => {
       });
     }
 
-    // ── Done ──────────────────────────────────────────────────────────────
+    // Done
     return new Response(pkpassBytes, {
       status: 200,
       headers: {
