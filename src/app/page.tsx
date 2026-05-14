@@ -489,27 +489,27 @@ export default async function Home() {
                 {[
                   {
                     title: "Curated Social Events",
-                    desc: "10 planned events every month - happy hours, dinners, rooftop nights, and more.",
+                    desc: "10+ events a month - happy hours, dinners, rooftop nights, hikes. Built for actual connection, not awkward small talk.",
                   },
                   {
                     title: "Wellness & Adventure",
-                    desc: "Cold plunge, hot yoga, hikes, pickleball - activities that actually get you moving.",
+                    desc: "Cold plunge, hot yoga, pickleball, sauna nights. The stuff you've been meaning to try, with people who'll actually show up.",
                   },
                   {
                     title: "Priority Access",
-                    desc: "RSVP before anyone else. Members always get first pick on limited-capacity events.",
+                    desc: "First pick on capped events. RSVP before anyone else when spots are limited.",
                   },
                   {
                     title: "Real Community",
-                    desc: "A group chat, familiar faces, and people who actually remember your name.",
+                    desc: "Familiar faces, consistent events, and people who remember your name. Small enough to actually know everyone.",
                   },
                   {
-                    title: "Member Perks",
-                    desc: "Exclusive discounts and deals through our CLTBucketlist partner network.",
+                    title: "The CLTBucketlist Network",
+                    desc: "Member-only perks across Charlotte's best spots - restaurants, fitness studios, experiences - through our partner network.",
                   },
                   {
-                    title: "No Commitment",
-                    desc: "Cancel anytime. No contracts, no cancellation fees, no guilt trips.",
+                    title: "Charlotte's Front Door",
+                    desc: "113 people move here every day. 704 is where they find their people first.",
                   },
                 ].map((item, i) => (
                   <StaggerItem
@@ -546,6 +546,31 @@ export default async function Home() {
                   </StaggerItem>
                 ))}
               </StaggerContainer>
+
+              <div style={{ marginTop: "32px", display: "flex", justifyContent: "center" }}>
+                <a
+                  href="#two-tiers-one-community"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    color: "#FFFFFF",
+                    letterSpacing: "0.01em",
+                    padding: "12px 24px",
+                    borderRadius: "999px",
+                    border: "1px solid rgba(255, 255, 255, 0.15)",
+                    backgroundColor: "rgba(255, 255, 255, 0.05)",
+                    transition: "all 200ms ease",
+                    textDecoration: "none",
+                  }}
+                  className="card-hover"
+                >
+                  Find your fit
+                  <span aria-hidden="true">→</span>
+                </a>
+              </div>
             </div>
 
             {/* Divider */}
@@ -783,6 +808,7 @@ export default async function Home() {
           }}
         >
           <div
+            id="two-tiers-one-community"
             style={{
               maxWidth: "1000px",
               margin: "0 auto",
