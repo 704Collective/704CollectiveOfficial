@@ -60,38 +60,12 @@ export function TaskBoard() {
           *,
           assignee:profiles!admin_tasks_assigned_to_fkey(full_name, avatar_url)
         `)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      // Auto-archive completed tasks older than 7 days
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      const toArchive = (data || []).filter(
-        t => t.status === 'complete' && t.completed_at && new Date(t.completed_at) < sevenDaysAgo
-      );
-      if (toArchive.length > 0) {
-        const archiveIds = toArchive.map(t => t.id);
-        await supabase.from('admin_tasks').update({ status: 'blocked' }).in('id', archiveIds);
-      }
-
-      // Auto-delete archived tasks older than 30 days (from completed_at)
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const toDelete = (data || []).filter(
-        t => t.status === 'blocked' && t.completed_at && new Date(t.completed_at) < thirtyDaysAgo
-      );
-      if (toDelete.length > 0) {
-        const deleteIds = toDelete.map(t => t.id);
-        await supabase.from('admin_tasks').delete().in('id', deleteIds);
-      }
-
-      // Update local state: apply archive status changes and remove deleted
-      const deleteSet = new Set(toDelete.map(t => t.id));
-      const archiveSet = new Set(toArchive.map(t => t.id));
-      const remainingData = (data || [])
-        .filter(t => !deleteSet.has(t.id))
-        .map(t => archiveSet.has(t.id) ? { ...t, status: 'blocked' } : t);
+      const remainingData = (data || []);
 
       // Get comment counts
       const taskIds = remainingData.map(t => t.id);
@@ -183,11 +157,15 @@ export function TaskBoard() {
     const task = tasks.find(t => t.id === taskId);
     if (!task || task.status === newStatus) return;
 
+    const nowIso = new Date().toISOString();
+    const completedAt = newStatus === 'complete' ? nowIso : null;
+    const archivedAt = newStatus === 'blocked' ? nowIso : null;
+
     // Optimistic update
-    setTasks(prev => 
-      prev.map(t => 
-        t.id === taskId 
-          ? { ...t, status: newStatus, completed_at: newStatus === 'complete' ? new Date().toISOString() : null }
+    setTasks(prev =>
+      prev.map(t =>
+        t.id === taskId
+          ? { ...t, status: newStatus, completed_at: completedAt, archived_at: archivedAt }
           : t
       )
     );
@@ -195,9 +173,10 @@ export function TaskBoard() {
     try {
       const { error } = await supabase
         .from('admin_tasks')
-        .update({ 
+        .update({
           status: newStatus,
-          completed_at: newStatus === 'complete' ? new Date().toISOString() : null,
+          completed_at: completedAt,
+          archived_at: archivedAt,
         })
         .eq('id', taskId);
 
@@ -331,6 +310,15 @@ export function TaskBoard() {
       </div>
 
       {/* Archive Section */}
+      {/*
+        TODO (Project 5.11): Add an "Empty archive" / "Clear archive" action.
+        It MUST soft-delete (do not call .delete()), e.g.:
+          await supabase
+            .from('admin_tasks')
+            .update({ deleted_at: new Date().toISOString() })
+            .eq('status', 'blocked')
+            .is('deleted_at', null);
+      */}
       <div className="mt-2">
         <button
           onClick={() => setShowArchive(!showArchive)}
