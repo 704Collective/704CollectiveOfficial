@@ -245,7 +245,7 @@ export default async function Home() {
                   marginBottom: "16px",
                 }}
               >
-                Your city. Your people.
+                Where Charlotte Connects
               </h2>
             </FadeUp>
 

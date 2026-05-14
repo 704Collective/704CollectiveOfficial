@@ -831,7 +831,7 @@ export default function SocialPage() {
                   marginBottom: '16px',
                 }}
               >
-                YOUR CITY. YOUR PEOPLE.
+                WHERE CHARLOTTE CONNECTS
               </h2>
             </FadeUp>
 

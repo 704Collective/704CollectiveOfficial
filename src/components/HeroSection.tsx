@@ -27,8 +27,7 @@ export function HeroSection() {
           </div>
           
           <div className="space-y-1 animate-fade-up" style={{ animationDelay: '0.1s' }}>
-            <p className="font-semibold italic text-2xl md:text-3xl text-foreground">Your city.</p>
-            <p className="font-semibold italic text-2xl md:text-3xl text-foreground">Your people.</p>
+            <p className="font-semibold italic text-2xl md:text-3xl text-foreground">Where Charlotte Connects</p>
           </div>
 
           <p className="text-muted-foreground text-lg animate-fade-up max-w-lg" style={{ animationDelay: '0.15s' }}>
