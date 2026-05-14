@@ -13,6 +13,7 @@ import { NotificationsFeed } from '@/components/NotificationsFeed';
 import { NextEventHero } from '@/components/NextEventHero';
 import { CalendarSyncButton } from '@/components/CalendarSyncButton';
 import { CalendarConnectPrompt } from '@/components/CalendarConnectPrompt';
+import { CalendarSubscribePanel } from '@/components/CalendarSubscribePanel';
 import { MembershipStatusBar } from '@/components/MembershipStatusBar';
 import { MembershipCard } from '@/components/MembershipCard';
 import { WalletButtons } from '@/components/WalletButtons';
@@ -557,41 +558,6 @@ export default function Dashboard() {
           </>
         )}
 
-        {/* Calendar sync - RSVPed events only; prompt setup if no token yet */}
-        {isActiveMember && supabaseUrl && (
-          <div id="calendar-section" className="scroll-mt-28 space-y-2">
-            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-              Calendar
-            </p>
-            <SectionErrorBoundary>
-              {p.calendar_token ? (
-                <CalendarSyncButton
-                  calendarToken={p.calendar_token}
-                  baseUrl={supabaseUrl}
-                  variant="cta"
-                  userId={user.id}
-                />
-              ) : !calendarPromptDismissed ? (
-                <CalendarConnectPrompt
-                  calendarToken={null}
-                  baseUrl={supabaseUrl}
-                  userId={user.id}
-                  onDismiss={() => setCalendarPromptDismissed(true)}
-                  onTokenCreated={() => void refreshProfile()}
-                />
-              ) : (
-                <button
-                  type="button"
-                  className="text-sm font-medium text-[#C6A664] hover:underline"
-                  onClick={() => setCalendarPromptDismissed(false)}
-                >
-                  Connect your calendar
-                </button>
-              )}
-            </SectionErrorBoundary>
-          </div>
-        )}
-
         {/* Onboarding checklist */}
         {isActiveMember && (
           <SectionErrorBoundary>
@@ -599,25 +565,63 @@ export default function Dashboard() {
           </SectionErrorBoundary>
         )}
 
-        {/* Membership card + wallet - stacked and centered on all breakpoints (desktop included) */}
+        {/* Member tools - card, wallets, calendar */}
         {isActiveMember && (
           <div
-            id="wallet-section"
-            className="mx-auto flex w-full max-w-lg flex-col items-center gap-5 scroll-mt-28"
+            id="member-tools-section"
+            className="mx-auto w-full max-w-4xl scroll-mt-28"
           >
-            <div className="w-full">
-              <MembershipCard
-                name={p.full_name || 'Member'}
-                memberId={user.id}
-                memberSince={memberSince}
-                memberType={p.member_type === 'business' ? 'business' : 'social'}
-                memberLabel={
-                  p.member_type === 'business' ? 'Business Member' : 'Social Member'
-                }
-                brandSubtitle={p.member_type === 'business' ? 'Business' : 'Social'}
-              />
+            <div className="flex flex-col items-stretch gap-5 md:flex-row md:items-start md:gap-6">
+              {/* Left column (top on mobile): Card + Wallet buttons */}
+              <div className="flex flex-col items-center gap-5 md:w-1/2">
+                <div className="w-full max-w-sm">
+                  <MembershipCard
+                    name={p.full_name || 'Member'}
+                    memberId={user.id}
+                    memberSince={memberSince}
+                    memberType={p.member_type === 'business' ? 'business' : 'social'}
+                    memberLabel={
+                      p.member_type === 'business' ? 'Business Member' : 'Social Member'
+                    }
+                    brandSubtitle={p.member_type === 'business' ? 'Business' : 'Social'}
+                  />
+                </div>
+                <WalletButtons compact />
+              </div>
+
+              {/* Right column (bottom on mobile): Calendar */}
+              {supabaseUrl && (
+                <div className="md:w-1/2">
+                  {p.calendar_token ? (
+                    <CalendarSubscribePanel
+                      calendarToken={p.calendar_token}
+                      baseUrl={supabaseUrl}
+                      memberType={p.member_type ?? null}
+                      userId={user.id}
+                    />
+                  ) : !calendarPromptDismissed ? (
+                    <CalendarConnectPrompt
+                      calendarToken={null}
+                      baseUrl={supabaseUrl}
+                      userId={user.id}
+                      onDismiss={() => setCalendarPromptDismissed(true)}
+                      onTokenCreated={() => void refreshProfile()}
+                    />
+                  ) : (
+                    <div className="rounded-xl border border-border bg-card/50 p-4">
+                      <p className="text-xs text-muted-foreground mb-2">Calendar sync</p>
+                      <button
+                        type="button"
+                        className="text-sm font-medium text-[#C6A664] hover:underline"
+                        onClick={() => setCalendarPromptDismissed(false)}
+                      >
+                        Set up calendar sync →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <WalletButtons compact />
           </div>
         )}
 

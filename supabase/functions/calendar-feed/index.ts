@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,8 +15,32 @@ interface Event {
   location_name: string | null;
 }
 
-// In-memory rate limiting store (resets on function cold start)
-// For production, consider using Redis or Supabase for persistent rate limiting
+type Scope = "social" | "business" | "all" | "rsvp_only";
+
+const VALID_SCOPES: ReadonlySet<Scope> = new Set<Scope>([
+  "social",
+  "business",
+  "all",
+  "rsvp_only",
+]);
+
+const SCOPE_CALENDAR_NAME: Record<Scope, string> = {
+  social: "704 Social Events",
+  business: "704 Business Events",
+  all: "704 Collective — All Events",
+  rsvp_only: "704 Collective Events",
+};
+
+// Column on profiles where we stamp the first successful fetch. null = no stamp.
+const SCOPE_STAMP_COLUMN: Record<Scope, string | null> = {
+  social: "calendar_subscribed_social_at",
+  business: "calendar_subscribed_business_at",
+  all: "calendar_subscribed_all_at",
+  rsvp_only: null,
+};
+
+// In-memory rate limiting store (resets on function cold start).
+// For production, consider Redis or a Supabase table for persistent limits.
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 10; // Max 10 requests per minute per token
@@ -26,7 +50,6 @@ function isRateLimited(token: string): boolean {
   const entry = rateLimitStore.get(token);
 
   if (!entry || now > entry.resetTime) {
-    // New window or expired
     rateLimitStore.set(token, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
     return false;
   }
@@ -39,8 +62,22 @@ function isRateLimited(token: string): boolean {
   return false;
 }
 
+function parseScope(raw: string | null): Scope {
+  if (raw && VALID_SCOPES.has(raw as Scope)) return raw as Scope;
+  return "rsvp_only";
+}
+
+function isScopeAuthorized(scope: Scope, memberType: string | null): boolean {
+  // business + all are gated to business-tier members; social + rsvp_only are
+  // open to any active member (social / business / partner).
+  if (scope === "business" || scope === "all") {
+    return memberType === "business";
+  }
+  return true;
+}
+
 // Simple ICS generator
-function generateICS(events: Event[]): string {
+function generateICS(events: Event[], calendarName: string): string {
   const formatDate = (date: Date): string => {
     return date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
   };
@@ -55,7 +92,7 @@ function generateICS(events: Event[]): string {
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
     "PRODID:-//704 Collective//Member Calendar//EN",
-    "X-WR-CALNAME:704 Collective Events",
+    `X-WR-CALNAME:${escapeText(calendarName)}`,
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
   ];
@@ -63,7 +100,7 @@ function generateICS(events: Event[]): string {
   for (const event of events) {
     const startDate = new Date(event.start_time);
     const endDate = new Date(event.end_time);
-    
+
     ics.push(
       "BEGIN:VEVENT",
       `UID:${event.id}@704collective.com`,
@@ -73,12 +110,108 @@ function generateICS(events: Event[]): string {
       `SUMMARY:${escapeText(event.title)}`,
       event.description ? `DESCRIPTION:${escapeText(event.description)}` : "",
       event.location_name ? `LOCATION:${escapeText(event.location_name)}` : "",
-      "END:VEVENT"
+      "END:VEVENT",
     );
   }
 
   ics.push("END:VCALENDAR");
   return ics.join("\r\n");
+}
+
+// Legacy behavior: only events the member has a non-cancelled ticket for, future only.
+async function fetchRsvpEvents(
+  supabase: SupabaseClient,
+  profileId: string,
+): Promise<Event[] | { error: string }> {
+  const { data: ticketRows, error: ticketErr } = await supabase
+    .from("tickets")
+    .select("event_id")
+    .eq("user_id", profileId)
+    .neq("status", "cancelled");
+
+  if (ticketErr) {
+    console.error("Calendar tickets query:", ticketErr);
+    return { error: "Server error" };
+  }
+
+  const eventIds = [
+    ...new Set(
+      (ticketRows ?? [])
+        .map((t: { event_id: string | null }) => t.event_id)
+        .filter((id): id is string => typeof id === "string" && id.length > 0),
+    ),
+  ];
+
+  if (eventIds.length === 0) return [];
+
+  const { data: evs, error: evErr } = await supabase
+    .from("events")
+    .select("id, title, description, start_time, end_time, location_name")
+    .in("id", eventIds)
+    .gte("start_time", new Date().toISOString())
+    .order("start_time", { ascending: true });
+
+  if (evErr) {
+    console.error("Calendar events query (rsvp_only):", evErr);
+    return { error: "Server error" };
+  }
+
+  return (evs ?? []) as Event[];
+}
+
+// social / business / all: filter by event_type + is_business_only, 30-day backwindow.
+async function fetchScopeEvents(
+  supabase: SupabaseClient,
+  scope: Exclude<Scope, "rsvp_only">,
+): Promise<Event[] | { error: string }> {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  let query = supabase
+    .from("events")
+    .select("id, title, description, start_time, end_time, location_name")
+    .gte("start_time", thirtyDaysAgo)
+    .order("start_time", { ascending: true });
+
+  if (scope === "social") {
+    query = query.eq("event_type", "social").eq("is_business_only", false);
+  } else if (scope === "business") {
+    query = query.or("event_type.eq.business,is_business_only.eq.true");
+  }
+  // scope === "all": no extra filter — return everything in the window.
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error(`Calendar events query (${scope}):`, error);
+    return { error: "Server error" };
+  }
+
+  return (data ?? []) as Event[];
+}
+
+// Stamp profiles.calendar_subscribed_<scope>_at on first successful fetch.
+// Idempotent (only writes when the column is currently null). Silently best-effort:
+// failures are logged but never break the calendar response.
+async function stampSubscription(
+  supabase: SupabaseClient,
+  profileId: string,
+  scope: Scope,
+): Promise<void> {
+  const column = SCOPE_STAMP_COLUMN[scope];
+  if (!column) return;
+
+  try {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ [column]: new Date().toISOString() })
+      .eq("id", profileId)
+      .is(column, null);
+    if (error) {
+      console.error(`Calendar subscription stamp (${scope}) failed:`, error);
+    }
+  } catch (err) {
+    console.error(`Calendar subscription stamp (${scope}) threw:`, err);
+  }
 }
 
 serve(async (req) => {
@@ -90,6 +223,7 @@ serve(async (req) => {
   try {
     const url = new URL(req.url);
     const token = url.searchParams.get("token");
+    const scope = parseScope(url.searchParams.get("scope"));
 
     if (!token) {
       return new Response("Missing calendar token", { status: 400, headers: corsHeaders });
@@ -101,76 +235,66 @@ serve(async (req) => {
       return new Response("Invalid token format", { status: 400, headers: corsHeaders });
     }
 
-    // Check rate limiting
+    // Check rate limiting (per-token, regardless of scope)
     if (isRateLimited(token)) {
-      return new Response("Too many requests. Please try again later.", { 
-        status: 429, 
+      return new Response("Too many requests. Please try again later.", {
+        status: 429,
         headers: {
           ...corsHeaders,
-          "Retry-After": "60"
-        }
+          "Retry-After": "60",
+        },
       });
     }
-  
-    // Create Supabase client
+
+    // Create Supabase client (service role)
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
-  
-    // Validate token and check subscription status (need profile id for ticket join)
+
+    // Validate token; pull member_type for scope authorization.
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id, subscription_status")
+      .select("id, subscription_status, member_type")
       .eq("calendar_token", token)
       .is("deleted_at", null)
       .single();
-  
+
     if (!profile) {
-       return new Response("Invalid token", { status: 404, headers: corsHeaders });
+      // 404 — do not leak existence
+      return new Response("Invalid token", { status: 404, headers: corsHeaders });
     }
 
-    if (profile.subscription_status !== 'active') {
+    if (profile.subscription_status !== "active") {
       return new Response("Active membership required", { status: 403, headers: corsHeaders });
     }
 
-    // Only events this member has a non-cancelled ticket for (RSVP / purchased)
-    const { data: ticketRows, error: ticketErr } = await supabase
-      .from("tickets")
-      .select("event_id")
-      .eq("user_id", profile.id)
-      .neq("status", "cancelled");
+    const memberType = (profile.member_type as string | null) ?? null;
 
-    if (ticketErr) {
-      console.error("Calendar tickets query:", ticketErr);
-      return new Response("Server error", { status: 500, headers: corsHeaders });
+    if (!isScopeAuthorized(scope, memberType)) {
+      console.log(
+        `[calendar-feed] scope=${scope} denied for tier=${memberType ?? "unknown"}`,
+      );
+      return new Response("Scope not available for your membership tier", {
+        status: 403,
+        headers: corsHeaders,
+      });
     }
 
-    const eventIds = [
-      ...new Set(
-        (ticketRows ?? [])
-          .map((t: { event_id: string | null }) => t.event_id)
-          .filter((id): id is string => typeof id === "string" && id.length > 0)
-      ),
-    ];
+    console.log(`[calendar-feed] scope=${scope} tier=${memberType ?? "unknown"}`);
 
-    let events: Event[] = [];
-    if (eventIds.length > 0) {
-      const { data: evs, error: evErr } = await supabase
-        .from("events")
-        .select("id, title, description, start_time, end_time, location_name")
-        .in("id", eventIds)
-        .gte("start_time", new Date().toISOString())
-        .order("start_time", { ascending: true });
+    const result = scope === "rsvp_only"
+      ? await fetchRsvpEvents(supabase, profile.id)
+      : await fetchScopeEvents(supabase, scope);
 
-      if (evErr) {
-        console.error("Calendar events query:", evErr);
-        return new Response("Server error", { status: 500, headers: corsHeaders });
-      }
-      events = (evs ?? []) as Event[];
+    if (!Array.isArray(result)) {
+      return new Response(result.error, { status: 500, headers: corsHeaders });
     }
-  
-    const icsFile = generateICS(events);
+
+    // Best-effort first-fetch stamp; never blocks the response.
+    await stampSubscription(supabase, profile.id, scope);
+
+    const icsFile = generateICS(result, SCOPE_CALENDAR_NAME[scope]);
 
     return new Response(icsFile, {
       status: 200,
