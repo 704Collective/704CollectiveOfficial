@@ -22,6 +22,21 @@ export function Footer() {
           gap: '20px',
         }}
       >
+        {/* Logo */}
+        <Link
+          href="/"
+          aria-label="704 Collective home"
+          style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}
+        >
+          <img
+            src="/logo-dark.svg"
+            alt="704 Collective"
+            width={72}
+            height={72}
+            style={{ width: 'clamp(56px, 8vw, 72px)', height: 'auto', display: 'block' }}
+          />
+        </Link>
+
         {/* Nav Links */}
         <nav
           aria-label="Footer navigation"
