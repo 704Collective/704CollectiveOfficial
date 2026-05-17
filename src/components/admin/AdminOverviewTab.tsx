@@ -134,8 +134,8 @@ async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
       .gte('created_at', weekAgo),
     supabase.from('profiles').select('*', { count: 'exact', head: true })
       .is('deleted_at', null)
-      .eq('subscription_status', 'canceled')
-      .gte('updated_at', weekAgo),
+      .gte('canceled_at', ws.toISOString())
+      .lte('canceled_at', we.toISOString()),
     supabase.from('profiles')
       .select('full_name, email, member_type, created_at')
       .is('deleted_at', null)

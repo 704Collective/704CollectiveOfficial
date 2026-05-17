@@ -829,6 +829,7 @@ async function handleSubscriptionDeleted(
         subscription_status: "canceled",
         subscription_id: null,
         cancel_at_period_end: false,
+        canceled_at: new Date().toISOString(),
       })
       .eq("id", profile.id);
     log("Subscription canceled", { userId: profile.id });
@@ -921,6 +922,10 @@ async function handleSubscriptionUpdated(
       updates.subscription_ends_at = new Date(itemPeriodEnd * 1000).toISOString();
     } else if (typeof itemPeriodEnd === "string") {
       updates.subscription_ends_at = new Date(itemPeriodEnd).toISOString();
+    }
+    // Stamp canceled_at when Stripe reports the subscription as canceled.
+    if (mappedStatus === "canceled") {
+      updates.canceled_at = new Date().toISOString();
     }
     await supabase.from("profiles").update(updates).eq("id", profile.id);
     log("Subscription status synced", { userId: profile.id, status: mappedStatus });

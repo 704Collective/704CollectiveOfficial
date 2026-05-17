@@ -37,6 +37,7 @@ interface ProfileRow {
   stripe_customer_id: string | null;
   subscription_ends_at: string | null;
   cancel_at_period_end: boolean | null;
+  canceled_at: string | null;
   membership_override: boolean | null;
   deleted_at: string | null;
 }
@@ -176,7 +177,7 @@ export async function POST(req: NextRequest) {
     const { data: profiles, error: profErr } = await supabase
       .from('profiles')
       .select(
-        'id, email, member_type, subscription_status, subscription_id, stripe_customer_id, subscription_ends_at, cancel_at_period_end, membership_override, deleted_at',
+        'id, email, member_type, subscription_status, subscription_id, stripe_customer_id, subscription_ends_at, cancel_at_period_end, canceled_at, membership_override, deleted_at',
       )
       .in('id', profileIds);
 
@@ -315,6 +316,10 @@ export async function POST(req: NextRequest) {
           subscription_ends_at: null,
           cancel_at_period_end: false,
         };
+        // Only stamp canceled_at on first transition; never overwrite the original timestamp.
+        if (!p.canceled_at) {
+          after.canceled_at = new Date().toISOString();
+        }
       } else {
         // Stripe has no subs at all for this customer.
         after = {

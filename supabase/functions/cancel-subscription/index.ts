@@ -134,6 +134,7 @@ serve(async (req) => {
         .update({
           subscription_status: "canceled",
           cancel_at_period_end: false,
+          canceled_at: new Date().toISOString(),
         })
         .eq("id", userId);
 
