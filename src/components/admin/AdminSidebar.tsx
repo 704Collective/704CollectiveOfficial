@@ -187,6 +187,7 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
               {linkBtn('/admin/inbox',           Inbox,         'Team Inbox')}
               {linkBtn('/admin/import-members',  Upload,        'Import Members')}
               {isSuperAdmin && linkBtn('/admin/user-security', Lock,          'User Security')}
+              {isSuperAdmin && linkBtn('/admin/reconcile-stripe', GitPullRequest, 'Stripe Sync')}
               {isSuperAdmin && linkBtn('/admin/upstash',       Database,      'Upstash')}
               {isSuperAdmin && linkBtn('/admin/sentry',        AlertTriangle, 'Sentry')}
               {sectionBtn({ icon: ClipboardList, label: 'Tasks',    section: 'tasks' })}
