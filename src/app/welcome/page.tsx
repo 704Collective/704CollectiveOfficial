@@ -6,6 +6,7 @@ import { Loader2, CheckCircle, XCircle, Eye, EyeOff, MapPin, Calendar } from 'lu
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { sendWelcomeOnboardingCompleteEmail } from '@/app/actions/transactionalEmails';
 import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
@@ -301,6 +302,7 @@ function WelcomeContent() {
       });
       if (error) {
         if (error.code === '23505') {
+          toast.info('You already have an RSVP for this event');
           setRsvpedEventIds(prev => new Set([...prev, eventId]));
           return;
         }

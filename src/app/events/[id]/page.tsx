@@ -131,7 +131,14 @@ export default function EventDetail() {
   const handleMemberRegister = async () => { if (!event) return; const s = await registerMemberTicket(event); if (s) { fetchTicketCount(); fetchTicketId(); } };
   const handleCancelRSVP = async () => {
     if (!ticketId) return; setIsCancelling(true);
-    const { error } = await supabase.from('tickets').update({ status: 'cancelled' }).eq('id', ticketId);
+    const { error } = await supabase
+      .from('tickets')
+      .update({
+        status: 'cancelled',
+        cancelled_at: new Date().toISOString(),
+        cancellation_reason: 'user_cancelled_rsvp',
+      })
+      .eq('id', ticketId);
     if (error) { toast.error('Failed to cancel RSVP'); setIsCancelling(false); return; }
     setTicketId(null); setIsCancelling(false); toast.success('RSVP cancelled'); fetchTicketCount(); refreshUserTickets();
   };
@@ -154,6 +161,13 @@ export default function EventDetail() {
         amount_paid_cents: 0,
       });
       if (error) {
+        if ((error as { code?: string }).code === '23505') {
+          setIsRegistering(false);
+          toast.error('You already have an RSVP for this event.');
+          fetchTicketCount();
+          fetchTicketId();
+          return;
+        }
         if (error.message?.toLowerCase().includes('capacity') || error.code === 'P0001') {
           const { data: wl, error: wlErr } = await supabase
             .from('event_waitlist')

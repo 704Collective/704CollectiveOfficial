@@ -116,6 +116,44 @@ serve(async (req) => {
       .single();
 
     if (insertError) {
+      // 23505 = unique violation = duplicate guest ticket for this event
+      // Caused by user paying twice (back button, refresh, double-click checkout)
+      if ((insertError as { code?: string }).code === '23505') {
+        console.warn('[VERIFY-TICKET-PAYMENT] Duplicate ticket attempted', {
+          event_id: ticketData.event_id,
+          guest_email: ticketData.guest_email,
+          stripe_payment_id: ticketData.stripe_payment_id,
+        });
+        const { data: existingTicket } = await supabaseClient
+          .from('tickets')
+          .select('*')
+          .eq('event_id', ticketData.event_id)
+          .ilike('guest_email', ticketData.guest_email as string)
+          .neq('status', 'cancelled')
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .single();
+        if (existingTicket) {
+          console.error('[VERIFY-TICKET-PAYMENT] DUPLICATE PAYMENT DETECTED', {
+            existing_ticket_id: existingTicket.id,
+            existing_stripe_payment_id: existingTicket.stripe_payment_id,
+            duplicate_stripe_payment_id: ticketData.stripe_payment_id,
+            event_id: ticketData.event_id,
+            guest_email: ticketData.guest_email,
+            amount_paid_cents: ticketData.amount_paid_cents,
+            action_needed: 'Refund the duplicate Stripe payment and notify customer',
+          });
+          return new Response(
+            JSON.stringify({
+              success: true,
+              ticket: existingTicket,
+              duplicate_detected: true,
+              message: 'You already have a ticket for this event. Your duplicate payment will be refunded.',
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+          );
+        }
+      }
       if (insertError.message?.includes('Event is at capacity')) {
         return new Response(
           JSON.stringify({ error: 'Sorry, this event is now full.' }),
