@@ -83,6 +83,7 @@ export async function sendWelcomeOnboardingCompleteEmail(): Promise<void> {
     name,
     calendarUrl,
     dashboardUrl: `${ORIGIN}/dashboard`,
+    email: user.email,
     origin: ORIGIN,
   });
 }

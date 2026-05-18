@@ -91,9 +91,22 @@ export async function GET(request: NextRequest) {
       const { data: { user: signupUser } } = await supabase.auth.getUser();
       const { data: signupProfile } = await supabase
         .from('profiles')
-        .select('role, subscription_status, membership_override, member_type')
+        .select('role, subscription_status, membership_override, member_type, has_completed_onboarding_rsvp')
         .eq('id', signupUser?.id ?? '')
         .maybeSingle();
+
+      // Freshly confirmed member who hasn't finished onboarding -> resume /welcome
+      if (
+        signupProfile?.subscription_status === 'active' &&
+        !signupProfile?.has_completed_onboarding_rsvp
+      ) {
+        const welcomeRedirect = NextResponse.redirect(new URL('/welcome', origin));
+        pendingCookies.forEach(({ name, value, options }) => {
+          welcomeRedirect.cookies.set(name, value, options as Parameters<typeof welcomeRedirect.cookies.set>[2]);
+        });
+        return welcomeRedirect;
+      }
+
       const dest = signupProfile ? postAuthDestination(signupProfile) : '/join';
       const signupRedirect = NextResponse.redirect(new URL(dest, origin));
       pendingCookies.forEach(({ name, value, options }) => {
@@ -165,7 +178,7 @@ export async function GET(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('email, role, subscription_status, membership_override, member_type, created_at')
+    .select('email, role, subscription_status, membership_override, member_type, created_at, has_completed_onboarding_rsvp')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -188,6 +201,20 @@ export async function GET(request: NextRequest) {
       joinRedirect.cookies.set(name, value, options as Parameters<typeof joinRedirect.cookies.set>[2]);
     });
     return joinRedirect;
+  }
+
+  // Freshly confirmed member who hasn't finished onboarding -> resume /welcome
+  // This fires when a user clicks the confirmation email link after their session
+  // has expired (hours/days later), so they can complete the RSVP gate.
+  if (
+    profile?.subscription_status === 'active' &&
+    !profile?.has_completed_onboarding_rsvp
+  ) {
+    const welcomeRedirect = NextResponse.redirect(new URL('/welcome', origin));
+    pendingCookies.forEach(({ name, value, options }) => {
+      welcomeRedirect.cookies.set(name, value, options as Parameters<typeof welcomeRedirect.cookies.set>[2]);
+    });
+    return welcomeRedirect;
   }
 
   const destination = postAuthDestination(profile);

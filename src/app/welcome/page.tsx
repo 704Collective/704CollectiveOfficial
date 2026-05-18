@@ -12,7 +12,7 @@ import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import { format } from 'date-fns';
 
-type Status = 'loading' | 'setup' | 'rsvp_gate' | 'success' | 'error';
+type Status = 'loading' | 'setup' | 'rsvp_gate' | 'email_confirmation_required' | 'success' | 'error';
 
 interface WelcomeEventRow {
   id: string;
@@ -57,6 +57,9 @@ function WelcomeContent() {
   const [rsvpedEventIds, setRsvpedEventIds] = useState<Set<string>>(new Set());
   const [rsvpBusyId, setRsvpBusyId] = useState<string | null>(null);
   const [continueBusy, setContinueBusy] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [confirmationCheckCount, setConfirmationCheckCount] = useState(0);
+  const [user, setUser] = useState<{ email?: string; email_confirmed_at?: string | null } | null>(null);
 
   const [form, setForm] = useState<FormData>({
     firstName: '',
@@ -78,6 +81,16 @@ function WelcomeContent() {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user || cancelled) return;
+
+      // Store user for resend handler and email display
+      setUser(session.user);
+
+      // Email must be confirmed before we allow onboarding to advance
+      if (!session.user.email_confirmed_at) {
+        if (!cancelled) setStatus('email_confirmation_required');
+        return;
+      }
+
       const { data: prof } = await supabase
         .from('profiles')
         .select('has_completed_onboarding_rsvp')
@@ -181,6 +194,33 @@ function WelcomeContent() {
     };
   }, [status]);
 
+  // Poll every 5 s while on the email confirmation gate.
+  // Uses refreshSession() (forces a network round-trip) so email_confirmed_at
+  // is always fresh rather than read from a stale local cache.
+  useEffect(() => {
+    if (status !== 'email_confirmation_required') return;
+
+    const interval = setInterval(async () => {
+      const { data } = await supabase.auth.refreshSession();
+      const freshUser = data?.user ?? null;
+      if (freshUser?.email_confirmed_at) {
+        clearInterval(interval);
+        setStatus('loading'); // Show loading spinner briefly while session settles
+        setConfirmationCheckCount(0);
+        // proceedAfterAuth will now pass the email check and continue normally
+        await proceedAfterAuthRef.current?.();
+      } else {
+        setConfirmationCheckCount(c => c + 1);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  // Ref so the polling useEffect can call proceedAfterAuth without stale closure issues
+  const proceedAfterAuthRef = useRef<(() => Promise<void>) | null>(null);
+
   const proceedAfterAuth = useCallback(async () => {
     const { data: { user: u } } = await supabase.auth.getUser();
     if (!u) {
@@ -188,6 +228,15 @@ function WelcomeContent() {
       setSubmitting(false);
       return;
     }
+
+    // Email must be confirmed before advancing to the RSVP gate.
+    // Unconfirmed users see a resend-confirmation gate; a background poll auto-advances them.
+    if (!u.email_confirmed_at) {
+      setStatus('email_confirmation_required');
+      setSubmitting(false);
+      return;
+    }
+
     const { data: prof } = await supabase
       .from('profiles')
       .select('member_type, has_completed_onboarding_rsvp')
@@ -208,6 +257,33 @@ function WelcomeContent() {
     setStatus('rsvp_gate');
     setSubmitting(false);
   }, [router]);
+
+  // Keep the ref in sync so the polling interval always calls the latest version
+  useEffect(() => {
+    proceedAfterAuthRef.current = proceedAfterAuth;
+  }, [proceedAfterAuth]);
+
+  const handleResendConfirmation = async () => {
+    const emailToResend = user?.email || form.email;
+    if (!emailToResend) return;
+    setIsResending(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: emailToResend,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/welcome` },
+      });
+      if (error) {
+        toast.error('Could not resend confirmation. Try again in a moment.');
+      } else {
+        toast.success('Confirmation email resent. Check your inbox.');
+      }
+    } catch {
+      toast.error('Something went wrong. Try again.');
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   const updateField = (field: keyof FormData, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -467,6 +543,55 @@ function WelcomeContent() {
           margin: '0 auto',
           padding: 'clamp(32px, 6vw, 56px) clamp(16px, 5vw, 24px)',
         }}>
+
+          {/* Email confirmation gate */}
+          {status === 'email_confirmation_required' && (
+            <div style={{ textAlign: 'center', paddingTop: '48px' }}>
+              <div style={{
+                padding: '32px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(198,166,100,0.08)',
+                border: '1px solid rgba(198,166,100,0.3)',
+                marginBottom: '0',
+              }}>
+                <h1 style={{ fontSize: 'clamp(1.25rem, 4vw, 1.5rem)', fontWeight: 600, color: '#C6A664', marginBottom: '12px' }}>
+                  Confirm your email
+                </h1>
+                <p style={{ fontSize: '0.9375rem', color: '#D8D8D8', lineHeight: 1.6, marginBottom: '8px' }}>
+                  We sent a confirmation link to{' '}
+                  <strong>{user?.email || form.email}</strong>.
+                  {' '}Click the link to verify your account, then come back here to finish setting up your membership.
+                </p>
+                <p style={{ fontSize: '0.8125rem', color: '#9CA3AF', lineHeight: 1.6, marginBottom: '24px' }}>
+                  {"Don't see it? Check your Promotions or Spam folder."}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleResendConfirmation}
+                  disabled={isResending}
+                  style={{
+                    padding: '10px 24px',
+                    borderRadius: '6px',
+                    fontSize: '0.9375rem',
+                    fontWeight: 500,
+                    backgroundColor: 'transparent',
+                    color: '#C6A664',
+                    border: '1px solid #C6A664',
+                    cursor: isResending ? 'wait' : 'pointer',
+                    opacity: isResending ? 0.6 : 1,
+                    transition: 'all 200ms ease',
+                  }}
+                >
+                  {isResending ? 'Sending...' : 'Resend confirmation email'}
+                </button>
+                {confirmationCheckCount > 0 && (
+                  <p style={{ fontSize: '0.75rem', color: '#9CA3AF', marginTop: '16px' }}>
+                    Watching for confirmation... ({confirmationCheckCount * 5}s)
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Loading */}
           {status === 'loading' && (

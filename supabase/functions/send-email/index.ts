@@ -1,4 +1,4 @@
-﻿import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
@@ -934,9 +934,16 @@ function welcomeOnboardingCompleteTemplate(data: {
   name: string;
   calendarUrl: string;
   dashboardUrl: string;
+  email?: string;
   origin?: string;
 }): { subject: string; html: string } {
   const base = data.origin ?? "https://704collective.com";
+  // Link to a pre-filled login page so users who click this email in a new
+  // browser context (common when the original session has expired) land on
+  // sign-in rather than a generic logged-out page.
+  const ctaUrl = data.email
+    ? `${base}/login?email=${encodeURIComponent(data.email)}&next=%2Fdashboard`
+    : data.dashboardUrl;
   return {
     subject: "You're all set - welcome to 704 Collective",
     html: baseLayout({
@@ -945,7 +952,7 @@ function welcomeOnboardingCompleteTemplate(data: {
       content: `
 <p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${data.name}!</p>
 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">You've finished onboarding. Head to your dashboard for events, messages, and your member calendar.</p>
-${ctaButton("Open your dashboard", data.dashboardUrl)}
+${ctaButton("Open your dashboard", ctaUrl)}
 <p style="margin:16px 0 0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">Add events to your calendar: <a href="${data.calendarUrl}" style="color:${BRAND.accent};word-break:break-all;">Subscribe</a></p>`,
     }),
   };
@@ -1737,6 +1744,7 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
         name: string;
         calendarUrl: string;
         dashboardUrl: string;
+        email?: string;
         origin?: string;
       });
     case "ambassador-referral-received":
