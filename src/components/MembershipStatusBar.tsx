@@ -77,7 +77,7 @@ export function MembershipStatusBar({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {!membershipOverride && !isCanceling && (
+          {!membershipOverride && (
             <Button variant="outline" size="sm" onClick={onManageBilling} disabled={isPortalLoading}>
               {isPortalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CreditCard className="w-3.5 h-3.5" />}
               Billing

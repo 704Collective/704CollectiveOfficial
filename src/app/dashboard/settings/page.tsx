@@ -47,14 +47,18 @@ export default function SettingsPage() {
     }
   }, [profile]);
 
-  // Same precedence as /settings: hide cancel/pause UI for canceled or
-  // already-pending-cancel subscriptions to avoid 500s from the edge functions.
+  // hasStripeSubscription: gates the "Manage Billing" button (Stripe Customer Portal).
+  // Safe to show whenever there's an active Stripe sub — portal lets users
+  // reactivate, update payment, or download invoices regardless of cancel state.
   const hasStripeSubscription =
     !!p?.stripe_customer_id
     && isActiveMember
     && !p?.membership_override
-    && p?.subscription_status === 'active'
-    && !p?.cancel_at_period_end;
+    && p?.subscription_status === 'active';
+
+  // canCancelOrPause: gates the cancel/pause buttons that hit our edge functions.
+  // Hidden for already-canceling subs to avoid 500 errors from cancel-subscription.
+  const canCancelOrPause = hasStripeSubscription && !p?.cancel_at_period_end;
   const supabase = createClient();
 
   const memberSince = p?.member_since
@@ -339,13 +343,13 @@ export default function SettingsPage() {
           )}
         </section>
 
-        {/* Danger Zone - shown for Stripe subscribers AND override members */}
-        {isActiveMember && user && (hasStripeSubscription || !!p?.membership_override) && (
+        {/* Danger Zone - shown for cancelable Stripe subscribers AND override members */}
+        {isActiveMember && user && (canCancelOrPause || !!p?.membership_override) && (
           <section className="card-elevated p-6 border-destructive/30 bg-destructive/5">
             <MembershipDangerZone
               userId={user.id}
               isActiveMember={isActiveMember}
-              hasStripeSubscription={hasStripeSubscription}
+              hasStripeSubscription={canCancelOrPause}
               membershipOverride={!!p?.membership_override}
             />
           </section>
