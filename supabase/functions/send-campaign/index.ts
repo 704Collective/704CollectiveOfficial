@@ -1,4 +1,4 @@
-﻿import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -112,7 +112,7 @@ function renderBlock(block: Block, ctx: RenderContext): string {
         const today = new Date();
         const futureDate1 = new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000);
         const futureDate2 = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-        const fmtDate = (d: Date) => d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+        const fmtDate = (d: Date) => d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/New_York' });
         return heading
           + placeholderCard(fmtDate(futureDate1), 'Live event data will populate when sent')
           + placeholderCard(fmtDate(futureDate2), 'Real upcoming events appear here in the actual send');
@@ -525,11 +525,11 @@ serve(async (req) => {
         const startDate = new Date(e.start_time);
         const endDate = e.end_time ? new Date(e.end_time) : null;
         const timeStr = endDate
-          ? `${startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} – ${endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`
-          : startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+          ? `${startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/New_York' })} – ${endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/New_York' })}`
+          : startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/New_York' });
         return {
           name: e.title,
-          date: startDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+          date: startDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/New_York' }),
           time: timeStr,
           location: e.location_name || '',
           url: `${SITE_URL}/events/${e.id}`,
