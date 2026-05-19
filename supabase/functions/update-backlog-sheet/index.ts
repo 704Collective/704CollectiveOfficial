@@ -187,7 +187,7 @@ async function appendRows(
   const values = rows.map(rowToValues);
   const url =
     sheetsUrl(sheetId, `/values/${encodeURIComponent(SHEET_RANGE)}:append`) +
-    "?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS";
+    "?valueInputOption=RAW&insertDataOption=INSERT_ROWS";
 
   const res = await sheetsRequest("POST", url, accessToken, { values });
   if (!res.ok) {
@@ -246,7 +246,7 @@ async function updateRow(
   const rowRange = `${SHEET_TAB}!A${rowNum}:I${rowNum}`;
   const url =
     sheetsUrl(sheetId, `/values/${encodeURIComponent(rowRange)}`) +
-    "?valueInputOption=USER_ENTERED";
+    "?valueInputOption=RAW";
 
   const res = await sheetsRequest("PUT", url, accessToken, {
     values: [rowToValues(row)],
