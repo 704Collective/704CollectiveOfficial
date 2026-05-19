@@ -363,101 +363,108 @@ export function CheckInFullScreen({
         }
       }
 
-      const scannedUserId = scannedText;
-
-      const inQueue = await isInPendingQueue(scannedUserId);
-      if (inQueue) {
-        toast.info('Already queued for check-in');
-        return;
-      }
-
-      const existingAttendee = attendees.find(a => a.user_id === scannedUserId);
-      
-      if (existingAttendee) {
-        if (existingAttendee.checked_in_at) {
-          toast.info(`${existingAttendee.full_name || existingAttendee.email} is already checked in`);
-        } else if (!isOnline) {
-          await queueCheckIn(
-            existingAttendee.id,
-            scannedUserId,
-            existingAttendee.full_name || existingAttendee.email,
-            false
-          );
-          toast.info('Check-in saved offline');
-          addRecentCheckIn(existingAttendee.full_name || existingAttendee.email, false, true);
-        } else {
-          await checkInAttendee(existingAttendee, false);
-        }
-      } else {
+      // ── Member check-in by profile UUID ──────────────────────────────────
+      // MembershipCard encodes the member's profile.id (UUID, 36 chars).
+      // Look up the member, find or create their ticket for this event, stamp check-in.
+      if (!scannedText.includes('@') && scannedText.length >= 32) {
         if (!isOnline) {
-          toast.error('Cannot verify membership while offline');
+          toast.error('Cannot verify member check-ins while offline');
           return;
         }
 
-        const { data: profile, error: profileError } = await supabase
+        const { data: member } = await supabase
           .from('profiles')
-          .select('id, full_name, email, avatar_url, subscription_status')
-          .eq('id', scannedUserId)
-          .is('deleted_at', null)
+          .select('id, full_name, member_type, subscription_status, membership_override, deleted_at')
+          .eq('id', scannedText)
           .maybeSingle();
 
-        if (profileError || !profile) {
-          toast.error('User not found');
-        } else if (profile.subscription_status !== 'active') {
-          toast.error(`${profile.full_name || profile.email} is not an active Social member`);
-        } else {
-          // Look up event access_type to determine the right ticket_type
-          const { data: walkInEventRow } = await supabase
-            .from('events')
-            .select('access_type, ticket_price')
-            .eq('id', eventId)
-            .single();
+        if (!member) {
+          toast.error('QR code not recognized');
+          return;
+        }
 
-          // Look up full membership status (existing profile fetch only has subscription_status)
-          const { data: walkInProfile } = await supabase
-            .from('profiles')
-            .select('subscription_status, member_type, membership_override, deleted_at')
-            .eq('id', scannedUserId)
-            .maybeSingle();
+        if (member.deleted_at) {
+          toast.error('This member account is closed');
+          return;
+        }
 
-          const isWalkInMember = !!walkInProfile
-            && walkInProfile.deleted_at == null
-            && (walkInProfile.subscription_status === 'active'
-                || walkInProfile.subscription_status === 'trialing'
-                || walkInProfile.membership_override === true);
+        const isActive =
+          member.subscription_status === 'active' ||
+          member.subscription_status === 'trialing' ||
+          member.membership_override === true;
 
-          let walkInTicketType: string;
-          if (isWalkInMember) {
-            walkInTicketType = 'member_free';
-          } else if (walkInEventRow?.access_type === 'public_free') {
-            walkInTicketType = 'public_free';
-          } else {
-            // Non-member at a paid event: admin comp
-            walkInTicketType = 'comp';
+        if (!isActive) {
+          // Warn but still allow check-in — admin's discretion
+          toast.warning(`${member.full_name || 'Member'} is not currently active`, {
+            description: 'You may admit them at your discretion',
+          });
+        }
+
+        // Find the most recent non-cancelled ticket for this member + event
+        const { data: existingTicket } = await supabase
+          .from('tickets')
+          .select('id, checked_in_at, status')
+          .eq('user_id', scannedText)
+          .eq('event_id', eventId)
+          .neq('status', 'cancelled')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (existingTicket) {
+          if (existingTicket.checked_in_at) {
+            toast.info(`${member.full_name || 'Member'} is already checked in`, {
+              description: `Checked in at ${format(new Date(existingTicket.checked_in_at), 'h:mm a')}`,
+            });
+            return;
           }
-
-          const { error: ticketError } = await supabase
+          const { error: ciError } = await supabase
+            .from('tickets')
+            .update({
+              checked_in_at: new Date().toISOString(),
+              checked_in_by: adminId,
+            })
+            .eq('id', existingTicket.id);
+          if (ciError) {
+            console.error('[CHECK-IN] Member check-in update failed', ciError);
+            toast.error('Failed to check in member');
+            return;
+          }
+        } else {
+          // No ticket — create a walk-in ticket and check them in immediately
+          const { error: insertError } = await supabase
             .from('tickets')
             .insert({
+              user_id: scannedText,
               event_id: eventId,
-              user_id: scannedUserId,
-              ticket_type: walkInTicketType,
+              ticket_type: 'member_free',
               status: 'confirmed',
-              source: 'walk_in',
+              source: 'walk_in_qr',
               amount_paid_cents: 0,
               checked_in_at: new Date().toISOString(),
               checked_in_by: adminId,
             });
-
-          if (ticketError) {
-            toast.error('Failed to create walk-in ticket');
-          } else {
-            toast.success(`Walk-in: ${profile.full_name || profile.email} checked in!`);
-            addRecentCheckIn(profile.full_name || profile.email, true, false);
-            fetchAttendees();
+          if (insertError) {
+            console.error('[CHECK-IN] Walk-in ticket insert failed', insertError);
+            toast.error('Failed to check in member');
+            return;
           }
         }
+
+        // Stamp profile so CRM/analytics know this member attended
+        await supabase
+          .from('profiles')
+          .update({ last_attended_at: new Date().toISOString() })
+          .eq('id', scannedText);
+
+        toast.success(`Welcome, ${member.full_name || 'Member'}!`);
+        addRecentCheckIn(member.full_name || 'Member', false, false);
+        fetchAttendees();
+        return;
       }
+
+      // ── Fallback: nothing matched ────────────────────────────────────────
+      toast.error('QR code not recognized');
     } finally {
       setTimeout(() => {
         if (scannerRef.current) {
