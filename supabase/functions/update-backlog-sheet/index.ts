@@ -26,7 +26,8 @@ type Action =
   | { action: "append_row"; row: BacklogRow }
   | { action: "update_by_id"; id: string; updates: Partial<BacklogRow> }
   | { action: "bulk_append"; rows: BacklogRow[] }
-  | { action: "find_by_id"; id: string };
+  | { action: "find_by_id"; id: string }
+  | { action: "list_all" };
 
 // Column order matches the sheet header row A..I
 const COL_ORDER: (keyof BacklogRow)[] = [
@@ -326,6 +327,39 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ ok: true, rows_affected: rowsAffected }),
         { headers: jsonHeaders }
+      );
+    }
+
+    // ---- list_all ----------------------------------------------------------
+    if (body.action === "list_all") {
+      const range = "Backlog!A2:I"; // Skip header row
+      const response = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        }
+      );
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Sheets list failed (${response.status}): ${errText}`);
+      }
+      const result = await response.json();
+      const values: string[][] = result.values || [];
+      const rows: BacklogRow[] = values.map((row) => ({
+        id: row[0] || "",
+        item: row[1] || "",
+        category: row[2] || "",
+        priority: row[3] || "",
+        status: row[4] || "",
+        date_added: row[5] || "",
+        date_completed: row[6] || "",
+        commit: row[7] || "",
+        notes: row[8] || "",
+      })).filter(r => r.id); // Skip empty rows
+      console.log(`[UPDATE-BACKLOG-SHEET] list_all returned ${rows.length} rows`);
+      return new Response(
+        JSON.stringify({ ok: true, count: rows.length, rows }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
 
