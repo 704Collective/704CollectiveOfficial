@@ -50,6 +50,7 @@ interface MemberSearchResult {
   full_name: string;
   avatar_url: string | null;
   title: string | null;
+  member_type: string | null;
 }
 
 function initials(name: string): string {
@@ -207,13 +208,15 @@ function ManageMembersModal({
     if (!memberSearch.trim()) { setSearchResults([]); return; }
     const t = setTimeout(async () => {
       setSearchLoading(true);
+      // Search ALL active members — any tier should be addable to any hub
+      // Active = subscription_status active/trialing OR membership_override=true
       const { data } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, title')
+        .select('id, full_name, avatar_url, title, member_type')
         .ilike('full_name', `%${memberSearch}%`)
-        .or('member_type.eq.business,role.eq.admin,role.eq.super_admin')
         .is('deleted_at', null)
-        .limit(8);
+        .or('subscription_status.in.(active,trialing),membership_override.eq.true')
+        .limit(15);
       setSearchResults(((data ?? []) as MemberSearchResult[]).filter(
         (m) => !members.find((existing) => existing.user_id === m.id)
       ));
@@ -226,7 +229,20 @@ function ManageMembersModal({
     if (!user) return;
     setAddingId(member.id);
     try {
-      await supabase.from('hub_members').insert({ hub_id: hub.id, user_id: member.id, added_by: user.id });
+      const { error } = await supabase
+        .from('hub_members')
+        .insert({ hub_id: hub.id, user_id: member.id, added_by: user.id });
+      if (error) {
+        console.error('[admin/hubs] hub_members insert failed', error);
+        if (error.code === '23505') {
+          toast.error(`${member.full_name} is already in this hub`);
+        } else if (error.code === '42501' || error.message?.toLowerCase().includes('row-level security')) {
+          toast.error('Permission denied. Make sure you have admin access.');
+        } else {
+          toast.error(`Failed to add member: ${error.message}`);
+        }
+        return;
+      }
       notifyHubAdded({
         hubId: hub.id,
         hubTitle: hub.title,
@@ -272,7 +288,18 @@ function ManageMembersModal({
                 <div key={m.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#2E2E2E] hover:bg-[#3E3E3E]">
                   <Avatar className="h-7 w-7"><AvatarImage src={m.avatar_url ?? undefined} /><AvatarFallback className="bg-[#1A1A1A] text-[#C6A664] text-xs">{initials(m.full_name)}</AvatarFallback></Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-white truncate">{m.full_name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm text-white truncate">{m.full_name}</p>
+                      {m.member_type && (
+                        <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded capitalize"
+                          style={{
+                            backgroundColor: m.member_type === 'business' ? 'rgba(96,165,250,0.15)' : 'rgba(198,166,100,0.15)',
+                            color: m.member_type === 'business' ? '#60a5fa' : '#C6A664',
+                          }}>
+                          {m.member_type}
+                        </span>
+                      )}
+                    </div>
                     {m.title && <p className="text-xs text-white/40 truncate">{m.title}</p>}
                   </div>
                   <Button size="sm" onClick={() => addMember(m)} disabled={addingId === m.id}
