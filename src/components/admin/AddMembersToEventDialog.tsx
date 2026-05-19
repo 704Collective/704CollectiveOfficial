@@ -55,7 +55,7 @@ export function AddMembersToEventDialog({
         .from('tickets')
         .select('user_id')
         .eq('event_id', eventId)
-        .in('status', ['confirmed', 'rsvp']);
+        .neq('status', 'cancelled');
       return new Set((data || []).map((t) => t.user_id).filter(Boolean));
     },
     enabled: open,
@@ -83,9 +83,19 @@ export function AddMembersToEventDialog({
   const filteredMembers = members.filter((m) => !existingTickets?.has(m.id));
 
   const addMutation = useMutation({
-    mutationFn: async (tickets: { event_id: string; user_id?: string; email?: string; status: string }[]) => {
-      const { error } = await supabase.from('tickets').insert(tickets);
+    mutationFn: async (tickets: {
+      event_id: string;
+      user_id?: string;
+      guest_email?: string;
+      guest_name?: string;
+      status: string;
+      source: string;
+      ticket_type: string;
+      amount_paid_cents: number;
+    }[]) => {
+      const { error, data } = await supabase.from('tickets').insert(tickets).select();
       if (error) throw error;
+      return data;
     },
     onSuccess: (_, tickets) => {
       toast.success(`Added ${tickets.length} member${tickets.length !== 1 ? 's' : ''} to event`);
@@ -93,7 +103,19 @@ export function AddMembersToEventDialog({
       queryClient.invalidateQueries({ queryKey: ['event-tickets', eventId] });
       handleClose();
     },
-    onError: () => toast.error('Failed to add members to event'),
+    onError: (error: unknown) => {
+      console.error('[AddMembersToEventDialog] Insert failed', error);
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes('duplicate key') || message.includes('23505')) {
+        toast.error('Some of these members are already on the event');
+      } else if (message.includes('row-level security') || message.includes('42501')) {
+        toast.error('Permission denied. Check admin role.');
+      } else if (message.includes('violates') || message.includes('column')) {
+        toast.error(`Schema mismatch: ${message}`);
+      } else {
+        toast.error(`Failed to add members: ${message}`);
+      }
+    },
   });
 
   const handleClose = () => {
@@ -122,6 +144,8 @@ export function AddMembersToEventDialog({
       event_id: eventId,
       user_id: userId,
       status: 'confirmed',
+      ticket_type: 'member_free',
+      source: 'admin_added',
       amount_paid_cents: 0,
     }));
     addMutation.mutate(tickets);
@@ -141,8 +165,10 @@ export function AddMembersToEventDialog({
 
     const tickets = unique.map((email) => ({
       event_id: eventId,
-      email,
+      guest_email: email,
       status: 'confirmed',
+      ticket_type: 'member_free',
+      source: 'admin_added',
       amount_paid_cents: 0,
     }));
     addMutation.mutate(tickets);
