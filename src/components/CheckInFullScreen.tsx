@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useOfflineCheckIn } from '@/hooks/useOfflineCheckIn';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
+import { AddWalkUpDialog } from '@/components/AddWalkUpDialog';
 
 type AttendeeRow = {
   id: string;
@@ -53,6 +54,7 @@ export function CheckInFullScreen({
   const [isScanning, setIsScanning] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [showAttendeeList, setShowAttendeeList] = useState(false);
+  const [walkUpOpen, setWalkUpOpen] = useState(false);
   const [successOverlay, setSuccessOverlay] = useState<{ name: string; isWalkIn: boolean; isOffline?: boolean } | null>(null);
   
   const scannerRef = useRef<Html5Qrcode | null>(null);
@@ -611,9 +613,18 @@ export function CheckInFullScreen({
           <h2 className="font-semibold">{eventTitle}</h2>
           <p className="text-sm text-muted-foreground">Event Check-in</p>
         </div>
-        <OfflineIndicator 
-          isOnline={isOnline} 
-          pendingCount={pendingCount} 
+        <Button
+          onClick={() => setWalkUpOpen(true)}
+          variant="outline"
+          size="sm"
+          style={{ borderColor: '#C6A664', color: '#C6A664', backgroundColor: 'transparent' }}
+          className="hover:opacity-90 shrink-0"
+        >
+          + Walk-up
+        </Button>
+        <OfflineIndicator
+          isOnline={isOnline}
+          pendingCount={pendingCount}
           isSyncing={isSyncing}
           onManualSync={syncPendingCheckIns}
         />
@@ -753,6 +764,17 @@ export function CheckInFullScreen({
           </div>
         </>
       )}
+
+      <AddWalkUpDialog
+        open={walkUpOpen}
+        onOpenChange={setWalkUpOpen}
+        eventId={eventId}
+        eventTitle={eventTitle}
+        adminId={adminId}
+        onCheckedIn={(name) => {
+          addRecentCheckIn(name, true, false);
+        }}
+      />
     </div>,
     document.body
   );
