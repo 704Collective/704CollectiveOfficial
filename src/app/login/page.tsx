@@ -73,6 +73,11 @@ function Login() {
   const [magicLinkError, setMagicLinkError] = useState<{ message: string; showSignupCta?: boolean } | null>(null);
   const [magicLinkCooldown, setMagicLinkCooldown] = useState(0);
 
+  // OTP code entry state
+  const [otpCode, setOtpCode] = useState('');
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
+
   // Legacy magic-link mode (kept for existing flows triggered from elsewhere)
   const [magicLinkMode, setMagicLinkMode] = useState(false);
 
@@ -318,6 +323,57 @@ function Login() {
     setMagicLinkCooldown(60);
   };
 
+  const handleVerifyOtp = async (codeOverride?: string) => {
+    const code = codeOverride ?? otpCode;
+    if (!/^\d{8}$/.test(code)) {
+      setOtpError('Enter the 8-digit code from your email.');
+      return;
+    }
+    setOtpVerifying(true);
+    setOtpError(null);
+    try {
+      const { data: authUser, error } = await supabase.auth.verifyOtp({
+        email: magicLinkEmail.trim(),
+        token: code,
+        type: 'email',
+      });
+      if (error) {
+        const errorCode = (error as { code?: string }).code;
+        const errorStatus = (error as { status?: number }).status;
+        const errorMsg = (error.message || '').toLowerCase();
+        if (errorMsg.includes('expired') || errorMsg.includes('invalid')) {
+          setOtpError('That code is expired or incorrect. Request a new one.');
+        } else if (
+          errorCode === 'over_email_send_rate_limit' ||
+          errorCode === 'over_request_rate_limit' ||
+          errorMsg.includes('rate limit') ||
+          errorStatus === 429
+        ) {
+          setOtpError('Too many attempts. Wait a few minutes.');
+        } else {
+          setOtpError('Something went wrong. Try again.');
+        }
+        setOtpVerifying(false);
+        return;
+      }
+      const uid = authUser?.user?.id;
+      if (!uid) {
+        setOtpError('Could not resolve session. Try again.');
+        setOtpVerifying(false);
+        return;
+      }
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('role, member_type, subscription_status, membership_override, has_completed_onboarding_rsvp')
+        .eq('id', uid)
+        .maybeSingle();
+      router.push(postAuthDestination(prof));
+    } catch {
+      setOtpError('Network error. Check your connection.');
+      setOtpVerifying(false);
+    }
+  };
+
   const inputStyle = {
     width: '100%',
     padding: '13px 16px',
@@ -492,64 +548,141 @@ function Login() {
                 </button>
               </div>
 
-              {/* ── MAGIC LINK TAB ── */}
+              {/* MAGIC LINK TAB */}
               {activeTab === 'magic' && (
-                <form onSubmit={handleInlineMagicLink}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <label htmlFor="magic-inline-email" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)', marginBottom: '8px' }}>
-                      Email
-                    </label>
-                    <input
-                      id="magic-inline-email"
-                      type="email"
-                      autoComplete="email"
-                      placeholder="you@example.com"
-                      value={magicLinkEmail}
-                      onChange={(e) => { setMagicLinkEmail(e.target.value); setMagicLinkError(null); setMagicLinkSent(false); }}
-                      style={{ ...inputStyle, border: magicLinkError ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)' }}
-                      onFocus={(e) => { if (!magicLinkError) e.currentTarget.style.borderColor = '#C6A664'; }}
-                      onBlur={(e) => { if (!magicLinkError) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
-                    />
-                    {magicLinkError && (
-                      <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '6px' }}>
-                        {magicLinkError.message}
-                        {magicLinkError.showSignupCta && (
-                          <>
-                            {' '}
-                            <Link
-                              href="/join"
-                              style={{ color: '#C6A664', textDecoration: 'underline' }}
-                            >
-                              Sign up here →
-                            </Link>
-                          </>
-                        )}
-                      </p>
-                    )}
-                  </div>
+                !magicLinkSent ? (
+                  /* INPUT STATE */
+                  <form onSubmit={handleInlineMagicLink}>
+                    <div style={{ marginBottom: '12px' }}>
+                      <label htmlFor="magic-inline-email" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)', marginBottom: '8px' }}>
+                        Email
+                      </label>
+                      <input
+                        id="magic-inline-email"
+                        type="email"
+                        autoComplete="email"
+                        placeholder="you@example.com"
+                        value={magicLinkEmail}
+                        onChange={(e) => { setMagicLinkEmail(e.target.value); setMagicLinkError(null); setMagicLinkSent(false); }}
+                        style={{ ...inputStyle, border: magicLinkError ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)' }}
+                        onFocus={(e) => { if (!magicLinkError) e.currentTarget.style.borderColor = '#C6A664'; }}
+                        onBlur={(e) => { if (!magicLinkError) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+                      />
+                      {magicLinkError && (
+                        <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '6px' }}>
+                          {magicLinkError.message}
+                          {magicLinkError.showSignupCta && (
+                            <>
+                              {' '}
+                              <Link
+                                href="/join"
+                                style={{ color: '#C6A664', textDecoration: 'underline' }}
+                              >
+                                Sign up here
+                              </Link>
+                            </>
+                          )}
+                        </p>
+                      )}
+                    </div>
 
-                  {magicLinkSent && (
-                    <div style={{ backgroundColor: 'rgba(198,166,100,0.08)', border: '1px solid rgba(198,166,100,0.2)', borderRadius: '10px', padding: '12px 16px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <Mail size={16} color="#C6A664" style={{ flexShrink: 0 }} />
+                    <button
+                      type="submit"
+                      disabled={magicLinkLoading || magicLinkCooldown > 0}
+                      style={{ width: '100%', padding: '14px', minHeight: '48px', backgroundColor: '#FFFFFF', color: '#000000', fontWeight: 600, fontSize: '0.9375rem', border: 'none', borderRadius: '8px', cursor: (magicLinkLoading || magicLinkCooldown > 0) ? 'not-allowed' : 'pointer', opacity: (magicLinkLoading || magicLinkCooldown > 0) ? 0.7 : 1, transition: 'all 200ms ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                    >
+                      {magicLinkLoading
+                        ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />Sending...</>
+                        : <><Mail size={16} />Send sign-in link</>
+                      }
+                    </button>
+                  </form>
+                ) : (
+                  /* SENT STATE */
+                  <div>
+                    {/* Confirmation banner */}
+                    <div style={{ backgroundColor: 'rgba(198,166,100,0.08)', border: '1px solid rgba(198,166,100,0.2)', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                      <Mail size={16} color="#C6A664" style={{ flexShrink: 0, marginTop: '2px' }} />
                       <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.5, margin: 0 }}>
-                        Check your email for a sign-in link. It expires in 1 hour.
+                        We sent a sign-in link and code to <strong style={{ color: '#FFFFFF' }}>{magicLinkEmail}</strong>.
                       </p>
                     </div>
-                  )}
 
-                  <button
-                    type="submit"
-                    disabled={magicLinkLoading || magicLinkCooldown > 0}
-                    style={{ width: '100%', padding: '14px', minHeight: '48px', backgroundColor: '#FFFFFF', color: '#000000', fontWeight: 600, fontSize: '0.9375rem', border: 'none', borderRadius: '8px', cursor: (magicLinkLoading || magicLinkCooldown > 0) ? 'not-allowed' : 'pointer', opacity: (magicLinkLoading || magicLinkCooldown > 0) ? 0.7 : 1, transition: 'all 200ms ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                  >
-                    {magicLinkLoading
-                      ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />Sending...</>
-                      : magicLinkCooldown > 0
-                      ? `Resend in ${magicLinkCooldown}s`
-                      : <><Mail size={16} />Send sign-in link</>
-                    }
-                  </button>
-                </form>
+                    <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, marginBottom: '20px', textAlign: 'center' }}>
+                      Open the email on this device to sign in instantly, or enter the 8-digit code below.
+                    </p>
+
+                    {/* OTP code form */}
+                    <form onSubmit={(e) => { e.preventDefault(); handleVerifyOtp(); }}>
+                      <input
+                        id="otp-code"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        autoComplete="one-time-code"
+                        maxLength={8}
+                        placeholder="00000000"
+                        value={otpCode}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, '').slice(0, 8);
+                          setOtpCode(digits);
+                          if (otpError) setOtpError(null);
+                          if (digits.length === 8 && !otpVerifying) {
+                            handleVerifyOtp(digits);
+                          }
+                        }}
+                        style={{
+                          ...inputStyle,
+                          fontFamily: 'monospace',
+                          fontSize: '1.5rem',
+                          letterSpacing: '0.3em',
+                          textAlign: 'center',
+                          border: otpError ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)',
+                          marginBottom: '12px',
+                        }}
+                        onFocus={(e) => { if (!otpError) e.currentTarget.style.borderColor = '#C6A664'; }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = otpError ? '#ef4444' : 'rgba(255,255,255,0.1)'; }}
+                      />
+                      {otpError && (
+                        <p style={{ fontSize: '0.75rem', color: '#ef4444', marginBottom: '12px', textAlign: 'center' }}>{otpError}</p>
+                      )}
+
+                      <button
+                        type="submit"
+                        disabled={otpVerifying}
+                        style={{ width: '100%', padding: '14px', minHeight: '48px', backgroundColor: '#C6A664', color: '#000000', fontWeight: 600, fontSize: '0.9375rem', border: 'none', borderRadius: '8px', cursor: otpVerifying ? 'not-allowed' : 'pointer', opacity: otpVerifying ? 0.7 : 1, transition: 'all 200ms ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                      >
+                        {otpVerifying ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />Verifying...</> : 'Verify code'}
+                      </button>
+                    </form>
+
+                    {/* Resend */}
+                    <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginTop: '16px' }}>
+                      {magicLinkCooldown > 0 ? (
+                        <>Resend in {magicLinkCooldown}s</>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => { setOtpCode(''); setOtpError(null); handleInlineMagicLink(e as unknown as React.FormEvent); }}
+                          style={{ color: '#C6A664', background: 'none', border: 'none', cursor: 'pointer', padding: '0', fontSize: '0.8125rem', textDecoration: 'underline' }}
+                        >
+                          Resend code
+                        </button>
+                      )}
+                    </p>
+
+                    {/* Use different email */}
+                    <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginTop: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => { setMagicLinkSent(false); setMagicLinkEmail(''); setOtpCode(''); setOtpError(null); setMagicLinkError(null); }}
+                        style={{ color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', cursor: 'pointer', padding: '0', fontSize: '0.8125rem', textDecoration: 'underline' }}
+                      >
+                        Use a different email
+                      </button>
+                    </p>
+                  </div>
+                )
               )}
 
               {/* ── PASSWORD TAB ── */}
