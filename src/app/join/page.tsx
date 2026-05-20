@@ -169,23 +169,8 @@ function JoinInner() {
     const ambassadorIdToUse = resolvedAmbassador?.id ?? null;
     const referralCodeToUse = referralCode || null;
 
-    // Fire-and-forget: capture prospect
-    try {
-      await supabase.functions.invoke('capture-prospect', {
-        body: {
-          email: email.trim(),
-          full_name: fullName.trim(),
-          phone: cleanPhone,
-          sms_consent: smsConsent,
-          referral_code: referralCodeToUse,
-        },
-      });
-    } catch {
-      // Non-blocking - do not abort checkout
-    }
-
-    // Create Supabase account with password
-    const { error: signUpError } = await supabase.auth.signUp({
+    // STEP ONE - Create Supabase account first so we have a user_id for downstream writes
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password: password,
       options: {
@@ -196,6 +181,8 @@ function JoinInner() {
           sms_consent_user_agent: consentUserAgent,
           referral_code: referralCodeToUse,
           ambassador_id: ambassadorIdToUse,
+          phone: cleanPhone,
+          primary_goal: goal,
         },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
@@ -205,8 +192,34 @@ function JoinInner() {
       setSubmitting(false);
       return;
     }
+    // user_id is null for the already-registered case; capture-prospect guards on it
+    const newUserId = signUpData?.user?.id ?? null;
 
-    // Call create-checkout
+    // STEP TWO - Persist signup data (blocking - do not proceed to Stripe on failure)
+    const { data: captureData, error: captureError } = await supabase.functions.invoke('capture-prospect', {
+      body: {
+        email: email.trim(),
+        full_name: fullName.trim(),
+        phone: cleanPhone,
+        sms_consent: smsConsent,
+        sms_consent_at: consentTimestamp,
+        referral_code: referralCodeToUse,
+        user_id: newUserId,
+        primary_goal: goal,
+      },
+    });
+    if (captureError) {
+      setFormError('We could not save your details. Please try again.');
+      setSubmitting(false);
+      return;
+    }
+    if ((captureData as { success?: boolean } | null)?.success === false) {
+      setFormError('We could not save your details. Please try again.');
+      setSubmitting(false);
+      return;
+    }
+
+    // STEP THREE - Redirect to Stripe checkout
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {

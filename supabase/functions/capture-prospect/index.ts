@@ -13,14 +13,27 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { email, full_name, phone, sms_consent, referral_code } = body as {
+    const {
+      email,
+      full_name,
+      phone,
+      sms_consent,
+      referral_code,
+      user_id,
+      primary_goal,
+      sms_consent_at,
+    } = body as {
       email?: string;
       full_name?: string;
       phone?: string;
       sms_consent?: boolean;
       referral_code?: string | null;
+      user_id?: string;
+      primary_goal?: string;
+      sms_consent_at?: string | null;
     };
 
+    // 1. Validate email
     if (!email) {
       return new Response(JSON.stringify({ error: "email is required" }), {
         status: 400,
@@ -36,12 +49,13 @@ serve(async (req) => {
 
     const consentTrue = sms_consent === true;
 
-    // Tag the prospect with their referral source. This is informational only —
+    // Tag the prospect with their referral source. This is informational only -
     // the canonical ambassador_referrals row is created later by stripe-webhook
     // after payment completes successfully.
     const cleanCode = (referral_code ?? "").trim().toUpperCase();
     const sourceValue = cleanCode ? `ambassador_referral:${cleanCode}` : "join_page";
 
+    // 2. Contacts upsert
     const { data: contact, error: upsertError } = await supabase
       .from("contacts")
       .upsert(
@@ -69,6 +83,7 @@ serve(async (req) => {
       });
     }
 
+    // 3. Contact tags
     if (contact?.id) {
       const { error: tagError } = await supabase
         .from("contact_tags")
@@ -78,6 +93,57 @@ serve(async (req) => {
         );
       if (tagError) {
         console.error("[capture-prospect] tag error:", tagError);
+      }
+    }
+
+    // 4 + 5. Profile and onboarding writes - only when user_id is provided
+    if (user_id) {
+      const writeErrors: string[] = [];
+
+      // 4. Update profiles
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          phone: phone ?? null,
+          sms_consent: consentTrue,
+          sms_consent_at: consentTrue ? (sms_consent_at ?? new Date().toISOString()) : null,
+        })
+        .eq("id", user_id);
+
+      if (profileError) {
+        console.error("[capture-prospect] profiles update error:", profileError);
+        writeErrors.push(`profiles: ${profileError.message}`);
+      }
+
+      // 5. Insert onboarding_responses
+      if (primary_goal && primary_goal.trim() !== "") {
+        const { error: onboardingError } = await supabase
+          .from("onboarding_responses")
+          .upsert(
+            {
+              user_id,
+              responses: { primary_goal: primary_goal.trim() },
+              version: 1,
+              completed_at: new Date().toISOString(),
+            },
+            { onConflict: "user_id,version", ignoreDuplicates: true }
+          );
+
+        if (onboardingError) {
+          console.error("[capture-prospect] onboarding_responses insert error:", onboardingError);
+          writeErrors.push(`onboarding_responses: ${onboardingError.message}`);
+        }
+      }
+
+      // 6. Surface any write failures to the caller
+      if (writeErrors.length > 0) {
+        return new Response(
+          JSON.stringify({ success: false, errors: writeErrors }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
       }
     }
 
