@@ -20,6 +20,8 @@ interface BacklogRow {
   date_completed?: string;
   commit?: string;
   notes?: string;
+  notes_2?: string;
+  scope?: string;
 }
 
 type Action =
@@ -29,7 +31,7 @@ type Action =
   | { action: "find_by_id"; id: string }
   | { action: "list_all" };
 
-// Column order matches the sheet header row A..I
+// WRITE column order - A..I only. Columns J/K are read-only and excluded on purpose.
 const COL_ORDER: (keyof BacklogRow)[] = [
   "id", "item", "category", "priority", "status",
   "date_added", "date_completed", "commit", "notes",
@@ -44,6 +46,9 @@ function valuesToRow(values: string[]): BacklogRow {
   COL_ORDER.forEach((k, i) => {
     (obj as Record<string, string>)[k] = values[i] ?? "";
   });
+  // Read-only columns J and K (indices 9 and 10) - never written back
+  (obj as Record<string, string>)["notes_2"] = values[9] ?? "";
+  (obj as Record<string, string>)["scope"] = values[10] ?? "";
   return obj as BacklogRow;
 }
 
@@ -156,6 +161,7 @@ async function getAccessToken(): Promise<string> {
 // ---------------------------------------------------------------------------
 
 const SHEET_TAB = "Backlog";
+// Append range stays A..I - new rows must not populate J/K.
 const SHEET_RANGE = `${SHEET_TAB}!A:I`;
 
 function sheetsUrl(sheetId: string, path: string): string {
@@ -220,7 +226,7 @@ async function findRowById(
   const rowNum = rowIndex + 1; // Sheets is 1-based
 
   // Fetch the full row while we are here
-  const rowRange = `${SHEET_TAB}!A${rowNum}:I${rowNum}`;
+  const rowRange = `${SHEET_TAB}!A${rowNum}:K${rowNum}`; // Read K so J/K are available to callers
   const rowRes = await sheetsRequest(
     "GET",
     sheetsUrl(sheetId, `/values/${encodeURIComponent(rowRange)}`),
@@ -243,6 +249,7 @@ async function updateRow(
   rowNum: number,
   row: BacklogRow
 ): Promise<void> {
+  // Writes A..I only. J (Notes 2) and K (Scope) are intentionally never written.
   const rowRange = `${SHEET_TAB}!A${rowNum}:I${rowNum}`;
   const url =
     sheetsUrl(sheetId, `/values/${encodeURIComponent(rowRange)}`) +
@@ -332,7 +339,7 @@ serve(async (req) => {
 
     // ---- list_all ----------------------------------------------------------
     if (body.action === "list_all") {
-      const range = "Backlog!A2:I"; // Skip header row
+      const range = "Backlog!A2:K"; // Skip header row; A:K includes read-only J (Notes 2) and K (Scope)
       const response = await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}`,
         {
@@ -355,6 +362,8 @@ serve(async (req) => {
         date_completed: row[6] || "",
         commit: row[7] || "",
         notes: row[8] || "",
+        notes_2: row[9] || "",
+        scope: row[10] || "",
       })).filter(r => r.id); // Skip empty rows
       console.log(`[UPDATE-BACKLOG-SHEET] list_all returned ${rows.length} rows`);
       return new Response(
@@ -398,6 +407,7 @@ serve(async (req) => {
 
       // Merge existing row with incoming partial updates
       const existing = valuesToRow(found.existingValues);
+      // notes_2 and scope are present on merged but rowToValues emits only A..I, so they are never written back - J/K stay human-owned.
       const merged: BacklogRow = { ...existing, ...body.updates, id: body.id };
 
       await updateRow(sheetId, accessToken, found.rowNum, merged);
