@@ -425,11 +425,12 @@ function HubMembersTab({ hubId, isAdmin }: { hubId: string; isAdmin: boolean }) 
   const [loading, setLoading] = useState(true);
 
   const fetchMembers = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('hub_members')
       .select('user_id, joined_at, profile:profiles(id, full_name, avatar_url, title, company)')
       .eq('hub_id', hubId)
       .order('joined_at', { ascending: true });
+    if (error) { console.error('[HubMembersTab] fetch error:', error); }
     setMembers((data ?? []) as unknown as HubMember[]);
     setLoading(false);
   }, [hubId]);
