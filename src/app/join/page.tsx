@@ -160,6 +160,11 @@ function JoinInner() {
 
   const handleSubmit = async () => {
     if (!isFormValid || submitting) return;
+    // Block if a referral code was typed but didn't resolve to a valid ambassador
+    if (referralCodeInput.trim() !== '' && resolvedAmbassador === null) {
+      setFormError('That referral code is invalid. Please correct it or clear it to continue.');
+      return;
+    }
     setSubmitting(true);
     setFormError(null);
 
@@ -206,6 +211,7 @@ function JoinInner() {
         referral_code: referralCodeToUse,
         user_id: newUserId,
         primary_goal: goal,
+        ambassador_id: ambassadorIdToUse,
       },
     });
     if (captureError) {

@@ -22,6 +22,7 @@ serve(async (req) => {
       user_id,
       primary_goal,
       sms_consent_at,
+      ambassador_id,
     } = body as {
       email?: string;
       full_name?: string;
@@ -31,6 +32,7 @@ serve(async (req) => {
       user_id?: string;
       primary_goal?: string;
       sms_consent_at?: string | null;
+      ambassador_id?: string;
     };
 
     // 1. Validate email
@@ -107,6 +109,8 @@ serve(async (req) => {
           phone: phone ?? null,
           sms_consent: consentTrue,
           sms_consent_at: consentTrue ? (sms_consent_at ?? new Date().toISOString()) : null,
+          referred_by_code: cleanCode || null,
+          referred_by_ambassador_id: (ambassador_id && ambassador_id.trim() !== "") ? ambassador_id.trim() : null,
         })
         .eq("id", user_id);
 
