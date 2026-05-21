@@ -427,7 +427,7 @@ function HubMembersTab({ hubId, isAdmin }: { hubId: string; isAdmin: boolean }) 
   const fetchMembers = useCallback(async () => {
     const { data, error } = await supabase
       .from('hub_members')
-      .select('user_id, joined_at, profile:profiles(id, full_name, avatar_url, title, company)')
+      .select('user_id, joined_at, profile:profiles!hub_members_user_id_fkey(id, full_name, avatar_url, title, company)')
       .eq('hub_id', hubId)
       .order('joined_at', { ascending: true });
     if (error) { console.error('[HubMembersTab] fetch error:', error); }
