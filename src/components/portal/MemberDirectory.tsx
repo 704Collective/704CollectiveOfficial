@@ -24,6 +24,7 @@ interface DirectoryMember {
   company: string | null;
   member_since: string | null;
   is_founding_member?: boolean | null;
+  hubs?: string[];
 }
 
 function memberDisplayName(fullName: string | null | undefined): string {
@@ -112,6 +113,11 @@ function MemberCard({
                 Social
               </Badge>
             )}
+            {member.hubs && member.hubs.map((hubTitle) => (
+              <Badge key={hubTitle} variant="outline" className="text-[10px] px-2 py-0 border-[#C6A664]/30 text-[#C6A664]">
+                {hubTitle}
+              </Badge>
+            ))}
           </div>
         </div>
       </div>
@@ -162,7 +168,25 @@ export function MemberDirectory() {
         .or('member_type.eq.business,role.eq.admin,role.eq.super_admin')
         .is('deleted_at', null)
         .order('full_name', { ascending: true });
-      setMembers((data ?? []) as DirectoryMember[]);
+      const memberIds = (data ?? []).map((m) => m.id);
+      let hubMap = new Map<string, string[]>();
+      if (memberIds.length > 0) {
+        const { data: hubRows } = await supabase
+          .from('hub_members')
+          .select('user_id, hubs(title)')
+          .in('user_id', memberIds);
+        if (hubRows) {
+          for (const row of (hubRows as unknown) as { user_id: string; hubs: { title: string } | null }[]) {
+            if (!row.hubs) continue;
+            const existing = hubMap.get(row.user_id) ?? [];
+            existing.push(row.hubs.title);
+            hubMap.set(row.user_id, existing);
+          }
+        }
+      }
+      setMembers(
+        (data ?? []).map((m) => ({ ...(m as DirectoryMember), hubs: hubMap.get(m.id) ?? [] }))
+      );
     } finally {
       setLoading(false);
     }
