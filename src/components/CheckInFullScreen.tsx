@@ -211,7 +211,8 @@ export function CheckInFullScreen({
       setIsScanning(true);
     } catch (err: any) {
       console.error('Scanner error:', err);
-      setCameraError(err.message || 'Failed to start camera.');
+      const detail = err?.name ? `${err.name}: ${err.message || 'no message'}` : (err?.message || String(err) || 'Unknown error');
+      setCameraError(`Camera failed to start. [${detail}]`);
       setIsScanning(false);
     }
   };
