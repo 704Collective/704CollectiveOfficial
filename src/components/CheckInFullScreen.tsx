@@ -198,9 +198,19 @@ export function CheckInFullScreen({
       
       const scanner = new Html5Qrcode(scannerContainerId);
       scannerRef.current = scanner;
-      
+
+      const cameras = await Html5Qrcode.getCameras();
+      if (!cameras || cameras.length === 0) {
+        setCameraError('No camera found on this device.');
+        return;
+      }
+      const backCamera = cameras.find((c) =>
+        /back|rear|environment/i.test(c.label)
+      );
+      const chosenCamera = backCamera ?? cameras[cameras.length - 1] ?? cameras[0];
+
       await scanner.start(
-        { facingMode: { ideal: 'environment' } },
+        chosenCamera.id,
         { fps: 10 },
         (decodedText) => {
           handleQRScan(decodedText);
