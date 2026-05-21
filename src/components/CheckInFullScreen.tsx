@@ -182,7 +182,7 @@ export function CheckInFullScreen({
       
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment' } 
+          video: { facingMode: { ideal: 'environment' } } 
         });
         stream.getTracks().forEach(track => track.stop());
       } catch (permErr: any) {
@@ -200,16 +200,8 @@ export function CheckInFullScreen({
       scannerRef.current = scanner;
       
       await scanner.start(
-        { facingMode: 'environment' },
-        {
-          fps: 10,
-          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-            const size = Math.floor(minEdge * 0.7);
-            return { width: size, height: size };
-          },
-          aspectRatio: 1.0,
-        },
+        { facingMode: { ideal: 'environment' } },
+        { fps: 10 },
         (decodedText) => {
           handleQRScan(decodedText);
         },
@@ -222,6 +214,13 @@ export function CheckInFullScreen({
       setCameraError(err.message || 'Failed to start camera.');
       setIsScanning(false);
     }
+  };
+
+  const retryScanner = async () => {
+    setCameraError(null);
+    await stopScanner();
+    scannerRef.current = null;
+    setTimeout(() => { startScanner(); }, 300);
   };
 
   const stopScanner = async () => {
@@ -703,9 +702,14 @@ export function CheckInFullScreen({
                   <div className="text-center">
                     <Camera className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
                     <p className="text-destructive text-sm mb-4">{cameraError}</p>
-                    <Button onClick={startScanner} variant="outline">
+                    <Button onClick={retryScanner} variant="outline">
                       Try Again
                     </Button>
+                    {cameraError && (cameraError.toLowerCase().includes('denied') || cameraError.toLowerCase().includes('permission') || cameraError.toLowerCase().includes('allowed')) && (
+                      <p className="text-xs text-muted-foreground mt-3">
+                        If you previously blocked the camera, enable it in your browser site settings, then tap Try Again.
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
