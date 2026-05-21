@@ -170,7 +170,11 @@ export function CheckInFullScreen({
     setCameraError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 1280 },
+        },
       });
       streamRef.current = stream;
       const video = videoRef.current;
@@ -216,7 +220,7 @@ export function CheckInFullScreen({
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const result = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: 'dontInvert',
+          inversionAttempts: 'attemptBoth',
         });
         if (result && result.data) {
           const now = Date.now();
@@ -692,7 +696,7 @@ export function CheckInFullScreen({
             <div className="w-full max-w-sm aspect-square rounded-lg overflow-hidden bg-muted relative">
               <video
                 ref={videoRef}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
                 muted
                 playsInline
               />
