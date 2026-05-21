@@ -1,4 +1,6 @@
-'use client';
+﻿filepath = r"C:\Users\adamk\704collective\src\components\CheckInFullScreen.tsx"
+
+content = r"""'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
@@ -787,3 +789,32 @@ export function CheckInFullScreen({
     document.body
   );
 }
+"""
+
+with open(filepath, "w", encoding="utf-8", newline="\n") as f:
+    f.write(content)
+
+with open(filepath, "rb") as f:
+    first4 = list(f.read(4))
+
+lines = content.split("\n")
+print(f"Saved. First 4 bytes: {first4}. Total lines: {len(lines)}")
+
+# Sanity checks
+checks = [
+    ("jsqr import", "import jsQR from 'jsqr'" in content),
+    ("no Html5Qrcode", "Html5Qrcode" not in content),
+    ("no scannerContainerId", "scannerContainerId" not in content),
+    ("videoRef present", "videoRef" in content),
+    ("scanningActiveRef present", "scanningActiveRef" in content),
+    ("startScanner present", "const startScanner = async" in content),
+    ("scanLoop present", "const scanLoop = " in content),
+    ("stopScanner present", "const stopScanner = " in content),
+    ("retryScanner present", "const retryScanner = async" in content),
+    ("no pause(true)", "pause(true)" not in content),
+    ("no scannerRef.current.resume", "scannerRef.current.resume" not in content),
+    ("video element", "<video" in content),
+    ("handleQRScan present", "const handleQRScan = async" in content),
+]
+for label, ok in checks:
+    print(f"  {'OK' if ok else 'FAIL'}: {label}")
