@@ -211,7 +211,7 @@ export function CheckInFullScreen({
 
       await scanner.start(
         chosenCamera.id,
-        { fps: 10 },
+        { fps: 10, qrbox: { width: 280, height: 280 } },
         (decodedText) => {
           handleQRScan(decodedText);
         },
