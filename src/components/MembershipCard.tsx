@@ -162,7 +162,7 @@ export function MembershipCard({
             <div className="bg-white p-1.5 rounded-lg">
               <QRCodeSVG
                 value={memberId}
-                className="w-[96px] h-[96px] min-[400px]:w-[112px] min-[400px]:h-[112px]"
+                className="w-[76px] h-[76px] min-[400px]:w-[84px] min-[400px]:h-[84px]"
                 level="L"
                 bgColor="#FFFFFF"
                 fgColor="#000000"
@@ -218,7 +218,7 @@ export function MembershipCard({
           <div className="bg-white p-1.5 rounded-lg">
             <QRCodeSVG
               value={memberId}
-              className="w-[96px] h-[96px] min-[400px]:w-[112px] min-[400px]:h-[112px]"
+              className="w-[76px] h-[76px] min-[400px]:w-[84px] min-[400px]:h-[84px]"
               level="L"
               bgColor="#FFFFFF"
               fgColor="#000000"
