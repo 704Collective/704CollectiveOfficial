@@ -225,25 +225,33 @@ export function CheckInFullScreen({
       canvasRef.current = canvas;
     }
     if (video && video.readyState === video.HAVE_ENOUGH_DATA) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      if (ctx && canvas.width > 0 && canvas.height > 0) {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const result = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: 'attemptBoth',
-        });
-        scanFrameCountRef.current += 1;
-        if (scanFrameCountRef.current % 60 === 0) {
-          console.log('[SCAN] frame', canvas.width, 'x', canvas.height, 'jsqr result:', result ? result.data : 'null');
-        }
-        if (result && result.data) {
-          const now = Date.now();
-          // Debounce: ignore the same code re-scanned within 3 seconds
-          if (result.data !== lastScanRef.current.text || now - lastScanRef.current.at > 3000) {
-            lastScanRef.current = { text: result.data, at: now };
-            handleQRScan(result.data);
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (vw > 0 && vh > 0) {
+        // Crop to a centered square region - jsqr decodes far more reliably
+        // on a focused crop than on the full frame.
+        const cropSize = Math.floor(Math.min(vw, vh) * 0.6);
+        const sx = Math.floor((vw - cropSize) / 2);
+        const sy = Math.floor((vh - cropSize) / 2);
+        canvas.width = cropSize;
+        canvas.height = cropSize;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (ctx) {
+          ctx.drawImage(video, sx, sy, cropSize, cropSize, 0, 0, cropSize, cropSize);
+          const imageData = ctx.getImageData(0, 0, cropSize, cropSize);
+          const result = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'attemptBoth',
+          });
+          scanFrameCountRef.current += 1;
+          if (scanFrameCountRef.current % 60 === 0) {
+            console.log('[SCAN] crop', cropSize, 'x', cropSize, 'jsqr result:', result ? result.data : 'null');
+          }
+          if (result && result.data) {
+            const now = Date.now();
+            if (result.data !== lastScanRef.current.text || now - lastScanRef.current.at > 3000) {
+              lastScanRef.current = { text: result.data, at: now };
+              handleQRScan(result.data);
+            }
           }
         }
       }
