@@ -48,6 +48,16 @@ export function CheckInFullScreen({
   adminId 
 }: CheckInFullScreenProps) {
   const [attendees, setAttendees] = useState<AttendeeRow[]>([]);
+
+  // Temporary diagnostic: eruda on-screen console for mobile debugging
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if ((window as any).eruda) return;
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/eruda';
+    script.onload = () => { (window as any).eruda?.init(); };
+    document.body.appendChild(script);
+  }, []);
   const [recentCheckIns, setRecentCheckIns] = useState<RecentCheckIn[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
@@ -62,6 +72,7 @@ export function CheckInFullScreen({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const scanningActiveRef = useRef(false);
+  const scanFrameCountRef = useRef(0);
   const lastScanRef = useRef<{ text: string; at: number }>({ text: '', at: 0 });
   const audioContextRef = useRef<AudioContext | null>(null);
 
@@ -188,6 +199,7 @@ export function CheckInFullScreen({
       await video.play();
       scanningActiveRef.current = true;
       setIsScanning(true);
+      console.log('[SCAN] camera started, video size:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight);
       scanLoop();
     } catch (err: any) {
       const name = err?.name || 'Error';
@@ -222,6 +234,10 @@ export function CheckInFullScreen({
         const result = jsQR(imageData.data, imageData.width, imageData.height, {
           inversionAttempts: 'attemptBoth',
         });
+        scanFrameCountRef.current += 1;
+        if (scanFrameCountRef.current % 60 === 0) {
+          console.log('[SCAN] frame', canvas.width, 'x', canvas.height, 'jsqr result:', result ? result.data : 'null');
+        }
         if (result && result.data) {
           const now = Date.now();
           // Debounce: ignore the same code re-scanned within 3 seconds
