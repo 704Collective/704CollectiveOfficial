@@ -281,6 +281,7 @@ export function CheckInFullScreen({
   };
 
   const handleQRScan = async (scannedText: string) => {
+    console.log('[QR] handleQRScan called with:', scannedText, 'length:', scannedText.length);
     try {
       // Legacy guest_passes table (old GP-XXXXXX format)
       if (scannedText.startsWith("GP-")) {
@@ -347,6 +348,7 @@ export function CheckInFullScreen({
       // Try matching a guest_pass ticket by its metadata.guest_pass_code before
       // falling through to the regular member user-ID lookup.
       if (!scannedText.includes('@') && scannedText.length >= 32) {
+        console.log('[QR] entered guest-pass branch, isOnline:', isOnline);
         if (!isOnline) {
           toast.error('Cannot verify guest passes while offline');
           return;
@@ -359,6 +361,7 @@ export function CheckInFullScreen({
           .eq('event_id', eventId)
           .filter('metadata->>guest_pass_code', 'eq', scannedText)
           .maybeSingle();
+        console.log('[QR] guestTicket:', guestTicket ? 'found - will process as guest' : 'none - falling through');
 
         if (guestTicket) {
           if (guestTicket.checked_in_at) {
@@ -401,6 +404,7 @@ export function CheckInFullScreen({
       // MembershipCard encodes the member's profile.id (UUID, 36 chars).
       // Look up the member, find or create their ticket for this event, stamp check-in.
       if (!scannedText.includes('@') && scannedText.length >= 32) {
+        console.log('[QR] entered member branch, isOnline:', isOnline);
         if (!isOnline) {
           toast.error('Cannot verify member check-ins while offline');
           return;
@@ -411,6 +415,7 @@ export function CheckInFullScreen({
           .select('id, full_name, member_type, subscription_status, membership_override, deleted_at')
           .eq('id', scannedText)
           .maybeSingle();
+        console.log('[QR] member lookup result:', member ? `found ${member.full_name}` : 'NOT FOUND');
 
         if (!member) {
           toast.error('QR code not recognized');
@@ -444,6 +449,7 @@ export function CheckInFullScreen({
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
+        console.log('[QR] existingTicket:', existingTicket ? `id ${existingTicket.id} checked_in_at ${existingTicket.checked_in_at}` : 'none - will create walk-in');
 
         if (existingTicket) {
           if (existingTicket.checked_in_at) {
@@ -491,6 +497,7 @@ export function CheckInFullScreen({
           .update({ last_attended_at: new Date().toISOString() })
           .eq('id', scannedText);
 
+        console.log('[QR] reached success toast for', member.full_name);
         toast.success(`Welcome, ${member.full_name || 'Member'}!`);
         addRecentCheckIn(member.full_name || 'Member', false, false);
         fetchAttendees();
@@ -498,6 +505,7 @@ export function CheckInFullScreen({
       }
 
       // Fallback: nothing matched
+      console.log('[QR] fell through all branches - nothing matched');
       toast.error('QR code not recognized');
     } finally {
       // No pause/resume needed - scanLoop debounce (lastScanRef, 3s) handles re-scan suppression
