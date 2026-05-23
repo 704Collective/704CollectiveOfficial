@@ -288,8 +288,8 @@ serve(async (req) => {
       });
     }
 
-    if (campaign.status === "sent" && !test_email) {
-      return new Response(JSON.stringify({ error: "Campaign already sent" }), {
+    if ((campaign.status === "sent" || campaign.status === "sending") && !test_email) {
+      return new Response(JSON.stringify({ error: `Campaign already ${campaign.status}` }), {
         status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -409,7 +409,8 @@ serve(async (req) => {
         .select("id, email, full_name")
         .in("member_type", ["social", "business"])
         .in("subscription_status", ["active", "trialing"])
-        .is("deleted_at", null);
+        .is("deleted_at", null)
+        .or("marketing_unsubscribed.is.null,marketing_unsubscribed.eq.false");
       recipients = (profiles ?? [])
         .filter((p) => !!p.email)
         .map((p) => ({ email: p.email, name: p.full_name, profile_id: p.id }));
@@ -419,7 +420,8 @@ serve(async (req) => {
         .select("id, email, full_name")
         .eq("member_type", "social")
         .in("subscription_status", ["active", "trialing"])
-        .is("deleted_at", null);
+        .is("deleted_at", null)
+        .or("marketing_unsubscribed.is.null,marketing_unsubscribed.eq.false");
       recipients = (profiles ?? [])
         .filter((p) => !!p.email)
         .map((p) => ({ email: p.email, name: p.full_name, profile_id: p.id }));
@@ -429,7 +431,8 @@ serve(async (req) => {
         .select("id, email, full_name")
         .eq("member_type", "business")
         .in("subscription_status", ["active", "trialing"])
-        .is("deleted_at", null);
+        .is("deleted_at", null)
+        .or("marketing_unsubscribed.is.null,marketing_unsubscribed.eq.false");
       recipients = (profiles ?? [])
         .filter((p) => !!p.email)
         .map((p) => ({ email: p.email, name: p.full_name, profile_id: p.id }));
@@ -438,7 +441,8 @@ serve(async (req) => {
         .from("profiles")
         .select("id, email, full_name")
         .in("member_type", ["social_non_member", "business_non_member"])
-        .is("deleted_at", null);
+        .is("deleted_at", null)
+        .or("marketing_unsubscribed.is.null,marketing_unsubscribed.eq.false");
       recipients = (profiles ?? [])
         .filter((p) => !!p.email)
         .map((p) => ({ email: p.email, name: p.full_name, profile_id: p.id }));
@@ -447,7 +451,8 @@ serve(async (req) => {
         .from("profiles")
         .select("id, email, full_name")
         .in("subscription_status", ["canceled", "cancel_at_period_end"])
-        .is("deleted_at", null);
+        .is("deleted_at", null)
+        .or("marketing_unsubscribed.is.null,marketing_unsubscribed.eq.false");
       recipients = (profiles ?? [])
         .filter((p) => !!p.email)
         .map((p) => ({ email: p.email, name: p.full_name, profile_id: p.id }));
