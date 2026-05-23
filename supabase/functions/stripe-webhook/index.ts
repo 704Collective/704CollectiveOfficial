@@ -993,7 +993,10 @@ serve(async (req) => {
       });
     }
 
-    // Route to handler
+    // Route to handler. If a handler throws, delete the processed marker
+    // so Stripe's retry re-runs the handler (the marker was inserted upfront
+    // for atomic idempotency; on failure it must be rolled back manually).
+    try {
     switch (event.type) {
       case "checkout.session.completed":
         await handleCheckoutCompleted(event, stripe, supabase);
@@ -1049,6 +1052,28 @@ serve(async (req) => {
       default:
         log("Unhandled event type", { type: event.type });
         break;
+    }
+    } catch (handlerErr) {
+      const hMsg = handlerErr instanceof Error ? handlerErr.message : String(handlerErr);
+      log("Handler failed - removing processed marker so Stripe retry re-runs", {
+        id: event.id,
+        type: event.type,
+        error: hMsg,
+      });
+      const { error: cleanupErr } = await supabase
+        .from("processed_webhook_events")
+        .delete()
+        .eq("stripe_event_id", event.id);
+      if (cleanupErr) {
+        log("CRITICAL: failed to delete processed marker after handler error - this event will NOT be retried", {
+          id: event.id,
+          error: cleanupErr.message,
+        });
+      }
+      return new Response(JSON.stringify({ error: "Handler failed" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     return new Response(JSON.stringify({ received: true }), {
