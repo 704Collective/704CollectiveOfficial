@@ -38,6 +38,34 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Authorization: admin or super_admin only
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Missing authorization" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user: authedUser }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !authedUser?.id) {
+      return new Response(
+        JSON.stringify({ error: "Invalid token" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { data: authedProfile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", authedUser.id)
+      .maybeSingle();
+    if (!authedProfile || !["admin", "super_admin"].includes(authedProfile.role)) {
+      return new Response(
+        JSON.stringify({ error: "Forbidden: admin access required" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { event_id, action } = await req.json() as { event_id: string; action: "publish" | "unpublish" };
 
     if (!event_id || !action) {
