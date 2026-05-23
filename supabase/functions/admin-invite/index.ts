@@ -22,7 +22,6 @@ serve(async (req) => {
   }
 
   try {
-    console.log("[ADMIN-INVITE] incoming headers:", Object.fromEntries(req.headers.entries()));
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
