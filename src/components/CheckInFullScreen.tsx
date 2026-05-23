@@ -49,15 +49,6 @@ export function CheckInFullScreen({
 }: CheckInFullScreenProps) {
   const [attendees, setAttendees] = useState<AttendeeRow[]>([]);
 
-  // Temporary diagnostic: eruda on-screen console for mobile debugging
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if ((window as any).eruda) return;
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/eruda';
-    script.onload = () => { (window as any).eruda?.init(); };
-    document.body.appendChild(script);
-  }, []);
   const [recentCheckIns, setRecentCheckIns] = useState<RecentCheckIn[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
@@ -72,7 +63,6 @@ export function CheckInFullScreen({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const scanningActiveRef = useRef(false);
-  const scanFrameCountRef = useRef(0);
   const lastScanRef = useRef<{ text: string; at: number }>({ text: '', at: 0 });
   const audioContextRef = useRef<AudioContext | null>(null);
 
@@ -199,7 +189,6 @@ export function CheckInFullScreen({
       await video.play();
       scanningActiveRef.current = true;
       setIsScanning(true);
-      console.log('[SCAN] camera started, video size:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight);
       rafRef.current = window.setInterval(scanFrame, 200) as unknown as number;
     } catch (err: any) {
       const name = err?.name || 'Error';
@@ -240,7 +229,6 @@ export function CheckInFullScreen({
           const result = jsQR(imageData.data, imageData.width, imageData.height, {
             inversionAttempts: 'attemptBoth',
           });
-          console.log('[SCAN] frame', cropSize, 'x', cropSize, 'readyState', video.readyState, 'jsqr:', result ? result.data : 'null');
           if (result && result.data) {
             const now = Date.now();
             if (result.data !== lastScanRef.current.text || now - lastScanRef.current.at > 3000) {
@@ -249,11 +237,7 @@ export function CheckInFullScreen({
             }
           }
         }
-      } else {
-        console.log('[SCAN] video has no dimensions yet', vw, vh);
       }
-    } else {
-      console.log('[SCAN] video not ready, readyState', video?.readyState);
     }
   };
 
@@ -281,7 +265,6 @@ export function CheckInFullScreen({
   };
 
   const handleQRScan = async (scannedText: string) => {
-    console.log('[QR] handleQRScan called with:', scannedText, 'length:', scannedText.length);
     try {
       // Legacy guest_passes table (old GP-XXXXXX format)
       if (scannedText.startsWith("GP-")) {
@@ -348,7 +331,6 @@ export function CheckInFullScreen({
       // Try matching a guest_pass ticket by its metadata.guest_pass_code before
       // falling through to the regular member user-ID lookup.
       if (!scannedText.includes('@') && scannedText.length >= 32) {
-        console.log('[QR] entered guest-pass branch, isOnline:', isOnline);
         if (!isOnline) {
           toast.error('Cannot verify guest passes while offline');
           return;
@@ -361,7 +343,6 @@ export function CheckInFullScreen({
           .eq('event_id', eventId)
           .filter('metadata->>guest_pass_code', 'eq', scannedText)
           .maybeSingle();
-        console.log('[QR] guestTicket:', guestTicket ? 'found - will process as guest' : 'none - falling through');
 
         if (guestTicket) {
           if (guestTicket.checked_in_at) {
@@ -404,7 +385,6 @@ export function CheckInFullScreen({
       // MembershipCard encodes the member's profile.id (UUID, 36 chars).
       // Look up the member, find or create their ticket for this event, stamp check-in.
       if (!scannedText.includes('@') && scannedText.length >= 32) {
-        console.log('[QR] entered member branch, isOnline:', isOnline);
         if (!isOnline) {
           toast.error('Cannot verify member check-ins while offline');
           return;
@@ -415,7 +395,6 @@ export function CheckInFullScreen({
           .select('id, full_name, member_type, subscription_status, membership_override, deleted_at')
           .eq('id', scannedText)
           .maybeSingle();
-        console.log('[QR] member lookup result:', member ? `found ${member.full_name}` : 'NOT FOUND');
 
         if (!member) {
           toast.error('QR code not recognized');
@@ -449,7 +428,6 @@ export function CheckInFullScreen({
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
-        console.log('[QR] existingTicket:', existingTicket ? `id ${existingTicket.id} checked_in_at ${existingTicket.checked_in_at}` : 'none - will create walk-in');
 
         if (existingTicket) {
           if (existingTicket.checked_in_at) {
@@ -497,7 +475,6 @@ export function CheckInFullScreen({
           .update({ last_attended_at: new Date().toISOString() })
           .eq('id', scannedText);
 
-        console.log('[QR] reached success toast for', member.full_name);
         toast.success(`Welcome, ${member.full_name || 'Member'}!`);
         addRecentCheckIn(member.full_name || 'Member', false, false);
         fetchAttendees();
@@ -505,7 +482,6 @@ export function CheckInFullScreen({
       }
 
       // Fallback: nothing matched
-      console.log('[QR] fell through all branches - nothing matched');
       toast.error('QR code not recognized');
     } finally {
       // No pause/resume needed - scanLoop debounce (lastScanRef, 3s) handles re-scan suppression
