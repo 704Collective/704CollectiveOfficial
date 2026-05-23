@@ -46,6 +46,34 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Authorization: super_admin only - this function charges cards
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Missing authorization" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user: authedUser }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !authedUser?.id) {
+      return new Response(
+        JSON.stringify({ error: "Invalid token" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const { data: authedProfile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", authedUser.id)
+      .maybeSingle();
+    if (!authedProfile || authedProfile.role !== "super_admin") {
+      return new Response(
+        JSON.stringify({ error: "Forbidden: super_admin required" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
     const SITE_URL = Deno.env.get("SITE_URL") ?? "https://704collective.com";
 
