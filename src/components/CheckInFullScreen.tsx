@@ -200,7 +200,7 @@ export function CheckInFullScreen({
       scanningActiveRef.current = true;
       setIsScanning(true);
       console.log('[SCAN] camera started, video size:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight);
-      scanLoop();
+      rafRef.current = window.setInterval(scanFrame, 200) as unknown as number;
     } catch (err: any) {
       const name = err?.name || 'Error';
       if (name === 'NotAllowedError') {
@@ -216,7 +216,7 @@ export function CheckInFullScreen({
     }
   };
 
-  const scanLoop = () => {
+  const scanFrame = () => {
     if (!scanningActiveRef.current) return;
     const video = videoRef.current;
     let canvas = canvasRef.current;
@@ -228,8 +228,6 @@ export function CheckInFullScreen({
       const vw = video.videoWidth;
       const vh = video.videoHeight;
       if (vw > 0 && vh > 0) {
-        // Crop to a centered square region - jsqr decodes far more reliably
-        // on a focused crop than on the full frame.
         const cropSize = Math.floor(Math.min(vw, vh) * 0.6);
         const sx = Math.floor((vw - cropSize) / 2);
         const sy = Math.floor((vh - cropSize) / 2);
@@ -242,10 +240,7 @@ export function CheckInFullScreen({
           const result = jsQR(imageData.data, imageData.width, imageData.height, {
             inversionAttempts: 'attemptBoth',
           });
-          scanFrameCountRef.current += 1;
-          if (scanFrameCountRef.current % 60 === 0) {
-            console.log('[SCAN] crop', cropSize, 'x', cropSize, 'jsqr result:', result ? result.data : 'null');
-          }
+          console.log('[SCAN] frame', cropSize, 'x', cropSize, 'readyState', video.readyState, 'jsqr:', result ? result.data : 'null');
           if (result && result.data) {
             const now = Date.now();
             if (result.data !== lastScanRef.current.text || now - lastScanRef.current.at > 3000) {
@@ -254,15 +249,18 @@ export function CheckInFullScreen({
             }
           }
         }
+      } else {
+        console.log('[SCAN] video has no dimensions yet', vw, vh);
       }
+    } else {
+      console.log('[SCAN] video not ready, readyState', video?.readyState);
     }
-    rafRef.current = requestAnimationFrame(scanLoop);
   };
 
   const stopScanner = () => {
     scanningActiveRef.current = false;
     if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
+      clearInterval(rafRef.current);
       rafRef.current = null;
     }
     if (streamRef.current) {
