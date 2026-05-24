@@ -254,6 +254,61 @@ async function syncPersonAndCredential(
   log("syncPersonAndCredential: issued member credential", { personId, token });
 }
 
+/**
+ * Additive: void a cancelled member's active credentials in the new schema.
+ * Best-effort - callers wrap in try/catch. A failure here must NOT break
+ * the existing profiles-based cancellation that already succeeded.
+ * Voids ALL active credentials for the person (the lifetime member pass and
+ * any active future RSVPs). Past credentials are status='used' and untouched.
+ */
+async function voidPersonCredentials(
+  supabase: ReturnType<typeof createClient>,
+  stripeCustomerId: string
+) {
+  // Resolve the person by their stripe_customer_id on the people row.
+  const { data: person, error: personErr } = await supabase
+    .from("people")
+    .select("id")
+    .eq("stripe_customer_id", stripeCustomerId)
+    .maybeSingle();
+
+  if (personErr) {
+    log("voidPersonCredentials: person lookup failed", { error: personErr.message });
+    return;
+  }
+  if (!person) {
+    log("voidPersonCredentials: no person matched stripe_customer_id - nothing to void", { stripeCustomerId });
+    return;
+  }
+
+  const { data: voided, error: voidErr } = await supabase
+    .from("attendance_credentials")
+    .update({ status: "voided", updated_at: new Date().toISOString() })
+    .eq("person_id", person.id)
+    .eq("status", "active")
+    .select("id");
+
+  if (voidErr) {
+    log("voidPersonCredentials: void update failed", { error: voidErr.message, personId: person.id });
+    return;
+  }
+
+  // Mark the person canceled in the new schema too.
+  await supabase
+    .from("people")
+    .update({
+      member_status: "canceled",
+      canceled_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", person.id);
+
+  log("voidPersonCredentials: voided credentials", {
+    personId: person.id,
+    count: voided?.length ?? 0,
+  });
+}
+
 // ── event handlers ───────────────────────────────────────────────────────
 
 async function handleCheckoutCompleted(
@@ -993,6 +1048,16 @@ async function handleSubscriptionDeleted(
   } else {
     log("WARNING: No profile found for subscription.deleted", { stripeCustomerId });
   }
+
+    // Additive: void this person's credentials in the new schema.
+    // Best-effort - must not break the profiles cancellation above.
+    try {
+      await voidPersonCredentials(supabase, stripeCustomerId);
+    } catch (voidErr) {
+      log("voidPersonCredentials threw (non-blocking)", {
+        error: voidErr instanceof Error ? voidErr.message : String(voidErr),
+      });
+    }
 
   // Ambassador referral churn tracking
   // If subscription cancels BEFORE conversion, mark referral as churned.
