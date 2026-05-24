@@ -116,6 +116,143 @@ async function insertPayment(
     log("Payment insert error (non-blocking)", { error: error.message });
   }
 }
+/**
+ * Additive new-schema sync. Upserts the member's row in the `people` table
+ * and ensures they hold one active lifetime `member` credential.
+ * Best-effort: callers wrap this in try/catch. A failure here must NOT
+ * break the existing profiles-based activation that already succeeded.
+ */
+async function syncPersonAndCredential(
+  supabase: ReturnType<typeof createClient>,
+  args: {
+    userId: string;
+    email: string;
+    fullName: string | null;
+    phone: string | null;
+    stripeCustomerId: string | null;
+    memberStatus: string;        // e.g. "active"
+    smsConsent: boolean;
+    smsConsentAt: string | null;
+  }
+) {
+  const emailLower = args.email.toLowerCase().trim();
+
+  // 1. Find existing person: by profile_id in metadata, else by email_lower.
+  let personId: string | null = null;
+  const { data: byProfile } = await supabase
+    .from("people")
+    .select("id")
+    .filter("metadata->>profile_id", "eq", args.userId)
+    .maybeSingle();
+  personId = byProfile?.id ?? null;
+
+  if (!personId) {
+    const { data: byEmail } = await supabase
+      .from("people")
+      .select("id, metadata")
+      .eq("email_lower", emailLower)
+      .maybeSingle();
+    if (byEmail) {
+      personId = byEmail.id;
+      // Backfill profile_id into metadata so future lookups match directly.
+      const mergedMeta = { ...(byEmail.metadata ?? {}), profile_id: args.userId };
+      await supabase.from("people").update({ metadata: mergedMeta }).eq("id", personId);
+    }
+  }
+
+  // 2. If still no person, create one.
+  if (!personId) {
+    const { data: created, error: createErr } = await supabase
+      .from("people")
+      .insert({
+        email: args.email,
+        full_name: args.fullName,
+        phone: args.phone,
+        roles: ["member"],
+        member_tier: "social",
+        member_status: args.memberStatus,
+        stripe_customer_id: args.stripeCustomerId,
+        sms_consent: args.smsConsent,
+        sms_consent_at: args.smsConsentAt,
+        joined_at: new Date().toISOString(),
+        metadata: { source: "stripe_webhook", profile_id: args.userId },
+      })
+      .select("id")
+      .single();
+    if (createErr) {
+      log("syncPersonAndCredential: person insert failed", { error: createErr.message });
+      return;
+    }
+    personId = created.id;
+    log("syncPersonAndCredential: created person", { personId });
+  } else {
+    // 3. Person exists - update membership fields, ensure 'member' role present.
+    const { data: existing } = await supabase
+      .from("people")
+      .select("roles")
+      .eq("id", personId)
+      .single();
+    const roles: string[] = existing?.roles ?? [];
+    if (!roles.includes("member")) roles.push("member");
+    await supabase
+      .from("people")
+      .update({
+        roles,
+        member_status: args.memberStatus,
+        stripe_customer_id: args.stripeCustomerId,
+        ...(args.phone ? { phone: args.phone } : {}),
+        ...(args.smsConsent ? { sms_consent: true, sms_consent_at: args.smsConsentAt } : {}),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", personId);
+    log("syncPersonAndCredential: updated person", { personId });
+  }
+
+  // 4. Ensure one active lifetime member credential (event_id NULL).
+  const { data: existingCred } = await supabase
+    .from("attendance_credentials")
+    .select("id")
+    .eq("person_id", personId)
+    .eq("credential_type", "member")
+    .eq("status", "active")
+    .is("event_id", null)
+    .maybeSingle();
+
+  if (existingCred) {
+    log("syncPersonAndCredential: member credential already exists", { personId });
+    return;
+  }
+
+  const tokenBytes = new Uint8Array(8);
+  crypto.getRandomValues(tokenBytes);
+  const token =
+    "C-" +
+    Array.from(tokenBytes).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 10).toUpperCase();
+
+  const { error: credErr } = await supabase
+    .from("attendance_credentials")
+    .insert({
+      token,
+      person_id: personId,
+      event_id: null,
+      credential_type: "member",
+      status: "active",
+      wallet_status: "not_issued",
+      metadata: { source: "stripe_webhook" },
+    });
+
+  if (credErr) {
+    // 23505 = unique violation on one_active_member_credential_per_person.
+    // Means a credential was created concurrently - that is fine, not an error.
+    if ((credErr as { code?: string }).code === "23505") {
+      log("syncPersonAndCredential: member credential already present (unique guard)", { personId });
+    } else {
+      log("syncPersonAndCredential: credential insert failed", { error: credErr.message });
+    }
+    return;
+  }
+  log("syncPersonAndCredential: issued member credential", { personId, token });
+}
 
 // ── event handlers ───────────────────────────────────────────────────────
 
@@ -628,6 +765,26 @@ async function handleCheckoutCompleted(
       }
     } else {
       log("Skipping welcome email for existing active member", { userId });
+    }
+    // Additive: sync this member into the new people/attendance_credentials schema.
+    // Best-effort - must not break the profiles-based activation above.
+    if (userId) {
+      try {
+        await syncPersonAndCredential(supabase, {
+          userId,
+          email: customerEmail,
+          fullName: customerName || null,
+          phone: customerPhone,
+          stripeCustomerId,
+          memberStatus: "active",
+          smsConsent: smsConsentFromMeta,
+          smsConsentAt: consentFields.sms_consent_at as string | null,
+        });
+      } catch (syncErr) {
+        log("syncPersonAndCredential threw (non-blocking)", {
+          error: syncErr instanceof Error ? syncErr.message : String(syncErr),
+        });
+      }
     }
   } else {
     log("Non-social checkout - skipping onboarding pipeline", { lineItemName });
