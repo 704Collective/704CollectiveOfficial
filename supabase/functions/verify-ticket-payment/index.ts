@@ -1,3 +1,8 @@
+// Auth pattern: Stripe-adjacent / service-role.
+// Called from the payment-success page after Stripe checkout.
+// Uses SUPABASE_SERVICE_ROLE_KEY and verifies the Stripe session directly.
+// No user JWT check.
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
@@ -62,110 +67,125 @@ serve(async (req) => {
       );
     }
 
-    // Check for duplicate ticket (idempotency via stripe_payment_id)
+    // Duplicate-payment guard (idempotency via stripe_payment_id in attendance_credentials)
     const paymentId = session.payment_intent as string;
-    const { data: existingTicket } = await supabaseClient
-      .from("tickets")
-      .select("id")
-      .eq("stripe_payment_id", paymentId)
+    const { data: existingCred } = await supabaseClient
+      .from("attendance_credentials")
+      .select("id, token")
+      .filter("metadata->>stripe_payment_id", "eq", paymentId)
       .maybeSingle();
 
-    if (existingTicket) {
-      logStep("Ticket already exists for this payment", { ticketId: existingTicket.id });
+    if (existingCred) {
+      logStep("Credential already exists for this payment", { credentialId: existingCred.id });
       return new Response(
         JSON.stringify({
           success: true,
-          ticket_id: existingTicket.id,
+          credential_id: existingCred.id,
+          token: existingCred.token,
           message: "Ticket already created",
         }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
 
-    // Extract user info from session metadata or customer details
+    // Resolve the buyer's identity
     const userId = session.metadata?.user_id || null;
-    const guestEmail = session.customer_details?.email || null;
-    const guestName = session.customer_details?.name || null;
+    const buyerEmail = session.customer_details?.email || null;
+    const buyerName = session.customer_details?.name || null;
 
-    // Create the ticket record (using service role key bypasses RLS)
-    const ticketData: Record<string, unknown> = {
-      event_id,
-      ticket_type: "public_paid",
-      status: "confirmed",
-      stripe_payment_id: paymentId,
-      source: "stripe",
-      amount_paid_cents: session.amount_total ?? 0,
-    };
+    const { data: personByProfile } = userId
+      ? await supabaseClient.from("people").select("id").filter("metadata->>profile_id", "eq", userId).maybeSingle()
+      : { data: null };
 
-    if (userId) {
-      ticketData.user_id = userId;
-    } else {
-      ticketData.guest_email = guestEmail;
-      ticketData.guest_name = guestName;
+    let personId = personByProfile?.id ?? null;
+
+    if (!personId && buyerEmail) {
+      const { data: personByEmail } = await supabaseClient
+        .from("people")
+        .select("id")
+        .eq("email_lower", buyerEmail.toLowerCase().trim())
+        .maybeSingle();
+      personId = personByEmail?.id ?? null;
     }
 
-    logStep("Creating ticket", ticketData);
+    if (!personId) {
+      if (!buyerEmail) throw new Error("No buyer email available to create person record");
+      const { data: newPerson, error: personErr } = await supabaseClient
+        .from("people")
+        .insert({
+          email: buyerEmail,
+          full_name: buyerName,
+          roles: ["guest"],
+          metadata: { source: "verify_ticket_payment" },
+        })
+        .select("id")
+        .single();
+      if (personErr) throw new Error(`Failed to create person: ${personErr.message}`);
+      personId = newPerson.id;
+    }
 
-    const { data: ticket, error: insertError } = await supabaseClient
-      .from("tickets")
-      .insert(ticketData)
-      .select("id")
+    logStep("Person resolved", { personId });
+
+    // Generate a credential token: 'C-' + 10 uppercase hex chars
+    const tokenBytes = new Uint8Array(8);
+    crypto.getRandomValues(tokenBytes);
+    const token = "C-" + Array.from(tokenBytes).map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 10).toUpperCase();
+
+    logStep("Creating attendance credential", { personId, event_id, token });
+
+    const { data: credential, error: insertError } = await supabaseClient
+      .from("attendance_credentials")
+      .insert({
+        token,
+        person_id: personId,
+        event_id,
+        credential_type: "public_rsvp",
+        status: "active",
+        metadata: {
+          source: "verify_ticket_payment",
+          stripe_payment_id: paymentId,
+          amount_paid_cents: session.amount_total ?? 0,
+        },
+      })
+      .select("id, token")
       .single();
 
     if (insertError) {
-      // 23505 = unique violation = duplicate guest ticket for this event
-      // Caused by user paying twice (back button, refresh, double-click checkout)
-      if ((insertError as { code?: string }).code === '23505') {
-        console.warn('[VERIFY-TICKET-PAYMENT] Duplicate ticket attempted', {
-          event_id: ticketData.event_id,
-          guest_email: ticketData.guest_email,
-          stripe_payment_id: ticketData.stripe_payment_id,
+      // 23505 = unique violation (one_active_credential_per_person_per_event)
+      if ((insertError as { code?: string }).code === "23505") {
+        console.warn("[VERIFY-TICKET-PAYMENT] Duplicate active credential detected", {
+          event_id,
+          personId,
+          paymentId,
         });
-        const { data: existingTicket } = await supabaseClient
-          .from('tickets')
-          .select('*')
-          .eq('event_id', ticketData.event_id)
-          .ilike('guest_email', ticketData.guest_email as string)
-          .neq('status', 'cancelled')
-          .order('created_at', { ascending: true })
+        const { data: existingActive } = await supabaseClient
+          .from("attendance_credentials")
+          .select("id, token")
+          .eq("person_id", personId)
+          .eq("event_id", event_id)
+          .eq("status", "active")
+          .order("created_at", { ascending: true })
           .limit(1)
           .single();
-        if (existingTicket) {
-          console.error('[VERIFY-TICKET-PAYMENT] DUPLICATE PAYMENT DETECTED', {
-            existing_ticket_id: existingTicket.id,
-            existing_stripe_payment_id: existingTicket.stripe_payment_id,
-            duplicate_stripe_payment_id: ticketData.stripe_payment_id,
-            event_id: ticketData.event_id,
-            guest_email: ticketData.guest_email,
-            amount_paid_cents: ticketData.amount_paid_cents,
-            action_needed: 'Refund the duplicate Stripe payment and notify customer',
-          });
+        if (existingActive) {
           return new Response(
             JSON.stringify({
               success: true,
-              ticket: existingTicket,
+              credential_id: existingActive.id,
+              token: existingActive.token,
               duplicate_detected: true,
-              message: 'You already have a ticket for this event. Your duplicate payment will be refunded.',
+              message: "You already have a ticket for this event. Your duplicate payment will be refunded.",
             }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
           );
         }
       }
-      if (insertError.message?.includes('Event is at capacity')) {
-        return new Response(
-          JSON.stringify({ error: 'Sorry, this event is now full.' }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 409 }
-        );
-      }
-      throw new Error(`Failed to create ticket: ${insertError.message}`);
+      throw new Error(`Failed to create credential: ${insertError.message}`);
     }
 
-    logStep("Ticket created successfully", { ticketId: ticket.id });
+    logStep("Attendance credential created", { credentialId: credential.id, token: credential.token });
 
-    // ── Send confirmation email with QR code ──
+    // Send confirmation email with QR code
     try {
       const { data: eventData } = await supabaseClient
         .from("events")
@@ -180,8 +200,8 @@ serve(async (req) => {
             : Promise.resolve({ data: null }),
         ]);
 
-        const recipientEmail = userId ? profileRes.data?.email : guestEmail;
-        const recipientName  = userId ? (profileRes.data?.full_name || "there") : (guestName || "there");
+        const recipientEmail = userId ? profileRes.data?.email : buyerEmail;
+        const recipientName  = userId ? (profileRes.data?.full_name || "there") : (buyerName || "there");
         const calendarToken  = userId ? (profileRes.data?.calendar_token ?? undefined) : undefined;
 
         if (recipientEmail) {
@@ -191,8 +211,8 @@ serve(async (req) => {
           const formatTime = (d: Date) => d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
 
           const origin = session.metadata?.origin || "https://704collective.com";
-          // For members, QR = user_id; for guests, QR = TKT-<ticket_id> (prefix so scanner knows it's a ticket)
-          const qrData = userId || `TKT-${ticket.id}`;
+          // QR encodes the credential token - same token used by the scanner
+          const qrData = credential.token;
 
           const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
           await fetch(`${supabaseUrl}/functions/v1/send-email`, {
@@ -208,7 +228,7 @@ serve(async (req) => {
                 name: recipientName,
                 eventName: eventData.title,
                 eventDate: formatDate(eventDate),
-                eventTime: `${formatTime(eventDate)} – ${formatTime(endDate)}`,
+                eventTime: `${formatTime(eventDate)} - ${formatTime(endDate)}`,
                 eventLocation: eventData.location_name || "TBA",
                 eventUrl: `${origin}/events/${event_id}`,
                 qrData,
@@ -257,7 +277,7 @@ serve(async (req) => {
           status: "succeeded",
           payment_type: "ticket",
           description: `Event ticket: ${eventDataForPayment?.title || "Unknown event"}`,
-          metadata: { session_id: session.id, event_id, ticket_id: ticket.id },
+          metadata: { session_id: session.id, event_id, credential_id: credential.id },
         });
 
       if (paymentError) {
@@ -272,7 +292,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        ticket_id: ticket.id,
+        credential_id: credential.id,
+        token: credential.token,
         message: "Ticket confirmed",
       }),
       {
