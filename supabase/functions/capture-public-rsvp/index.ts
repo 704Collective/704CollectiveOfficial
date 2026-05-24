@@ -82,7 +82,7 @@ serve(async (req) => {
     // Verify event exists and is actually public_free
     const { data: event, error: eventErr } = await supabase
       .from("events")
-      .select("id, title, start_time, end_time, location_name, location_address, access_type, is_published")
+      .select("id, title, start_time, end_time, location_name, location_address, required_tier, is_published")
       .eq("id", event_id)
       .maybeSingle();
 
@@ -94,8 +94,8 @@ serve(async (req) => {
       );
     }
 
-    if (event.access_type !== "public_free") {
-      log("Event is not public_free", { event_id, access_type: event.access_type });
+    if (event.required_tier !== "public") {
+      log("Event is not public", { event_id, required_tier: event.required_tier });
       return new Response(
         JSON.stringify({ error: "This event does not accept public RSVPs" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -227,6 +227,103 @@ serve(async (req) => {
 
     log("RSVP saved", { rsvpId: rsvp?.id, eventId: event_id, email: cleanEmail });
 
+    // Additive: mirror this RSVP into the new people + attendance_credentials schema.
+    // Best-effort - must not break the event_public_rsvps RSVP saved above.
+    let credentialToken: string | null = null;
+    try {
+      // Find or create the person by email_lower.
+      let personId: string | null = null;
+      const { data: existingPerson } = await supabase
+        .from("people")
+        .select("id, roles")
+        .eq("email_lower", cleanEmail)
+        .maybeSingle();
+
+      if (existingPerson) {
+        personId = existingPerson.id;
+        const roles: string[] = existingPerson.roles ?? [];
+        if (!roles.includes("guest")) {
+          roles.push("guest");
+          await supabase.from("people").update({ roles, updated_at: new Date().toISOString() }).eq("id", personId);
+        }
+      } else {
+        const { data: newPerson, error: personErr } = await supabase
+          .from("people")
+          .insert({
+            email: cleanEmail,
+            full_name: fullName,
+            phone: cleanPhone,
+            roles: ["guest"],
+            sms_consent: sms_consent === true,
+            sms_consent_at: sms_consent === true ? new Date().toISOString() : null,
+            metadata: { source: "capture_public_rsvp" },
+          })
+          .select("id")
+          .single();
+        if (personErr) {
+          log("people insert failed (non-fatal)", { error: personErr.message });
+        } else {
+          personId = newPerson.id;
+        }
+      }
+
+      if (personId) {
+        // Check for an existing active credential for this person + event (idempotency).
+        const { data: existingCred } = await supabase
+          .from("attendance_credentials")
+          .select("id, token")
+          .eq("person_id", personId)
+          .eq("event_id", event_id)
+          .eq("status", "active")
+          .maybeSingle();
+
+        if (existingCred) {
+          credentialToken = existingCred.token;
+          log("public_rsvp credential already exists", { personId, eventId: event_id });
+        } else {
+          const tokenBytes = new Uint8Array(8);
+          crypto.getRandomValues(tokenBytes);
+          const token = "C-" + Array.from(tokenBytes).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 10).toUpperCase();
+
+          const { data: cred, error: credErr } = await supabase
+            .from("attendance_credentials")
+            .insert({
+              token,
+              person_id: personId,
+              event_id,
+              credential_type: "public_rsvp",
+              status: "active",
+              metadata: { source: "capture_public_rsvp" },
+            })
+            .select("token")
+            .single();
+
+          if (credErr) {
+            // 23505 = unique violation (one_active_credential_per_person_per_event)
+            if ((credErr as { code?: string }).code === "23505") {
+              const { data: raceCred } = await supabase
+                .from("attendance_credentials")
+                .select("token")
+                .eq("person_id", personId)
+                .eq("event_id", event_id)
+                .eq("status", "active")
+                .maybeSingle();
+              credentialToken = raceCred?.token ?? null;
+            } else {
+              log("credential insert failed (non-fatal)", { error: credErr.message });
+            }
+          } else {
+            credentialToken = cred.token;
+            log("public_rsvp credential issued", { personId, eventId: event_id, token });
+          }
+        }
+      }
+    } catch (syncErr) {
+      log("new-schema sync threw (non-blocking)", {
+        error: syncErr instanceof Error ? syncErr.message : String(syncErr),
+      });
+    }
+
     // Fire-and-forget confirmation email
     try {
       const emailOrigin = origin || "https://704collective.com";
@@ -270,7 +367,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, rsvp_id: rsvp?.id }),
+      JSON.stringify({ success: true, rsvp_id: rsvp?.id, credential_token: credentialToken }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
