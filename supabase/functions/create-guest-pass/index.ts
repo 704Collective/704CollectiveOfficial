@@ -86,6 +86,37 @@ serve(async (req) => {
     const guestName = `${guest_first_name.trim()} ${guest_last_name.trim()}`;
     const guestEmailLower = guest_email.trim().toLowerCase();
 
+    // Monthly guest-pass cap: 1 per member per calendar month.
+    // Resolve the inviter's person row, then count guest_pass credentials this month.
+    const { data: inviterPerson } = await adminClient
+      .from("people")
+      .select("id")
+      .filter("metadata->>profile_id", "eq", inviterUserId)
+      .maybeSingle();
+
+    if (inviterPerson) {
+      const monthStart = new Date();
+      monthStart.setUTCDate(1);
+      monthStart.setUTCHours(0, 0, 0, 0);
+
+      const { count: passesThisMonth } = await adminClient
+        .from("attendance_credentials")
+        .select("id", { count: "exact", head: true })
+        .eq("issued_by_person_id", inviterPerson.id)
+        .eq("credential_type", "guest_pass")
+        .in("status", ["active", "used"])
+        .gte("created_at", monthStart.toISOString());
+
+      if ((passesThisMonth ?? 0) >= 1) {
+        return new Response(
+          JSON.stringify({ error: "You have already used your guest pass for this month." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+    // If inviterPerson is null, the member predates the people backfill - allow the pass
+    // (the additive block below will still create their person row).
+
     // ── Fetch event details ───────────────────────────────────────────────────
     const { data: event, error: eventError } = await adminClient
       .from("events")
@@ -133,6 +164,96 @@ serve(async (req) => {
     }
 
     log("Ticket created", { ticketId: ticket.id, guestPassCode });
+
+    // Additive: mirror this guest pass into people + attendance_credentials.
+    // Best-effort - must not break the tickets-based guest pass created above.
+    try {
+      // Resolve the inviter's person id (may already be fetched above as inviterPerson).
+      let inviterPersonId: string | null = null;
+      {
+        const { data: ip } = await adminClient
+          .from("people")
+          .select("id")
+          .filter("metadata->>profile_id", "eq", inviterUserId)
+          .maybeSingle();
+        inviterPersonId = ip?.id ?? null;
+      }
+
+      // Find or create the GUEST's person row by email_lower.
+      let guestPersonId: string | null = null;
+      const { data: existingGuest } = await adminClient
+        .from("people")
+        .select("id, roles")
+        .eq("email_lower", guestEmailLower)
+        .maybeSingle();
+
+      if (existingGuest) {
+        guestPersonId = existingGuest.id;
+        const roles: string[] = existingGuest.roles ?? [];
+        if (!roles.includes("guest")) {
+          roles.push("guest");
+          await adminClient.from("people").update({ roles, updated_at: new Date().toISOString() }).eq("id", guestPersonId);
+        }
+      } else {
+        const { data: newGuest, error: guestErr } = await adminClient
+          .from("people")
+          .insert({
+            email: guestEmailLower,
+            full_name: guestName,
+            roles: ["guest"],
+            metadata: { source: "create_guest_pass" },
+          })
+          .select("id")
+          .single();
+        if (guestErr) {
+          log("guest person insert failed (non-fatal)", { error: guestErr.message });
+        } else {
+          guestPersonId = newGuest.id;
+        }
+      }
+
+      if (guestPersonId) {
+        // Idempotency: existing active credential for this guest + event?
+        const { data: existingCred } = await adminClient
+          .from("attendance_credentials")
+          .select("id")
+          .eq("person_id", guestPersonId)
+          .eq("event_id", event_id)
+          .eq("status", "active")
+          .maybeSingle();
+
+        if (!existingCred) {
+          const tokenBytes = new Uint8Array(8);
+          crypto.getRandomValues(tokenBytes);
+          const credToken = "C-" + Array.from(tokenBytes).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 10).toUpperCase();
+
+          const { error: credErr } = await adminClient
+            .from("attendance_credentials")
+            .insert({
+              token: credToken,
+              person_id: guestPersonId,
+              event_id,
+              credential_type: "guest_pass",
+              status: "active",
+              issued_by_person_id: inviterPersonId,
+              metadata: { source: "create_guest_pass", guest_pass_code: guestPassCode },
+            });
+          if (credErr) {
+            if ((credErr as { code?: string }).code === "23505") {
+              log("guest_pass credential already present (unique guard)", { guestPersonId, event_id });
+            } else {
+              log("guest_pass credential insert failed (non-fatal)", { error: credErr.message });
+            }
+          } else {
+            log("guest_pass credential issued", { guestPersonId, event_id, token: credToken });
+          }
+        }
+      }
+    } catch (syncErr) {
+      log("new-schema sync threw (non-blocking)", {
+        error: syncErr instanceof Error ? syncErr.message : String(syncErr),
+      });
+    }
 
     // ── Upsert contact ────────────────────────────────────────────────────────
     let contactId: string | null = null;
