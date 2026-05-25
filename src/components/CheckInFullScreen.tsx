@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useOfflineCheckIn } from '@/hooks/useOfflineCheckIn';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
+import { canAttendEvent } from '@/lib/eventEligibility';
 
 type AttendeeRow = {
   id: string;
@@ -55,6 +56,7 @@ export function CheckInFullScreen({
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [showAttendeeList, setShowAttendeeList] = useState(false);
   const [successOverlay, setSuccessOverlay] = useState<{ name: string; isWalkIn: boolean; isOffline?: boolean } | null>(null);
+  const [eventTier, setEventTier] = useState<string>('public');
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -142,6 +144,18 @@ export function CheckInFullScreen({
       fetchAttendees();
     }
   }, [open, eventId, fetchAttendees]);
+
+  useEffect(() => {
+    if (!open || !eventId) return;
+    (async () => {
+      const { data } = await supabase
+        .from('events')
+        .select('required_tier')
+        .eq('id', eventId)
+        .maybeSingle();
+      setEventTier(data?.required_tier ?? 'public');
+    })();
+  }, [open, eventId]);
 
   useEffect(() => {
     if (!open) {
@@ -263,227 +277,128 @@ export function CheckInFullScreen({
   };
 
   const handleQRScan = async (scannedText: string) => {
-    try {
-      // Legacy guest_passes table (old GP-XXXXXX format)
-      if (scannedText.startsWith("GP-")) {
-        if (!isOnline) {
-          toast.error('Cannot verify guest passes while offline');
-          return;
-        }
+    const token = scannedText.trim();
 
-        const { data: pass, error: passError } = await supabase
-          .from('guest_passes')
-          .select('*')
-          .eq('qr_code', scannedText)
-          .single();
-
-        if (passError || !pass) {
-          toast.error('Guest pass not found');
-          return;
-        }
-
-        if (pass.status === 'used') {
-          toast.info(`This guest pass was already used${pass.used_at ? ` on ${format(new Date(pass.used_at), 'MMM d')}` : ''}`);
-          return;
-        }
-
-        if (pass.status === 'cancelled') {
-          toast.error('This guest pass has been cancelled');
-          return;
-        }
-
-        if (pass.status === 'expired' || new Date(pass.expires_at) < new Date()) {
-          toast.error('This guest pass has expired');
-          return;
-        }
-
-        if (pass.event_id && pass.event_id !== eventId) {
-          toast.error('This guest pass is for a different event');
-          return;
-        }
-
-        const { error: updateError } = await supabase
-          .from('guest_passes')
-          .update({ status: 'used', used_at: new Date().toISOString() })
-          .eq('id', pass.id);
-
-        if (updateError) {
-          toast.error('Failed to check in guest');
-          return;
-        }
-
-        const { data: member } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', pass.member_id)
-          .is('deleted_at', null)
-          .single();
-
-        const memberName = member?.full_name || 'a member';
-        toast.success(`Guest pass valid! Welcome ${pass.guest_name}, invited by ${memberName}`);
-        addRecentCheckIn(`${pass.guest_name} (Guest)`, false, false);
-        return;
-      }
-
-      // New guest pass flow - UUID guest_pass_code stored in ticket metadata
-      // Try matching a guest_pass ticket by its metadata.guest_pass_code before
-      // falling through to the regular member user-ID lookup.
-      if (!scannedText.includes('@') && scannedText.length >= 32) {
-        if (!isOnline) {
-          toast.error('Cannot verify guest passes while offline');
-          return;
-        }
-
-        const { data: guestTicket } = await supabase
-          .from('tickets')
-          .select('id, guest_name, guest_email, status, checked_in_at, metadata')
-          .eq('source', 'guest_pass')
-          .eq('event_id', eventId)
-          .filter('metadata->>guest_pass_code', 'eq', scannedText)
-          .maybeSingle();
-
-        if (guestTicket) {
-          if (guestTicket.checked_in_at) {
-            toast.info(`${guestTicket.guest_name || 'Guest'} is already checked in`);
-            return;
-          }
-
-          const { error: ciError } = await supabase
-            .from('tickets')
-            .update({ checked_in_at: new Date().toISOString(), checked_in_by: adminId })
-            .eq('id', guestTicket.id);
-
-          if (ciError) {
-            toast.error('Failed to check in guest');
-            return;
-          }
-
-          // Look up inviter name for the success message
-          const inviterUserId = (guestTicket.metadata as Record<string, unknown> | null)?.inviter_user_id as string | undefined;
-          let inviterName = 'a member';
-          if (inviterUserId) {
-            const { data: inviter } = await supabase
-              .from('profiles')
-              .select('full_name')
-              .eq('id', inviterUserId)
-              .is('deleted_at', null)
-              .single();
-            if (inviter?.full_name) inviterName = inviter.full_name;
-          }
-
-          const guestDisplayName = guestTicket.guest_name || 'Guest';
-          toast.success(`Guest pass valid! Welcome ${guestDisplayName}, invited by ${inviterName}`);
-          addRecentCheckIn(`${guestDisplayName} (Guest)`, false, false);
-          fetchAttendees();
-          return;
-        }
-      }
-
-      // Member check-in by profile UUID
-      // MembershipCard encodes the member's profile.id (UUID, 36 chars).
-      // Look up the member, find or create their ticket for this event, stamp check-in.
-      if (!scannedText.includes('@') && scannedText.length >= 32) {
-        if (!isOnline) {
-          toast.error('Cannot verify member check-ins while offline');
-          return;
-        }
-
-        const { data: member } = await supabase
-          .from('profiles')
-          .select('id, full_name, member_type, subscription_status, membership_override, deleted_at')
-          .eq('id', scannedText)
-          .maybeSingle();
-
-        if (!member) {
-          toast.error('QR code not recognized');
-          return;
-        }
-
-        if (member.deleted_at) {
-          toast.error('This member account is closed');
-          return;
-        }
-
-        const isActive =
-          member.subscription_status === 'active' ||
-          member.subscription_status === 'trialing' ||
-          member.membership_override === true;
-
-        if (!isActive) {
-          // Warn but still allow check-in - admin's discretion
-          toast.warning(`${member.full_name || 'Member'} is not currently active`, {
-            description: 'You may admit them at your discretion',
-          });
-        }
-
-        // Find the most recent non-cancelled ticket for this member + event
-        const { data: existingTicket } = await supabase
-          .from('tickets')
-          .select('id, checked_in_at, status')
-          .eq('user_id', scannedText)
-          .eq('event_id', eventId)
-          .neq('status', 'cancelled')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (existingTicket) {
-          if (existingTicket.checked_in_at) {
-            toast.info(`${member.full_name || 'Member'} is already checked in`, {
-              description: `Checked in at ${format(new Date(existingTicket.checked_in_at), 'h:mm a')}`,
-            });
-            return;
-          }
-          const { error: ciError } = await supabase
-            .from('tickets')
-            .update({
-              checked_in_at: new Date().toISOString(),
-              checked_in_by: adminId,
-            })
-            .eq('id', existingTicket.id);
-          if (ciError) {
-            console.error('[CHECK-IN] Member check-in update failed', ciError);
-            toast.error('Failed to check in member');
-            return;
-          }
-        } else {
-          // No ticket - create a walk-in ticket and check them in immediately
-          const { error: insertError } = await supabase
-            .from('tickets')
-            .insert({
-              user_id: scannedText,
-              event_id: eventId,
-              ticket_type: 'member_free',
-              status: 'confirmed',
-              source: 'walk_in_qr',
-              amount_paid_cents: 0,
-              checked_in_at: new Date().toISOString(),
-              checked_in_by: adminId,
-            });
-          if (insertError) {
-            console.error('[CHECK-IN] Walk-in ticket insert failed', insertError);
-            toast.error('Failed to check in member');
-            return;
-          }
-        }
-
-        // Stamp profile so CRM/analytics know this member attended
-        await supabase
-          .from('profiles')
-          .update({ last_attended_at: new Date().toISOString() })
-          .eq('id', scannedText);
-
-        toast.success(`Welcome, ${member.full_name || 'Member'}!`);
-        addRecentCheckIn(member.full_name || 'Member', false, false);
-        fetchAttendees();
-        return;
-      }
-
-      // Fallback: nothing matched
-      toast.error('QR code not recognized');
-    } finally {
-      // No pause/resume needed - scanLoop debounce (lastScanRef, 3s) handles re-scan suppression
+    // Ignore obvious non-tokens (e.g. an email QR).
+    if (!token || token.includes('@')) {
+      toast.error('Code not recognized');
+      return;
     }
+
+    if (!isOnline) {
+      // Online connectivity is required to validate a credential against the
+      // database. The offline queue path is handled separately (manual list).
+      toast.error('Cannot verify passes while offline');
+      return;
+    }
+
+    // One lookup: find the credential by its token.
+    const { data: credential, error: credErr } = await supabase
+      .from('attendance_credentials')
+      .select('id, person_id, event_id, credential_type, status, checked_in_at')
+      .eq('token', token)
+      .maybeSingle();
+
+    if (credErr || !credential) {
+      toast.error('Code not recognized');
+      return;
+    }
+
+    // Status checks.
+    if (credential.status === 'voided') {
+      toast.error('This pass is no longer valid');
+      return;
+    }
+    if (credential.status === 'expired') {
+      toast.error('This pass has expired');
+      return;
+    }
+    if (credential.status !== 'active' && credential.status !== 'used') {
+      toast.error('This pass is not valid');
+      return;
+    }
+
+    // Event scoping: an event-specific credential must match THIS event.
+    // A general member pass has event_id = null and works at any event.
+    if (credential.event_id && credential.event_id !== eventId) {
+      toast.error('This pass is for a different event');
+      return;
+    }
+
+    // Load the person.
+    const { data: person, error: personErr } = await supabase
+      .from('people')
+      .select('id, full_name, member_tier, roles, member_status')
+      .eq('id', credential.person_id)
+      .maybeSingle();
+
+    if (personErr || !person) {
+      toast.error('Code not recognized');
+      return;
+    }
+
+    const personName = person.full_name || 'Guest';
+
+    // Already checked in?
+    if (credential.checked_in_at) {
+      toast.info(`${personName} is already checked in`, {
+        description: `Checked in at ${format(new Date(credential.checked_in_at), 'h:mm a')}`,
+      });
+      return;
+    }
+
+    // Tier eligibility - one canonical helper, same as the website.
+    const eligibility = canAttendEvent(
+      { member_tier: person.member_tier, roles: person.roles ?? [] },
+      { required_tier: eventTier }
+    );
+    if (!eligibility.canAttend) {
+      toast.error(eligibility.reason || 'Not eligible for this event');
+      return;
+    }
+
+    // Stamp the check-in.
+    const { error: ciErr } = await supabase
+      .from('attendance_credentials')
+      .update({
+        checked_in_at: new Date().toISOString(),
+        status: 'used',
+      })
+      .eq('id', credential.id);
+
+    if (ciErr) {
+      console.error('[CHECK-IN] credential update failed', ciErr);
+      toast.error('Failed to check in');
+      return;
+    }
+
+    // checked_in_by expects a person id. adminId is an auth user id; the
+    // people row for the admin is found via metadata.profile_id. Best-effort:
+    // if it resolves, stamp it; if not, the check-in still succeeded above.
+    try {
+      const { data: adminPerson } = await supabase
+        .from('people')
+        .select('id')
+        .filter('metadata->>profile_id', 'eq', adminId)
+        .maybeSingle();
+      if (adminPerson) {
+        await supabase
+          .from('attendance_credentials')
+          .update({ checked_in_by: adminPerson.id })
+          .eq('id', credential.id);
+      }
+    } catch {
+      // non-fatal - check-in already recorded
+    }
+
+    const label =
+      credential.credential_type === 'guest_pass' ? `${personName} (Guest)`
+      : credential.credential_type === 'public_rsvp' ? `${personName} (Public RSVP)`
+      : personName;
+
+    toast.success(`Welcome, ${personName}!`);
+    addRecentCheckIn(label, false, false);
+    fetchAttendees();
   };
 
   const checkInAttendee = async (attendee: AttendeeRow, isWalkIn: boolean = false) => {
