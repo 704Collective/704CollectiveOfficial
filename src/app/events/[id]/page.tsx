@@ -16,6 +16,7 @@ import { SEOJsonLd } from '@/components/SEOJsonLd';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ThankYouModal } from '@/components/ThankYouModal';
+import { QRCodeSVG } from 'qrcode.react';
 import { WhosGoing } from '@/components/WhosGoing';
 import { CategoryBadge, EventCategory, MembersOnlyEventBadge } from '@/components/CategoryBadge';
 import { AddToCalendarButtons } from '@/components/AddToCalendarButtons';
@@ -73,6 +74,7 @@ export default function EventDetail() {
   const [publicRsvpError, setPublicRsvpError] = useState('');
   const [publicRsvpState, setPublicRsvpState] = useState<'idle' | 'success'>('idle');
   const [publicRsvpFull, setPublicRsvpFull] = useState(false);
+  const [publicRsvpToken, setPublicRsvpToken] = useState<string | null>(null);
 
   const hasTicket = id ? checkHasTicket(id) : false;
 
@@ -277,6 +279,7 @@ export default function EventDetail() {
         return;
       }
 
+      setPublicRsvpToken(data.credential_token ?? null);
       setPublicRsvpState('success');
       setPublicRsvpLoading(false);
     } catch {
@@ -401,12 +404,32 @@ export default function EventDetail() {
             </div>
           ) : publicRsvpState === 'success' ? (
             <div style={{ textAlign: 'center', padding: '16px 0' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '8px' }}>--</div>
-              <p style={{ fontSize: '1rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '4px' }}>See you there.</p>
-              <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', marginBottom: '20px' }}>Confirmation sent to {publicRsvpEmail}.</p>
+              <p style={{ fontSize: '1rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '4px' }}>You{"'"}re in.</p>
+              <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', marginBottom: '18px' }}>Confirmation sent to {publicRsvpEmail}.</p>
+
+              {publicRsvpToken ? (
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ display: 'inline-block', backgroundColor: '#FFFFFF', padding: '12px', borderRadius: '12px' }}>
+                    <QRCodeSVG
+                      value={publicRsvpToken}
+                      size={140}
+                      level="L"
+                      bgColor="#FFFFFF"
+                      fgColor="#000000"
+                    />
+                  </div>
+                  <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.6)', marginTop: '12px' }}>
+                    Show this code at the door for check-in.
+                  </p>
+                  <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)', marginTop: '4px' }}>
+                    A copy is in your confirmation email.
+                  </p>
+                </div>
+              ) : null}
+
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px' }}>
                 <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.5)', marginBottom: '10px' }}>Curious about membership?</p>
-                <Link href="/join" style={{ ...linkBtn, border: '1px solid #C6A664', color: '#C6A664' }}>Learn about 704 Collective ---</Link>
+                <Link href="/join" style={{ ...linkBtn, border: '1px solid #C6A664', color: '#C6A664' }}>Learn about 704 Collective</Link>
               </div>
             </div>
           ) : (
