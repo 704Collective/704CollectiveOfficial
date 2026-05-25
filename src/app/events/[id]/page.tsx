@@ -131,21 +131,17 @@ export default function EventDetail() {
     setCheckedInAt(data?.checked_in_at || null);
   };
   const fetchTicketCount = async () => {
-    // Capacity-relevant attendees come from THREE sources. Each one consumes
-    // a real seat at the event:
-    //   - tickets:            member RSVPs (confirmed | rsvp)
-    //   - event_public_rsvps: non-member RSVPs (rsvp)
-    //   - guest_passes:       guests invited by members (used)
-    const [memberRes, publicRes, guestRes] = await Promise.all([
-      supabase.from('tickets').select('*', { count: 'exact', head: true })
-        .eq('event_id', id).in('status', ['confirmed', 'rsvp']),
-      supabase.from('event_public_rsvps').select('*', { count: 'exact', head: true })
-        .eq('event_id', id).eq('status', 'rsvp'),
-      supabase.from('guest_passes').select('*', { count: 'exact', head: true })
-        .eq('event_id', id).eq('status', 'used'),
-    ]);
-    const total = (memberRes.count || 0) + (publicRes.count || 0) + (guestRes.count || 0);
-    setTicketCount(total);
+    // Capacity count comes from a SECURITY DEFINER RPC that counts
+    // attendance_credentials (status active|used) for the event. The RPC
+    // bypasses RLS so logged-out and non-admin visitors get the true count.
+    const { data, error } = await supabase.rpc('get_event_attendance_count', {
+      p_event_id: id,
+    });
+    if (error) {
+      console.warn('[EventDetail] get_event_attendance_count failed:', error.message);
+      return;
+    }
+    setTicketCount(typeof data === 'number' ? data : 0);
   };
   const checkWaitlistStatus = async () => {
     if (!user) return;
