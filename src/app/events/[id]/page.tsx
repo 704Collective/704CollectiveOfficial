@@ -22,6 +22,7 @@ import { CategoryBadge, EventCategory, MembersOnlyEventBadge } from '@/component
 import { AddToCalendarButtons } from '@/components/AddToCalendarButtons';
 import { WaitlistBadge } from '@/components/WaitlistBadge';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
+import { resolvePersonId } from '@/lib/resolvePersonId';
 
 interface Event {
   id: string;
@@ -120,14 +121,22 @@ export default function EventDetail() {
   }, [event, authLoading, isAdmin, isSuperAdmin, router]);
   const fetchTicketId = async () => {
     if (!user) return;
-    const { data } = await supabase.from('tickets')
+    // Member "do I have an RSVP" state now reads attendance_credentials.
+    // A member RSVP is credential_type='member_rsvp' scoped to this event.
+    // person_id is a people.id; resolve it from the auth user id first.
+    const personId = await resolvePersonId(user.id);
+    if (!personId) { setTicketId(null); setTicketStatus(null); setCheckedInAt(null); return; }
+    const { data } = await supabase.from('attendance_credentials')
       .select('id, status, checked_in_at')
       .eq('event_id', id)
-      .eq('user_id', user.id)
-      .in('status', ['confirmed', 'rsvp', 'attended'])
+      .eq('person_id', personId)
+      .eq('credential_type', 'member_rsvp')
+      .in('status', ['active', 'used'])
       .maybeSingle();
     setTicketId(data?.id || null);
-    setTicketStatus(data?.status || null);
+    // Derive the old-shaped ticketStatus the render logic expects:
+    // a checked-in credential -> 'attended', otherwise -> 'confirmed'.
+    setTicketStatus(data ? (data.checked_in_at ? 'attended' : 'confirmed') : null);
     setCheckedInAt(data?.checked_in_at || null);
   };
   const fetchTicketCount = async () => {
