@@ -42,6 +42,9 @@ interface Event {
   access_type?: 'members_only' | 'public_ticketed' | 'public_free';
   access_level: string | null;
   ticket_mode: 'none' | 'public_only' | 'all' | null;
+  required_tier?: string | null;
+  price_cents?: number | null;
+  member_price_cents?: number | null;
 }
 
 export default function EventDetail() {
@@ -81,7 +84,29 @@ export default function EventDetail() {
     const { data, error } = await supabase.from('events').select('*').eq('id', id).maybeSingle();
     if (error) { toast.error('Failed to load event'); router.push('/events'); return; }
     if (!data) { toast.error('Event not found'); router.push('/events'); return; }
-    setEvent(data); setloading(false);
+
+    // Derive old-shaped fields from the new canonical schema columns so the
+    // page's existing branching logic keeps working. New schema: required_tier,
+    // price_cents, member_price_cents. Old fields the page still reads:
+    // access_type, is_members_only, access_level, ticket_price, ticket_mode.
+    const tier: string = data.required_tier ?? 'public';
+    const isPublic = tier === 'public';
+
+    const derived = {
+      ...data,
+      access_type: isPublic ? 'public_free' : 'members_only',
+      is_members_only: !isPublic,
+      access_level:
+        (tier === 'business' || tier === 'founder') ? 'business_only' : 'all',
+      ticket_price: data.price_cents ?? 0,
+      social_member_price: data.member_price_cents ?? 0,
+      business_member_price: data.member_price_cents ?? 0,
+      // member_price_cents is 0 across all events, so members attend free:
+      ticket_mode: 'none',
+    };
+
+    setEvent(derived as Event);
+    setloading(false);
   };
 
   useEffect(() => {
