@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CalendarConnectPrompt } from '@/components/CalendarConnectPrompt';
 import type { ThankYouEvent } from '@/components/ThankYouModal';
+import { resolvePersonId } from '@/lib/resolvePersonId';
 
 /**
  * Minimal event shape needed by ticket actions.
@@ -59,20 +60,30 @@ export function useTicketActions(): UseTicketActionsReturn {
 
   const p = profile as any;
 
-  // Fetch user's confirmed tickets whenever the user changes
+  // Fetch user's RSVP'd events whenever the user changes.
+  // Reads attendance_credentials (credential_type='member_rsvp', status
+  // active|used) instead of the old tickets table. person_id is a people.id;
+  // resolve it from the auth user id first. On any failure the set is empty
+  // so hasTicket degrades to false rather than throwing.
   const refreshUserTickets = useCallback(async () => {
     if (!user) {
       setUserTicketIds(new Set());
       return;
     }
+    const personId = await resolvePersonId(user.id);
+    if (!personId) {
+      setUserTicketIds(new Set());
+      return;
+    }
     const { data } = await supabase
-      .from('tickets')
+      .from('attendance_credentials')
       .select('event_id')
-      .eq('user_id', user.id)
-      .in('status', ['confirmed', 'rsvp', 'attended']);
+      .eq('person_id', personId)
+      .eq('credential_type', 'member_rsvp')
+      .in('status', ['active', 'used']);
 
     if (data) {
-      setUserTicketIds(new Set(data.map(t => t.event_id).filter(Boolean) as string[]));
+      setUserTicketIds(new Set(data.map(c => c.event_id).filter(Boolean) as string[]));
     }
   }, [user]);
 
