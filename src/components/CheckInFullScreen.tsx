@@ -242,7 +242,6 @@ export function CheckInFullScreen({
             inversionAttempts: 'attemptBoth',
           });
           if (result && result.data) {
-            console.log('[SCAN-DEBUG] camera decoded:', JSON.stringify(result.data));
             const now = Date.now();
             if (result.data !== lastScanRef.current.text || now - lastScanRef.current.at > 3000) {
               lastScanRef.current = { text: result.data, at: now };
