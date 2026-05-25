@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Loader2 } from 'lucide-react';
 import { isIosDevice, downloadAppleWalletPass } from '@/lib/appleWallet';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MembershipCardProps {
   name: string;
@@ -47,10 +48,50 @@ export function MembershipCard({
   // hydration mismatch (isIosDevice returns false on the server).
   const [isIos, setIsIos] = useState(false);
   const [downloadingPass, setDownloadingPass] = useState(false);
+  const [credentialToken, setCredentialToken] = useState<string | null>(null);
+  const [tokenLoading, setTokenLoading] = useState(true);
 
   useEffect(() => {
     setIsIos(isIosDevice());
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setTokenLoading(true);
+      try {
+        // memberId is an auth user id. Find the person row via metadata.profile_id.
+        const { data: person } = await supabase
+          .from('people')
+          .select('id')
+          .filter('metadata->>profile_id', 'eq', memberId)
+          .maybeSingle();
+
+        if (!person) {
+          if (!cancelled) { setCredentialToken(null); setTokenLoading(false); }
+          return;
+        }
+
+        // Find the active general member credential (event_id is null).
+        const { data: cred } = await supabase
+          .from('attendance_credentials')
+          .select('token')
+          .eq('person_id', person.id)
+          .eq('credential_type', 'member')
+          .eq('status', 'active')
+          .is('event_id', null)
+          .maybeSingle();
+
+        if (!cancelled) {
+          setCredentialToken(cred?.token ?? null);
+          setTokenLoading(false);
+        }
+      } catch {
+        if (!cancelled) { setCredentialToken(null); setTokenLoading(false); }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [memberId]);
 
   const handleAddToAppleWallet = async () => {
     if (downloadingPass) return;
@@ -109,6 +150,29 @@ export function MembershipCard({
     </div>
   ) : null;
 
+  const qrArea = tokenLoading ? (
+    <div className="bg-white p-1.5 rounded-lg flex items-center justify-center"
+         style={{ width: 88, height: 88 }}>
+      <Loader2 style={{ width: 20, height: 20, animation: 'spin 1s linear infinite', color: '#000' }} />
+    </div>
+  ) : credentialToken ? (
+    <div className="bg-white p-1.5 rounded-lg">
+      <QRCodeSVG
+        value={credentialToken}
+        className="w-[76px] h-[76px] min-[400px]:w-[84px] min-[400px]:h-[84px]"
+        level="L"
+        bgColor="#FFFFFF"
+        fgColor="#000000"
+      />
+    </div>
+  ) : (
+    <div className="bg-white p-1.5 rounded-lg flex flex-col items-center justify-center text-center"
+         style={{ width: 88, height: 88 }}>
+      <span style={{ color: '#000', fontSize: '11px', fontWeight: 600 }}>Pass not ready</span>
+      <span style={{ color: '#666', fontSize: '9px' }}>Contact support</span>
+    </div>
+  );
+
   if (isBusiness) {
     return (
       <div className="w-full max-w-[360px] space-y-3">
@@ -159,15 +223,7 @@ export function MembershipCard({
           {/* Bottom row */}
           <div className="relative z-10 flex items-end justify-between">
             <p className="text-[11px] text-amber-400/30">Charlotte, NC</p>
-            <div className="bg-white p-1.5 rounded-lg">
-              <QRCodeSVG
-                value={memberId}
-                className="w-[76px] h-[76px] min-[400px]:w-[84px] min-[400px]:h-[84px]"
-                level="L"
-                bgColor="#FFFFFF"
-                fgColor="#000000"
-              />
-            </div>
+            {qrArea}
           </div>
         </div>
         {appleWalletButton}
@@ -215,15 +271,7 @@ export function MembershipCard({
         {/* Bottom row */}
         <div className="relative z-10 flex items-end justify-between">
           <p className="text-[11px] text-white/40">Charlotte, NC</p>
-          <div className="bg-white p-1.5 rounded-lg">
-            <QRCodeSVG
-              value={memberId}
-              className="w-[76px] h-[76px] min-[400px]:w-[84px] min-[400px]:h-[84px]"
-              level="L"
-              bgColor="#FFFFFF"
-              fgColor="#000000"
-            />
-          </div>
+          {qrArea}
         </div>
       </div>
       {appleWalletButton}
