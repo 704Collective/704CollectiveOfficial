@@ -36,17 +36,6 @@ function useDevicePlatform() {
   }, []);
 }
 
-/** Popup + blank-tab redirect is unreliable on mobile; use same-tab navigation after the edge call. */
-function preferSameTabWalletOpen(): boolean {
-  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
-  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) return true;
-  try {
-    return window.matchMedia('(max-width: 639px)').matches;
-  } catch {
-    return false;
-  }
-}
-
 export function WalletButtons({ compact = false }: { compact?: boolean }) {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
@@ -54,13 +43,6 @@ export function WalletButtons({ compact = false }: { compact?: boolean }) {
   const { user } = useAuth();
 
   const handleGoogleWallet = async () => {
-    const useSameTab = preferSameTabWalletOpen();
-    // Desktop: open blank tab synchronously on click so async redirect is not blocked as a popup.
-    // NOTE: window.open() with 'noopener' returns null (by design), which made
-    // the desktop path always fall through to same-tab navigation and leave an
-    // orphaned about:blank tab. 'noreferrer' alone still returns a usable handle;
-    // walletTab.opener is nulled manually below before navigation.
-    const walletTab = useSameTab ? null : window.open('', '_blank', 'noreferrer');
     setGoogleLoading(true);
     try {
       const supabase = createClient();
@@ -70,7 +52,6 @@ export function WalletButtons({ compact = false }: { compact?: boolean }) {
       });
 
       if (error) {
-        walletTab?.close();
         console.error('[WalletButtons] Edge function error:', error);
         const msg =
           typeof (error as { message?: string }).message === 'string'
@@ -85,13 +66,11 @@ export function WalletButtons({ compact = false }: { compact?: boolean }) {
       }
 
       if (data?.error === 'Google Wallet not configured') {
-        walletTab?.close();
         toast.error('Google Wallet is not configured yet. Ask an admin to set wallet secrets in Supabase.');
         return;
       }
 
       if (data?.error) {
-        walletTab?.close();
         toast.error(typeof data.error === 'string' ? data.error : 'Wallet request failed.');
         return;
       }
@@ -99,24 +78,20 @@ export function WalletButtons({ compact = false }: { compact?: boolean }) {
       if (data?.walletUrl) {
         const url = data.walletUrl as string;
         if (user?.id) markOnboardingWalletDone(user.id);
-        if (walletTab) {
-          try {
-            walletTab.opener = null;
-            walletTab.location.href = url;
-          } catch {
-            walletTab.close();
-            window.location.assign(url);
-          }
-        } else {
+        // Open the pass page only AFTER we have the real URL. Opening a blank
+        // tab up-front (the old approach) left an orphaned about:blank tab on
+        // desktop because window.open returns null with 'noopener'. Opening
+        // with the resolved URL in one call avoids that entirely; if the
+        // browser blocks the popup, fall back to same-tab navigation.
+        const opened = window.open(url, '_blank', 'noreferrer');
+        if (!opened) {
           window.location.assign(url);
         }
         return;
       }
 
-      walletTab?.close();
       toast.error('No wallet link was returned. Try again or contact support.');
     } catch (err) {
-      walletTab?.close();
       console.error('[WalletButtons] Unexpected error:', err);
       toast.error('Something went wrong. Please try again.');
     } finally {
