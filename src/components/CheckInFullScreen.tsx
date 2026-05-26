@@ -16,13 +16,12 @@ import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { canAttendEvent } from '@/lib/eventEligibility';
 
 type AttendeeRow = {
-  id: string;
-  source: 'ticket' | 'public_rsvp';
-  user_id: string | null;
-  ticket_type: string | null;
+  id: string;                 // attendance_credentials.id
+  credential_type: string;    // member_rsvp | guest_pass | public_rsvp
+  person_id: string;
   full_name: string;
   email: string;
-  avatar_url: string | null;
+  avatar_url: string | null;  // always null now; people has no avatar
   checked_in_at: string | null;
 };
 
@@ -78,64 +77,48 @@ export function CheckInFullScreen({
   const fetchAttendees = useCallback(async () => {
     setLoading(true);
 
-    const [ticketsResult, publicRsvpsResult] = await Promise.all([
-      supabase
-        .from('tickets')
-        .select(`
-          id,
-          user_id,
-          checked_in_at,
-          ticket_type,
-          guest_email,
-          guest_name,
-          profiles!tickets_user_id_fkey (
-            id,
-            email,
-            full_name,
-            avatar_url
-          )
-        `)
-        .eq('event_id', eventId)
-        .in('status', ['confirmed', 'rsvp']),
-      supabase
-        .from('event_public_rsvps')
-        .select('id, first_name, last_name, email, phone, checked_in_at, status')
-        .eq('event_id', eventId)
-        .eq('status', 'rsvp'),
-    ]);
+    // Attendees now come from attendance_credentials (the canonical table).
+    // Event-scoped passes: member_rsvp, guest_pass, public_rsvp, active|used.
+    const { data: creds, error: credErr } = await supabase
+      .from('attendance_credentials')
+      .select('id, person_id, credential_type, checked_in_at')
+      .eq('event_id', eventId)
+      .in('credential_type', ['member_rsvp', 'guest_pass', 'public_rsvp'])
+      .in('status', ['active', 'used']);
 
-    type ProfileJoin = { id: string; email: string; full_name: string | null; avatar_url: string | null } | null;
+    if (credErr || !creds) {
+      setAttendees([]);
+      setLoading(false);
+      return;
+    }
 
-    const ticketAttendees: AttendeeRow[] = (ticketsResult.data || []).map(t => {
-      const p = t.profiles as unknown as ProfileJoin;
+    // Resolve people rows for names + emails in one batched query.
+    const personIds = Array.from(new Set(creds.map(c => c.person_id).filter(Boolean)));
+    const peopleById: Record<string, { full_name: string | null; email: string | null }> = {};
+    if (personIds.length > 0) {
+      const { data: people } = await supabase
+        .from('people')
+        .select('id, full_name, email')
+        .in('id', personIds);
+      for (const p of (people || [])) {
+        peopleById[p.id] = { full_name: p.full_name, email: p.email };
+      }
+    }
+
+    const rows: AttendeeRow[] = creds.map(c => {
+      const p = peopleById[c.person_id];
       return {
-        id: t.id,
-        source: 'ticket' as const,
-        user_id: t.user_id,
-        ticket_type: t.ticket_type,
-        full_name: p?.full_name || t.guest_name || 'Unknown',
-        email: p?.email || t.guest_email || '',
-        avatar_url: p?.avatar_url || null,
-        checked_in_at: t.checked_in_at,
+        id: c.id,
+        credential_type: c.credential_type,
+        person_id: c.person_id,
+        full_name: p?.full_name || 'Unknown',
+        email: p?.email || '',
+        avatar_url: null,
+        checked_in_at: c.checked_in_at,
       };
-    });
+    }).sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
 
-    const publicRsvpAttendees: AttendeeRow[] = (publicRsvpsResult.data || []).map(r => ({
-      id: r.id,
-      source: 'public_rsvp' as const,
-      user_id: null,
-      ticket_type: 'public_free',
-      full_name: `${r.first_name} ${r.last_name}`.trim(),
-      email: r.email,
-      avatar_url: null,
-      checked_in_at: r.checked_in_at,
-    }));
-
-    const merged = [...ticketAttendees, ...publicRsvpAttendees].sort((a, b) =>
-      (a.full_name || '').localeCompare(b.full_name || '')
-    );
-
-    setAttendees(merged);
+    setAttendees(rows);
     setLoading(false);
   }, [eventId]);
 
@@ -402,25 +385,35 @@ export function CheckInFullScreen({
   };
 
   const checkInAttendee = async (attendee: AttendeeRow, isWalkIn: boolean = false) => {
-    const now = new Date().toISOString();
     const name = attendee.full_name || attendee.email;
 
-    let error;
-    if (attendee.source === 'public_rsvp') {
-      ({ error } = await supabase
-        .from('event_public_rsvps')
-        .update({ checked_in_at: now, checked_in_by: adminId })
-        .eq('id', attendee.id));
-    } else {
-      ({ error } = await supabase
-        .from('tickets')
-        .update({ checked_in_at: now, checked_in_by: adminId })
-        .eq('id', attendee.id));
-    }
+    // Manual check-in stamps the attendance_credential, mirroring the QR path.
+    const { error } = await supabase
+      .from('attendance_credentials')
+      .update({ checked_in_at: new Date().toISOString(), status: 'used' })
+      .eq('id', attendee.id);
 
     if (error) {
       toast.error('Failed to check in');
       return;
+    }
+
+    // checked_in_by expects a people id; adminId is an auth user id.
+    // Best-effort, same as the QR path - check-in already succeeded above.
+    try {
+      const { data: adminPerson } = await supabase
+        .from('people')
+        .select('id')
+        .filter('metadata->>profile_id', 'eq', adminId)
+        .maybeSingle();
+      if (adminPerson) {
+        await supabase
+          .from('attendance_credentials')
+          .update({ checked_in_by: adminPerson.id })
+          .eq('id', attendee.id);
+      }
+    } catch {
+      // non-fatal - check-in already recorded
     }
 
     toast.success(`${name} checked in!`);
@@ -587,7 +580,7 @@ export function CheckInFullScreen({
                     <div>
                       <p className="font-medium">{attendee.full_name || 'No name'}</p>
                       <p className="text-sm text-muted-foreground">{attendee.email}</p>
-                      {attendee.source === 'public_rsvp' && (
+                      {attendee.credential_type === 'public_rsvp' && (
                         <span className="text-xs text-muted-foreground/60">Public RSVP</span>
                       )}
                     </div>
