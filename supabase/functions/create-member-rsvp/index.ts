@@ -1,0 +1,215 @@
+// AUTH PATTERN: browser member call. Verifies the caller's user JWT, then
+// uses a service-role client for all DB writes. Do NOT apply the cron
+// service-role-bearer pattern here.
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+const log = (step: string, details?: unknown) => {
+  const d = details ? ` - ${JSON.stringify(details)}` : "";
+  console.log(`[CREATE-MEMBER-RSVP] ${step}${d}`);
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+  if (req.method !== "POST") {
+    return new Response("Method not allowed", { status: 405, headers: corsHeaders });
+  }
+
+  try {
+    // -- Auth: verify the caller's user JWT --
+    const authHeader = req.headers.get("Authorization") || "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const token = authHeader.replace("Bearer ", "");
+
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: userError } = await userClient.auth.getUser(token);
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const memberUserId = user.id;
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+    // -- Verify active membership --
+    const { data: profile, error: profileError } = await adminClient
+      .from("profiles")
+      .select("id, subscription_status, membership_override")
+      .eq("id", memberUserId)
+      .is("deleted_at", null)
+      .single();
+
+    if (profileError || !profile) {
+      return new Response(JSON.stringify({ error: "Profile not found" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const isActiveMember =
+      profile.subscription_status === "active" ||
+      profile.subscription_status === "trialing" ||
+      profile.membership_override === true;
+
+    if (!isActiveMember) {
+      return new Response(JSON.stringify({ error: "Active membership required" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // -- Parse body --
+    const { event_id } = await req.json() as { event_id?: string };
+    if (!event_id) {
+      return new Response(JSON.stringify({ error: "event_id is required" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // -- Resolve the member's canonical people row --
+    // Every member has a people row (verified during the people backfill).
+    // A null result here is a hard error, not a leniency case.
+    const { data: person, error: personError } = await adminClient
+      .from("people")
+      .select("id")
+      .filter("metadata->>profile_id", "eq", memberUserId)
+      .maybeSingle();
+
+    if (personError || !person) {
+      log("person row not found", { memberUserId, error: personError?.message });
+      return new Response(JSON.stringify({ error: "Member record not found" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const personId = person.id;
+
+    // -- Fetch event --
+    const { data: event, error: eventError } = await adminClient
+      .from("events")
+      .select("id, capacity, is_published")
+      .eq("id", event_id)
+      .maybeSingle();
+
+    if (eventError || !event) {
+      return new Response(JSON.stringify({ error: "Event not found" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!event.is_published) {
+      return new Response(JSON.stringify({ error: "Event is not currently available" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // -- Idempotency: existing active member_rsvp credential for this person + event --
+    const { data: existingCred } = await adminClient
+      .from("attendance_credentials")
+      .select("id, token")
+      .eq("person_id", personId)
+      .eq("event_id", event_id)
+      .eq("credential_type", "member_rsvp")
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (existingCred) {
+      log("member_rsvp credential already exists", { personId, event_id });
+      return new Response(
+        JSON.stringify({ success: true, credential_token: existingCred.token, already_rsvped: true }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // -- Capacity check (attendance_credentials has no capacity trigger) --
+    // Counts active|used credentials via the SECURITY DEFINER RPC. Not atomic;
+    // a rare double-submit race could land one seat over - accepted trade-off.
+    if (event.capacity != null) {
+      const { data: countData, error: countError } = await adminClient
+        .rpc("get_event_attendance_count", { p_event_id: event_id });
+      if (countError) {
+        log("capacity count failed", { error: countError.message });
+        return new Response(JSON.stringify({ error: "Could not verify capacity" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const currentCount = typeof countData === "number" ? countData : 0;
+      if (currentCount >= event.capacity) {
+        log("event at capacity", { event_id, currentCount, capacity: event.capacity });
+        return new Response(JSON.stringify({ error: "Event is at capacity" }), {
+          status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // -- Generate token and insert the member_rsvp credential --
+    const tokenBytes = new Uint8Array(8);
+    crypto.getRandomValues(tokenBytes);
+    const credToken = "C-" + Array.from(tokenBytes)
+      .map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 10).toUpperCase();
+
+    const { data: cred, error: credError } = await adminClient
+      .from("attendance_credentials")
+      .insert({
+        token: credToken,
+        person_id: personId,
+        event_id,
+        credential_type: "member_rsvp",
+        status: "active",
+        metadata: { source: "create_member_rsvp" },
+      })
+      .select("token")
+      .single();
+
+    if (credError) {
+      // 23505 = unique violation (one_active_credential_per_person_per_event).
+      // A concurrent RSVP won the race; return the existing credential.
+      if ((credError as { code?: string }).code === "23505") {
+        const { data: raceCred } = await adminClient
+          .from("attendance_credentials")
+          .select("token")
+          .eq("person_id", personId)
+          .eq("event_id", event_id)
+          .eq("credential_type", "member_rsvp")
+          .eq("status", "active")
+          .maybeSingle();
+        return new Response(
+          JSON.stringify({ success: true, credential_token: raceCred?.token ?? null, already_rsvped: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      log("credential insert failed", { error: credError.message });
+      return new Response(JSON.stringify({ error: "Failed to create RSVP" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    log("member_rsvp credential issued", { personId, event_id, token: credToken });
+    return new Response(
+      JSON.stringify({ success: true, credential_token: cred.token, already_rsvped: false }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[CREATE-MEMBER-RSVP] Internal error:", msg);
+    return new Response(JSON.stringify({ error: "Internal error" }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
