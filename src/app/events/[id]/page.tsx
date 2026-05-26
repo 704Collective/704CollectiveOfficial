@@ -162,17 +162,25 @@ export default function EventDetail() {
 
   const handleMemberRegister = async () => { if (!event) return; const s = await registerMemberTicket(event); if (s) { fetchTicketCount(); fetchTicketId(); } };
   const handleCancelRSVP = async () => {
-    if (!ticketId) return; setIsCancelling(true);
-    const { error } = await supabase
-      .from('tickets')
-      .update({
-        status: 'cancelled',
-        cancelled_at: new Date().toISOString(),
-        cancellation_reason: 'user_cancelled_rsvp',
-      })
-      .eq('id', ticketId);
-    if (error) { toast.error('Failed to cancel RSVP'); setIsCancelling(false); return; }
-    setTicketId(null); setIsCancelling(false); toast.success('RSVP cancelled'); fetchTicketCount(); refreshUserTickets();
+    if (!event) return;
+    setIsCancelling(true);
+    // Cancellation now voids the member_rsvp attendance_credential via the
+    // void-credential edge function. invoke() attaches the user's JWT.
+    const { data, error } = await supabase.functions.invoke('void-credential', {
+      body: { event_id: event.id },
+    });
+    if (error || !data?.success) {
+      toast.error('Failed to cancel RSVP');
+      setIsCancelling(false);
+      return;
+    }
+    setTicketId(null);
+    setTicketStatus(null);
+    setCheckedInAt(null);
+    setIsCancelling(false);
+    toast.success('RSVP cancelled');
+    fetchTicketCount();
+    refreshUserTickets();
   };
   const handleJoinWaitlist = async () => {
     if (!user || !event) return; setIsRegistering(true);
