@@ -153,52 +153,44 @@ export function useTicketActions(): UseTicketActionsReturn {
       setRsvpLoadingId(event.id);
 
       try {
-        // Insert member's own ticket (select id for confirmation email)
-        const { data: insertedTicket, error } = await supabase
-          .from('tickets')
-          .insert({
-            event_id: event.id,
-            user_id: user.id,
-            ticket_type: 'member_free',
-            status: 'confirmed',
-            source: 'member_rsvp',
-            amount_paid_cents: 0,
-          })
-          .select('id')
-          .single();
+        // Member RSVP now goes through the create-member-rsvp edge function,
+        // which creates a member_rsvp attendance_credential. invoke() attaches
+        // the logged-in user's JWT automatically.
+        const { data: rsvpData, error: rsvpError } = await supabase.functions.invoke(
+          'create-member-rsvp',
+          { body: { event_id: event.id } }
+        );
 
-        if (error) {
-          if (error.code === '23505') {
-            toast.info('You already have a ticket for this event');
-            return false;
-          }
-          if (error.message?.includes('capacity') || error.code === 'P0001') {
+        if (rsvpError) {
+          // invoke() treats non-2xx as an error. 409 = event at capacity.
+          let isCapacity = false;
+          try {
+            const ctx = (rsvpError as { context?: Response }).context;
+            if (ctx && typeof ctx.status === 'number' && ctx.status === 409) {
+              isCapacity = true;
+            }
+          } catch { /* ignore */ }
+          if (isCapacity) {
             toast('This event just sold out! Check back for future events.', { icon: '🎟️' });
             return false;
           }
-          throw error;
+          throw rsvpError;
         }
 
-        // ── Business member +1 ──────────────────────────────────────────────
-        // Business members automatically get a free +1 scan-in for any social
-        // event they RSVP to. No guest info required — just an extra ticket.
-        const isBusinessMember = p?.member_type === 'business';
-        if (isBusinessMember) {
-          await supabase.from('tickets').insert({
-            event_id: event.id,
-            user_id: user.id,
-            ticket_type: 'business_plus_one',
-            status: 'confirmed',
-            source: 'business_plus_one',
-            guest_name: 'Guest (+1)',
-            amount_paid_cents: 0,
-          }).then(({ error: plusOneError }) => {
-            if (plusOneError) {
-              // Silently fail — member's own ticket is already confirmed
-              console.warn('[useTicketActions] +1 ticket insert failed:', plusOneError.message);
-            }
-          });
+        if (rsvpData?.already_rsvped) {
+          toast.info('You already have a ticket for this event');
+          return false;
         }
+
+        // Credential token, used below in place of the old tickets row id.
+        const credentialToken: string | null = rsvpData?.credential_token ?? null;
+
+        // -- Business member +1 -- DEFERRED to sub-step 3.4d.
+        // The old flow inserted a second 'business_plus_one' tickets row here.
+        // In the credential model the +1 becomes a guest_pass attendance_credential
+        // (issued_by_person_id = this member). That is its own scoped sub-step;
+        // it is intentionally NOT issued here. Business members do not get an
+        // auto +1 until 3.4d ships.
 
         // Optimistic update
         setUserTicketIds(prev => new Set([...prev, event.id]));
@@ -210,11 +202,6 @@ export function useTicketActions(): UseTicketActionsReturn {
           location: event.location_name || '',
         });
         setShowThankYou(true);
-
-        // Toast for business +1
-        if (isBusinessMember) {
-          toast.success('RSVP confirmed! Your +1 guest ticket is included.', { duration: 4000 });
-        }
 
         // ── Confirmation email + calendar connect prompt ────────────────────
         // Fetch session + fresh profile once; use both for email and prompt.
@@ -249,8 +236,8 @@ export function useTicketActions(): UseTicketActionsReturn {
                   endTimeIso: event.end_time || event.start_time,
                   calendarToken: freshProfile?.calendar_token || null,
                   origin,
-                  ticket_id: insertedTicket?.id ?? null,
-                  plusOne: isBusinessMember,
+                  ticket_id: credentialToken,
+                  plusOne: false,
                 },
               },
               headers: {
