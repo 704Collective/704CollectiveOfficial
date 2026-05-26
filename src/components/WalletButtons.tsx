@@ -56,7 +56,11 @@ export function WalletButtons({ compact = false }: { compact?: boolean }) {
   const handleGoogleWallet = async () => {
     const useSameTab = preferSameTabWalletOpen();
     // Desktop: open blank tab synchronously on click so async redirect is not blocked as a popup.
-    const walletTab = useSameTab ? null : window.open('', '_blank', 'noopener,noreferrer');
+    // NOTE: window.open() with 'noopener' returns null (by design), which made
+    // the desktop path always fall through to same-tab navigation and leave an
+    // orphaned about:blank tab. 'noreferrer' alone still returns a usable handle;
+    // walletTab.opener is nulled manually below before navigation.
+    const walletTab = useSameTab ? null : window.open('', '_blank', 'noreferrer');
     setGoogleLoading(true);
     try {
       const supabase = createClient();
