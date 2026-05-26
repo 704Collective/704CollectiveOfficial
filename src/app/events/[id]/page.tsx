@@ -184,23 +184,25 @@ export default function EventDetail() {
     if (!user || !event) return;
     setIsRegistering(true);
     try {
-      const { error } = await supabase.from('tickets').insert({
-        event_id: event.id,
-        user_id: user.id,
-        ticket_type: 'member_free',
-        status: 'confirmed',
-        source: 'direct',
-        amount_paid_cents: 0,
+      // Member RSVP now goes through the create-member-rsvp edge function,
+      // which creates a member_rsvp attendance_credential. invoke() attaches
+      // the logged-in user's JWT automatically.
+      const { data, error } = await supabase.functions.invoke('create-member-rsvp', {
+        body: { event_id: event.id },
       });
+
       if (error) {
-        if ((error as { code?: string }).code === '23505') {
-          setIsRegistering(false);
-          toast.error('You already have an RSVP for this event.');
-          fetchTicketCount();
-          fetchTicketId();
-          return;
-        }
-        if (error.message?.toLowerCase().includes('capacity') || error.code === 'P0001') {
+        // invoke() treats non-2xx as an error. A 409 means the event is full -
+        // fall back to the waitlist, mirroring the old P0001 capacity path.
+        let isCapacity = false;
+        try {
+          const ctx = (error as { context?: Response }).context;
+          if (ctx && typeof ctx.status === 'number' && ctx.status === 409) {
+            isCapacity = true;
+          }
+        } catch { /* ignore */ }
+
+        if (isCapacity) {
           const { data: wl, error: wlErr } = await supabase
             .from('event_waitlist')
             .insert({ event_id: event.id, user_id: user.id, position: 0 })
@@ -216,14 +218,21 @@ export default function EventDetail() {
           toast.success(`Event is full - you're #${wl.position} on the waitlist!`);
           return;
         }
+
         toast.error('Failed to RSVP. Please try again.');
         setIsRegistering(false);
         return;
       }
+
+      if (data?.already_rsvped) {
+        toast.error('You already have an RSVP for this event.');
+      } else {
+        toast.success("You're RSVP'd!");
+      }
       await refreshUserTickets();
       await fetchTicketId();
+      fetchTicketCount();
       setIsRegistering(false);
-      toast.success("You're RSVP'd!");
     } catch {
       toast.error('Something went wrong.');
       setIsRegistering(false);
