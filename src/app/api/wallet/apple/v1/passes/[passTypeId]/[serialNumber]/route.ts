@@ -51,7 +51,7 @@ export async function GET(req: NextRequest, context: RouteContext) {
     // Call generate-apple-wallet-pass via the service-role path to get a
     // freshly signed pass for this serial.
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
+    const serviceKey = process.env.WALLET_PUSH_SECRET as string;
     const genResponse = await fetch(
       supabaseUrl + '/functions/v1/generate-apple-wallet-pass',
       {

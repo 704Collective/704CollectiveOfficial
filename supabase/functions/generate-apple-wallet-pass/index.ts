@@ -76,7 +76,7 @@ function forgeBinaryToUint8Array(s: string): Uint8Array {
   return out;
 }
 
-// Synchronous: decodes a base64 constant — no I/O, no filesystem access.
+// Synchronous: decodes a base64 constant â€” no I/O, no filesystem access.
 function loadAssetBytes(filename: string): Uint8Array {
   switch (filename) {
     case "icon.png":    return base64ToUint8Array(ICON_1X_BASE64);
@@ -162,7 +162,8 @@ serve(async (req) => {
     let userId: string;
     let isServiceCall: boolean;
 
-    if (token === serviceRoleKey) {
+    const walletPushSecret = Deno.env.get("WALLET_PUSH_SECRET");
+    if (token === serviceRoleKey || (walletPushSecret && token === walletPushSecret)) {
       // Service path: internal push call (e.g. subscription change).
       // Body must carry the serialNumber (= profile id) to regenerate.
       isServiceCall = true;
