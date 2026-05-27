@@ -11,8 +11,6 @@ import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useOfflineCheckIn } from '@/hooks/useOfflineCheckIn';
-import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { canAttendEvent } from '@/lib/eventEligibility';
 
 type AttendeeRow = {
@@ -65,14 +63,19 @@ export function CheckInFullScreen({
   const lastScanRef = useRef<{ text: string; at: number }>({ text: '', at: 0 });
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  const { 
-    isOnline, 
-    pendingCount, 
-    isSyncing, 
-    queueCheckIn, 
-    isInPendingQueue,
-    syncPendingCheckIns 
-  } = useOfflineCheckIn({ eventId, adminId });
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
+  useEffect(() => {
+    const goOnline = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, []);
 
   const fetchAttendees = useCallback(async () => {
     setLoading(true);
@@ -529,12 +532,6 @@ export function CheckInFullScreen({
           <h2 className="font-semibold">{eventTitle}</h2>
           <p className="text-sm text-muted-foreground">Event Check-in</p>
         </div>
-        <OfflineIndicator
-          isOnline={isOnline}
-          pendingCount={pendingCount}
-          isSyncing={isSyncing}
-          onManualSync={syncPendingCheckIns}
-        />
       </div>
 
       {showAttendeeList ? (
