@@ -157,21 +157,45 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const token = authHeader.replace("Bearer ", "");
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-      auth: { persistSession: false },
-    });
 
-    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      logStep("JWT validation failed", { error: claimsError?.message });
-      return new Response(JSON.stringify({ error: "Authentication failed" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // Dual-path auth: service-role bearer (push updates) or member JWT (self-serve).
+    let userId: string;
+    let isServiceCall: boolean;
+
+    if (token === serviceRoleKey) {
+      // Service path: internal push call (e.g. subscription change).
+      // Body must carry the serialNumber (= profile id) to regenerate.
+      isServiceCall = true;
+      let bodyJson: Record<string, unknown> | null = null;
+      try { bodyJson = await req.json(); } catch { /* ignore */ }
+      const serialNumber = bodyJson?.serialNumber;
+      if (typeof serialNumber !== "string" || !serialNumber) {
+        return new Response(JSON.stringify({ error: "serialNumber required for service call" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      userId = serialNumber;
+      logStep("Service call authenticated", { userId });
+    } else {
+      // Member path: verify the caller's user JWT.
+      isServiceCall = false;
+      const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } },
+        auth: { persistSession: false },
       });
+
+      const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
+      if (claimsError || !claimsData?.claims) {
+        logStep("JWT validation failed", { error: claimsError?.message });
+        return new Response(JSON.stringify({ error: "Authentication failed" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      userId = claimsData.claims.sub as string;
+      logStep("User authenticated", { userId });
     }
-    const userId = claimsData.claims.sub as string;
-    logStep("User authenticated", { userId });
 
     // Profile lookup + member gate
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
@@ -207,7 +231,8 @@ serve(async (req) => {
         profile.subscription_status === "trialing" ||
         profile.membership_override === true);
 
-    if (!isAdmin && !isActiveMember) {
+    const passIsActive = isAdmin || isActiveMember;
+    if (!isServiceCall && !passIsActive) {
       logStep("Member is not active", {
         role,
         member_type: profile.member_type,
@@ -265,6 +290,7 @@ serve(async (req) => {
       description: "704 Collective Membership",
       webServiceURL: "https://704collective.com/api/wallet/apple/v1",
       authenticationToken: passAuthToken,
+      ...(passIsActive ? {} : { expirationDate: "2020-01-01T00:00:00Z" }),
       logoText: "",
       backgroundColor: "rgb(26, 26, 26)",
       foregroundColor: "rgb(255, 255, 255)",
@@ -274,7 +300,7 @@ serve(async (req) => {
           { key: "name", label: "MEMBER", value: profile.full_name ?? "Member" },
         ],
         secondaryFields: [
-          { key: "tier", label: "TIER", value: tierLabel(profile.member_type as string | null) },
+          { key: "tier", label: "TIER", value: passIsActive ? tierLabel(profile.member_type as string | null) : "Membership Inactive" },
           { key: "since", label: "MEMBER SINCE", value: formatMonthYear(memberSinceISO) },
         ],
         auxiliaryFields: [
