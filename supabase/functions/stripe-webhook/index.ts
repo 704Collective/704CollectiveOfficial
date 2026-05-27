@@ -331,6 +331,18 @@ async function voidPersonCredentials(
       }).catch((e: unknown) =>
         log("send-apple-wallet-push dispatch failed (non-blocking)", { error: String(e) }),
       );
+      // Google Wallet update: PATCH the member's genericObject to
+      // "Membership Inactive". Google propagates to all devices. Best-effort.
+      fetch(`${supabaseUrl}/functions/v1/update-google-wallet-pass`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${serviceKey}`,
+        },
+        body: JSON.stringify({ serialNumber: profileForPush.id }),
+      }).catch((e: unknown) =>
+        log("update-google-wallet-pass dispatch failed (non-blocking)", { error: String(e) }),
+      );
       log("Apple Wallet push dispatched", { serialNumber: profileForPush.id });
     } else {
       log("voidPersonCredentials: no profile for stripe_customer_id, skipping wallet push", { stripeCustomerId });
