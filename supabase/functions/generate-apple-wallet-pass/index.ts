@@ -222,6 +222,38 @@ serve(async (req) => {
 
     logStep("Member verified", { member_type: profile.member_type, role });
 
+    // -- Apple Wallet push: per-pass authentication token --
+    // Each pass carries a secret authenticationToken. Apple's web service
+    // verifies it on every device call. Stored in apple_wallet_passes keyed
+    // by serialNumber (the profile id). Upsert so regenerating a pass for the
+    // same member refreshes the row instead of failing on the primary key.
+    const passSerial = String(profile.id);
+    const authTokenBytes = new Uint8Array(24);
+    crypto.getRandomValues(authTokenBytes);
+    const passAuthToken = Array.from(authTokenBytes)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    const { error: passUpsertError } = await adminClient
+      .from("apple_wallet_passes")
+      .upsert(
+        {
+          serial_number: passSerial,
+          auth_token: passAuthToken,
+          person_id: null,
+          last_updated: new Date().toISOString(),
+        },
+        { onConflict: "serial_number" },
+      );
+    if (passUpsertError) {
+      logStep("Failed to store apple_wallet_passes row", { error: passUpsertError.message });
+      return new Response(JSON.stringify({ error: "Failed to register wallet pass" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    logStep("Wallet pass auth token stored", { passSerial });
+
     // Build pass.json
     const memberSinceISO: string | null = (profile.member_since as string | null) ?? (profile.created_at as string | null) ?? null;
     const passJson = {
@@ -231,6 +263,8 @@ serve(async (req) => {
       teamIdentifier,
       organizationName: "704 Collective",
       description: "704 Collective Membership",
+      webServiceURL: "https://704collective.com/api/wallet/apple/v1",
+      authenticationToken: passAuthToken,
       logoText: "",
       backgroundColor: "rgb(26, 26, 26)",
       foregroundColor: "rgb(255, 255, 255)",
