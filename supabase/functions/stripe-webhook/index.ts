@@ -307,6 +307,39 @@ async function voidPersonCredentials(
     personId: person.id,
     count: voided?.length ?? 0,
   });
+
+  // Apple Wallet push: tell the member's installed pass to refresh so it
+  // visibly flips to "Membership Inactive". Best-effort - a push failure
+  // must never affect the cancellation. The pass serialNumber is the
+  // profiles.id, so resolve it from the same stripe_customer_id.
+  try {
+    const { data: profileForPush } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("stripe_customer_id", stripeCustomerId)
+      .maybeSingle();
+    if (profileForPush?.id) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+      fetch(`${supabaseUrl}/functions/v1/send-apple-wallet-push`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${serviceKey}`,
+        },
+        body: JSON.stringify({ serialNumber: profileForPush.id }),
+      }).catch((e: unknown) =>
+        log("send-apple-wallet-push dispatch failed (non-blocking)", { error: String(e) }),
+      );
+      log("Apple Wallet push dispatched", { serialNumber: profileForPush.id });
+    } else {
+      log("voidPersonCredentials: no profile for stripe_customer_id, skipping wallet push", { stripeCustomerId });
+    }
+  } catch (pushErr) {
+    log("voidPersonCredentials: wallet push block threw (non-blocking)", {
+      error: pushErr instanceof Error ? pushErr.message : String(pushErr),
+    });
+  }
 }
 
 // ── event handlers ───────────────────────────────────────────────────────
