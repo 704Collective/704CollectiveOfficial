@@ -288,7 +288,7 @@ serve(async (req) => {
       teamIdentifier,
       organizationName: "704 Collective",
       description: "704 Collective Membership",
-      webServiceURL: "https://704collective.com/api/wallet/apple/v1",
+      webServiceURL: "https://704collective.com/api/wallet/apple",
       authenticationToken: passAuthToken,
       ...(passIsActive ? {} : { expirationDate: "2020-01-01T00:00:00Z" }),
       logoText: "",
