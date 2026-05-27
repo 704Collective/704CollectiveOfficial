@@ -320,7 +320,7 @@ async function voidPersonCredentials(
       .maybeSingle();
     if (profileForPush?.id) {
       const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+      const serviceKey = Deno.env.get("WALLET_PUSH_SECRET") ?? "";
       fetch(`${supabaseUrl}/functions/v1/send-apple-wallet-push`, {
         method: "POST",
         headers: {
