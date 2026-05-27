@@ -78,8 +78,8 @@ serve(async (req) => {
     // Service-role auth: only our own server code may trigger pushes.
     const authHeader = req.headers.get("Authorization") || "";
     const token = authHeader.replace("Bearer ", "");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    if (token !== serviceRoleKey) {
+    const pushSecret = Deno.env.get("WALLET_PUSH_SECRET")!;
+    if (token !== pushSecret) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -95,7 +95,10 @@ serve(async (req) => {
       });
     }
 
-    const apnsKey = Deno.env.get("APPLE_APNS_KEY");
+    const apnsKeyB64 = Deno.env.get("APPLE_APNS_KEY_B64");
+    const apnsKey = apnsKeyB64
+      ? new TextDecoder().decode(Uint8Array.from(atob(apnsKeyB64), (c) => c.charCodeAt(0)))
+      : null;
     const apnsKeyId = Deno.env.get("APPLE_APNS_KEY_ID");
     const teamId = Deno.env.get("APPLE_TEAM_ID");
     const passTypeId = Deno.env.get("APPLE_PASS_TYPE_ID");
@@ -108,6 +111,7 @@ serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false },
     });
