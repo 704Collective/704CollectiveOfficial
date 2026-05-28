@@ -24,10 +24,25 @@ type SEOJsonLdProps = OrganizationJsonLdProps | EventJsonLdProps;
 const CANONICAL_BASE = 'https://704collective.com';
 
 export function SEOJsonLd(props: SEOJsonLdProps) {
+  // Extract primitives so the effect's dependency array is value-based,
+  // not reference-based. This stops the effect from re-firing on every
+  // parent render (which previously caused excess script tag churn and
+  // races with route teardown during back-navigation).
+  const type = props.type;
+  const name = props.type === 'event' ? props.name : '';
+  const description = props.type === 'event' ? props.description : undefined;
+  const startDate = props.type === 'event' ? props.startDate : '';
+  const endDate = props.type === 'event' ? props.endDate : '';
+  const locationName = props.type === 'event' ? props.locationName : undefined;
+  const locationAddress = props.type === 'event' ? props.locationAddress : undefined;
+  const ticketPrice = props.type === 'event' ? props.ticketPrice : undefined;
+  const imageUrl = props.type === 'event' ? props.imageUrl : undefined;
+  const eventUrl = props.type === 'event' ? props.eventUrl : undefined;
+
   useEffect(() => {
     let jsonLdData: object[];
 
-    if (props.type === 'organization') {
+    if (type === 'organization') {
       jsonLdData = [
         {
           '@context': 'https://schema.org',
@@ -56,9 +71,9 @@ export function SEOJsonLd(props: SEOJsonLdProps) {
       const eventSchema: Record<string, unknown> = {
         '@context': 'https://schema.org',
         '@type': 'Event',
-        name: props.name,
-        startDate: props.startDate,
-        endDate: props.endDate,
+        name,
+        startDate,
+        endDate,
         eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
         eventStatus: 'https://schema.org/EventScheduled',
         organizer: {
@@ -68,38 +83,38 @@ export function SEOJsonLd(props: SEOJsonLdProps) {
         },
       };
 
-      if (props.description) {
-        eventSchema.description = props.description;
+      if (description) {
+        eventSchema.description = description;
       }
 
-      if (props.imageUrl) {
-        eventSchema.image = props.imageUrl;
+      if (imageUrl) {
+        eventSchema.image = imageUrl;
       }
 
-      if (props.eventUrl) {
-        eventSchema.url = props.eventUrl;
+      if (eventUrl) {
+        eventSchema.url = eventUrl;
       }
 
-      if (props.locationName) {
+      if (locationName) {
         eventSchema.location = {
           '@type': 'Place',
-          name: props.locationName,
-          ...(props.locationAddress && {
+          name: locationName,
+          ...(locationAddress && {
             address: {
               '@type': 'PostalAddress',
-              streetAddress: props.locationAddress,
+              streetAddress: locationAddress,
             },
           }),
         };
       }
 
-      if (props.ticketPrice !== undefined) {
+      if (ticketPrice !== undefined) {
         eventSchema.offers = {
           '@type': 'Offer',
-          price: (props.ticketPrice / 100).toFixed(2),
+          price: (ticketPrice / 100).toFixed(2),
           priceCurrency: 'USD',
           availability: 'https://schema.org/InStock',
-          url: props.eventUrl || CANONICAL_BASE,
+          url: eventUrl || CANONICAL_BASE,
         };
       }
 
@@ -116,13 +131,20 @@ export function SEOJsonLd(props: SEOJsonLdProps) {
     });
 
     return () => {
+      // Defensive cleanup: route navigation can race with this teardown.
+      // Only remove if the script is still a direct child of document.head,
+      // and swallow any DOMException from a remove-after-already-removed.
       scripts.forEach((script) => {
-        if (script.parentNode) {
-          script.parentNode.removeChild(script);
+        try {
+          if (script.parentNode === document.head) {
+            document.head.removeChild(script);
+          }
+        } catch {
+          // Already removed by something else (route teardown, etc.) — safe to ignore.
         }
       });
     };
-  }, [props]);
+  }, [type, name, description, startDate, endDate, locationName, locationAddress, ticketPrice, imageUrl, eventUrl]);
 
   return null;
 }

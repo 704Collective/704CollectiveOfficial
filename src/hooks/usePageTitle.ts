@@ -20,6 +20,7 @@ export function usePageTitle(title: string) {
 
     // Set canonical URL
     let link = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    const createdHere = !link;
     if (!link) {
       link = document.createElement('link');
       link.setAttribute('rel', 'canonical');
@@ -28,9 +29,16 @@ export function usePageTitle(title: string) {
     link.setAttribute('href', `${CANONICAL_BASE}${pathname}`);
 
     return () => {
-      // Cleanup canonical on unmount
-      if (link && link.parentNode) {
-        link.parentNode.removeChild(link);
+      // Defensive cleanup: route navigation can race with this teardown.
+      // Only remove if we created the link here AND it's still a direct
+      // child of document.head. Swallow any DOMException from a
+      // remove-after-already-removed.
+      try {
+        if (createdHere && link && link.parentNode === document.head) {
+          document.head.removeChild(link);
+        }
+      } catch {
+        // Already removed by route teardown — safe to ignore.
       }
     };
   }, [title, pathname]);
