@@ -50,7 +50,7 @@ type ReferralRow = {
   referred_email: string;
   referred_full_name: string | null;
   abuse_flags: unknown;
-  paid_out_at: string | null;
+  payout_sent_at: string | null;
   created_at: string;
 };
 
@@ -145,7 +145,7 @@ export default function AdminAmbassadorsPage() {
         .order('created_at', { ascending: false }),
       supabase
         .from('ambassador_referrals')
-        .select('id, ambassador_id, status, tier, reward_cents, referred_email, referred_full_name, abuse_flags, paid_out_at, created_at')
+        .select('id, ambassador_id, status, tier, reward_cents, referred_email, referred_full_name, abuse_flags, payout_sent_at, created_at')
         .order('created_at', { ascending: false }),
       supabase
         .from('ambassador_payouts')
@@ -194,10 +194,10 @@ export default function AdminAmbassadorsPage() {
         cur.earnedCents += Number(r.reward_cents ?? 0);
       }
       if (isPending(r.status)) cur.pending += 1;
-      if ((r.status === 'approved' || r.status === 'auto_approved' || r.status === 'converted') && !r.paid_out_at) {
+      if ((r.status === 'approved' || r.status === 'auto_approved' || r.status === 'converted') && !r.payout_sent_at) {
         cur.payoutOwedCents += Number(r.reward_cents ?? 0);
       }
-      if (r.status === 'paid_out' || r.paid_out_at) {
+      if (r.status === 'paid_out' || r.payout_sent_at) {
         cur.payoutSentCents += Number(r.reward_cents ?? 0);
       }
     }
@@ -215,11 +215,11 @@ export default function AdminAmbassadorsPage() {
     const ambMap = new Map(ambassadors.map((a) => [a.id, a]));
     const pendingPayoutCount = referrals.filter(
       (r) => (r.status === 'approved' || r.status === 'auto_approved') &&
-        !r.paid_out_at &&
+        !r.payout_sent_at &&
         ambMap.get(r.ambassador_id)?.stripe_account_status === 'active'
     ).length;
     const totalPayoutOwedCents = referrals
-      .filter((r) => (r.status === 'approved' || r.status === 'auto_approved' || r.status === 'converted') && !r.paid_out_at)
+      .filter((r) => (r.status === 'approved' || r.status === 'auto_approved' || r.status === 'converted') && !r.payout_sent_at)
       .reduce((sum, r) => sum + Number(r.reward_cents ?? 0), 0);
     return {
       activeCount,

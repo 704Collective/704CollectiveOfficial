@@ -33,7 +33,7 @@ interface ReferralRow {
   reward_cents: number | null;
   converted_at: string | null;
   created_at: string;
-  paid_out_at: string | null;
+  payout_sent_at: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -192,7 +192,7 @@ export default function AmbassadorDashboardPage() {
 
     const { data: refs } = await supabase
       .from('ambassador_referrals')
-      .select('id, referred_full_name, referred_email, tier, status, reward_cents, converted_at, created_at, paid_out_at')
+      .select('id, referred_full_name, referred_email, tier, status, reward_cents, converted_at, created_at, payout_sent_at')
       .eq('ambassador_id', amb.id)
       .order('created_at', { ascending: false })
       .order('created_at', { ascending: false });
@@ -247,11 +247,11 @@ export default function AmbassadorDashboardPage() {
   ).length;
 
   const lifetimeEarningsCents = referrals
-    .filter((r) => r.status === 'paid_out' || r.paid_out_at != null)
+    .filter((r) => r.status === 'paid_out' || r.payout_sent_at != null)
     .reduce((sum, r) => sum + (r.reward_cents ?? 0), 0);
 
   const owedNowCents = referrals
-    .filter((r) => ['approved', 'auto_approved', 'converted'].includes(r.status) && !r.paid_out_at)
+    .filter((r) => ['approved', 'auto_approved', 'converted'].includes(r.status) && !r.payout_sent_at)
     .reduce((sum, r) => sum + (r.reward_cents ?? 0), 0);
 
   // ── Loading spinner ────────────────────────────────────────────────────────

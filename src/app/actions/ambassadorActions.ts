@@ -405,13 +405,13 @@ export async function churnReferral(
 
   const { data: ref, error: fetchErr } = await gate.admin
     .from('ambassador_referrals')
-    .select('id, status, paid_out_at')
+    .select('id, status, payout_sent_at')
     .eq('id', referralId)
     .maybeSingle();
   if (fetchErr) return { ok: false, error: fetchErr.message };
   if (!ref) return { ok: false, error: 'Referral not found' };
 
-  if (ref.paid_out_at) {
+  if (ref.payout_sent_at) {
     return { ok: false, error: 'Cannot churn a referral that has already been paid out' };
   }
 
@@ -589,7 +589,7 @@ export async function fireAmbassadorPayout(
   const supabase = serviceClient();
   const { data: ref, error: refErr } = await supabase
     .from('ambassador_referrals')
-    .select('id, ambassador_id, reward_cents, status, paid_out_at, ambassador:ambassadors!ambassador_id (id, full_name, email, stripe_account_id, stripe_account_status)')
+    .select('id, ambassador_id, reward_cents, status, payout_sent_at, ambassador:ambassadors!ambassador_id (id, full_name, email, stripe_account_id, stripe_account_status)')
     .eq('id', referralId)
     .maybeSingle();
   if (refErr || !ref) throw new Error('Referral not found');
@@ -597,7 +597,7 @@ export async function fireAmbassadorPayout(
   if (ref.status !== 'approved' && ref.status !== 'auto_approved' && ref.status !== 'converted') {
     throw new Error('Referral must be approved before payout');
   }
-  if (ref.paid_out_at) throw new Error('Payout already fired for this referral');
+  if (ref.payout_sent_at) throw new Error('Payout already fired for this referral');
 
   const amb = (ref.ambassador as unknown) as {
     id: string;
@@ -647,7 +647,7 @@ export async function fireAmbassadorPayout(
 
   await supabase
     .from('ambassador_referrals')
-    .update({ paid_out_at: new Date().toISOString(), stripe_transfer_id: transfer.id })
+    .update({ payout_sent_at: new Date().toISOString(), stripe_transfer_id: transfer.id })
     .eq('id', ref.id);
 
   // ── Send payout email (non-blocking) ──
@@ -700,7 +700,7 @@ export async function fireAllPendingPayouts(): Promise<{
     .from('ambassador_referrals')
     .select('id, ambassador:ambassadors!ambassador_id (stripe_account_status)')
     .in('status', ['approved', 'auto_approved', 'converted'])
-    .is('paid_out_at', null);
+    .is('payout_sent_at', null);
 
   if (error) throw new Error(error.message);
 

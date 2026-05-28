@@ -62,7 +62,7 @@ type Referral = {
   signup_ip: string | null;
   signup_user_agent: string | null;
   abuse_flags: unknown;
-  paid_out_at: string | null;
+  payout_sent_at: string | null;
   created_at: string;
 };
 
@@ -212,7 +212,7 @@ export default function AdminAmbassadorDetailPage() {
         .maybeSingle(),
       supabase
         .from('ambassador_referrals')
-        .select('id, status, tier, reward_cents, referred_email, referred_full_name, signup_ip, signup_user_agent, abuse_flags, paid_out_at, created_at')
+        .select('id, status, tier, reward_cents, referred_email, referred_full_name, signup_ip, signup_user_agent, abuse_flags, payout_sent_at, created_at')
         .eq('ambassador_id', id)
         .order('created_at', { ascending: false }),
       supabase
@@ -575,11 +575,11 @@ export default function AdminAmbassadorDetailPage() {
                             <TableCell><StatusBadge status={r.status} /></TableCell>
                             <TableCell className="text-right tabular-nums">{dollars(r.reward_cents)}</TableCell>
                             <TableCell className="text-muted-foreground text-sm">
-                              {r.paid_out_at ? format(new Date(r.paid_out_at), 'MMM d') : '-'}
+                              {r.payout_sent_at ? format(new Date(r.payout_sent_at), 'MMM d') : '-'}
                             </TableCell>
                             <TableCell>
                               <div className="flex flex-col gap-1 items-start">
-                                {APPROVED_STATUSES.has(r.status) && !r.paid_out_at ? (
+                                {APPROVED_STATUSES.has(r.status) && !r.payout_sent_at ? (
                                   amb.stripe_account_status === 'active' ? (
                                     <Button
                                       type="button"
