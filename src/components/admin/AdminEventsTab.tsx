@@ -579,6 +579,20 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
     const is_members_only = form.access_type === 'members_only';
     const is_business_only = is_members_only && form.access_level === 'business_only';
     const event_type = form.membership_tier === 'business' ? 'business' : 'social';
+
+    // Derive required_tier (new canonical column) from access_type x access_level.
+    // public_free / public_ticketed -> 'public'
+    // members_only + business_only -> 'business'
+    // members_only + any other     -> 'social'
+    let required_tier: 'public' | 'social' | 'business';
+    if (form.access_type !== 'members_only') {
+      required_tier = 'public';
+    } else if (form.access_level === 'business_only') {
+      required_tier = 'business';
+    } else {
+      required_tier = 'social';
+    }
+
     return {
       title: form.title.trim(), description: form.description.trim() || null,
       start_time: form.start_time ? form.start_time.toISOString() : new Date().toISOString(),
@@ -586,18 +600,27 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       location_name: form.location_name.trim() || null, location_address: form.location_address.trim() || null,
       image_url: form.image_url.trim() || null,
       capacity: form.capacity ? Math.min(Math.max(parseInt(form.capacity, 10), 0), 10000) : null,
-      is_members_only,
-      is_business_only,
       event_type,
-      access_type: form.access_type,
-      access_level: form.access_type === 'members_only' ? form.access_level : 'all',
       ticket_mode: form.ticket_mode,
-      ticket_price: form.access_type === 'public_free' ? 0 : pubCents,
-      social_member_price: form.access_type === 'public_free' ? null : socCents,
-      business_member_price: form.access_type === 'public_free' ? null : busCents,
-      category: form.category, recurrence_rule: form.recurrence_rule === 'none' ? null : form.recurrence_rule,
+      category: form.category,
+      recurrence_rule: form.recurrence_rule === 'none' ? null : form.recurrence_rule,
       tags: form.tags.length > 0 ? form.tags : null,
       allows_guest_passes: form.allows_guest_passes,
+
+      // --- New canonical columns (post-sweep) ---
+      required_tier,
+      price_cents: form.access_type === 'public_free' ? 0 : pubCents,
+      member_price_cents: form.access_type === 'public_free' ? null : socCents,
+
+      // --- Deprecated columns (still read by 11 reader files; dual-write until cleanup) ---
+      is_members_only_deprecated: is_members_only,
+      is_business_only_deprecated: is_business_only,
+      access_type_deprecated: form.access_type,
+      access_level_deprecated: form.access_type === 'members_only' ? form.access_level : 'all',
+      ticket_price_deprecated: form.access_type === 'public_free' ? 0 : pubCents,
+      social_member_price_deprecated: form.access_type === 'public_free' ? null : socCents,
+      business_member_price_deprecated: form.access_type === 'public_free' ? null : busCents,
+
       sponsor_slots_enabled: form.sponsor_slots_enabled,
       sponsor_slots_count: form.sponsor_slots_count ? parseInt(form.sponsor_slots_count) : 0,
       sponsor_slot_price: form.sponsor_slot_price ? parseFloat(form.sponsor_slot_price) : null,
@@ -617,20 +640,44 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
     const is_members_only = form.access_type === 'members_only';
     const is_business_only = is_members_only && form.access_level === 'business_only';
     const event_type = form.membership_tier === 'business' ? 'business' : 'social';
+
+    // Derive required_tier (new canonical column) from access_type x access_level.
+    // public_free / public_ticketed -> 'public'
+    // members_only + business_only -> 'business'
+    // members_only + any other     -> 'social'
+    let required_tier: 'public' | 'social' | 'business';
+    if (form.access_type !== 'members_only') {
+      required_tier = 'public';
+    } else if (form.access_level === 'business_only') {
+      required_tier = 'business';
+    } else {
+      required_tier = 'social';
+    }
+
     return {
       title: form.title.trim(), description: form.description.trim() || null,
       location_name: form.location_name.trim() || null, location_address: form.location_address.trim() || null,
       image_url: form.image_url.trim() || null,
       capacity: form.capacity ? Math.min(Math.max(parseInt(form.capacity, 10), 0), 10000) : null,
-      is_members_only, is_business_only, event_type,
-      access_type: form.access_type,
-      access_level: form.access_type === 'members_only' ? form.access_level : 'all',
+      event_type,
       ticket_mode: form.ticket_mode,
-      ticket_price: form.access_type === 'public_free' ? 0 : pubCents,
-      social_member_price: form.access_type === 'public_free' ? null : socCents,
-      business_member_price: form.access_type === 'public_free' ? null : busCents,
-      category: form.category, tags: form.tags.length > 0 ? form.tags : null,
+      category: form.category,
+      tags: form.tags.length > 0 ? form.tags : null,
       allows_guest_passes: form.allows_guest_passes,
+
+      // --- New canonical columns (post-sweep) ---
+      required_tier,
+      price_cents: form.access_type === 'public_free' ? 0 : pubCents,
+      member_price_cents: form.access_type === 'public_free' ? null : socCents,
+
+      // --- Deprecated columns (still read by 11 reader files; dual-write until cleanup) ---
+      is_members_only_deprecated: is_members_only,
+      is_business_only_deprecated: is_business_only,
+      access_type_deprecated: form.access_type,
+      access_level_deprecated: form.access_type === 'members_only' ? form.access_level : 'all',
+      ticket_price_deprecated: form.access_type === 'public_free' ? 0 : pubCents,
+      social_member_price_deprecated: form.access_type === 'public_free' ? null : socCents,
+      business_member_price_deprecated: form.access_type === 'public_free' ? null : busCents,
     };
   };
 
