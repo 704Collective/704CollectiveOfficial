@@ -49,6 +49,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: false,
+  productionBrowserSourceMaps: true,
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },
