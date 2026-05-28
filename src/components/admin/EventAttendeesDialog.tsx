@@ -18,6 +18,7 @@ import { Loader2, CheckCircle2, Clock, UserCheck, Check } from 'lucide-react';
 interface AttendeeRow {
   id: string;
   source: 'ticket' | 'public_rsvp';
+  kind: 'member' | 'guest' | 'public';
   full_name: string;
   email: string;
   phone: string | null;
@@ -73,6 +74,7 @@ export function EventAttendeesDialog({
     const ticketAttendees: AttendeeRow[] = (ticketsResult.data ?? []).map((t: any) => ({
       id: t.id,
       source: 'ticket' as const,
+      kind: t.ticket_type === 'member_free' ? 'member' : t.ticket_type === 'guest_pass' ? 'guest' : 'public',
       full_name: t.profiles?.full_name || t.guest_name || 'Unknown',
       email: t.profiles?.email || t.guest_email || '',
       phone: t.profiles?.phone ?? null,
@@ -86,6 +88,7 @@ export function EventAttendeesDialog({
     const publicRsvpAttendees: AttendeeRow[] = (publicRsvpsResult.data ?? []).map((r: any) => ({
       id: r.id,
       source: 'public_rsvp' as const,
+      kind: 'public' as const,
       full_name: ((r.first_name ?? '') + ' ' + (r.last_name ?? '')).trim(),
       email: r.email,
       phone: r.phone ?? null,
@@ -272,9 +275,13 @@ export function EventAttendeesDialog({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-sm font-medium truncate">{attendee.full_name}</span>
-                        {attendee.source === 'ticket' ? (
+                        {attendee.kind === 'member' ? (
                           <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-background text-foreground border border-border">
                             Member
+                          </span>
+                        ) : attendee.kind === 'guest' ? (
+                          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+                            Guest
                           </span>
                         ) : (
                           <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-400 text-black">
