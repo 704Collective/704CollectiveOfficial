@@ -98,7 +98,7 @@ export default function Events() {
     if (events.length > 0) {
       fetchTicketCounts(events.map(e => e.id)).then(setTicketCounts);
     }
-  }, [events, userTicketIds]);
+  }, [events]);
 
   const filteredEvents = useMemo(() => {
     return events.filter(event => {
