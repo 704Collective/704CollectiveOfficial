@@ -71,7 +71,7 @@ export function EventCard({
     if (isUserMember) {
       return (
         <Button variant="default" size="sm" className="min-h-[44px] bg-green-600 hover:bg-green-700" onClick={onGetTicket}>
-          RSVP Free
+          RSVP
         </Button>
       );
     }
@@ -149,7 +149,6 @@ export function EventCard({
         {ticketPrice > 0 && (
           <div className="flex flex-col gap-0.5">
             <span className="text-sm md:text-base font-bold text-foreground">Non-Member: ${(ticketPrice / 100).toFixed(0)}</span>
-            <span className="text-xs md:text-sm font-semibold text-green-500">Free for Members</span>
           </div>
         )}
 

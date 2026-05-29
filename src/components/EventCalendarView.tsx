@@ -259,7 +259,7 @@ export function EventCalendarView({
 
                   {ev.is_members_only && isUserMember && (
                     <div style={{ fontSize: '0.6875rem', color: '#C6A664', flexShrink: 0, fontWeight: 600 }}>
-                      Free ✓
+                      ✓
                     </div>
                   )}
                 </button>

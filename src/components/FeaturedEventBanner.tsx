@@ -83,13 +83,11 @@ export function FeaturedEventBanner({
               View Details <ArrowRight style={{ width: '14px', height: '14px' }} />
             </span>
           )}
-          <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
-            {isUserMember || (event.ticket_price ?? 0) <= 0 ? (
-              <span style={{ color: '#4CAF50' }}>Free Event</span>
-            ) : (
+          {!isUserMember && (event.ticket_price ?? 0) > 0 && (
+            <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
               <span style={{ color: 'rgba(255,255,255,0.5)' }}>${((event.ticket_price ?? 0) / 100).toFixed(0)}</span>
-            )}
-          </span>
+            </span>
+          )}
           {spotsLeft != null && !isSoldOut && pct >= 70 && <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'rgba(255,255,255,0.45)' }}>{spotsLeft} spots left</span>}
         </div>
       </div>

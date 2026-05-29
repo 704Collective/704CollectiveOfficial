@@ -409,7 +409,7 @@ export default function EventDetail() {
       if (event.access_type === 'public_free') return (
         <div style={{ width: '100%', boxSizing: 'border-box' }}>
           <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '6px' }}>RSVP - no account needed</h3>
-          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', marginBottom: '18px' }}>Free event, open to everyone.</p>
+          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', marginBottom: '18px' }}>Open to everyone.</p>
           {publicRsvpFull ? (
             <div style={{ textAlign: 'center', padding: '16px 0' }}>
               <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#E57373', backgroundColor: 'rgba(229,115,115,0.06)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Event Full</span>
@@ -517,11 +517,13 @@ export default function EventDetail() {
       );
       return (
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '2px' }}>{ticketPrice > 0 ? formatPrice(ticketPrice) : 'Free'}</div>
+          {ticketPrice > 0 && (
+            <div style={{ fontSize: '2rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '2px' }}>{formatPrice(ticketPrice)}</div>
+          )}
           <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', marginBottom: '18px' }}>{ticketPrice > 0 ? 'One-time ticket' : 'Sign in to get your ticket'}</p>
           <button onClick={ticketPrice === 0 ? () => router.push('/login') : handleGuestPurchase} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> Redirecting...</> : ticketPrice === 0 ? 'Sign In to RSVP' : 'Purchase Ticket'}</button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0' }}><div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255,255,255,0.06)' }} /><span style={{ fontSize: '0.625rem', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>or</span><div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255,255,255,0.06)' }} /></div>
-          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', marginBottom: '10px' }}>Already a member? Login to RSVP for free.</p>
+          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', marginBottom: '10px' }}>Already a member? Login to RSVP.</p>
           <Link href="/login" style={{ ...linkBtn, color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)' }}>Sign In</Link>
         </div>
       );
@@ -571,9 +573,9 @@ export default function EventDetail() {
       if (!memberPrice || memberPrice === 0) return (
         <div style={{ textAlign: 'center' }}>
           <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#4CAF50', backgroundColor: 'rgba(76,175,80,0.06)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Member Benefit</span>
-          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>Free Entry</h3>
+          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>Member Event</h3>
           <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>RSVP - it{"'"}s on us.</p>
-          <button onClick={handleMemberRegisterWithWaitlistFallback} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> RSVPing...</> : 'RSVP for Free'}</button>
+          <button onClick={handleMemberRegisterWithWaitlistFallback} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> RSVPing...</> : 'RSVP'}</button>
         </div>
       );
 
@@ -594,10 +596,9 @@ export default function EventDetail() {
     }
     if (event.access_type === 'public_free') return (
       <div style={{ textAlign: 'center' }}>
-        <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#4CAF50', backgroundColor: 'rgba(76,175,80,0.06)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Free Event</span>
-        <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>Free Entry</h3>
-        <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>RSVP - open to everyone.</p>
-        <button onClick={handleMemberRegisterWithWaitlistFallback} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> RSVPing...</> : 'RSVP for Free'}</button>
+        <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>RSVP</h3>
+        <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>Open to everyone.</p>
+        <button onClick={handleMemberRegisterWithWaitlistFallback} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> RSVPing...</> : 'RSVP'}</button>
       </div>
     );
     return (
@@ -606,7 +607,7 @@ export default function EventDetail() {
         <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', marginBottom: '18px' }}>One-time ticket</p>
         <button onClick={handlePurchaseTicket} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> Redirecting...</> : 'Purchase Ticket'}</button>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0' }}><div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255,255,255,0.06)' }} /><span style={{ fontSize: '0.625rem', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>or</span><div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255,255,255,0.06)' }} /></div>
-        <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', marginBottom: '10px' }}>Get unlimited free access to all events.</p>
+        <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', marginBottom: '10px' }}>Get unlimited access to all events.</p>
         <Link href="/social" style={{ ...linkBtn, color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)' }}>Join 704 Social - {SOCIAL_TIER.monthlyPriceShort}</Link>
       </div>
     );
@@ -615,10 +616,10 @@ export default function EventDetail() {
   const getMobileCTAText = () => {
     if (event.access_type === 'public_free') {
       if (!user) return 'RSVP - No Account Needed';
-      return isAtCapacity ? 'Join Waitlist' : 'RSVP for Free';
+      return isAtCapacity ? 'Join Waitlist' : 'RSVP';
     }
     if (!user) return event.is_members_only ? 'Sign In to RSVP' : 'Purchase Ticket';
-    if (isActiveMember) return isAtCapacity ? 'Join Waitlist' : 'RSVP for Free';
+    if (isActiveMember) return isAtCapacity ? 'Join Waitlist' : 'RSVP';
     return 'Purchase Ticket';
   };
   const handleMobileCTA = () => {
@@ -738,7 +739,7 @@ export default function EventDetail() {
               <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: (event.ticket_mode === 'all' && isActiveMember) ? '#C6A664' : (isActiveMember || event.access_type === 'public_free') ? '#4CAF50' : '#FFFFFF' }}>
                 {(event.ticket_mode === 'all' && isActiveMember)
                   ? formatPrice(resolveMemberPrice() ?? ticketPrice)
-                  : (isActiveMember || ticketPrice <= 0 || event.access_type === 'public_free' ? 'Free' : formatPrice(ticketPrice))}</div>
+                  : (isActiveMember || ticketPrice <= 0 || event.access_type === 'public_free' ? '' : formatPrice(ticketPrice))}</div>
               <button onClick={handleMobileCTA} disabled={isActionLoading} style={{ flex: 1, padding: '14px 24px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, backgroundColor: '#FFF', color: '#000', border: 'none', cursor: isActionLoading ? 'wait' : 'pointer', opacity: isActionLoading ? 0.6 : 1 }}>
                 {isActionLoading ? 'Loading...' : getMobileCTAText()}
               </button>
