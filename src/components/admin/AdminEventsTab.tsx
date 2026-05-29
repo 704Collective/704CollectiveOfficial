@@ -75,6 +75,18 @@ interface Event {
   host_slots_enabled?: boolean | null;
   host_slots_count?: number | null;
   host_slot_price?: number | null;
+  // New canonical columns (post-sweep)
+  required_tier?: string | null;
+  price_cents?: number | null;
+  member_price_cents?: number | null;
+  // Deprecated columns (still populated by dual-write; canonical source of truth for now)
+  is_members_only_deprecated?: boolean | null;
+  is_business_only_deprecated?: boolean | null;
+  access_type_deprecated?: string | null;
+  access_level_deprecated?: string | null;
+  ticket_price_deprecated?: number | null;
+  social_member_price_deprecated?: number | null;
+  business_member_price_deprecated?: number | null;
 }
 
 type AccessType = 'members_only' | 'public_ticketed' | 'public_free';
@@ -487,16 +499,32 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
 
   const openEdit = (event: Event) => {
     setEditingEvent(event);
-    const pub = event.ticket_price != null ? (event.ticket_price / 100).toString() : '0';
-    const soc = event.social_member_price != null ? (event.social_member_price / 100).toString() : '0';
-    const bus = event.business_member_price != null ? (event.business_member_price / 100).toString() : '0';
-    const tier = event.event_type === 'business' || event.is_business_only ? 'business' : 'social';
-    const accessType = (event.access_type as AccessType) || (event.is_members_only ? 'members_only' : 'public_ticketed');
-    const accessLevel = (event.access_level as AccessLevel) || (event.is_business_only ? 'business_only' : 'all');
+    // Read from *_deprecated columns: that's where the dual-write puts the
+    // canonical edit-form values. Bare names (event.ticket_price etc.) are
+    // undefined at runtime because the sweep renamed those columns.
+    const tp = event.ticket_price_deprecated ?? event.ticket_price ?? 0;
+    const sp = event.social_member_price_deprecated != null
+      ? Number(event.social_member_price_deprecated)
+      : (event.social_member_price ?? 0);
+    const bp = event.business_member_price_deprecated != null
+      ? Number(event.business_member_price_deprecated)
+      : (event.business_member_price ?? 0);
+    const pub = (tp / 100).toString();
+    const soc = (sp / 100).toString();
+    const bus = (bp / 100).toString();
+    const isBusinessOnly = event.is_business_only_deprecated ?? event.is_business_only ?? false;
+    const isMembersOnly = event.is_members_only_deprecated ?? event.is_members_only ?? false;
+    const tier = event.event_type === 'business' || isBusinessOnly ? 'business' : 'social';
+    const rawAccessType = event.access_type_deprecated ?? event.access_type ?? null;
+    const rawAccessLevel = event.access_level_deprecated ?? event.access_level ?? null;
+    const accessType: AccessType =
+      (rawAccessType as AccessType) || (isMembersOnly ? 'members_only' : 'public_ticketed');
+    const accessLevel: AccessLevel =
+      (rawAccessLevel as AccessLevel) || (isBusinessOnly ? 'business_only' : 'all');
     const ticketMode: 'none' | 'public_only' | 'all' =
       event.ticket_mode === 'none' || event.ticket_mode === 'public_only' || event.ticket_mode === 'all'
         ? event.ticket_mode
-        : (accessType === 'public_ticketed' && (event.ticket_price ?? 0) > 0 ? 'public_only' : 'none');
+        : (accessType === 'public_ticketed' && tp > 0 ? 'public_only' : 'none');
     setForm({
       membership_tier: tier,
       title: event.title, description: event.description || '', start_time: new Date(event.start_time),
