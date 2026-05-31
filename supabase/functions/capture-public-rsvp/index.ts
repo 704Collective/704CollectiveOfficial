@@ -251,6 +251,7 @@ serve(async (req) => {
           .from("people")
           .insert({
             email: cleanEmail,
+            email_lower: cleanEmail,
             full_name: fullName,
             phone: cleanPhone,
             roles: ["guest"],

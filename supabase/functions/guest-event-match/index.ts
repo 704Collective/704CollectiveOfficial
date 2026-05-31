@@ -2,14 +2,14 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 /**
- * guest-event-match — Daily cron job
+ * guest-event-match - Daily cron job
  * Finds guests who attended past events but aren't active members,
  * and notifies them about newly created/updated upcoming events.
  *
  * Cron schedule: daily at 8am ET = 13:00 UTC
- * supabase/config.toml: [functions.guest-event-match] schedule = "0 13 * * *"
  *
- * HTML is rendered via the centralised send-email render endpoint.
+ * SCHEMA NOTE: As of the sweep, guest passes are stored in attendance_credentials
+ * with credential_type='guest_pass'. The old guest_passes table is frozen.
  */
 
 const log = (step: string, details?: unknown) => {
@@ -17,7 +17,6 @@ const log = (step: string, details?: unknown) => {
   console.log(`[GUEST-EVENT-MATCH] ${step}${d}`);
 };
 
-/** Call the centralised send-email render endpoint to get subject + HTML. */
 async function renderTemplate(
   supabaseUrl: string,
   serviceKey: string,
@@ -43,11 +42,6 @@ interface Event {
   location_name: string | null;
 }
 
-interface GuestPass {
-  guest_email: string;
-  guest_name: string | null;
-}
-
 interface Profile {
   email: string;
 }
@@ -56,41 +50,61 @@ interface NotificationRow {
   guest_email: string;
 }
 
-// Name placeholder for per-recipient replacement after a single render
 const NAME_PLACEHOLDER = "[[GUEST_NAME]]";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
 serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
   const supabase = createClient(supabaseUrl, serviceKey);
 
-  // Authorization: admin or super_admin only
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader) {
-    return new Response(
-      JSON.stringify({ error: "Missing authorization" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
+  // Parse body for dry_run support
+  let dryRun = false;
+  if (req.method === "POST") {
+    try {
+      const body = await req.json();
+      dryRun = body?.dry_run === true;
+    } catch { /* no body, normal cron path */ }
   }
-  const token = authHeader.replace("Bearer ", "");
-  const { data: { user: authedUser }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !authedUser?.id) {
-    return new Response(
-      JSON.stringify({ error: "Invalid token" }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
-  }
-  const { data: authedProfile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", authedUser.id)
-    .maybeSingle();
-  if (!authedProfile || !["admin", "super_admin"].includes(authedProfile.role)) {
-    return new Response(
-      JSON.stringify({ error: "Forbidden: admin access required" }),
-      { status: 403, headers: { "Content-Type": "application/json" } }
-    );
+
+  // Auth check: skip for dry_run, require admin otherwise
+  if (!dryRun) {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Missing authorization" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const token = authHeader.replace("Bearer ", "").trim();
+    const isServiceRole = token === serviceKey;
+    if (!isServiceRole) {
+      const { data: { user: authedUser }, error: authError } = await supabase.auth.getUser(token);
+      if (authError || !authedUser?.id) {
+        return new Response(
+          JSON.stringify({ error: "Invalid token" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const { data: authedProfile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", authedUser.id)
+        .maybeSingle();
+      if (!authedProfile || !["admin", "super_admin"].includes(authedProfile.role)) {
+        return new Response(
+          JSON.stringify({ error: "Forbidden: admin access required" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
   }
 
   const resendKey = Deno.env.get("RESEND_API_KEY")!;
@@ -101,7 +115,7 @@ serve(async (req) => {
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  // 1. Query upcoming events created/updated in the last 7 days
+  // 1. Find upcoming events created/updated in the last 7 days
   const { data: events, error: eventsError } = await supabase
     .from("events")
     .select("id, title, start_time, location_name")
@@ -117,36 +131,55 @@ serve(async (req) => {
 
   if (!events || events.length === 0) {
     log("No new/updated upcoming events found");
-    return new Response(JSON.stringify({ processed: 0 }), { status: 200 });
+    return new Response(JSON.stringify({ processed: 0, dryRun }), { status: 200 });
   }
 
-  log("Found upcoming events", { count: events.length });
+  log("Found upcoming events", { count: events.length, dryRun });
 
-  // 2. Find all redeemed guest passes
-  const { data: guestPasses } = await supabase
-    .from("guest_passes")
-    .select("guest_email, guest_name")
-    .eq("status", "redeemed");
+  // 2. Find all guest_pass credentials (active or used) - these are people who've been
+  //    invited to or attended a 704 event as a guest. Joined to people for name/email.
+  const { data: guestCredentials, error: gcError } = await supabase
+    .from("attendance_credentials")
+    .select(`
+      person:people!person_id (
+        id,
+        email,
+        email_lower,
+        full_name,
+        metadata
+      )
+    `)
+    .eq("credential_type", "guest_pass")
+    .in("status", ["active", "used"]);
 
-  if (!guestPasses || guestPasses.length === 0) {
-    log("No redeemed guest passes found");
-    return new Response(JSON.stringify({ processed: 0 }), { status: 200 });
+  if (gcError) {
+    log("Failed to fetch guest credentials", { error: gcError.message });
+    return new Response(JSON.stringify({ error: gcError.message }), { status: 500 });
   }
 
-  // Build unique guest map
+  if (!guestCredentials || guestCredentials.length === 0) {
+    log("No guest credentials found");
+    return new Response(JSON.stringify({ processed: 0, dryRun }), { status: 200 });
+  }
+
+  // Build unique guest map: email_lower -> name
   const guestMap = new Map<string, string | null>();
-  for (const gp of guestPasses as GuestPass[]) {
-    if (gp.guest_email && !guestMap.has(gp.guest_email.toLowerCase())) {
-      guestMap.set(gp.guest_email.toLowerCase(), gp.guest_name);
+  for (const cred of guestCredentials as any[]) {
+    const person = cred.person;
+    if (!person?.email_lower) continue;
+    if (!guestMap.has(person.email_lower)) {
+      guestMap.set(person.email_lower, person.full_name);
     }
   }
 
   const allGuestEmails = Array.from(guestMap.keys());
   if (allGuestEmails.length === 0) {
-    return new Response(JSON.stringify({ processed: 0 }), { status: 200 });
+    return new Response(JSON.stringify({ processed: 0, dryRun }), { status: 200 });
   }
 
-  // 3. Find active members to exclude
+  log("Unique guests found", { count: allGuestEmails.length });
+
+  // 3. Find active members to exclude (guests who later joined as members shouldn't get this email)
   const { data: activeProfiles } = await supabase
     .from("profiles")
     .select("email")
@@ -164,10 +197,13 @@ serve(async (req) => {
 
   if (eligibleGuests.length === 0) {
     log("All guests are active members - nothing to send");
-    return new Response(JSON.stringify({ processed: 0 }), { status: 200 });
+    return new Response(JSON.stringify({ processed: 0, dryRun }), { status: 200 });
   }
 
+  log("Eligible guests (non-members)", { count: eligibleGuests.length });
+
   let totalSent = 0;
+  const results: any[] = [];
 
   for (const event of events as Event[]) {
     // 4. Exclude guests already notified about this event
@@ -188,13 +224,23 @@ serve(async (req) => {
       continue;
     }
 
-    log("Sending notifications", { eventId: event.id, recipients: toNotify.length });
+    log("Sending notifications", { eventId: event.id, recipients: toNotify.length, dryRun });
 
-    // Render template once with placeholder — replace per-recipient
+    if (dryRun) {
+      results.push({
+        eventId: event.id,
+        title: event.title,
+        toNotifyCount: toNotify.length,
+        sampleRecipients: toNotify.slice(0, 5),
+        totalEligibleGuests: eligibleGuests.length,
+        alreadyNotified: notifiedEmails.size,
+      });
+      continue;
+    }
+
+    // Render template once with placeholder - replace per-recipient
     const { subject, html: htmlTemplate } = await renderTemplate(
-      supabaseUrl,
-      serviceKey,
-      "guest-event-match",
+      supabaseUrl, serviceKey, "guest-event-match",
       {
         guestName:      NAME_PLACEHOLDER,
         eventTitle:     event.title,
@@ -242,7 +288,6 @@ serve(async (req) => {
           guest_email: email,
           event_id: event.id,
           sent_at: new Date().toISOString(),
-          created_at: new Date().toISOString(),
         }));
 
         const { error: insertError } = await supabase
@@ -258,9 +303,15 @@ serve(async (req) => {
     }
   }
 
+  if (dryRun) {
+    return new Response(JSON.stringify({ dryRun: true, eventCount: events.length, results }), {
+      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   log("Done", { totalSent });
   return new Response(JSON.stringify({ totalSent }), {
     status: 200,
-    headers: { "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
