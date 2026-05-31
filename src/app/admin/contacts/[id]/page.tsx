@@ -111,6 +111,16 @@ export default function AdminContactDetailPage() {
   const [customSubject, setCustomSubject] = useState('');
   const [customBody, setCustomBody] = useState('');
 
+  // Manual membership override state
+  const [peopleRow, setPeopleRow] = useState<{ id: string; member_tier: string | null; member_status: string | null; override_paying: boolean | null; phone: string | null; full_name: string | null } | null>(null);
+  const [overrideTier, setOverrideTier] = useState<string>('');
+  const [overrideStatus, setOverrideStatus] = useState<string>('');
+  const [overridePaying, setOverridePaying] = useState<boolean>(false);
+  const [overridePhone, setOverridePhone] = useState<string>('');
+  const [overrideSendEmail, setOverrideSendEmail] = useState<boolean>(false);
+  const [overrideSaving, setOverrideSaving] = useState(false);
+  const [overrideResult, setOverrideResult] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     const parsed = parseContactRouteId(raw);
     if (!parsed) {
@@ -213,6 +223,38 @@ export default function AdminContactDetailPage() {
             setGuestPassEvents([]);
           }
         }
+      }
+      // Load the canonical `people` row by email for the override panel
+      const lookupEmail = parsed.table === 'profiles'
+        ? ((await supabase.from('profiles').select('email').eq('id', parsed.id).maybeSingle()).data?.email ?? null)
+        : ((await supabase.from('contacts').select('email').eq('id', parsed.id).maybeSingle()).data?.email ?? null);
+      if (lookupEmail) {
+        const { data: pplRow } = await supabase
+          .from('people')
+          .select('id, member_tier, member_status, override_paying, phone, full_name')
+          .ilike('email', lookupEmail)
+          .maybeSingle();
+        if (pplRow) {
+          const row = pplRow as { id: string; member_tier: string | null; member_status: string | null; override_paying: boolean | null; phone: string | null; full_name: string | null };
+          setPeopleRow(row);
+          setOverrideTier(row.member_tier ?? '');
+          setOverrideStatus(row.member_status ?? '');
+          setOverridePaying(row.override_paying ?? false);
+          setOverridePhone(row.phone ?? '');
+        } else {
+          setPeopleRow(null);
+          setOverrideTier('');
+          setOverrideStatus('');
+          setOverridePaying(false);
+          setOverridePhone('');
+        }
+        // Default send_setup_email to ON if there's no profile row yet (orphan activation)
+        const { data: existingProf } = await supabase
+          .from('profiles')
+          .select('id')
+          .ilike('email', lookupEmail)
+          .maybeSingle();
+        setOverrideSendEmail(!existingProf);
       }
     } catch (e) {
       console.error(e);
@@ -432,6 +474,45 @@ export default function AdminContactDetailPage() {
     }
     toast.success('Saved');
     void load();
+  };
+
+  const handleSaveOverride = async () => {
+    setOverrideSaving(true);
+    setOverrideResult(null);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) throw new Error('Not authenticated');
+
+      const targetEmail = (profile?.email ?? contactRow?.email) as string | undefined;
+      const targetName = (profile?.full_name ?? contactRow?.full_name ?? null) as string | null;
+      if (!targetEmail) throw new Error('No email found on this contact');
+
+      const payload = {
+        email: targetEmail,
+        full_name: targetName,
+        member_tier: overrideTier || null,
+        member_status: overrideStatus || null,
+        override_paying: overridePaying,
+        phone: overridePhone || null,
+        send_setup_email: overrideSendEmail,
+      };
+
+      const res = await supabase.functions.invoke('admin-manual-membership-override', { body: payload });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+
+      const changes = (res.data?.changes ?? []) as string[];
+      const summary = changes.length > 0 ? changes.join(' · ') : 'No changes made';
+      setOverrideResult(summary);
+      toast.success('Override applied');
+      void load();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to apply override';
+      setOverrideResult(`ERROR: ${msg}`);
+      toast.error(msg);
+    } finally {
+      setOverrideSaving(false);
+    }
   };
 
   const handleSendEmail = async (mode: 'welcome' | 'custom') => {
@@ -788,6 +869,90 @@ export default function AdminContactDetailPage() {
             )}
 
             <TabsContent value="settings" className="mt-4 space-y-6">
+              {isSuperAdmin && (
+                <Card className="border-amber-500/40">
+                  <CardContent className="p-5 space-y-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-amber-400">Manual Membership Override</h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Super admin only. Toggles `people.member_tier` / `member_status` / `override_paying`. For orphan rows (no auth account), saving with status=active creates the account and optionally sends a password setup email.
+                      </p>
+                      {!peopleRow && (
+                        <p className="text-xs text-amber-400 mt-2">
+                          No `people` row exists for this contact yet. Saving will create one.
+                        </p>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <Label>Member Tier</Label>
+                        <Select value={overrideTier || '__none'} onValueChange={(v) => setOverrideTier(v === '__none' ? '' : v)}>
+                          <SelectTrigger><SelectValue placeholder="(no change)" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none">(unset)</SelectItem>
+                            <SelectItem value="social">Social</SelectItem>
+                            <SelectItem value="business">Business</SelectItem>
+                            <SelectItem value="founder">Founder</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Member Status</Label>
+                        <Select value={overrideStatus || '__none'} onValueChange={(v) => setOverrideStatus(v === '__none' ? '' : v)}>
+                          <SelectTrigger><SelectValue placeholder="(no change)" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none">(unset)</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                            <SelectItem value="canceled">Canceled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center gap-3 md:col-span-2">
+                        <input
+                          type="checkbox"
+                          id="override-paying"
+                          checked={overridePaying}
+                          onChange={(e) => setOverridePaying(e.target.checked)}
+                          className="w-4 h-4"
+                        />
+                        <Label htmlFor="override-paying" className="cursor-pointer">Override paying (comp membership — bypasses Stripe check)</Label>
+                      </div>
+                      <div className="md:col-span-2">
+                        <Label>Phone (optional)</Label>
+                        <Input value={overridePhone} onChange={(e) => setOverridePhone(e.target.value)} placeholder="704-555-1234" />
+                      </div>
+                      <div className="flex items-center gap-3 md:col-span-2">
+                        <input
+                          type="checkbox"
+                          id="override-send-email"
+                          checked={overrideSendEmail}
+                          onChange={(e) => setOverrideSendEmail(e.target.checked)}
+                          className="w-4 h-4"
+                        />
+                        <Label htmlFor="override-send-email" className="cursor-pointer">Send password setup email (only fires if a new auth account is created)</Label>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 pt-2">
+                      <p className="text-xs text-muted-foreground">
+                        Current people row: {peopleRow ? `tier=${peopleRow.member_tier ?? '∅'} · status=${peopleRow.member_status ?? '∅'} · paying=${peopleRow.override_paying ? 'true' : 'false'}` : 'none'}
+                      </p>
+                      <Button
+                        onClick={() => { void handleSaveOverride(); }}
+                        disabled={overrideSaving}
+                        className="bg-amber-500 hover:bg-amber-600 text-black"
+                      >
+                        {overrideSaving ? 'Saving…' : 'Save Override'}
+                      </Button>
+                    </div>
+                    {overrideResult && (
+                      <div className={`text-xs p-2 rounded ${overrideResult.startsWith('ERROR') ? 'bg-destructive/20 text-destructive' : 'bg-green-500/10 text-green-400'}`}>
+                        {overrideResult}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
               {isMember ? (
                 <div className="space-y-4">
                   <h3 className="text-sm font-semibold">Member Settings</h3>
