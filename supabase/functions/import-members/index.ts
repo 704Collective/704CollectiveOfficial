@@ -150,6 +150,54 @@ serve(async (req) => {
             log("Profile upsert error", { email, error: profileErr.message });
           }
 
+          // Also create a people row (new canonical schema) - link via metadata.profile_id.
+          // Best-effort - admin import must not fail if people insert errors.
+          try {
+            const { data: existingPerson } = await adminClient
+              .from("people")
+              .select("id, roles")
+              .eq("email_lower", email)
+              .maybeSingle();
+
+            if (existingPerson) {
+              // Upgrade existing row: ensure member role + active status + profile link
+              const newRoles: string[] = Array.isArray(existingPerson.roles) ? [...existingPerson.roles] : [];
+              if (!newRoles.includes("member")) newRoles.push("member");
+              await adminClient
+                .from("people")
+                .update({
+                  full_name: fullName,
+                  ...(member.phone ? { phone: member.phone.trim() } : {}),
+                  roles: newRoles,
+                  member_tier: membershipTier || "social",
+                  member_status: "active",
+                  override_paying: true,
+                  joined_at: new Date().toISOString(),
+                  metadata: { profile_id: newUserId, source: "import_members" },
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", existingPerson.id);
+            } else {
+              await adminClient
+                .from("people")
+                .insert({
+                  email,
+                  email_lower: email,
+                  full_name: fullName,
+                  ...(member.phone ? { phone: member.phone.trim() } : {}),
+                  roles: ["member"],
+                  member_tier: membershipTier || "social",
+                  member_status: "active",
+                  override_paying: true,
+                  joined_at: new Date().toISOString(),
+                  metadata: { profile_id: newUserId, source: "import_members" },
+                });
+            }
+          } catch (peopleErr) {
+            const msg = peopleErr instanceof Error ? peopleErr.message : String(peopleErr);
+            log("People row sync failed (non-blocking)", { email, error: msg });
+          }
+
           // Add member role
           await adminClient
             .from("user_roles")
