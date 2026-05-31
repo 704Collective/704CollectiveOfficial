@@ -414,6 +414,18 @@ serve(async (req) => {
       recipients = (profiles ?? [])
         .filter((p) => !!p.email)
         .map((p) => ({ email: p.email, name: p.full_name, profile_id: p.id }));
+      // Sweep-aware: also read from people (canonical) so members activated
+      // via manual override or other non-profiles paths are included.
+      // Dedupe happens in uniqueMap below.
+      const { data: pplAll } = await supabase
+        .from("people")
+        .select("id, email, full_name, metadata")
+        .in("member_tier", ["social", "business"])
+        .eq("member_status", "active");
+      for (const pr of (pplAll ?? []) as any[]) {
+        if (!pr.email) continue;
+        recipients.push({ email: pr.email, name: pr.full_name, profile_id: pr.metadata?.profile_id ?? undefined });
+      }
     } else if (audienceType === "social_members") {
       const { data: profiles } = await supabase
         .from("profiles")
@@ -425,6 +437,15 @@ serve(async (req) => {
       recipients = (profiles ?? [])
         .filter((p) => !!p.email)
         .map((p) => ({ email: p.email, name: p.full_name, profile_id: p.id }));
+      const { data: pplSocial } = await supabase
+        .from("people")
+        .select("id, email, full_name, metadata")
+        .eq("member_tier", "social")
+        .eq("member_status", "active");
+      for (const pr of (pplSocial ?? []) as any[]) {
+        if (!pr.email) continue;
+        recipients.push({ email: pr.email, name: pr.full_name, profile_id: pr.metadata?.profile_id ?? undefined });
+      }
     } else if (audienceType === "business_members") {
       const { data: profiles } = await supabase
         .from("profiles")
@@ -436,6 +457,15 @@ serve(async (req) => {
       recipients = (profiles ?? [])
         .filter((p) => !!p.email)
         .map((p) => ({ email: p.email, name: p.full_name, profile_id: p.id }));
+      const { data: pplBusiness } = await supabase
+        .from("people")
+        .select("id, email, full_name, metadata")
+        .eq("member_tier", "business")
+        .eq("member_status", "active");
+      for (const pr of (pplBusiness ?? []) as any[]) {
+        if (!pr.email) continue;
+        recipients.push({ email: pr.email, name: pr.full_name, profile_id: pr.metadata?.profile_id ?? undefined });
+      }
     } else if (audienceType === "non_member") {
       const { data: profiles } = await supabase
         .from("profiles")

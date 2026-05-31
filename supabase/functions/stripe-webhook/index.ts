@@ -954,6 +954,27 @@ async function handleInvoicePaymentSucceeded(
     await supabase.from("profiles").update(updates).eq("id", profile.id);
     log("Profile updated to active", { userId: profile.id });
 
+    // Sweep-aware: also update people.member_status to keep new-schema canonical in sync.
+    // Best-effort - never block the profile update path.
+    try {
+      const { data: personRow } = await supabase
+        .from("people")
+        .select("id, member_status")
+        .filter("metadata->>profile_id", "eq", profile.id)
+        .maybeSingle();
+      if (personRow) {
+        await supabase
+          .from("people")
+          .update({ member_status: "active", updated_at: new Date().toISOString() })
+          .eq("id", personRow.id);
+        log("People row synced to active", { personId: personRow.id, source: "invoice.payment_succeeded" });
+      } else {
+        log("No people row found for profile, skipping sync", { profileId: profile.id, source: "invoice.payment_succeeded" });
+      }
+    } catch (syncErr) {
+      log("People sync failed (non-blocking)", { error: syncErr instanceof Error ? syncErr.message : String(syncErr), source: "invoice.payment_succeeded" });
+    }
+
     // Only log payment for renewals, not the initial subscription (checkout already logged it)
     if (billingReason !== "subscription_create") {
       await insertPayment(supabase, {
@@ -1047,6 +1068,24 @@ async function handleInvoicePaymentFailed(
       .eq("id", profile.id);
     log("Profile marked past_due", { userId: profile.id });
 
+    // Sweep-aware: also update people.member_status to past_due.
+    try {
+      const { data: personRow } = await supabase
+        .from("people")
+        .select("id")
+        .filter("metadata->>profile_id", "eq", profile.id)
+        .maybeSingle();
+      if (personRow) {
+        await supabase
+          .from("people")
+          .update({ member_status: "past_due", updated_at: new Date().toISOString() })
+          .eq("id", personRow.id);
+        log("People row synced to past_due", { personId: personRow.id, source: "invoice.payment_failed" });
+      }
+    } catch (syncErr) {
+      log("People sync failed (non-blocking)", { error: syncErr instanceof Error ? syncErr.message : String(syncErr), source: "invoice.payment_failed" });
+    }
+
     await insertPayment(supabase, {
       user_id: profile.id,
       stripe_customer_id: stripeCustomerId,
@@ -1090,6 +1129,28 @@ async function handleSubscriptionDeleted(
       })
       .eq("id", profile.id);
     log("Subscription canceled", { userId: profile.id });
+
+    // Sweep-aware: also update people.member_status to inactive + stamp canceled_at.
+    try {
+      const { data: personRow } = await supabase
+        .from("people")
+        .select("id")
+        .filter("metadata->>profile_id", "eq", profile.id)
+        .maybeSingle();
+      if (personRow) {
+        await supabase
+          .from("people")
+          .update({
+            member_status: "inactive",
+            canceled_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", personRow.id);
+        log("People row synced to inactive", { personId: personRow.id, source: "subscription.deleted" });
+      }
+    } catch (syncErr) {
+      log("People sync failed (non-blocking)", { error: syncErr instanceof Error ? syncErr.message : String(syncErr), source: "subscription.deleted" });
+    }
   } else {
     log("WARNING: No profile found for subscription.deleted", { stripeCustomerId });
   }
@@ -1196,6 +1257,33 @@ async function handleSubscriptionUpdated(
     }
     await supabase.from("profiles").update(updates).eq("id", profile.id);
     log("Subscription status synced", { userId: profile.id, status: mappedStatus });
+
+    // Sweep-aware: also update people.member_status with the mapped status.
+    // Map past_due/canceled/active to people-side values.
+    try {
+      const peopleStatus = mappedStatus === "canceled" ? "inactive" : mappedStatus;
+      const peopleUpdates: Record<string, unknown> = {
+        member_status: peopleStatus,
+        updated_at: new Date().toISOString(),
+      };
+      if (mappedStatus === "canceled") {
+        peopleUpdates.canceled_at = new Date().toISOString();
+      }
+      const { data: personRow } = await supabase
+        .from("people")
+        .select("id")
+        .filter("metadata->>profile_id", "eq", profile.id)
+        .maybeSingle();
+      if (personRow) {
+        await supabase
+          .from("people")
+          .update(peopleUpdates)
+          .eq("id", personRow.id);
+        log("People row synced", { personId: personRow.id, peopleStatus, source: "subscription.updated" });
+      }
+    } catch (syncErr) {
+      log("People sync failed (non-blocking)", { error: syncErr instanceof Error ? syncErr.message : String(syncErr), source: "subscription.updated" });
+    }
   } else {
     log("WARNING: No profile found for subscription.updated", { stripeCustomerId });
   }
