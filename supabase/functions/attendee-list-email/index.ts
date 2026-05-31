@@ -1,13 +1,18 @@
 /**
- * attendee-list-email — cron every 30 minutes.
+ * attendee-list-email - cron every 30 minutes.
  *
- * Checks for events starting in the next 60–90 minute window.
+ * Checks for events starting in the next 60-90 minute window.
  * Sends a formatted attendee list to hello@704collective.com.
  * Uses financial_cache to track which events have already been sent
  * (to prevent duplicate sends).
  *
  * HTML is rendered via the centralised send-email render endpoint so the
  * attendee list email shares the same baseLayout as all other 704 emails.
+ *
+ * SCHEMA NOTE: As of the sweep, RSVPs are stored in attendance_credentials,
+ * not tickets. This function reads from both attendance_credentials AND
+ * event_public_rsvps to cover any old data that may still exist in the
+ * public RSVP table.
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
@@ -29,7 +34,6 @@ function supabaseAdmin() {
   return createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 }
 
-/** Call the centralised send-email render endpoint to get subject + HTML. */
 async function renderTemplate(
   template: string,
   data: Record<string, unknown>,
@@ -74,10 +78,9 @@ interface EventRow {
 }
 
 interface AttendeeRow {
-  full_name: string | null;
-  email: string | null;
-  guest_name: string | null;
-  guest_email: string | null;
+  name: string;
+  email: string;
+  isGuest: boolean;
 }
 
 Deno.serve(async (req) => {
@@ -86,83 +89,172 @@ Deno.serve(async (req) => {
   try {
     const supabase = supabaseAdmin();
 
-    // Authorization: admin or super_admin only
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Missing authorization" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Parse body for dry_run / specific_event_id (admin tooling)
+    let dryRun = false;
+    let specificEventId: string | null = null;
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        dryRun = body?.dry_run === true;
+        specificEventId = body?.event_id ?? null;
+      } catch { /* no body, normal cron path */ }
     }
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user: authedUser }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !authedUser?.id) {
-      return new Response(
-        JSON.stringify({ error: "Invalid token" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    const { data: authedProfile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", authedUser.id)
-      .maybeSingle();
-    if (!authedProfile || !["admin", "super_admin"].includes(authedProfile.role)) {
-      return new Response(
-        JSON.stringify({ error: "Forbidden: admin access required" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+
+    // Auth check: skip for dry_run, otherwise require admin
+    if (!dryRun) {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) {
+        return new Response(
+          JSON.stringify({ error: "Missing authorization" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const token = authHeader.replace("Bearer ", "").trim();
+      const isServiceRole = token === SERVICE_KEY;
+      if (!isServiceRole) {
+        const { data: { user: authedUser }, error: authError } = await supabase.auth.getUser(token);
+        if (authError || !authedUser?.id) {
+          return new Response(
+            JSON.stringify({ error: "Invalid token" }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const { data: authedProfile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", authedUser.id)
+          .maybeSingle();
+        if (!authedProfile || !["admin", "super_admin"].includes(authedProfile.role)) {
+          return new Response(
+            JSON.stringify({ error: "Forbidden: admin access required" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
     }
 
     const now      = new Date();
-    const winStart = new Date(now.getTime() + 60 * 60 * 1000); // +60 min
-    const winEnd   = new Date(now.getTime() + 90 * 60 * 1000); // +90 min
+    let events: EventRow[] = [];
 
-    const { data: events } = await supabase
-      .from("events")
-      .select("id, title, start_time, location_name")
-      .eq("is_published", true)
-      .gte("start_time", winStart.toISOString())
-      .lte("start_time", winEnd.toISOString());
+    if (specificEventId) {
+      const { data } = await supabase
+        .from("events")
+        .select("id, title, start_time, location_name")
+        .eq("id", specificEventId)
+        .eq("is_published", true)
+        .maybeSingle();
+      if (data) events = [data as EventRow];
+    } else {
+      const winStart = new Date(now.getTime() + 60 * 60 * 1000);
+      const winEnd   = new Date(now.getTime() + 90 * 60 * 1000);
 
-    log("Events in window", { count: (events || []).length });
+      const { data } = await supabase
+        .from("events")
+        .select("id, title, start_time, location_name")
+        .eq("is_published", true)
+        .gte("start_time", winStart.toISOString())
+        .lte("start_time", winEnd.toISOString());
+      events = (data || []) as EventRow[];
+    }
+
+    log("Events in window", { count: events.length, dryRun });
 
     let sent = 0;
+    const results: any[] = [];
 
-    for (const event of (events || []) as EventRow[]) {
+    for (const event of events) {
       const cacheKey = `attendee-list-sent:${event.id}`;
 
-      // Check if already sent for this event
-      const { data: cached } = await supabase
-        .from("financial_cache")
-        .select("id")
-        .eq("cache_key", cacheKey)
-        .gt("expires_at", now.toISOString())
-        .maybeSingle();
+      // Skip cache check on dry_run
+      if (!dryRun) {
+        const { data: cached } = await supabase
+          .from("financial_cache")
+          .select("id")
+          .eq("cache_key", cacheKey)
+          .gt("expires_at", now.toISOString())
+          .maybeSingle();
 
-      if (cached) {
-        log("Already sent for event, skipping", { id: event.id });
-        continue;
+        if (cached) {
+          log("Already sent for event, skipping", { id: event.id });
+          continue;
+        }
       }
 
-      // Fetch all confirmed tickets with attendee info
-      const { data: tickets } = await supabase
-        .from("tickets")
+      // Fetch attendees from attendance_credentials (joined to people, then to profiles for member names)
+      const { data: credentials, error: credErr } = await supabase
+        .from("attendance_credentials")
         .select(`
-          user_id, guest_email, guest_name,
-          profiles:user_id (full_name, email)
+          credential_type,
+          status,
+          person:people!person_id (
+            id,
+            email,
+            email_lower,
+            full_name,
+            metadata
+          )
         `)
         .eq("event_id", event.id)
-        .in("status", ["confirmed", "rsvp"]);
+        .in("credential_type", ["member_rsvp", "public_rsvp", "guest_pass"])
+        .in("status", ["active", "used"]);
 
-      const attendees: AttendeeRow[] = (tickets || []).map((t: any) => ({
-        full_name:   t.profiles?.full_name  ?? null,
-        email:       t.profiles?.email      ?? null,
-        guest_name:  t.guest_name           ?? null,
-        guest_email: t.guest_email          ?? null,
-      }));
+      if (credErr) {
+        log("attendance_credentials query failed", { eventId: event.id, error: credErr.message });
+      }
 
-      // Fetch Public RSVPs
+      // Collect profile IDs for member name resolution
+      const memberProfileIds: string[] = [];
+      for (const cred of (credentials || []) as any[]) {
+        const person = cred.person;
+        if (!person) continue;
+        const profileId: string | null = person.metadata?.profile_id ?? null;
+        if (profileId) memberProfileIds.push(profileId);
+      }
+
+      let profileMap: Record<string, { full_name: string | null; email: string }> = {};
+      if (memberProfileIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, full_name, email")
+          .in("id", memberProfileIds)
+          .is("deleted_at", null);
+        if (profiles) {
+          for (const p of profiles) {
+            profileMap[p.id] = { full_name: p.full_name, email: p.email };
+          }
+        }
+      }
+
+      // Build attendee list from credentials
+      const attendees: AttendeeRow[] = [];
+      const seenEmails = new Set<string>();
+
+      for (const cred of (credentials || []) as any[]) {
+        const person = cred.person;
+        if (!person || !person.email) continue;
+
+        const profileId: string | null = person.metadata?.profile_id ?? null;
+        let name: string;
+        let email: string;
+        let isGuest: boolean;
+
+        if (profileId && profileMap[profileId]) {
+          email = profileMap[profileId].email;
+          name = profileMap[profileId].full_name || person.full_name || "(No name)";
+          isGuest = false;
+        } else {
+          email = person.email;
+          name = person.full_name || "(No name)";
+          isGuest = true;
+        }
+
+        const emailLower = email.toLowerCase();
+        if (seenEmails.has(emailLower)) continue;
+        seenEmails.add(emailLower);
+        attendees.push({ name, email, isGuest });
+      }
+
+      // Also fetch from event_public_rsvps for any legacy data not in attendance_credentials
       const { data: publicRsvps, error: rsvpErr } = await supabase
         .from("event_public_rsvps")
         .select("first_name, last_name, email")
@@ -172,45 +264,36 @@ Deno.serve(async (req) => {
       if (rsvpErr) {
         log("event_public_rsvps query error (non-fatal)", { event: event.id, msg: rsvpErr.message });
       } else {
-        const publicRsvpRows: AttendeeRow[] = (publicRsvps || [])
-          .filter((r: any) => r.email)
-          .map((r: any) => ({
-            full_name:   null,
-            email:       null,
-            guest_name:  `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() || null,
-            guest_email: r.email as string,
-          }));
-        log("Public RSVPs fetched", { event: event.id, count: publicRsvpRows.length });
-        attendees.push(...publicRsvpRows);
-      }
-
-      // Dedupe by lowercased email
-      const seenEmails = new Map<string, AttendeeRow>();
-      for (const a of attendees) {
-        const key = (a.email || a.guest_email || "").toLowerCase().trim();
-        if (key && !seenEmails.has(key)) seenEmails.set(key, a);
-        else if (!key && !seenEmails.has(`__nomail_${seenEmails.size}`)) {
-          seenEmails.set(`__nomail_${seenEmails.size}`, a);
+        for (const r of (publicRsvps || []) as any[]) {
+          if (!r.email) continue;
+          const emailLower = r.email.toLowerCase();
+          if (seenEmails.has(emailLower)) continue;
+          seenEmails.add(emailLower);
+          const name = `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() || "(No name)";
+          attendees.push({ name, email: r.email, isGuest: true });
         }
       }
-      const dedupedAttendees = Array.from(seenEmails.values());
 
-      // Map to the template's expected format
-      const templateAttendees = dedupedAttendees.map(a => ({
-        name:    a.full_name || a.guest_name || "(No name)",
-        email:   a.email     || a.guest_email || "",
-        isGuest: !a.full_name,
-      }));
+      log("Attendees collected", { event: event.id, count: attendees.length });
+
+      if (dryRun) {
+        results.push({
+          eventId: event.id,
+          title: event.title,
+          attendeeCount: attendees.length,
+          attendees,
+        });
+        continue;
+      }
 
       const { subject, html } = await renderTemplate("attendee-list-summary", {
         eventTitle:     event.title,
         eventStartTime: event.start_time,
-        attendees:      templateAttendees,
+        attendees,
       });
 
       await sendEmail(`[Attendee List] ${event.title} - starting soon`, html);
 
-      // Mark as sent (cache for 4 hours)
       const expiresAt = new Date(now.getTime() + 4 * 60 * 60 * 1000);
       await supabase
         .from("financial_cache")
@@ -219,8 +302,14 @@ Deno.serve(async (req) => {
           { onConflict: "cache_key" }
         );
 
-      log("Attendee list sent", { event: event.title, attendees: dedupedAttendees.length });
+      log("Attendee list sent", { event: event.title, attendees: attendees.length });
       sent++;
+    }
+
+    if (dryRun) {
+      return new Response(JSON.stringify({ dryRun: true, eventCount: events.length, results }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     return new Response(JSON.stringify({ success: true, sent }), {

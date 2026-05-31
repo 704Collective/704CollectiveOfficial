@@ -12,7 +12,6 @@ const log = (step: string, details?: unknown) => {
   console.log(`[NOTIFY-EVENT-CHANGE] ${step}${d}`);
 };
 
-/** Call the centralised send-email render endpoint to get subject + HTML. */
 async function renderTemplate(
   supabaseUrl: string,
   serviceKey: string,
@@ -31,7 +30,6 @@ async function renderTemplate(
   return res.json() as Promise<{ success: true; subject: string; html: string }>;
 }
 
-// ── Resend batch helper ──
 async function sendResendBatch(
   resendKey: string,
   emails: { from: string; to: string[]; subject: string; html: string }[]
@@ -73,7 +71,6 @@ async function sendResendBatch(
   return { sent, failed };
 }
 
-// Name placeholder for single render + per-recipient replacement
 const NAME_PLACEHOLDER = "[[RECIPIENT_NAME]]";
 
 serve(async (req) => {
@@ -82,41 +79,50 @@ serve(async (req) => {
   }
 
   try {
-    // Auth: require admin
-    const authHeader  = req.headers.get("Authorization") || "";
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnon   = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseAnon = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    const userClient = createClient(supabaseUrl, supabaseAnon, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claims, error: claimsErr } = await userClient.auth.getClaims(token);
-    if (claimsErr) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const userId = (claims as { sub?: string })?.sub;
-    if (!userId) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Check admin role
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    const { data: roleCheck } = await adminClient.rpc("has_role", { _user_id: userId, _role: "admin" });
-    if (!roleCheck) {
-      return new Response(JSON.stringify({ error: "Admin access required" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
-    const { eventId, eventName, oldStartTime, oldEndTime, newStartTime, newEndTime, newLocation, origin } = await req.json();
+    // Parse body first to check for dry_run
+    const body = await req.json();
+    const { eventId, eventName, oldStartTime, oldEndTime, newStartTime, newEndTime, newLocation, origin, dry_run } = body;
+    const dryRun = dry_run === true;
+
+    // Auth check: skip entirely for dry_run, required for real sends
+    if (!dryRun) {
+      const authHeader = req.headers.get("Authorization") || "";
+      const token = authHeader.replace("Bearer ", "").trim();
+      const isServiceRole = token === serviceRoleKey;
+
+      if (!isServiceRole) {
+        const userClient = createClient(supabaseUrl, supabaseAnon, {
+          global: { headers: { Authorization: authHeader } },
+        });
+
+        const { data: claims, error: claimsErr } = await userClient.auth.getClaims(token);
+        if (claimsErr) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const userId = (claims as { sub?: string })?.sub;
+        if (!userId) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const { data: roleCheck } = await adminClient.rpc("has_role", { _user_id: userId, _role: "admin" });
+        if (!roleCheck) {
+          return new Response(JSON.stringify({ error: "Admin access required" }), {
+            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+    }
 
     if (!eventId || !eventName || !oldStartTime || !newStartTime) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -124,36 +130,48 @@ serve(async (req) => {
       });
     }
 
-    log("Processing event change notification", { eventId, eventName });
+    log("Processing event change notification", { eventId, eventName, dryRun });
 
-    // Get all confirmed ticket holders for this event
-    const { data: tickets, error: ticketErr } = await adminClient
-      .from("tickets")
-      .select("user_id, guest_email, guest_name")
+    const { data: credentials, error: credErr } = await adminClient
+      .from("attendance_credentials")
+      .select(`
+        credential_type,
+        status,
+        person:people!person_id (
+          id,
+          email,
+          email_lower,
+          full_name,
+          metadata
+        )
+      `)
       .eq("event_id", eventId)
-      .eq("status", "confirmed");
+      .in("credential_type", ["member_rsvp", "public_rsvp", "guest_pass"])
+      .in("status", ["active", "used"]);
 
-    if (ticketErr) {
-      log("Error fetching tickets", ticketErr);
-      throw ticketErr;
+    if (credErr) {
+      log("attendance_credentials query failed", { eventId, error: credErr.message });
+      throw credErr;
     }
 
-    if (!tickets || tickets.length === 0) {
-      log("No ticket holders to notify");
-      return new Response(JSON.stringify({ sent: 0, failed: 0, total: 0 }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const recipients: { email: string; name: string }[] = [];
+    const seenEmails = new Set<string>();
+    const memberProfileIds: string[] = [];
+
+    for (const cred of (credentials || []) as any[]) {
+      const person = cred.person;
+      if (!person || !person.email) continue;
+
+      const profileIdFromMeta: string | null = person.metadata?.profile_id ?? null;
+      if (profileIdFromMeta) memberProfileIds.push(profileIdFromMeta);
     }
 
-    // Get profile info for member ticket holders
-    const memberUserIds = tickets.filter((t: any) => t.user_id).map((t: any) => t.user_id!);
     let profileMap: Record<string, { full_name: string | null; email: string }> = {};
-
-    if (memberUserIds.length > 0) {
+    if (memberProfileIds.length > 0) {
       const { data: profiles } = await adminClient
         .from("profiles")
         .select("id, full_name, email")
-        .in("id", memberUserIds)
+        .in("id", memberProfileIds)
         .is("deleted_at", null);
 
       if (profiles) {
@@ -163,7 +181,35 @@ serve(async (req) => {
       }
     }
 
-    // Format dates for the change message
+    for (const cred of (credentials || []) as any[]) {
+      const person = cred.person;
+      if (!person || !person.email) continue;
+
+      const profileIdFromMeta: string | null = person.metadata?.profile_id ?? null;
+      let email: string;
+      let name: string;
+
+      if (profileIdFromMeta && profileMap[profileIdFromMeta]) {
+        email = profileMap[profileIdFromMeta].email;
+        name = profileMap[profileIdFromMeta].full_name || person.full_name || "there";
+      } else {
+        email = person.email;
+        name = person.full_name || "there";
+      }
+
+      const emailLower = email.toLowerCase();
+      if (seenEmails.has(emailLower)) continue;
+      seenEmails.add(emailLower);
+      recipients.push({ email, name });
+    }
+
+    if (recipients.length === 0) {
+      log("No recipients to notify");
+      return new Response(JSON.stringify({ sent: 0, failed: 0, total: 0, dryRun }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const formatDate = (iso: string) => new Date(iso).toLocaleDateString("en-US", {
       weekday: "long", month: "long", day: "numeric", year: "numeric",
       timeZone: "America/New_York",
@@ -177,46 +223,36 @@ serve(async (req) => {
     const newDate = formatDate(newStartTime);
     const newTime = formatTime(newStartTime);
 
-    const baseUrl  = origin || "https://704collective.com";
+    const baseUrl = origin || "https://704collective.com";
     const eventUrl = `${baseUrl}/events/${eventId}`;
 
-    // Build the change message that summarises what changed
-    const changeMessage = `This event has been rescheduled from ${oldDate} at ${oldTime} to ${newDate} at ${newTime}.${newLocation ? ` New location: ${newLocation}.` : ""}`;
+    const changeMessage = `This event has been rescheduled from ${oldDate} at ${oldTime} to ${newDate} at ${newTime}.${newLocation ? ` New location: ${newLocation}.` :""}`;
 
-    // Build recipient list (dedup by email)
-    const recipients: { email: string; name: string }[] = [];
-    const seenEmails = new Set<string>();
+    log(`Building batch for ${recipients.length} recipients`, { dryRun });
 
-    for (const ticket of tickets as any[]) {
-      if (ticket.user_id && profileMap[ticket.user_id]) {
-        const profile = profileMap[ticket.user_id];
-        if (!seenEmails.has(profile.email)) {
-          seenEmails.add(profile.email);
-          recipients.push({ email: profile.email, name: profile.full_name || "there" });
-        }
-      } else if (ticket.guest_email && !seenEmails.has(ticket.guest_email)) {
-        seenEmails.add(ticket.guest_email);
-        recipients.push({ email: ticket.guest_email, name: ticket.guest_name || "there" });
-      }
+    if (dryRun) {
+      return new Response(JSON.stringify({
+        dryRun: true,
+        recipientCount: recipients.length,
+        recipients: recipients.map(r => ({ email: r.email, name: r.name })),
+        changeMessage,
+      }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
-
-    log(`Building batch for ${recipients.length} recipients`);
 
     const resendKey = Deno.env.get("RESEND_API_KEY");
     if (!resendKey) throw new Error("RESEND_API_KEY not set");
 
-    // Render template once with placeholder name — replace per recipient
     const { subject, html: htmlTemplate } = await renderTemplate(
-      supabaseUrl,
-      serviceRoleKey,
-      "event-change-notification",
+      supabaseUrl, serviceRoleKey, "event-change-notification",
       {
-        name:          NAME_PLACEHOLDER,
-        eventTitle:    eventName,
+        name: NAME_PLACEHOLDER,
+        eventTitle: eventName,
         eventUrl,
         changeMessage,
         newStartTime,
-        newLocation:   newLocation || undefined,
+        newLocation: newLocation || undefined,
       },
     );
 
@@ -231,12 +267,11 @@ serve(async (req) => {
       };
     });
 
-    // Send via Resend batch API (chunks of 100)
     const { sent, failed } = await sendResendBatch(resendKey, emailMessages);
 
     log("Notification complete", { sent, failed, total: recipients.length });
 
-    return new Response(JSON.stringify({ sent, failed, total: recipients.length }), {
+    return new Response(JSON.stringify({ sent, failed, total: recipients.length, dryRun: false }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

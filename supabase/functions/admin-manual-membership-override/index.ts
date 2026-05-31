@@ -290,15 +290,15 @@ Deno.serve(async (req) => {
           console.error('Generate recovery link failed:', linkErr)
           changes.push('WARNING: account created but setup email failed')
         } else {
-          const setupUrl = linkData.properties?.action_link
-          // Fire the send-email function
+          const setupLink = linkData.properties?.action_link
+          // Fire the send-email function using the existing 'welcome-setup' template
           const { error: emailErr } = await supabaseAdmin.functions.invoke('send-email', {
             body: {
-              template: 'set-password',
+              template: 'welcome-setup',
               to: normalizedEmail,
               data: {
                 name: full_name ?? normalizedEmail,
-                setupUrl,
+                setupLink,
               }
             }
           })

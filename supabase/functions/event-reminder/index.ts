@@ -1,31 +1,30 @@
 /**
- * event-reminder — daily cron at 11:00 UTC (7 am ET).
+ * event-reminder - daily cron at 11:00 UTC (7 am ET).
  *
  * Also callable manually by admins via POST with { event_id } to target
  * a specific event.
  *
  * For each published event today:
- *  - Members who RSVPed → "You're registered for today" email
- *  - Active members without an RSVP → "Join us today" email
+ *  - Members who RSVPed -> "You're registered for today" email
+ *  - Active members without an RSVP -> "Join us today" email
  *
  * Respects marketing_unsubscribed on profiles.
- * Sends in Resend batch chunks of ≤ 100.
+ * Sends in Resend batch chunks of <= 100.
  *
  * HTML rendering is centralised via the send-email/render endpoint so all
  * emails share the same baseLayout (UTF-8 charset, 600px centered, branded
  * logo, proper footer). Templates are rendered ONCE per event with a
- * placeholder name ([[NAME]]) that is replaced per-recipient — preserving
+ * placeholder name ([[NAME]]) that is replaced per-recipient - preserving
  * batch performance.
  */
 
 /**
- * TEST MODE PATTERN
+ * TEST MODE PATTERNS
  *
- * Any admin-facing send function can support a test_recipient_email
- * parameter. When present, the function should render the exact same
- * email content it would normally produce, but route it only to that
- * one address (bypassing audience fanout). Subject lines should be
- * prefixed with "[TEST] " for clarity.
+ * test_recipient_email: render both templates with placeholder data, send only to this address.
+ * dry_run: run the real data pipeline (credential query, member filter, batch build)
+ *   but DO NOT call Resend. Returns counts in the response so you can validate
+ *   the query is finding the right RSVPs without spamming members.
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
@@ -36,24 +35,15 @@ const SERVICE_KEY    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const ANON_KEY       = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SITE_URL       = "https://704collective.com";
 
-// Placeholder replaced per-recipient after template render
 const NAME_PLACEHOLDER = "[[NAME]]";
 
-/**
- * Returns a human-readable relative date phrase for an event start time.
- * Examples: "today", "tomorrow", "on Friday", "on Monday, June 2"
- * Always uses Eastern Time for the comparison and display.
- */
 function relativeDateLabel(startTime: string): { phrase: string; dayLabel: string } {
   const eventDate = new Date(startTime);
-
-  // Get today in ET
   const nowEt     = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
   const todayEt   = new Date(nowEt.getFullYear(), nowEt.getMonth(), nowEt.getDate());
   const tomorrowEt = new Date(todayEt);
   tomorrowEt.setDate(tomorrowEt.getDate() + 1);
 
-  // Convert event date to ET-aligned day
   const eventEt  = new Date(eventDate.toLocaleString("en-US", { timeZone: "America/New_York" }));
   const eventDay = new Date(eventEt.getFullYear(), eventEt.getMonth(), eventEt.getDate());
 
@@ -75,10 +65,7 @@ function relativeDateLabel(startTime: string): { phrase: string; dayLabel: strin
     dayLabel = `this ${weekday}`;
   } else {
     const formatted = eventDate.toLocaleString("en-US", {
-      timeZone: "America/New_York",
-      weekday: "long",
-      month: "long",
-      day: "numeric",
+      timeZone: "America/New_York", weekday: "long", month: "long", day: "numeric",
     });
     phrase   = `on ${formatted}`;
     dayLabel = formatted;
@@ -99,32 +86,24 @@ function supabaseAdmin() {
   return createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 }
 
-/** Call the centralised send-email render endpoint to get subject + HTML. */
 async function renderTemplate(
   template: string,
   data: Record<string, unknown>,
 ): Promise<{ subject: string; html: string }> {
   const res = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${SERVICE_KEY}`,
-    },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}` },
     body: JSON.stringify({ mode: "render", template, data }),
   });
   if (!res.ok) throw new Error(`Failed to render template ${template}: ${await res.text()}`);
   return res.json() as Promise<{ success: true; subject: string; html: string }>;
 }
 
-/** Send a batch of ≤100 emails via Resend batch API. */
 async function sendBatch(emails: { from: string; to: string; subject: string; html: string }[]) {
   if (emails.length === 0) return 0;
   const res = await fetch("https://api.resend.com/emails/batch", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${RESEND_API_KEY}`,
-    },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${RESEND_API_KEY}` },
     body: JSON.stringify(emails),
   });
   if (!res.ok) {
@@ -134,7 +113,6 @@ async function sendBatch(emails: { from: string; to: string; subject: string; ht
   return emails.length;
 }
 
-/** Chunk array into sub-arrays of size n. */
 function chunks<T>(arr: T[], n: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
@@ -160,94 +138,95 @@ interface ProfileRow {
   marketing_unsubscribed: boolean | null;
 }
 
+interface ProcessResult {
+  sent: number;
+  registeredCount: number;
+  joinUsCount: number;
+  guestCount: number;
+  rsvpedUserIds: number;
+  rsvpedEmails: number;
+}
+
 async function processEvent(
   supabase: ReturnType<typeof createClient>,
   event: EventRow,
   isTestMode = false,
   testRecipient = "",
-): Promise<number> {
-  log("Processing event", { id: event.id, title: event.title, isTestMode });
+  dryRun = false,
+): Promise<ProcessResult> {
+  log("Processing event", { id: event.id, title: event.title, isTestMode, dryRun });
 
   const { phrase, dayLabel } = relativeDateLabel(event.start_time);
 
-  // ── Test mode: send both preview templates to the requester only ───────
   if (isTestMode) {
     const [registeredRender, joinUsRender] = await Promise.all([
       renderTemplate("event-reminder-registered", {
-        name: "Admin (Test)",
-        eventTitle: event.title,
-        eventStartTime: event.start_time,
-        locationName: event.location_name,
-        eventUrl: `${SITE_URL}/events/${event.id}`,
-        phrase,
-        dayLabel,
+        name: "Admin (Test)", eventTitle: event.title, eventStartTime: event.start_time,
+        locationName: event.location_name, eventUrl: `${SITE_URL}/events/${event.id}`, phrase, dayLabel,
       }),
       renderTemplate("event-reminder-join-us", {
-        name: "Admin (Test)",
-        eventTitle: event.title,
-        eventStartTime: event.start_time,
-        locationName: event.location_name,
-        eventUrl: `${SITE_URL}/events/${event.id}`,
-        phrase,
-        dayLabel,
+        name: "Admin (Test)", eventTitle: event.title, eventStartTime: event.start_time,
+        locationName: event.location_name, eventUrl: `${SITE_URL}/events/${event.id}`, phrase, dayLabel,
       }),
     ]);
 
     const testEmails = [
-      {
-        from: "704 Collective <hello@704collective.com>",
-        to: testRecipient,
-        subject: `[TEST] ${registeredRender.subject}`,
-        html: registeredRender.html,
-      },
-      {
-        from: "704 Collective <hello@704collective.com>",
-        to: testRecipient,
-        subject: `[TEST] ${joinUsRender.subject}`,
-        html: joinUsRender.html,
-      },
+      { from: "704 Collective <hello@704collective.com>", to: testRecipient, subject: `[TEST] ${registeredRender.subject}`, html: registeredRender.html },
+      { from: "704 Collective <hello@704collective.com>", to: testRecipient, subject: `[TEST] ${joinUsRender.subject}`, html: joinUsRender.html },
     ];
-    await sendBatch(testEmails);
-    log("Test emails sent", { to: testRecipient, count: testEmails.length });
-    return testEmails.length;
+    if (!dryRun) await sendBatch(testEmails);
+    log("Test emails sent", { to: testRecipient, count: testEmails.length, dryRun });
+    return { sent: dryRun ? 0 : testEmails.length, registeredCount: 1, joinUsCount: 1, guestCount: 0, rsvpedUserIds: 0, rsvpedEmails: 0 };
   }
 
-  // ── Render templates once with placeholder — fast path ─────────────────
-  // NAME_PLACEHOLDER survives escapeHtml in the template (no special chars).
-  // We then replace it per-recipient with the HTML-safe member name.
   const [registeredRender, joinUsRender] = await Promise.all([
     renderTemplate("event-reminder-registered", {
-      name: NAME_PLACEHOLDER,
-      eventTitle: event.title,
-      eventStartTime: event.start_time,
-      locationName: event.location_name,
-      eventUrl: `${SITE_URL}/events/${event.id}`,
-      phrase,
-      dayLabel,
+      name: NAME_PLACEHOLDER, eventTitle: event.title, eventStartTime: event.start_time,
+      locationName: event.location_name, eventUrl: `${SITE_URL}/events/${event.id}`, phrase, dayLabel,
     }),
     renderTemplate("event-reminder-join-us", {
-      name: NAME_PLACEHOLDER,
-      eventTitle: event.title,
-      eventStartTime: event.start_time,
-      locationName: event.location_name,
-      eventUrl: `${SITE_URL}/events/${event.id}`,
-      phrase,
-      dayLabel,
+      name: NAME_PLACEHOLDER, eventTitle: event.title, eventStartTime: event.start_time,
+      locationName: event.location_name, eventUrl: `${SITE_URL}/events/${event.id}`, phrase, dayLabel,
     }),
   ]);
 
-  // Fetch all confirmed ticket holders for this event
-  const { data: tickets } = await supabase
-    .from("tickets")
-    .select("user_id, guest_email")
+  const { data: credentials, error: credErr } = await supabase
+    .from("attendance_credentials")
+    .select(`
+      credential_type,
+      status,
+      metadata,
+      person:people!person_id (
+        id,
+        email_lower,
+        metadata
+      )
+    `)
     .eq("event_id", event.id)
-    .in("status", ["confirmed", "rsvp"]);
+    .in("credential_type", ["member_rsvp", "public_rsvp", "guest_pass"])
+    .in("status", ["active", "used"]);
 
-  const rsvpedUserIds = new Set<string>(
-    (tickets || []).filter((t: any) => t.user_id).map((t: any) => t.user_id as string)
-  );
+  if (credErr) {
+    log("attendance_credentials query failed", { eventId: event.id, error: credErr.message });
+  }
 
-  // Fetch all active members (not marketing-unsubscribed, not deleted)
+  const rsvpedUserIds = new Set<string>();
+  const rsvpedEmailsLower = new Set<string>();
+  const guestEmails: string[] = [];
+
+  for (const cred of (credentials || []) as any[]) {
+    const person = cred.person;
+    if (!person) continue;
+    const profileIdFromMeta: string | null = person.metadata?.profile_id ?? null;
+    if (profileIdFromMeta) rsvpedUserIds.add(profileIdFromMeta);
+    if (person.email_lower) {
+      rsvpedEmailsLower.add(person.email_lower);
+      if (!profileIdFromMeta && (cred.credential_type === "public_rsvp" || cred.credential_type === "guest_pass")) {
+        guestEmails.push(person.email_lower);
+      }
+    }
+  }
+
   const { data: members } = await supabase
     .from("profiles")
     .select("id, email, full_name, marketing_unsubscribed")
@@ -262,55 +241,61 @@ async function processEvent(
 
   for (const member of activeMembers) {
     if (!member.email) continue;
-    const isRsvped = rsvpedUserIds.has(member.id);
+    const isRsvped = rsvpedUserIds.has(member.id) || rsvpedEmailsLower.has(member.email.toLowerCase());
     const name     = escapeForHtml(member.full_name || "Member");
     if (isRsvped) {
       registeredEmails.push({
-        from: "704 Collective <hello@704collective.com>",
-        to: member.email,
-        subject: registeredRender.subject,
-        html: registeredRender.html.replace(NAME_PLACEHOLDER, name),
+        from: "704 Collective <hello@704collective.com>", to: member.email,
+        subject: registeredRender.subject, html: registeredRender.html.replace(NAME_PLACEHOLDER, name),
       });
     } else {
       joinUsEmails.push({
-        from: "704 Collective <hello@704collective.com>",
-        to: member.email,
-        subject: joinUsRender.subject,
-        html: joinUsRender.html.replace(NAME_PLACEHOLDER, name),
+        from: "704 Collective <hello@704collective.com>", to: member.email,
+        subject: joinUsRender.subject, html: joinUsRender.html.replace(NAME_PLACEHOLDER, name),
       });
     }
   }
 
-  // Also send registered reminder to guest ticket holders
-  for (const ticket of (tickets || []) as any[]) {
-    if (ticket.guest_email) {
-      registeredEmails.push({
-        from: "704 Collective <hello@704collective.com>",
-        to: ticket.guest_email,
-        subject: registeredRender.subject,
-        html: registeredRender.html.replace(NAME_PLACEHOLDER, "Guest"),
-      });
-    }
+  const memberEmailsLower = new Set(activeMembers.map(m => m.email?.toLowerCase()).filter(Boolean) as string[]);
+  for (const guestEmail of guestEmails) {
+    if (memberEmailsLower.has(guestEmail)) continue;
+    registeredEmails.push({
+      from: "704 Collective <hello@704collective.com>", to: guestEmail,
+      subject: registeredRender.subject, html: registeredRender.html.replace(NAME_PLACEHOLDER, "Guest"),
+    });
   }
 
   let sent = 0;
-  for (const batch of chunks(registeredEmails, 100)) sent += await sendBatch(batch);
-  for (const batch of chunks(joinUsEmails, 100))     sent += await sendBatch(batch);
+  if (!dryRun) {
+    for (const batch of chunks(registeredEmails, 100)) sent += await sendBatch(batch);
+    for (const batch of chunks(joinUsEmails, 100))     sent += await sendBatch(batch);
+  }
 
-  log("Sent reminders", { event: event.title, sent });
-  return sent;
+  log("Processed event", {
+    event: event.title, dryRun, sent,
+    registered: registeredEmails.length, joinUs: joinUsEmails.length, guests: guestEmails.length,
+    rsvpedUserIds: rsvpedUserIds.size, rsvpedEmails: rsvpedEmailsLower.size,
+  });
+
+  return {
+    sent,
+    registeredCount: registeredEmails.length,
+    joinUsCount: joinUsEmails.length,
+    guestCount: guestEmails.length,
+    rsvpedUserIds: rsvpedUserIds.size,
+    rsvpedEmails: rsvpedEmailsLower.size,
+  };
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  // Allow manual admin invocation with a specific event_id
   let specificEventId: string | null = null;
   let isTestMode = false;
   let testRecipient = "";
+  let dryRun = false;
 
   if (req.method === "POST") {
-    // Validate caller is admin
     const authHeader = req.headers.get("Authorization");
     if (authHeader) {
       const supabaseUser = createClient(SUPABASE_URL, ANON_KEY, {
@@ -334,8 +319,8 @@ Deno.serve(async (req) => {
     try {
       const body = await req.json();
       specificEventId = body?.event_id ?? null;
+      dryRun = body?.dry_run === true;
 
-      // Test mode — route emails to requester only
       const rawTestEmail: unknown = body?.test_recipient_email;
       if (typeof rawTestEmail === "string" && rawTestEmail.trim().length > 0) {
         const trimmed = rawTestEmail.trim();
@@ -363,7 +348,6 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (data) events = [data as EventRow];
     } else {
-      // Events happening today (UTC boundaries converted to ET)
       const now    = new Date();
       const todayStart = new Date(now);
       todayStart.setUTCHours(0, 0, 0, 0);
@@ -379,14 +363,20 @@ Deno.serve(async (req) => {
       events = (data || []) as EventRow[];
     }
 
-    log("Events to process", { count: events.length });
+    log("Events to process", { count: events.length, dryRun });
 
     let totalSent = 0;
+    const eventResults: any[] = [];
     for (const event of events) {
-      totalSent += await processEvent(supabase, event, isTestMode, testRecipient);
+      const result = await processEvent(supabase, event, isTestMode, testRecipient, dryRun);
+      totalSent += result.sent;
+      eventResults.push({ eventId: event.id, title: event.title, ...result });
     }
 
-    return new Response(JSON.stringify({ success: true, events: events.length, sent: totalSent, isTestMode }), {
+    return new Response(JSON.stringify({
+      success: true, events: events.length, sent: totalSent,
+      isTestMode, dryRun, results: eventResults,
+    }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
