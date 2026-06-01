@@ -40,15 +40,41 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
+    // Sweep-aware: read NEW canonical columns first, fall back to deprecated
+    // columns for old events that haven't been migrated yet.
     const { data: eventData, error: eventError } = await supabaseAdmin
       .from("events")
-      .select("ticket_mode, ticket_price, social_member_price, business_member_price, access_type")
+      .select("required_tier, price_cents, member_price_cents, ticket_price_deprecated, social_member_price_deprecated, business_member_price_deprecated, access_type_deprecated")
       .eq("id", eventId)
       .single();
 
     if (eventError || !eventData) {
       throw new Error(`Event not found: ${eventId}`);
     }
+
+    // Derive ticket_mode + prices from canonical columns (sweep schema).
+    // Falls back to deprecated columns if canonical not populated.
+    const tier = (eventData as any).required_tier ?? "public";
+    const isPublic = tier === "public";
+    const publicCents = (eventData as any).price_cents ?? (eventData as any).ticket_price_deprecated ?? 0;
+    const memberCents = (eventData as any).member_price_cents ?? (eventData as any).social_member_price_deprecated ?? 0;
+
+    let derivedTicketMode: "none" | "public_only" | "all";
+    if (!isPublic || publicCents <= 0) {
+      derivedTicketMode = "none";
+    } else if (memberCents > 0) {
+      derivedTicketMode = "all";
+    } else {
+      derivedTicketMode = "public_only";
+    }
+
+    // Normalize the in-function event shape so the rest of the function (which
+    // already reads ticket_mode/ticket_price/etc) keeps working unchanged.
+    (eventData as any).ticket_mode = derivedTicketMode;
+    (eventData as any).ticket_price = publicCents;
+    (eventData as any).social_member_price = memberCents;
+    (eventData as any).business_member_price = memberCents;
+    (eventData as any).access_type = isPublic ? (publicCents > 0 ? "public_ticketed" : "public_free") : "members_only";
 
     // D2: Guard against non-ticketed events
     if (!eventData.ticket_mode || eventData.ticket_mode === "none") {

@@ -94,18 +94,43 @@ export default function EventDetail() {
     // access_type, is_members_only, access_level, ticket_price, ticket_mode.
     const tier: string = data.required_tier ?? 'public';
     const isPublic = tier === 'public';
+    const publicPriceCents = data.price_cents ?? 0;
+    const memberPriceCents = data.member_price_cents ?? 0;
+
+    // Sweep-aware derivation: 3 access types instead of 2.
+    // public + price>0 = public_ticketed (public pays, members maybe free)
+    // public + price=0 = public_free (free RSVP for all)
+    // non-public      = members_only (members-only access)
+    let access_type: 'public_free' | 'public_ticketed' | 'members_only';
+    if (!isPublic) {
+      access_type = 'members_only';
+    } else if (publicPriceCents > 0) {
+      access_type = 'public_ticketed';
+    } else {
+      access_type = 'public_free';
+    }
+
+    // ticket_mode mirrors access_type intent for downstream branching:
+    // public_ticketed + members free = 'public_only' (only public pays)
+    // public_ticketed + members pay  = 'all' (everyone pays, possibly different prices)
+    // anything else                   = 'none' (no payment flow)
+    let ticket_mode: 'none' | 'public_only' | 'all';
+    if (access_type === 'public_ticketed') {
+      ticket_mode = memberPriceCents > 0 ? 'all' : 'public_only';
+    } else {
+      ticket_mode = 'none';
+    }
 
     const derived = {
       ...data,
-      access_type: isPublic ? 'public_free' : 'members_only',
+      access_type,
       is_members_only: !isPublic,
       access_level:
         (tier === 'business' || tier === 'founder') ? 'business_only' : 'all',
-      ticket_price: data.price_cents ?? 0,
-      social_member_price: data.member_price_cents ?? 0,
-      business_member_price: data.member_price_cents ?? 0,
-      // member_price_cents is 0 across all events, so members attend free:
-      ticket_mode: 'none',
+      ticket_price: publicPriceCents,
+      social_member_price: memberPriceCents,
+      business_member_price: memberPriceCents,
+      ticket_mode,
     };
 
     setEvent(derived as Event);
