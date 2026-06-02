@@ -605,7 +605,7 @@ export default function EventDetail() {
             <div style={{ textAlign: 'center' }}>
               <p style={{ fontSize: '0.875rem', color: '#FFFFFF', fontWeight: 600, marginBottom: '4px' }}>Looks like you have an account.</p>
               <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.5)', marginBottom: '14px' }}>Log in to continue - members RSVP free.</p>
-              <Link href="/login" style={{ ...primaryBtn, textDecoration: 'none', display: 'flex' }}>Log In to RSVP</Link>
+              <Link href={`/login?redirect=/events/${event.id}`} style={{ ...primaryBtn, textDecoration: 'none', display: 'flex' }}>Log In to RSVP</Link>
               <button onClick={() => { setGuestGateMode('collect'); setGuestGateError(''); }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', marginTop: '10px', cursor: 'pointer' }}>Use a different email</button>
             </div>
           ) : guestGateMode === 'collect' ? (

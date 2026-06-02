@@ -17,8 +17,15 @@ export type PostAuthProfile = {
  */
 export function postAuthDestination(
   profile: PostAuthProfile | null | undefined,
-  options?: { fallbackNoAccess?: string }
+  options?: { fallbackNoAccess?: string; redirectTo?: string }
 ): string {
+  // Item 7: honor an explicit internal redirect (e.g. ?redirect=/events/<id>)
+  // when present and safe. Must be a single-slash-rooted path (blocks open
+  // redirects like //evil.com). Falls through to normal routing otherwise.
+  const wanted = options?.redirectTo;
+  if (wanted && wanted.startsWith("/") && !wanted.startsWith("//")) {
+    return wanted;
+  }
   if (!profile) return options?.fallbackNoAccess ?? "/signup";
 
   const isAdmin =

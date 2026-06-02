@@ -180,7 +180,7 @@ function Login() {
       .maybeSingle();
 
     toast.success('Welcome back!');
-    router.push(postAuthDestination(prof));
+    router.push(postAuthDestination(prof, { redirectTo: searchParams.get('redirect') ?? undefined }));
     setLoading(false);
   };
 
@@ -367,7 +367,7 @@ function Login() {
         .select('role, member_type, subscription_status, membership_override, has_completed_onboarding_rsvp')
         .eq('id', uid)
         .maybeSingle();
-      router.push(postAuthDestination(prof));
+      router.push(postAuthDestination(prof, { redirectTo: searchParams.get('redirect') ?? undefined }));
     } catch {
       setOtpError('Network error. Check your connection.');
       setOtpVerifying(false);
