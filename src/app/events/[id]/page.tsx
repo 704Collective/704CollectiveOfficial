@@ -77,6 +77,14 @@ export default function EventDetail() {
   const [publicRsvpFull, setPublicRsvpFull] = useState(false);
   const [publicRsvpToken, setPublicRsvpToken] = useState<string | null>(null);
 
+  // Item 7 - signed-out repeat-buyer email gate (paid public_ticketed only).
+  // 'collect' shows the email field; 'member' shows the log-in prompt when the
+  // email matches an active member (hard-block, no Stripe).
+  const [guestGateMode, setGuestGateMode] = useState<'button' | 'collect' | 'member'>('button');
+  const [guestGateEmail, setGuestGateEmail] = useState('');
+  const [guestGateError, setGuestGateError] = useState('');
+  const [guestGateLoading, setGuestGateLoading] = useState(false);
+
   const hasTicket = id ? checkHasTicket(id) : false;
 
   useEffect(() => { if (id) fetchEvent(); }, [id]);
@@ -342,6 +350,51 @@ export default function EventDetail() {
       if (data?.url) { window.location.href = data.url; } else { toast.error('No checkout URL'); setIsRegistering(false); }
     } catch { toast.error('Something went wrong.'); setIsRegistering(false); }
   };
+  // Item 7: signed-out buyer enters email -> check-email-status -> branch.
+  // active_member  = hard-block, show log-in prompt (no charge)
+  // existing/new   = proceed to Stripe, passing buyerEmail so verify-ticket-payment
+  //                  reuses their people row + Stripe customer (no duplicates)
+  const handleGuestEmailContinue = async () => {
+    if (!event) return;
+    setGuestGateError('');
+    const email = guestGateEmail.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) { setGuestGateError('Please enter a valid email.'); return; }
+
+    setGuestGateLoading(true);
+    try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      const res = await fetch(`${supabaseUrl}/functions/v1/check-email-status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: anonKey || '', Authorization: `Bearer ${anonKey || ''}` },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setGuestGateError(data.error || 'Something went wrong. Please try again.'); setGuestGateLoading(false); return; }
+
+      if (data.status === 'active_member') {
+        setGuestGateMode('member');
+        setGuestGateLoading(false);
+        return;
+      }
+
+      // existing_contact | new -> Stripe checkout with the email attached
+      const { data: co, error } = await supabase.functions.invoke('create-ticket-checkout', {
+        body: { eventId: event.id, eventTitle: event.title, buyerEmail: email },
+      });
+      if (error || co?.error || !co?.url) {
+        setGuestGateError(co?.error || 'Failed to start checkout. Please try again.');
+        setGuestGateLoading(false);
+        return;
+      }
+      window.location.href = co.url;
+    } catch {
+      setGuestGateError('Something went wrong. Please try again.');
+      setGuestGateLoading(false);
+    }
+  };
+
   const handleGuestPurchase = handlePurchaseTicket;
   const formatPrice = (cents: number) => `$${(cents / 100).toFixed(0)}`;
   const isActionLoading = (rsvpLoadingId === id) || isRegistering;
@@ -546,7 +599,32 @@ export default function EventDetail() {
             <div style={{ fontSize: '2rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '2px' }}>{formatPrice(ticketPrice)}</div>
           )}
           <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', marginBottom: '18px' }}>{ticketPrice > 0 ? 'One-time ticket' : 'Sign in to get your ticket'}</p>
-          <button onClick={ticketPrice === 0 ? () => router.push('/login') : handleGuestPurchase} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> Redirecting...</> : ticketPrice === 0 ? 'Sign In to RSVP' : 'Purchase Ticket'}</button>
+          {ticketPrice === 0 ? (
+            <button onClick={() => router.push('/login')} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> Redirecting...</> : 'Sign In to RSVP'}</button>
+          ) : guestGateMode === 'member' ? (
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: '0.875rem', color: '#FFFFFF', fontWeight: 600, marginBottom: '4px' }}>Looks like you have an account.</p>
+              <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.5)', marginBottom: '14px' }}>Log in to continue - members RSVP free.</p>
+              <Link href="/login" style={{ ...primaryBtn, textDecoration: 'none', display: 'flex' }}>Log In to RSVP</Link>
+              <button onClick={() => { setGuestGateMode('collect'); setGuestGateError(''); }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', marginTop: '10px', cursor: 'pointer' }}>Use a different email</button>
+            </div>
+          ) : guestGateMode === 'collect' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <input
+                type="email"
+                placeholder="Your email"
+                value={guestGateEmail}
+                onChange={(e) => setGuestGateEmail(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleGuestEmailContinue(); }}
+                autoFocus
+                style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', minHeight: '44px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#FFFFFF', fontSize: '0.9375rem', outline: 'none' }}
+              />
+              {guestGateError && <p style={{ fontSize: '0.8125rem', color: '#E57373', margin: 0 }}>{guestGateError}</p>}
+              <button onClick={handleGuestEmailContinue} disabled={guestGateLoading} style={primaryBtn}>{guestGateLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> Checking...</> : 'Continue'}</button>
+            </div>
+          ) : (
+            <button onClick={() => { setGuestGateMode('collect'); setGuestGateError(''); }} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> Redirecting...</> : 'Purchase Ticket'}</button>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0' }}><div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255,255,255,0.06)' }} /><span style={{ fontSize: '0.625rem', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>or</span><div style={{ flex: 1, height: '1px', backgroundColor: 'rgba(255,255,255,0.06)' }} /></div>
           <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', marginBottom: '10px' }}>Already a member? Login to RSVP.</p>
           <Link href="/login" style={{ ...linkBtn, color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)' }}>Sign In</Link>
