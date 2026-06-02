@@ -26,7 +26,7 @@ serve(async (req) => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
     const body = await req.json();
-    const { eventId, eventTitle } = body;
+    const { eventId, eventTitle, buyerEmail } = body;
 
     if (!eventId || !eventTitle) {
       throw new Error("Missing required fields: eventId, eventTitle");
@@ -110,6 +110,22 @@ serve(async (req) => {
         logStep("Auth token invalid or expired, proceeding as guest", {
           error: claimsError?.message,
         });
+      }
+    }
+
+    // Guest checkout: trust buyerEmail from the pre-checkout email gate ONLY when
+    // there is no authenticated user. Never let a passed email override a
+    // logged-in user's real identity. Feeds the existing Stripe-customer dedupe
+    // (stripe.customers.list) and customer_email below, and downstream the
+    // email_lower match in verify-ticket-payment - no duplicate people/customers.
+    if (!userId && typeof buyerEmail === "string" && buyerEmail.trim()) {
+      const candidate = buyerEmail.trim().toLowerCase();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (emailRegex.test(candidate)) {
+        userEmail = candidate;
+        logStep("Guest email accepted from request body", { userEmail });
+      } else {
+        logStep("Guest email rejected (bad format), proceeding without", { buyerEmail });
       }
     }
 
