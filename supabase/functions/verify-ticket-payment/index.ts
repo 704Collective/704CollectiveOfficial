@@ -91,7 +91,15 @@ serve(async (req) => {
     // Resolve the buyer's identity
     const userId = session.metadata?.user_id || null;
     const buyerEmail = session.customer_details?.email || null;
-    const buyerName = session.customer_details?.name || null;
+
+    // Captured on our gate (guest checkout) and passed via Stripe session metadata.
+    // Prefer these over Stripe's customer_details so we get the name/phone WE
+    // collected for marketing. Empty strings (member checkout) fall back to Stripe.
+    const capturedFirst = (session.metadata?.guest_first_name || "").trim();
+    const capturedLast = (session.metadata?.guest_last_name || "").trim();
+    const capturedPhone = (session.metadata?.guest_phone || "").trim();
+    const capturedName = `${capturedFirst} ${capturedLast}`.trim();
+    const buyerName = capturedName || session.customer_details?.name || null;
 
     const { data: personByProfile } = userId
       ? await supabaseClient.from("people").select("id").filter("metadata->>profile_id", "eq", userId).maybeSingle()
@@ -115,8 +123,14 @@ serve(async (req) => {
         .insert({
           email: buyerEmail,
           full_name: buyerName,
+          phone: capturedPhone || null,
           roles: ["guest"],
-          metadata: { source: "verify_ticket_payment" },
+          metadata: {
+            source: "verify_ticket_payment",
+            acquired_via: "public_ticket",
+            acquisition_event_id: event_id,
+            acquired_at: new Date().toISOString(),
+          },
         })
         .select("id")
         .single();

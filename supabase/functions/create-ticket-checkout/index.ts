@@ -26,7 +26,7 @@ serve(async (req) => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
     const body = await req.json();
-    const { eventId, eventTitle, buyerEmail } = body;
+    const { eventId, eventTitle, buyerEmail, buyerFirstName, buyerLastName, buyerPhone } = body;
 
     if (!eventId || !eventTitle) {
       throw new Error("Missing required fields: eventId, eventTitle");
@@ -250,6 +250,9 @@ serve(async (req) => {
         ticket_mode: eventData.ticket_mode ?? "unknown",
         resolved_price_cents: String(resolvedPrice),
         member_type_at_purchase: memberType ?? "guest",
+        guest_first_name: (!userId && typeof buyerFirstName === "string") ? buyerFirstName.trim().slice(0, 100) : "",
+        guest_last_name: (!userId && typeof buyerLastName === "string") ? buyerLastName.trim().slice(0, 100) : "",
+        guest_phone: (!userId && typeof buyerPhone === "string") ? buyerPhone.trim().slice(0, 40) : "",
       },
     };
 

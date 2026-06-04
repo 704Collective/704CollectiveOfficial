@@ -80,7 +80,10 @@ export default function EventDetail() {
   // Item 7 - signed-out repeat-buyer email gate (paid public_ticketed only).
   // 'collect' shows the email field; 'member' shows the log-in prompt when the
   // email matches an active member (hard-block, no Stripe).
-  const [guestGateMode, setGuestGateMode] = useState<'button' | 'collect' | 'member'>('button');
+  const [guestGateMode, setGuestGateMode] = useState<'button' | 'collect' | 'member' | 'details'>('button');
+  const [guestFirstName, setGuestFirstName] = useState('');
+  const [guestLastName, setGuestLastName] = useState('');
+  const [guestPhone, setGuestPhone] = useState('');
   const [guestGateEmail, setGuestGateEmail] = useState('');
   const [guestGateError, setGuestGateError] = useState('');
   const [guestGateLoading, setGuestGateLoading] = useState(false);
@@ -379,9 +382,47 @@ export default function EventDetail() {
         return;
       }
 
-      // existing_contact | new -> Stripe checkout with the email attached
+      // new -> collect first/last/phone for marketing before checkout
+      if (data.status === 'new') {
+        setGuestGateMode('details');
+        setGuestGateLoading(false);
+        return;
+      }
+      // existing_contact -> we already have their info; straight to Stripe w/ email
       const { data: co, error } = await supabase.functions.invoke('create-ticket-checkout', {
         body: { eventId: event.id, eventTitle: event.title, buyerEmail: email },
+      });
+      if (error || co?.error || !co?.url) {
+        setGuestGateError(co?.error || 'Failed to start checkout. Please try again.');
+        setGuestGateLoading(false);
+        return;
+      }
+      window.location.href = co.url;
+    } catch {
+      setGuestGateError('Something went wrong. Please try again.');
+      setGuestGateLoading(false);
+    }
+  };
+
+  // New buyer: submit captured name/phone, then go to Stripe with all four fields.
+  const handleGuestDetailsContinue = async () => {
+    if (!event) return;
+    setGuestGateError('');
+    if (!guestFirstName.trim() || !guestLastName.trim()) {
+      setGuestGateError('Please enter your first and last name.');
+      return;
+    }
+    setGuestGateLoading(true);
+    try {
+      const { data: co, error } = await supabase.functions.invoke('create-ticket-checkout', {
+        body: {
+          eventId: event.id,
+          eventTitle: event.title,
+          buyerEmail: guestGateEmail.trim().toLowerCase(),
+          buyerFirstName: guestFirstName.trim(),
+          buyerLastName: guestLastName.trim(),
+          buyerPhone: guestPhone.trim(),
+        },
       });
       if (error || co?.error || !co?.url) {
         setGuestGateError(co?.error || 'Failed to start checkout. Please try again.');
@@ -621,6 +662,17 @@ export default function EventDetail() {
               />
               {guestGateError && <p style={{ fontSize: '0.8125rem', color: '#E57373', margin: 0 }}>{guestGateError}</p>}
               <button onClick={handleGuestEmailContinue} disabled={guestGateLoading} style={primaryBtn}>{guestGateLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> Checking...</> : 'Continue'}</button>
+            </div>
+          ) : guestGateMode === 'details' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.5)', margin: '0 0 2px' }}>Just a few details for your ticket.</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <input type="text" placeholder="First name" value={guestFirstName} onChange={(e) => setGuestFirstName(e.target.value)} autoFocus style={{ width: '100%', boxSizing: 'border-box', minWidth: 0, padding: '12px 14px', minHeight: '44px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#FFFFFF', fontSize: '0.9375rem', outline: 'none' }} />
+                <input type="text" placeholder="Last name" value={guestLastName} onChange={(e) => setGuestLastName(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', minWidth: 0, padding: '12px 14px', minHeight: '44px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#FFFFFF', fontSize: '0.9375rem', outline: 'none' }} />
+              </div>
+              <input type="tel" placeholder="Phone (optional)" value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleGuestDetailsContinue(); }} style={{ width: '100%', boxSizing: 'border-box', padding: '12px 14px', minHeight: '44px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#FFFFFF', fontSize: '0.9375rem', outline: 'none' }} />
+              {guestGateError && <p style={{ fontSize: '0.8125rem', color: '#E57373', margin: 0 }}>{guestGateError}</p>}
+              <button onClick={handleGuestDetailsContinue} disabled={guestGateLoading} style={primaryBtn}>{guestGateLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> Redirecting...</> : 'Continue to checkout'}</button>
             </div>
           ) : (
             <button onClick={() => { setGuestGateMode('collect'); setGuestGateError(''); }} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> Redirecting...</> : 'Purchase Ticket'}</button>
