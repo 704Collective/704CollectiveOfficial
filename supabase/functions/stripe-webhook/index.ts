@@ -1151,6 +1151,59 @@ async function handleSubscriptionDeleted(
     } catch (syncErr) {
       log("People sync failed (non-blocking)", { error: syncErr instanceof Error ? syncErr.message : String(syncErr), source: "subscription.deleted" });
     }
+
+    // Additive: enroll the canceled member into the Member Win-back drip.
+    // Best-effort - must NEVER break the cancellation above. Looks the campaign up
+    // by trigger_type (stable across rebuilds), not a hardcoded UUID. Dedup guard
+    // skips if they already have an active enrollment. process-drips sends step 1
+    // on its next hourly run, and its active-member guard re-checks at send time.
+    try {
+      const enrollEmail = (profile.email ?? "").trim();
+      if (enrollEmail) {
+        const { data: wbCampaign } = await supabase
+          .from("drip_campaigns")
+          .select("id, status")
+          .eq("trigger_type", "member_canceled")
+          .eq("status", "active")
+          .limit(1)
+          .maybeSingle();
+        if (wbCampaign?.id) {
+          const { data: existing } = await supabase
+            .from("drip_enrollments")
+            .select("id")
+            .eq("drip_campaign_id", wbCampaign.id)
+            .ilike("contact_email", enrollEmail)
+            .eq("status", "active")
+            .limit(1)
+            .maybeSingle();
+          if (existing) {
+            log("Win-back enrollment skipped - already active", { email: enrollEmail });
+          } else {
+            const { error: enrollErr } = await supabase
+              .from("drip_enrollments")
+              .insert({
+                drip_campaign_id: wbCampaign.id,
+                contact_email: enrollEmail,
+                contact_name: profile.full_name ?? null,
+                current_step: 0,
+                status: "active",
+                next_send_at: new Date().toISOString(),
+                enrolled_at: new Date().toISOString(),
+                metadata: { source: "stripe_webhook_subscription_deleted" },
+              });
+            if (enrollErr) {
+              log("Win-back enrollment insert failed (non-blocking)", { error: enrollErr.message });
+            } else {
+              log("Win-back enrollment created", { email: enrollEmail, campaignId: wbCampaign.id });
+            }
+          }
+        } else {
+          log("No active member_canceled campaign found, skipping win-back enrollment");
+        }
+      }
+    } catch (enrollCatch) {
+      log("Win-back enrollment threw (non-blocking)", { error: enrollCatch instanceof Error ? enrollCatch.message : String(enrollCatch) });
+    }
   } else {
     log("WARNING: No profile found for subscription.deleted", { stripeCustomerId });
   }
