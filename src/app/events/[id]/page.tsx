@@ -788,7 +788,16 @@ export default function EventDetail() {
       else handleMemberRegisterWithWaitlistFallback();
       return;
     }
-    if (!user) { if (event.is_members_only || ticketPrice === 0) router.push('/login'); else handleGuestPurchase(); return; }
+    if (!user) {
+      if (event.is_members_only || ticketPrice === 0) { router.push('/login'); return; }
+      // Paid + signed out: open the email gate on the ticket card (same flow as
+      // desktop) instead of jumping straight to Stripe. Scroll the card into view.
+      setGuestGateMode('collect');
+      setGuestGateError('');
+      const card = document.getElementById('ticket-card');
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     if (isActiveMember) { if (isAtCapacity) handleJoinWaitlist(); else handleMemberRegisterWithWaitlistFallback(); return; }
     handlePurchaseTicket();
   };
@@ -881,7 +890,7 @@ export default function EventDetail() {
             </div>
 
             <div style={{ alignSelf: 'start', position: 'sticky', top: '24px' }}>
-              <div style={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '24px 22px', boxShadow: '0 4px 24px rgba(0,0,0,0.2)' }}>
+              <div id="ticket-card" style={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '24px 22px', boxShadow: '0 4px 24px rgba(0,0,0,0.2)' }}>
                 {renderTicketCard()}
               </div>
             </div>
