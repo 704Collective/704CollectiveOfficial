@@ -292,7 +292,7 @@ serve(async (req) => {
 
         const { error: insertError } = await supabase
           .from("guest_event_notifications")
-          .insert(notificationRows);
+          .upsert(notificationRows, { onConflict: "guest_email,event_id", ignoreDuplicates: true });
 
         if (insertError) {
           log("Failed to insert notification records", { error: insertError.message });
