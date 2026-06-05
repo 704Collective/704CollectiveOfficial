@@ -1649,6 +1649,70 @@ function dripStepTemplate(data: {
   };
 }
 
+function renewalReminder7Template(data: { name?: string; isBusiness?: boolean; renewDate?: string; origin?: string }): { subject: string; html: string } {
+  const firstName = escapeHtml((data.name || "there").split(" ")[0]);
+  const base = data.origin || "https://704collective.com";
+  const tier = data.isBusiness ? "Business" : "Social";
+  const when = escapeHtml(data.renewDate || "soon");
+  return {
+    subject: "Your 704 Collective membership renews in 7 days",
+    html: baseLayout({
+      theme: "light",
+      title: "Your membership renews in 7 days",
+      previewText: "A quick heads-up about your upcoming renewal.",
+      content: `
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#1A1A1A;">Hey ${firstName},</p>
+<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#2E2E2E;">Just a heads-up - your 704 Collective ${tier} membership renews on <strong>${when}</strong>.</p>
+<p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:#2E2E2E;">No action needed if everything looks good. Want to update your payment method or review your plan? You can manage everything from your settings.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;"><tr><td align="center" style="background-color:#C6A664;border-radius:8px;"><a href="${base}/dashboard/settings" style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:600;color:#1A1A1A;text-decoration:none;">Manage My Membership</a></td></tr></table>
+<p style="margin:16px 0 0;font-size:14px;line-height:1.6;color:#2E2E2E;">Questions? Email us at <a href="mailto:hello@704collective.com" style="color:#C6A664;">hello@704collective.com</a> - we read everything.</p>
+<p style="margin:16px 0 0;font-size:14px;color:#6b7280;">- The 704 Collective Team</p>`,
+    }),
+  };
+}
+
+function renewalReminder1Template(data: { name?: string; isBusiness?: boolean; renewDate?: string; origin?: string }): { subject: string; html: string } {
+  const firstName = escapeHtml((data.name || "there").split(" ")[0]);
+  const base = data.origin || "https://704collective.com";
+  const tier = data.isBusiness ? "Business" : "Social";
+  return {
+    subject: "Your 704 Collective membership renews tomorrow",
+    html: baseLayout({
+      theme: "light",
+      title: "Your membership renews tomorrow",
+      previewText: "Your renewal is tomorrow - here if you need anything.",
+      content: `
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#1A1A1A;">Hey ${firstName},</p>
+<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#2E2E2E;">Your 704 Collective ${tier} membership renews <strong>tomorrow</strong>.</p>
+<p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:#2E2E2E;">If you need to make any changes, now's the time - you can manage your plan and payment method from your settings.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;"><tr><td align="center" style="background-color:#C6A664;border-radius:8px;"><a href="${base}/dashboard/settings" style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:600;color:#1A1A1A;text-decoration:none;">Manage My Membership</a></td></tr></table>
+<p style="margin:16px 0 0;font-size:14px;line-height:1.6;color:#2E2E2E;">Questions? Email us at <a href="mailto:hello@704collective.com" style="color:#C6A664;">hello@704collective.com</a> - we read everything.</p>
+<p style="margin:16px 0 0;font-size:14px;color:#6b7280;">- The 704 Collective Team</p>`,
+    }),
+  };
+}
+
+function renewalLapseTemplate(data: { name?: string; isBusiness?: boolean; origin?: string }): { subject: string; html: string } {
+  const firstName = escapeHtml((data.name || "there").split(" ")[0]);
+  const base = data.origin || "https://704collective.com";
+  const tier = data.isBusiness ? "Business" : "Social";
+  return {
+    subject: "Your 704 Collective membership has expired",
+    html: baseLayout({
+      theme: "light",
+      title: "Your membership has expired",
+      previewText: "Your membership lapsed - it's easy to come back.",
+      content: `
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#1A1A1A;">Hey ${firstName},</p>
+<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#2E2E2E;">Your 704 Collective ${tier} membership has expired. We'd love to have you back - Charlotte's better with your people around.</p>
+<p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:#2E2E2E;">You can renew anytime from your settings, and you'll be right back to events, the member directory, and the community.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;"><tr><td align="center" style="background-color:#C6A664;border-radius:8px;"><a href="${base}/dashboard/settings" style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:600;color:#1A1A1A;text-decoration:none;">Renew My Membership</a></td></tr></table>
+<p style="margin:16px 0 0;font-size:14px;line-height:1.6;color:#2E2E2E;">Questions or want to talk through options? Email us at <a href="mailto:hello@704collective.com" style="color:#C6A664;">hello@704collective.com</a> - we read everything.</p>
+<p style="margin:16px 0 0;font-size:14px;color:#6b7280;">- The 704 Collective Team</p>`,
+    }),
+  };
+}
+
 function getTemplate(template: string, data: Record<string, unknown>): { subject: string; html: string } {
   switch (template) {
     case "welcome-back":
@@ -1889,6 +1953,12 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
       return reEngagementTemplate(data as { name: string; isBusiness?: boolean; events?: Array<{ title: string; dateLabel: string; locationName?: string | null }>; origin?: string });
     case "drip-step":
       return dripStepTemplate(data as { subject?: string; bodyHtml?: string });
+    case "renewal-7day":
+      return renewalReminder7Template(data as { name?: string; isBusiness?: boolean; renewDate?: string; origin?: string });
+    case "renewal-1day":
+      return renewalReminder1Template(data as { name?: string; isBusiness?: boolean; renewDate?: string; origin?: string });
+    case "renewal-lapse":
+      return renewalLapseTemplate(data as { name?: string; isBusiness?: boolean; origin?: string });
 
     default:
       throw new Error(`Unknown email template: ${template}`);
