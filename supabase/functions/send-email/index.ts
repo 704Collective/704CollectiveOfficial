@@ -1592,7 +1592,45 @@ function campaignBroadcastTemplate(data: { subject: string; bodyHtml: string; pr
   };
 }
 
-// ── Template dispatcher ───────────────────────────────────────────────────
+
+function reEngagementTemplate(data: {
+  name: string;
+  isBusiness?: boolean;
+  events?: Array<{ title: string; dateLabel: string; locationName?: string | null }>;
+  origin?: string;
+}): { subject: string; html: string } {
+  const firstName = escapeHtml((data.name || "there").split(" ")[0]);
+  const base = data.origin || "https://704collective.com";
+  const events = Array.isArray(data.events) ? data.events : [];
+
+  const eventRows = events.map((ev) =>
+    `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 12px;"><tr><td style="padding:0 0 12px;border-bottom:1px solid rgba(0,0,0,0.06);"><strong style="font-size:15px;color:#1A1A1A;">${escapeHtml(ev.title || "")}</strong><br/><span style="font-size:14px;color:#6b7280;">${escapeHtml(ev.dateLabel || "")}${ev.locationName ? " - " + escapeHtml(String(ev.locationName)) : ""}</span></td></tr></table>`
+  ).join("");
+
+  const teaser = events.length > 0
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:24px 0;background-color:rgba(0,0,0,0.03);border-radius:8px;border:1px solid rgba(0,0,0,0.08);"><tr><td style="padding:20px 24px;"><p style="margin:0 0 14px;font-size:16px;font-weight:700;color:#1A1A1A;">Upcoming Events</p>${eventRows}<a href="${base}/events" style="display:inline-block;margin-top:4px;font-size:15px;font-weight:600;color:#C6A664;text-decoration:none;">View all events</a></td></tr></table>`
+    : `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;"><tr><td align="center" style="background-color:#C6A664;border-radius:8px;"><a href="${base}/events" style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:600;color:#1A1A1A;text-decoration:none;">See What's Coming Up</a></td></tr></table>`;
+
+  const businessLine = data.isBusiness
+    ? `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#2E2E2E;">As a Business member, you also have access to exclusive networking events and the business portal. <a href="${base}/business" style="color:#C6A664;font-weight:600;">Check it out</a></p>`
+    : "";
+
+  return {
+    subject: `We miss you, ${firstName}`,
+    html: baseLayout({
+      theme: "light",
+      title: "We miss you at 704 Collective",
+      previewText: "It has been a while - here is what is coming up at 704 Collective.",
+      content: `
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#1A1A1A;">Hey ${firstName}, it's been a while!</p>
+<p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:#2E2E2E;">We noticed you haven't been to an event in a bit - and we miss seeing you around. 704 Collective is all about real connections in Charlotte, and there's always something worth showing up for.</p>
+${teaser}
+${businessLine}
+<p style="margin:24px 0 0;font-size:15px;line-height:1.6;color:#2E2E2E;">Questions or feedback? Email us directly at <a href="mailto:hello@704collective.com" style="color:#C6A664;">hello@704collective.com</a> - we read everything.</p>
+<p style="margin:16px 0 0;font-size:14px;color:#6b7280;">- The 704 Collective Team</p>`,
+    }),
+  };
+}
 
 function getTemplate(template: string, data: Record<string, unknown>): { subject: string; html: string } {
   switch (template) {
@@ -1830,6 +1868,8 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
       return adminInviteLinkTemplate(data as { name: string; inviteUrl: string; senderName?: string });
     case "campaign-broadcast":
       return campaignBroadcastTemplate(data as { subject: string; bodyHtml: string; previewText?: string });
+    case "re-engagement":
+      return reEngagementTemplate(data as { name: string; isBusiness?: boolean; events?: Array<{ title: string; dateLabel: string; locationName?: string | null }>; origin?: string });
 
     default:
       throw new Error(`Unknown email template: ${template}`);
