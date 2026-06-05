@@ -1632,6 +1632,23 @@ ${businessLine}
   };
 }
 
+function dripStepTemplate(data: {
+  subject?: string;
+  bodyHtml?: string;
+}): { subject: string; html: string } {
+  const subject = data.subject || "A note from 704 Collective";
+  const body = data.bodyHtml || "";
+  return {
+    subject,
+    html: baseLayout({
+      theme: "light",
+      title: subject,
+      previewText: subject,
+      content: body,
+    }),
+  };
+}
+
 function getTemplate(template: string, data: Record<string, unknown>): { subject: string; html: string } {
   switch (template) {
     case "welcome-back":
@@ -1870,6 +1887,8 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
       return campaignBroadcastTemplate(data as { subject: string; bodyHtml: string; previewText?: string });
     case "re-engagement":
       return reEngagementTemplate(data as { name: string; isBusiness?: boolean; events?: Array<{ title: string; dateLabel: string; locationName?: string | null }>; origin?: string });
+    case "drip-step":
+      return dripStepTemplate(data as { subject?: string; bodyHtml?: string });
 
     default:
       throw new Error(`Unknown email template: ${template}`);

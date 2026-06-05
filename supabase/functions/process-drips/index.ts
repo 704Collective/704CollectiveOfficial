@@ -3,28 +3,28 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
  * process-drips - Hourly cron job
- * Finds active drip_enrollments where next_send_at <= now, sends the NEXT step
- * via Resend, logs to email_log, advances the enrollment.
+ * Finds active drip_enrollments where next_send_at <= now, sends the NEXT step,
+ * advances the enrollment.
  *
- * Schema notes (canonical): drip_enrollments stores contact_email + contact_name
- * directly (no contacts/profiles join). current_step = number of steps already
- * sent; the next step to send is step_number = current_step + 1.
+ * Rendering + sending is delegated to the send-email function using the shared
+ * "drip-step" template (baseLayout, light theme) so every drip email carries the
+ * correct logo + footer and is logged centrally in email_log.
  *
- * SAFETY GUARD: before sending, skip+stop any enrollment whose email is currently
- * an active member. Drip campaigns here include win-back/cancellation content that
- * must never reach a paying member, even if enrollment data is contaminated.
+ * Schema: drip_enrollments stores contact_email + contact_name directly.
+ * current_step = steps already sent; next step to send = current_step + 1.
+ * drip_steps content lives in body_html; placeholders use single braces {first_name}.
  *
- * Cron: every hour. supabase/config.toml -> schedule = "0 * * * *"
+ * SAFETY GUARD: skip + stop any enrollment whose email is currently an active
+ * member (win-back/cancellation content must never reach a paying member).
+ *
+ * Cron: hourly.
  */
 
 serve(async (_req) => {
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
-
-  const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+  const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const SITE_URL = Deno.env.get("SITE_URL") ?? "https://704collective.com";
+  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
   const now = new Date().toISOString();
 
   const { data: enrollments, error: enrollErr } = await supabase
@@ -50,7 +50,6 @@ serve(async (_req) => {
     try {
       const email = (enrollment.contact_email ?? "").trim();
       if (!email) {
-        console.warn(`No email for enrollment ${enrollment.id}`);
         await supabase.from("drip_enrollments")
           .update({ status: "failed", stopped_reason: "No contact_email", completed_at: now })
           .eq("id", enrollment.id);
@@ -83,7 +82,7 @@ serve(async (_req) => {
       const nextStepNumber = (enrollment.current_step ?? 0) + 1;
       const { data: step, error: stepErr } = await supabase
         .from("drip_steps")
-        .select("*")
+        .select("step_number, subject, body_html, delay_days, delay_hours")
         .eq("drip_campaign_id", enrollment.drip_campaign_id)
         .eq("step_number", nextStepNumber)
         .single();
@@ -96,52 +95,40 @@ serve(async (_req) => {
         continue;
       }
 
-      const firstName = (enrollment.contact_name ?? "").trim().split(" ")[0] || "Member";
-      const fullName = (enrollment.contact_name ?? "").trim() || "Member";
+      // Personalize: content uses single-brace {first_name} / {name}.
+      const firstName = (enrollment.contact_name ?? "").trim().split(" ")[0] || "there";
+      const fullName = (enrollment.contact_name ?? "").trim() || "there";
+      const rawBody = (step.body_html ?? "");
+      const bodyHtml = rawBody
+        .replace(/\{first_name\}/gi, firstName)
+        .replace(/\{name\}/gi, fullName);
+      const subject = (step.subject ?? "A note from 704 Collective")
+        .replace(/\{first_name\}/gi, firstName)
+        .replace(/\{name\}/gi, fullName);
 
-      const unsubToken = btoa(`${email}:drip:${enrollment.drip_campaign_id}`);
-      const unsubUrl = `${SITE_URL}/unsubscribe?token=${unsubToken}`;
-      const htmlContent = (step.content_html ?? step.content ?? "")
-        .replace(/{{first_name}}/gi, firstName)
-        .replace(/{{name}}/gi, fullName)
-        .replace(/{{unsubscribe_url}}/gi, unsubUrl);
-
-      const trackingPixel = `<img src="${SITE_URL}/api/track/open?drip=${enrollment.drip_campaign_id}&step=${step.step_number}&e=${encodeURIComponent(email)}" width="1" height="1" style="display:none" />`;
-      const finalHtml = `${htmlContent}${trackingPixel}<p style="font-size:11px;color:#999;margin-top:32px;"><a href="${unsubUrl}" style="color:#999;">Unsubscribe</a></p>`;
-
-      const sendRes = await fetch("https://api.resend.com/emails", {
+      // Send via the send-email "drip-step" template (correct logo/footer + central logging).
+      const sendRes = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${SERVICE_ROLE}`,
+          "apikey": SERVICE_ROLE,
+        },
         body: JSON.stringify({
-          from: `704 Collective <no-reply@704collective.com>`,
-          to: `${fullName} <${email}>`,
-          subject: step.subject,
-          html: finalHtml,
+          to: email,
+          template: "drip-step",
+          data: { subject, bodyHtml, origin: SITE_URL },
         }),
       });
 
-      const sendData = await sendRes.json();
-      const resendId = sendData?.id ?? null;
-      const success = sendRes.ok && !!resendId;
-
-      await supabase.from("email_log").insert({
-        to_email: email,
-        to_name: fullName,
-        from_email: "no-reply@704collective.com",
-        subject: step.subject,
-        drip_campaign_id: enrollment.drip_campaign_id,
-        drip_enrollment_id: enrollment.id,
-        resend_message_id: resendId,
-        status: success ? "sent" : "failed",
-        sent_at: now,
-      });
-
-      if (!success) {
-        console.error(`Failed to send drip step for enrollment ${enrollment.id}:`, sendData);
+      if (!sendRes.ok) {
+        const errBody = await sendRes.json().catch(() => ({}));
+        console.error(`send-email failed for enrollment ${enrollment.id}:`, JSON.stringify(errBody));
         failed++;
         continue;
       }
 
+      // Look ahead for the next step to schedule it.
       const { data: nextStep } = await supabase
         .from("drip_steps")
         .select("step_number, delay_days, delay_hours")
@@ -163,7 +150,7 @@ serve(async (_req) => {
 
       processed++;
     } catch (err) {
-      console.error(`Error processing enrollment ${enrollment.id}:`, err);
+      console.error(`Error processing enrollment ${enrollment.id}:`, err instanceof Error ? err.message : String(err));
       failed++;
     }
   }
