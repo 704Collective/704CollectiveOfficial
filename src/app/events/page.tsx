@@ -18,6 +18,7 @@ import { ThankYouModal } from '@/components/ThankYouModal';
 import { createClient } from '@/lib/supabase/client';
 import { useTicketActions } from '@/hooks/useTicketActions';
 import { EventCategory, CATEGORY_CONFIG } from '@/components/CategoryBadge';
+import { deriveEventShape } from '@/lib/events/deriveEventShape';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 
 interface Event {
@@ -52,7 +53,7 @@ async function fetchEvents(): Promise<Event[]> {
     .or(`end_time.gte.${thirtyMinsAgo},and(end_time.is.null,start_time.gte.${thirtyMinsAgo})`)
     .order('start_time', { ascending: true });
   if (error) throw error;
-  return data || [];
+  return (data || []).map(deriveEventShape);
 }
 
 async function fetchTicketCounts(eventIds: string[]): Promise<Record<string, number>> {
