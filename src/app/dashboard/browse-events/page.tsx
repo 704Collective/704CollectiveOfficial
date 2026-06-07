@@ -21,6 +21,7 @@ import { Search, X, Crown, LayoutGrid, List, Calendar } from 'lucide-react';
 import { EventCategory, CATEGORY_CONFIG } from '@/components/CategoryBadge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { deriveEventShape } from '@/lib/events/deriveEventShape';
 
 interface Event {
   id: string;
@@ -54,7 +55,7 @@ async function fetchEvents(): Promise<Event[]> {
     .or(`end_time.gte.${thirtyMinsAgo},and(end_time.is.null,start_time.gte.${thirtyMinsAgo})`)
     .order('start_time', { ascending: true });
   if (error) throw error;
-  return data || [];
+  return (data || []).map(deriveEventShape);
 }
 
 async function fetchTicketCounts(eventIds: string[]): Promise<Record<string, number>> {
