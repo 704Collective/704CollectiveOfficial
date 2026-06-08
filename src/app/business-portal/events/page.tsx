@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useTicketActions } from '@/hooks/useTicketActions';
 import { createClient } from '@/lib/supabase/client';
+import { deriveEventShape } from '@/lib/events/deriveEventShape';
 import {
   format, addDays, startOfMonth, startOfWeek, endOfWeek, isSameMonth, isSameDay, isToday, addMonths, subMonths,
 } from 'date-fns';
@@ -51,7 +52,7 @@ async function fetchBusinessEvents(): Promise<Event[]> {
     .lte('start_time', ninetyDaysLater)
     .order('start_time', { ascending: true });
   if (error) throw error;
-  return (data || []) as Event[];
+  return (data || []).map(deriveEventShape) as Event[];
 }
 
 async function fetchTicketCounts(eventIds: string[]): Promise<Record<string, number>> {
