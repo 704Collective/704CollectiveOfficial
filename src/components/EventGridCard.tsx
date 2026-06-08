@@ -194,7 +194,7 @@ export function EventGridCard({
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {!isPrivate && ticketPrice > 0 && (
+            {!isPrivate && !isUserMember && ticketPrice > 0 && (
               <div>
                 <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255,255,255,0.55)' }}>${(ticketPrice / 100).toFixed(0)}</span>
               </div>

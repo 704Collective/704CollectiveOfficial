@@ -155,7 +155,7 @@ export function EventListItem({
         </div>
 
         <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {!isPrivate && ticketPrice > 0 && (
+          {!isPrivate && !isUserMember && ticketPrice > 0 && (
             <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255,255,255,0.55)' }}>Non-Member: ${(ticketPrice / 100).toFixed(0)}</span>
           )}
           {isPrivate && (
