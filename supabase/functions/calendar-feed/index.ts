@@ -11,8 +11,9 @@ interface Event {
   title: string;
   description: string | null;
   start_time: string;
-  end_time: string;
+  end_time: string | null;
   location_name: string | null;
+  updated_at: string | null;
 }
 
 type Scope = "social" | "business" | "all" | "rsvp_only";
@@ -95,18 +96,22 @@ function generateICS(events: Event[], calendarName: string): string {
     `X-WR-CALNAME:${escapeText(calendarName)}`,
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
+    "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
+    "X-PUBLISHED-TTL:PT1H",
   ];
 
   for (const event of events) {
     const startDate = new Date(event.start_time);
-    const endDate = new Date(event.end_time);
+    const endDate = event.end_time ? new Date(event.end_time) : null;
 
     ics.push(
       "BEGIN:VEVENT",
       `UID:${event.id}@704collective.com`,
       `DTSTAMP:${formatDate(new Date())}`,
+      event.updated_at ? `LAST-MODIFIED:${formatDate(new Date(event.updated_at))}` : "",
+      event.updated_at ? `SEQUENCE:${Math.floor(new Date(event.updated_at).getTime() / 1000)}` : "",
       `DTSTART:${formatDate(startDate)}`,
-      `DTEND:${formatDate(endDate)}`,
+      endDate ? `DTEND:${formatDate(endDate)}` : "",
       `SUMMARY:${escapeText(event.title)}`,
       event.description ? `DESCRIPTION:${escapeText(event.description)}` : "",
       event.location_name ? `LOCATION:${escapeText(event.location_name)}` : "",
@@ -146,7 +151,7 @@ async function fetchRsvpEvents(
 
   const { data: evs, error: evErr } = await supabase
     .from("events")
-    .select("id, title, description, start_time, end_time, location_name")
+    .select("id, title, description, start_time, end_time, location_name, updated_at")
     .in("id", eventIds)
     .gte("start_time", new Date().toISOString())
     .order("start_time", { ascending: true });
@@ -159,7 +164,7 @@ async function fetchRsvpEvents(
   return (evs ?? []) as Event[];
 }
 
-// social / business / all: filter by event_type + is_business_only, 30-day backwindow.
+// social / business / all: filter by event_type, 30-day backwindow.
 async function fetchScopeEvents(
   supabase: SupabaseClient,
   scope: Exclude<Scope, "rsvp_only">,
@@ -168,14 +173,17 @@ async function fetchScopeEvents(
 
   let query = supabase
     .from("events")
-    .select("id, title, description, start_time, end_time, location_name")
+    .select("id, title, description, start_time, end_time, location_name, updated_at")
     .gte("start_time", thirtyDaysAgo)
     .order("start_time", { ascending: true });
 
   if (scope === "social") {
-    query = query.eq("event_type", "social").eq("is_business_only", false);
+    // Social feed: social-tier + public events (public events are event_type 'social').
+    query = query.eq("event_type", "social");
   } else if (scope === "business") {
-    query = query.or("event_type.eq.business,is_business_only.eq.true");
+    // Business feed: business events, including publicly-ticketed business events
+    // (e.g. the Exchange) which remain event_type 'business' regardless of required_tier.
+    query = query.eq("event_type", "business");
   }
   // scope === "all": no extra filter — return everything in the window.
 
@@ -302,6 +310,7 @@ serve(async (req) => {
         ...corsHeaders,
         "Content-Type": "text/calendar; charset=utf-8",
         "Content-Disposition": 'attachment; filename="704-events.ics"',
+        "Cache-Control": "no-cache",
       },
     });
   } catch (error) {
