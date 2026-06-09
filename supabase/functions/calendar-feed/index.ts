@@ -14,6 +14,7 @@ interface Event {
   end_time: string | null;
   location_name: string | null;
   updated_at: string | null;
+  tags: string[] | null;
 }
 
 type Scope = "social" | "business" | "all" | "rsvp_only";
@@ -173,17 +174,19 @@ async function fetchScopeEvents(
 
   let query = supabase
     .from("events")
-    .select("id, title, description, start_time, end_time, location_name, updated_at")
+    .select("id, title, description, start_time, end_time, location_name, updated_at, tags")
     .gte("start_time", thirtyDaysAgo)
     .order("start_time", { ascending: true });
 
   if (scope === "social") {
-    // Social feed: social-tier + public events (public events are event_type 'social').
-    query = query.eq("event_type", "social");
+    // Social feed: all social events, PLUS any business event explicitly opened to
+    // social members via the 'open_to_social' tag (rare one-off cross-tier events).
+    // Business members get social events through the business feed instead.
+    query = query.or("event_type.eq.social,and(event_type.eq.business,tags.cs.{open_to_social})");
   } else if (scope === "business") {
-    // Business feed: business events, including publicly-ticketed business events
-    // (e.g. the Exchange) which remain event_type 'business' regardless of required_tier.
-    query = query.eq("event_type", "business");
+    // Business feed: business members are all-access, so they receive BOTH business
+    // events and social events. (event_type is only ever 'social' or 'business'.)
+    query = query.in("event_type", ["social", "business"]);
   }
   // scope === "all": no extra filter — return everything in the window.
 
