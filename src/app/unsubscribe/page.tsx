@@ -8,9 +8,26 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle, Loader2, MailX } from 'lucide-react';
 import Link from 'next/link';
 
+// Resolve the recipient email from either the token param (real campaign links
+// send ?token=base64("email:campaign_id")) or a plain ?email= param (bare links
+// and legacy). Returns '' if neither yields an email.
+function resolveEmail(token: string | null, emailParam: string | null): string {
+  if (token) {
+    try {
+      const decoded = atob(token);
+      const email = decoded.split(':')[0]?.trim();
+      if (email && email.includes('@')) return email.toLowerCase();
+    } catch {
+      // malformed token: fall through to email param
+    }
+  }
+  if (emailParam && emailParam.includes('@')) return emailParam.toLowerCase();
+  return '';
+}
+
 function UnsubscribeContent() {
   const searchParams = useSearchParams();
-  const email = searchParams.get('email') ?? '';
+  const email = resolveEmail(searchParams.get('token'), searchParams.get('email'));
 
   const [status, setStatus] = useState<'loading' | 'done' | 'resubscribed' | 'error' | 'idle'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -20,29 +37,47 @@ function UnsubscribeContent() {
     const supabase = createClient();
     setStatus('loading');
 
-    supabase
-      .from('profiles')
-      .update({ marketing_unsubscribed: true })
-      .eq('email', email.toLowerCase())
-      .then(({ error }) => {
-        if (error) {
-          setErrorMsg(error.message);
-          setStatus('error');
-        } else {
-          setStatus('done');
-        }
-      });
+    // Suppress across BOTH tables so every send path honors the unsubscribe:
+    // profiles.marketing_unsubscribed (campaigns + event-reminder) and
+    // contacts.unsubscribed (re-engagement + contact campaigns).
+    (async () => {
+      const profileRes = await supabase
+        .from('profiles')
+        .update({ marketing_unsubscribed: true })
+        .eq('email', email);
+
+      const contactRes = await supabase
+        .from('contacts')
+        .update({ unsubscribed: true, unsubscribed_at: new Date().toISOString() })
+        .eq('email', email);
+
+      // Treat as success if neither call errored. A person may exist in only one
+      // table; an update that matches zero rows is NOT an error in PostgREST.
+      if (profileRes.error && contactRes.error) {
+        setErrorMsg(profileRes.error.message);
+        setStatus('error');
+      } else {
+        setStatus('done');
+      }
+    })();
   }, [email]);
 
   const handleResubscribe = async () => {
     const supabase = createClient();
     setStatus('loading');
-    const { error } = await supabase
+
+    const profileRes = await supabase
       .from('profiles')
       .update({ marketing_unsubscribed: false })
-      .eq('email', email.toLowerCase());
-    if (error) {
-      setErrorMsg(error.message);
+      .eq('email', email);
+
+    const contactRes = await supabase
+      .from('contacts')
+      .update({ unsubscribed: false, unsubscribed_at: null })
+      .eq('email', email);
+
+    if (profileRes.error && contactRes.error) {
+      setErrorMsg(profileRes.error.message);
       setStatus('error');
     } else {
       setStatus('resubscribed');
@@ -78,7 +113,7 @@ function UnsubscribeContent() {
         {status === 'loading' && email && (
           <>
             <Loader2 className="w-12 h-12 mx-auto animate-spin" style={{ color: '#C6A664' }} />
-            <p style={{ color: '#D8D8D8' }}>Updating your preferences…</p>
+            <p style={{ color: '#D8D8D8' }}>Updating your preferences...</p>
           </>
         )}
 
