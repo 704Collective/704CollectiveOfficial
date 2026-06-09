@@ -27,7 +27,9 @@ function resolveEmail(token: string | null, emailParam: string | null): string {
 
 function UnsubscribeContent() {
   const searchParams = useSearchParams();
-  const email = resolveEmail(searchParams.get('token'), searchParams.get('email'));
+  const rawToken = searchParams.get('token');
+  const rawEmail = searchParams.get('email');
+  const email = resolveEmail(rawToken, rawEmail);
 
   const [status, setStatus] = useState<'loading' | 'done' | 'resubscribed' | 'error' | 'idle'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -37,47 +39,31 @@ function UnsubscribeContent() {
     const supabase = createClient();
     setStatus('loading');
 
-    // Suppress across BOTH tables so every send path honors the unsubscribe:
-    // profiles.marketing_unsubscribed (campaigns + event-reminder) and
-    // contacts.unsubscribed (re-engagement + contact campaigns).
+    // The unsubscribe write goes through the 'unsubscribe' edge function, which
+    // uses the service-role key to update profiles + contacts. A direct client
+    // write is blocked by RLS (anon_deny policies), so it must be server-side.
     (async () => {
-      const profileRes = await supabase
-        .from('profiles')
-        .update({ marketing_unsubscribed: true })
-        .eq('email', email);
-
-      const contactRes = await supabase
-        .from('contacts')
-        .update({ unsubscribed: true, unsubscribed_at: new Date().toISOString() })
-        .eq('email', email);
-
-      // Treat as success if neither call errored. A person may exist in only one
-      // table; an update that matches zero rows is NOT an error in PostgREST.
-      if (profileRes.error && contactRes.error) {
-        setErrorMsg(profileRes.error.message);
+      const { error } = await supabase.functions.invoke('unsubscribe', {
+        body: { token: rawToken, email: rawEmail },
+      });
+      if (error) {
+        setErrorMsg(error.message);
         setStatus('error');
       } else {
         setStatus('done');
       }
     })();
-  }, [email]);
+  }, [email, rawToken, rawEmail]);
 
   const handleResubscribe = async () => {
     const supabase = createClient();
     setStatus('loading');
 
-    const profileRes = await supabase
-      .from('profiles')
-      .update({ marketing_unsubscribed: false })
-      .eq('email', email);
-
-    const contactRes = await supabase
-      .from('contacts')
-      .update({ unsubscribed: false, unsubscribed_at: null })
-      .eq('email', email);
-
-    if (profileRes.error && contactRes.error) {
-      setErrorMsg(profileRes.error.message);
+    const { error } = await supabase.functions.invoke('unsubscribe', {
+      body: { token: rawToken, email: rawEmail, resubscribe: true },
+    });
+    if (error) {
+      setErrorMsg(error.message);
       setStatus('error');
     } else {
       setStatus('resubscribed');
