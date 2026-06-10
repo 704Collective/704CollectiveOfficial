@@ -147,11 +147,11 @@ serve(async (req) => {
           start: { timezone: "America/New_York", utc: startUtc },
           end: { timezone: "America/New_York", utc: endTime },
           currency: "USD",
-          online_event: !event.location,
+          online_event: !event.location_name,
           listed: true,
           shareable: true,
           invite_only: false,
-          capacity: event.max_attendees ?? null,
+          capacity: event.capacity ?? null,
         },
       };
 
@@ -172,7 +172,7 @@ serve(async (req) => {
       ebEventId = createData.id;
 
       // Step 2: Create a venue if location is provided
-      if (event.location) {
+      if (event.location_name) {
         const venueRes = await fetch(
           `${EB_API_BASE}/organizations/${EB_ORG_ID}/venues/`,
           {
@@ -180,12 +180,12 @@ serve(async (req) => {
             headers: ebHeaders,
             body: JSON.stringify({
               venue: {
-                name: event.location,
+                name: event.location_name,
                 address: {
                   city: "Charlotte",
                   region: "NC",
                   country: "US",
-                  address_1: event.location,
+                  address_1: event.location_address ?? event.location_name,
                 },
               },
             }),
@@ -203,21 +203,21 @@ serve(async (req) => {
       }
 
       // Step 3: Create a ticket class (required before publishing)
-      const isFreeEvent = !event.price || Number(event.price) === 0;
+      const isFreeEvent = !event.price_cents || Number(event.price_cents) === 0;
       const ticketPayload = isFreeEvent
         ? {
             ticket_class: {
               name: "General Admission",
               free: true,
-              quantity_total: event.max_attendees ?? 100,
+              quantity_total: event.capacity ?? 100,
             },
           }
         : {
             ticket_class: {
               name: "General Admission",
               free: false,
-              cost: `USD,${Math.round(Number(event.price) * 100)}`,
-              quantity_total: event.max_attendees ?? 100,
+              cost: `USD,${Math.round(Number(event.price_cents))}`,
+              quantity_total: event.capacity ?? 100,
             },
           };
 
