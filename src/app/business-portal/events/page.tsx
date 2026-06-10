@@ -57,7 +57,10 @@ async function fetchBusinessEvents(): Promise<Event[]> {
 
 async function fetchTicketCounts(eventIds: string[]): Promise<Record<string, number>> {
   if (eventIds.length === 0) return {};
-  const { data, error } = await supabase.rpc('get_ticket_counts', { event_ids: eventIds });
+  // Counts attendance_credentials (status active|used) via a SECURITY DEFINER
+  // batch RPC, so list-page counts match the event detail page. Replaces the
+  // old get_ticket_counts RPC which counted the legacy tickets table.
+  const { data, error } = await supabase.rpc('get_event_attendance_counts', { p_event_ids: eventIds });
   if (error) return {};
   const counts: Record<string, number> = {};
   for (const row of (data || [])) counts[row.event_id] = Number(row.count);

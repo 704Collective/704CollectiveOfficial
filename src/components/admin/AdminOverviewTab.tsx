@@ -161,12 +161,11 @@ async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
   const ids = upcoming.map((e) => e.id);
   const rsvpByEvent: Record<string, number> = {};
   if (ids.length > 0) {
-    const { data: tix } = await supabase.from('tickets')
-      .select('event_id')
-      .in('event_id', ids)
-      .in('status', ['confirmed', 'rsvp']);
-    (tix || []).forEach((t: { event_id: string | null }) => {
-      if (t.event_id) rsvpByEvent[t.event_id] = (rsvpByEvent[t.event_id] || 0) + 1;
+    // Counts canonical attendance_credentials (status active|used) via the
+    // SECURITY DEFINER batch RPC, replacing the legacy tickets-table count.
+    const { data: counts } = await supabase.rpc('get_event_attendance_counts', { p_event_ids: ids });
+    (counts || []).forEach((row: { event_id: string; count: number | string }) => {
+      rsvpByEvent[row.event_id] = Number(row.count);
     });
   }
   const upcomingEvents = upcoming.map((e) => ({
@@ -178,13 +177,11 @@ async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
   const capIds = weekEvRows.filter((e) => e.capacity && e.capacity > 0).map((e) => e.id);
   let lowCapacityEventCount = 0;
   if (capIds.length > 0) {
-    const { data: capTix } = await supabase.from('tickets')
-      .select('event_id')
-      .in('event_id', capIds)
-      .in('status', ['confirmed', 'rsvp']);
+    // Same canonical attendance_credentials count for the low-capacity alert.
+    const { data: capCounts } = await supabase.rpc('get_event_attendance_counts', { p_event_ids: capIds });
     const cnt: Record<string, number> = {};
-    (capTix || []).forEach((t: { event_id: string | null }) => {
-      if (t.event_id) cnt[t.event_id] = (cnt[t.event_id] || 0) + 1;
+    (capCounts || []).forEach((row: { event_id: string; count: number | string }) => {
+      cnt[row.event_id] = Number(row.count);
     });
     for (const ev of weekEvRows) {
       const cap = ev.capacity;

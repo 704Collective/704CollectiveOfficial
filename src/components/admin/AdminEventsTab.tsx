@@ -166,14 +166,19 @@ async function fetchEventsData(page: number, filter: 'all' | 'upcoming' | 'past'
   const publicCountMap: Record<string, number> = {};
 
   if (ids.length > 0) {
-    const [ticketsRes, followupsRes, publicRsvpsRes] = await Promise.all([
-      supabase.from('tickets').select('event_id').in('event_id', ids).in('status', ['confirmed', 'rsvp']),
+    // Attendance now reads the canonical attendance_credentials layer
+    // (replacing legacy tickets + event_public_rsvps). The guest_passes
+    // query tracks pending follow-ups, not attendance, so it stays.
+    const [credsRes, followupsRes] = await Promise.all([
+      supabase.from('attendance_credentials').select('event_id, credential_type').in('event_id', ids).in('status', ['active', 'used']),
       supabase.from('guest_passes').select('event_id').in('event_id', ids).eq('status', 'used').is('followup_sent_at', null),
-      supabase.from('event_public_rsvps').select('event_id').in('event_id', ids).eq('status', 'rsvp'),
     ]);
-    (ticketsRes.data || []).forEach(t => { if (t.event_id) rsvpCounts[t.event_id] = (rsvpCounts[t.event_id] || 0) + 1; });
+    (credsRes.data || []).forEach(c => {
+      if (!c.event_id) return;
+      if (c.credential_type === 'public_rsvp') publicCountMap[c.event_id] = (publicCountMap[c.event_id] || 0) + 1;
+      else rsvpCounts[c.event_id] = (rsvpCounts[c.event_id] || 0) + 1;  // member, member_rsvp, guest_pass
+    });
     (followupsRes.data || []).forEach(g => { if (g.event_id) followupCounts[g.event_id] = (followupCounts[g.event_id] || 0) + 1; });
-    (publicRsvpsRes.data || []).forEach(r => { if (r.event_id) publicCountMap[r.event_id] = (publicCountMap[r.event_id] || 0) + 1; });
   }
 
   return { events, totalCount: count || 0, rsvpCounts, followupCounts, publicCountMap };

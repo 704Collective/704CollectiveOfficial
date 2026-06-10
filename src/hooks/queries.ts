@@ -10,27 +10,13 @@ export function useTickets(userId: string) {
   return useQuery({
     queryKey: ['tickets', userId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('tickets')
-        .select(`
-          id,
-          event_id,
-          status,
-          checked_in_at,
-          events (
-            id,
-            title,
-            start_time,
-            end_time,
-            location_name,
-            image_url
-          )
-        `)
-        .eq('user_id', userId)
-        .in('status', ['confirmed', 'rsvp']);
+      // Reads the canonical attendance_credentials layer via a SECURITY DEFINER
+      // RPC resolved server-side for the authed user. Returns rows shaped like
+      // the old tickets query: { id, event_id, status, checked_in_at, events: {...} }.
+      const { data, error } = await supabase.rpc('get_my_events');
 
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as typeof data;
     },
     staleTime: 5 * 60 * 1000,
     enabled: !!userId,
