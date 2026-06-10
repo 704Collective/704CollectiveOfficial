@@ -23,8 +23,7 @@ export function useTickets(userId: string) {
             start_time,
             end_time,
             location_name,
-            image_url,
-            is_members_only
+            image_url
           )
         `)
         .eq('user_id', userId)

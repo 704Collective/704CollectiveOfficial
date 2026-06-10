@@ -25,7 +25,6 @@ interface EventTicket {
     end_time: string | null;
     location_name: string | null;
     image_url: string | null;
-    is_members_only: boolean | null;
   };
 }
 
