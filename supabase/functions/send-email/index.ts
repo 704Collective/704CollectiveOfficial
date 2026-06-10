@@ -2086,7 +2086,44 @@ serve(async (req) => {
 
     log("Sending email", { to, template });
 
-    const { subject, html } = getTemplate(template, data || {});
+    let { subject, html } = getTemplate(template, data || {});
+    // --- Unsubscribe link policy ---
+    // Marketing templates show a working unsubscribe link ONLY to non-active-members.
+    // Active members + all transactional/internal mail get the link removed entirely.
+    const MARKETING_TEMPLATES = new Set([
+      "re-engagement", "drip-step",
+      "renewal-7day", "renewal-1day", "renewal-lapse",
+      "event-reminder-join-us",
+    ]);
+    const UNSUB_HREF = 'href="https://704collective.com/unsubscribe"';
+    const UNSUB_BLOCK_RE = /<p style="margin:8px 0 0;font-size:12px;text-align:center;"><a href="https:\/\/704collective\.com\/unsubscribe" style="[^"]*">Unsubscribe<\/a><\/p>/;
+
+    if (MARKETING_TEMPLATES.has(template)) {
+      let isActiveMember = false;
+      try {
+        const lookupClient = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+        const { data: prof } = await lookupClient
+          .from("profiles")
+          .select("subscription_status")
+          .eq("email", String(to).toLowerCase())
+          .maybeSingle();
+        isActiveMember = prof?.subscription_status === "active" || prof?.subscription_status === "trialing";
+      } catch (_e) {
+        isActiveMember = false; // safe default: treat as non-member -> show link
+      }
+
+      if (isActiveMember) {
+        html = html.replace(UNSUB_BLOCK_RE, "");
+      } else {
+        const unsubUrl = `https://704collective.com/unsubscribe?token=${btoa(`${to}:lifecycle`)}`;
+        html = html.replace(UNSUB_HREF, `href="${unsubUrl}"`);
+      }
+    } else {
+      html = html.replace(UNSUB_BLOCK_RE, "");
+    }
     const text = htmlToPlainText(html);
 
     // ── Send via Resend ──
