@@ -31,23 +31,32 @@ export function useNextEvent(userId: string) {
     queryFn: async () => {
       const now = new Date().toISOString();
 
-      const { data: ticket } = await supabase
-        .from('tickets')
-        .select('event_id, events (id, title, start_time, location_name, image_url)')
-        .eq('user_id', userId)
-        .in('status', ['confirmed', 'rsvp'])
-        .gt('events.start_time', now)
-        .order('start_time', { referencedTable: 'events', ascending: true })
-        .limit(1)
-        .maybeSingle();
+      // Canonical attendance_credentials via get_my_events (rows ordered by
+      // events.start_time ASC). First upcoming RSVP wins, mirroring the old
+      // tickets-table read.
+      const { data: myEvents } = await supabase.rpc('get_my_events');
 
-      const ev = ticket?.events as unknown as {
-        id: string; title: string; start_time: string;
-        location_name: string | null; image_url: string | null;
-      } | null;
+      type MyEventRow = {
+        id: string; event_id: string; status: string; checked_in_at: string | null;
+        events: {
+          id: string; title: string; start_time: string; end_time: string | null;
+          location_name: string | null; image_url: string | null;
+        } | null;
+      };
 
-      if (ev && !Array.isArray(ticket?.events)) {
-        return { ...ev, isRsvpd: true };
+      const nextRsvp = ((myEvents ?? []) as unknown as MyEventRow[])
+        .find(r => r.events && r.events.start_time > now);
+
+      if (nextRsvp?.events) {
+        const ev = nextRsvp.events;
+        return {
+          id: ev.id,
+          title: ev.title,
+          start_time: ev.start_time,
+          location_name: ev.location_name,
+          image_url: ev.image_url,
+          isRsvpd: true,
+        };
       }
 
       const { data: nextEvent } = await supabase
@@ -132,26 +141,34 @@ export function useMyRsvpdEvents(userId: string) {
   return useQuery({
     queryKey: ['myRsvpdEvents', userId],
     queryFn: async () => {
-      const { data: tickets, error: ticketErr } = await supabase
-        .from('tickets')
-        .select('event_id')
-        .eq('user_id', userId)
-        .in('status', ['confirmed', 'rsvp']);
-
-      if (ticketErr || !tickets?.length) return [] as RsvpdEvent[];
-
-      const eventIds = tickets.map(t => t.event_id).filter(Boolean) as string[];
-
-      const { data, error } = await supabase
-        .from('events')
-        .select('id, title, start_time, location_name')
-        .in('id', eventIds)
-        .gte('start_time', new Date().toISOString())
-        .eq('is_published', true)
-        .order('start_time', { ascending: true });
+      // Canonical attendance_credentials via get_my_events (rows ordered by
+      // events.start_time ASC), replacing the legacy tickets-table read.
+      const { data: myEvents, error } = await supabase.rpc('get_my_events');
 
       if (error) throw error;
-      return (data ?? []) as RsvpdEvent[];
+
+      type MyEventRow = {
+        events: {
+          id: string; title: string; start_time: string;
+          location_name: string | null;
+        } | null;
+      };
+
+      const now = new Date().toISOString();
+      const seen = new Set<string>();
+      const upcoming: RsvpdEvent[] = [];
+      for (const row of (myEvents ?? []) as unknown as MyEventRow[]) {
+        const ev = row.events;
+        if (!ev || ev.start_time < now || seen.has(ev.id)) continue;
+        seen.add(ev.id);
+        upcoming.push({
+          id: ev.id,
+          title: ev.title,
+          start_time: ev.start_time,
+          location_name: ev.location_name,
+        });
+      }
+      return upcoming;
     },
     staleTime: 5 * 60 * 1000,
     enabled: !!userId,
