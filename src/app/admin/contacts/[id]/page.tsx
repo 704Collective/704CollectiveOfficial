@@ -92,7 +92,7 @@ export default function AdminContactDetailPage() {
   const [addingNote, setAddingNote] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
 
-  // Events attended (UNION of tickets + event_public_rsvps)
+  // Events attended (canonical attendance_credentials via the people layer)
   const [eventsAttended, setEventsAttended] = useState<AttendedEventRow[]>([]);
 
   // Settings form (controlled inputs + save)
@@ -362,63 +362,48 @@ export default function AdminContactDetailPage() {
 
   useEffect(() => { void loadNotes(); }, [loadNotes]);
 
-  // ----- Events Attended (UNION tickets + event_public_rsvps) -----
+  // ----- Events Attended (canonical attendance_credentials via people) -----
   const loadEventsAttended = useCallback(async () => {
-    const profileId = resolvedProfileId;
-    const contactId = resolvedContactId;
-    if (!profileId && !contactId) {
+    // Contact's primary email wins when both a contact and a profile exist.
+    const email = ((contactRow?.email ?? profile?.email) as string | undefined)?.trim().toLowerCase();
+    if (!email) {
       setEventsAttended([]);
       return;
     }
 
-    const ticketsPromise = profileId
-      ? supabase
-          .from('tickets')
-          .select('id, event_id, ticket_type, status, checked_in_at, created_at, events(id, title, start_time)')
-          .eq('user_id', profileId)
-          .in('status', ['confirmed', 'rsvp', 'used'])
-      : Promise.resolve({ data: [] as unknown[] });
+    const { data: personRows } = await supabase
+      .from('people')
+      .select('id')
+      .eq('email_lower', email)
+      .limit(1);
+    const person = personRows?.[0];
+    if (!person) {
+      setEventsAttended([]);
+      return;
+    }
 
-    const rsvpsPromise = contactId
-      ? supabase
-          .from('event_public_rsvps')
-          .select('id, event_id, status, checked_in_at, created_at, events(id, title, start_time)')
-          .eq('contact_id', contactId)
-          .eq('status', 'rsvp')
-      : Promise.resolve({ data: [] as unknown[] });
+    const { data: creds } = await supabase
+      .from('attendance_credentials')
+      .select('id, event_id, credential_type, status, checked_in_at, created_at, events(id, title, start_time)')
+      .eq('person_id', person.id)
+      .in('status', ['active', 'used']);
 
-    const [ticketsRes, rsvpsRes] = await Promise.all([ticketsPromise, rsvpsPromise]);
+    type CredRow = { id: string; event_id: string; credential_type: string | null; status: string; checked_in_at: string | null; created_at: string; events: { id: string; title: string; start_time: string } | null };
 
-    type TicketRow = { id: string; event_id: string; ticket_type: string | null; status: string; checked_in_at: string | null; created_at: string; events: { id: string; title: string; start_time: string } | null };
-    type RsvpRow = { id: string; event_id: string; status: string; checked_in_at: string | null; created_at: string; events: { id: string; title: string; start_time: string } | null };
-
-    const tickets: AttendedEventRow[] = ((ticketsRes.data ?? []) as unknown as TicketRow[]).map((t) => ({
-      id: t.id,
-      source: 'ticket',
-      event_id: t.event_id,
-      event_title: t.events?.title ?? 'Unknown event',
-      event_date: t.events?.start_time ?? null,
-      rsvp_date: t.created_at,
-      checked_in_at: t.checked_in_at,
-      type: t.ticket_type ?? null,
-    }));
-
-    const rsvps: AttendedEventRow[] = ((rsvpsRes.data ?? []) as unknown as RsvpRow[]).map((r) => ({
-      id: r.id,
-      source: 'public_rsvp',
-      event_id: r.event_id,
-      event_title: r.events?.title ?? 'Unknown event',
-      event_date: r.events?.start_time ?? null,
-      rsvp_date: r.created_at,
-      checked_in_at: r.checked_in_at,
-      type: 'public_free',
-    }));
-
-    const all = [...tickets, ...rsvps].sort(
-      (a, b) => new Date(b.event_date || 0).getTime() - new Date(a.event_date || 0).getTime()
-    );
+    const all: AttendedEventRow[] = ((creds ?? []) as unknown as CredRow[])
+      .map((c) => ({
+        id: c.id,
+        source: (c.credential_type === 'public_rsvp' ? 'public_rsvp' : 'ticket') as AttendedEventRow['source'],
+        event_id: c.event_id,
+        event_title: c.events?.title ?? 'Unknown event',
+        event_date: c.events?.start_time ?? null,
+        rsvp_date: c.created_at,
+        checked_in_at: c.checked_in_at,
+        type: c.credential_type ?? null,
+      }))
+      .sort((a, b) => new Date(b.event_date || 0).getTime() - new Date(a.event_date || 0).getTime());
     setEventsAttended(all);
-  }, [resolvedProfileId, resolvedContactId]);
+  }, [profile, contactRow]);
 
   useEffect(() => { void loadEventsAttended(); }, [loadEventsAttended]);
 

@@ -16,8 +16,7 @@ import { format } from 'date-fns';
 import { Loader2, CheckCircle2, Clock, UserCheck, Check } from 'lucide-react';
 
 interface AttendeeRow {
-  id: string;
-  source: 'ticket' | 'public_rsvp';
+  id: string; // attendance_credentials id
   kind: 'member' | 'guest' | 'public';
   full_name: string;
   email: string;
@@ -55,52 +54,66 @@ export function EventAttendeesDialog({
     setAttendees([]);
     setSelected(new Set());
 
-    const [ticketsResult, publicRsvpsResult] = await Promise.all([
-      supabase
-        .from('tickets')
-        .select(
-          'id, user_id, checked_in_at, ticket_type, guest_email, guest_name, created_at, profiles!tickets_user_id_fkey(id, email, full_name, avatar_url, phone)',
-        )
-        .eq('event_id', eventId)
-        .in('status', ['confirmed', 'rsvp']),
-      supabase
-        .from('event_public_rsvps')
-        .select('id, contact_id, first_name, last_name, email, phone, checked_in_at, status, created_at')
-        .eq('event_id', eventId)
-        .eq('status', 'rsvp'),
-    ]);
+    // Canonical roster: attendance_credentials (replaces tickets + event_public_rsvps).
+    const { data: creds, error: credErr } = await supabase
+      .from('attendance_credentials')
+      .select('id, person_id, credential_type, status, checked_in_at, created_at')
+      .eq('event_id', eventId)
+      .in('status', ['active', 'used']);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const ticketAttendees: AttendeeRow[] = (ticketsResult.data ?? []).map((t: any) => ({
-      id: t.id,
-      source: 'ticket' as const,
-      kind: t.ticket_type === 'member_free' ? 'member' : t.ticket_type === 'guest_pass' ? 'guest' : 'public',
-      full_name: t.profiles?.full_name || t.guest_name || 'Unknown',
-      email: t.profiles?.email || t.guest_email || '',
-      phone: t.profiles?.phone ?? null,
-      avatar_url: t.profiles?.avatar_url ?? null,
-      checked_in_at: t.checked_in_at,
-      rsvp_date: t.created_at,
-      contact_route_id: t.user_id ? encodeURIComponent('profiles:' + t.user_id) : null,
-    }));
+    if (credErr || !creds) {
+      setAttendees([]);
+      setLoading(false);
+      return;
+    }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const publicRsvpAttendees: AttendeeRow[] = (publicRsvpsResult.data ?? []).map((r: any) => ({
-      id: r.id,
-      source: 'public_rsvp' as const,
-      kind: 'public' as const,
-      full_name: ((r.first_name ?? '') + ' ' + (r.last_name ?? '')).trim(),
-      email: r.email,
-      phone: r.phone ?? null,
-      avatar_url: null,
-      checked_in_at: r.checked_in_at,
-      rsvp_date: r.created_at,
-      contact_route_id: r.contact_id ? encodeURIComponent('contacts:' + r.contact_id) : null,
-    }));
+    // Resolve names/emails via people.
+    const personIds = [...new Set(creds.map(c => c.person_id).filter(Boolean))];
+    const peopleById: Record<string, { full_name: string | null; email: string | null }> = {};
+    if (personIds.length > 0) {
+      const { data: people } = await supabase
+        .from('people')
+        .select('id, full_name, email')
+        .in('id', personIds);
+      for (const p of (people || [])) peopleById[p.id] = { full_name: p.full_name, email: p.email };
+    }
 
-    const merged = [...ticketAttendees, ...publicRsvpAttendees].sort((a, b) =>
-      (a.full_name || '').localeCompare(b.full_name || ''),
-    );
+    // Avatars/phones come from profiles, matched on lower-cased email.
+    const emails = [...new Set(
+      Object.values(peopleById).map(p => p.email).filter(Boolean) as string[]
+    )];
+    const profileByEmail: Record<string, { id: string; avatar_url: string | null; phone: string | null }> = {};
+    if (emails.length > 0) {
+      const lookupEmails = [...new Set([...emails, ...emails.map(e => e.toLowerCase())])];
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('id, email, avatar_url, phone')
+        .in('email', lookupEmails);
+      for (const p of (profs || [])) {
+        if (p.email) profileByEmail[p.email.toLowerCase()] = { id: p.id, avatar_url: p.avatar_url, phone: p.phone };
+      }
+    }
+
+    const merged: AttendeeRow[] = creds.map(c => {
+      const person = peopleById[c.person_id];
+      const prof = person?.email ? profileByEmail[person.email.toLowerCase()] : undefined;
+      const kind: AttendeeRow['kind'] =
+        c.credential_type === 'member' || c.credential_type === 'member_rsvp' ? 'member'
+        : c.credential_type === 'guest_pass' ? 'guest'
+        : 'public';
+      return {
+        id: c.id,
+        kind,
+        full_name: person?.full_name || 'Unknown',
+        email: person?.email || '',
+        phone: prof?.phone ?? null,
+        avatar_url: prof?.avatar_url ?? null,
+        checked_in_at: c.checked_in_at,
+        rsvp_date: c.created_at,
+        contact_route_id: prof ? encodeURIComponent('profiles:' + prof.id) : null,
+      };
+    }).sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
+
     setAttendees(merged);
     setLoading(false);
   }, [eventId]);
@@ -114,7 +127,7 @@ export function EventAttendeesDialog({
     if (!open) setSelected(new Set());
   }, [open]);
 
-  const selKey = (a: AttendeeRow) => a.source + '-' + a.id;
+  const selKey = (a: AttendeeRow) => a.id;
 
   const toggleSelect = (a: AttendeeRow, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -137,22 +150,36 @@ export function EventAttendeesDialog({
     setBulkChecking(true);
     const now = new Date().toISOString();
     try {
-      const updates = [...selected].map(key => {
-        const isPublicRsvp = key.startsWith('public_rsvp-');
-        const id = isPublicRsvp ? key.slice('public_rsvp-'.length) : key.slice('ticket-'.length);
-        if (isPublicRsvp) {
-          return supabase
-            .from('event_public_rsvps')
-            .update({ checked_in_at: now, checked_in_by: adminId })
-            .eq('id', id);
-        }
-        return supabase
-          .from('tickets')
-          .update({ checked_in_at: now })
-          .eq('id', id);
-      });
+      // Stamp the canonical attendance_credentials rows (selected keys are credential ids).
+      const ids = [...selected];
+      const updates = ids.map(id =>
+        supabase
+          .from('attendance_credentials')
+          .update({ checked_in_at: now, status: 'used' })
+          .eq('id', id),
+      );
       const results = await Promise.all(updates);
       const errorCount = results.filter(r => r.error).length;
+
+      // checked_in_by expects a people id; adminId is an auth user id.
+      // Best-effort, mirroring CheckInFullScreen - check-ins already recorded above.
+      if (adminId) {
+        try {
+          const { data: adminPerson } = await supabase
+            .from('people')
+            .select('id')
+            .filter('metadata->>profile_id', 'eq', adminId)
+            .maybeSingle();
+          if (adminPerson) {
+            await supabase
+              .from('attendance_credentials')
+              .update({ checked_in_by: adminPerson.id })
+              .in('id', ids);
+          }
+        } catch {
+          // non-fatal
+        }
+      }
       if (errorCount > 0) {
         toast.error(errorCount + ' check-in(s) failed');
       } else {

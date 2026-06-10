@@ -47,16 +47,24 @@ export function AddMembersToEventDialog({
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
-  // Fetch existing ticket holders so we can exclude them
-  const { data: existingTickets } = useQuery({
-    queryKey: ['event-tickets', eventId],
+  // Fetch existing attendees (canonical attendance_credentials) so we can
+  // exclude them from search results. Keyed by lower-cased email since the
+  // search list is profiles while credentials are keyed by people rows.
+  const { data: existingAttendeeEmails } = useQuery({
+    queryKey: ['event-credentials', eventId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('tickets')
-        .select('user_id')
+      const { data: creds } = await supabase
+        .from('attendance_credentials')
+        .select('person_id')
         .eq('event_id', eventId)
-        .neq('status', 'cancelled');
-      return new Set((data || []).map((t) => t.user_id).filter(Boolean));
+        .eq('status', 'active');
+      const personIds = [...new Set((creds || []).map((c) => c.person_id).filter(Boolean))];
+      if (personIds.length === 0) return new Set<string>();
+      const { data: people } = await supabase
+        .from('people')
+        .select('id, email_lower')
+        .in('id', personIds);
+      return new Set((people || []).map((p) => p.email_lower).filter(Boolean) as string[]);
     },
     enabled: open,
   });
@@ -80,27 +88,145 @@ export function AddMembersToEventDialog({
     enabled: open && debouncedSearch.trim().length > 0,
   });
 
-  const filteredMembers = members.filter((m) => !existingTickets?.has(m.id));
+  const filteredMembers = members.filter(
+    (m) => !(m.email && existingAttendeeEmails?.has(m.email.toLowerCase())),
+  );
 
+  const makeCredentialToken = () => {
+    const tokenBytes = new Uint8Array(8);
+    crypto.getRandomValues(tokenBytes);
+    return 'C-' + Array.from(tokenBytes)
+      .map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 10).toUpperCase();
+  };
+
+  type AddResult = { added: number; skippedExisting: number; missingMembers: string[] };
+
+  // Writes canonical attendance_credentials (mirroring create-member-rsvp's
+  // shape) instead of the legacy tickets table.
   const addMutation = useMutation({
-    mutationFn: async (tickets: {
-      event_id: string;
-      user_id?: string;
-      guest_email?: string;
-      guest_name?: string;
-      status: string;
-      source: string;
-      ticket_type: string;
-      amount_paid_cents: number;
-    }[]) => {
-      const { error, data } = await supabase.from('tickets').insert(tickets).select();
-      if (error) throw error;
-      return data;
+    mutationFn: async (input: { profileIds?: string[]; guestEmails?: string[] }): Promise<AddResult> => {
+      // Resolve targets to { email, name }.
+      const targets: { email: string; name: string | null; isMember: boolean }[] = [];
+      if (input.profileIds?.length) {
+        const { data: profs, error: profErr } = await supabase
+          .from('profiles')
+          .select('id, email, full_name')
+          .in('id', input.profileIds);
+        if (profErr) throw profErr;
+        for (const p of (profs || [])) {
+          if (p.email) targets.push({ email: p.email.toLowerCase(), name: p.full_name, isMember: true });
+        }
+      }
+      for (const e of (input.guestEmails || [])) {
+        targets.push({ email: e.toLowerCase(), name: null, isMember: false });
+      }
+      if (targets.length === 0) throw new Error('No valid recipients to add');
+
+      // Resolve people rows by lower-cased email.
+      const emails = [...new Set(targets.map((t) => t.email))];
+      const { data: peopleRows, error: pplErr } = await supabase
+        .from('people')
+        .select('id, email, email_lower')
+        .in('email_lower', emails);
+      if (pplErr) throw pplErr;
+      const personByEmail: Record<string, string> = {};
+      for (const p of (peopleRows || [])) {
+        const key = p.email_lower || p.email?.toLowerCase();
+        if (key) personByEmail[key] = p.id;
+      }
+
+      // Members must already have a people row - collect misses, don't fail the batch.
+      const missingMembers = targets
+        .filter((t) => t.isMember && !personByEmail[t.email])
+        .map((t) => t.email);
+
+      // Pasted guests without a people row get one created first.
+      const guestsToCreate = targets.filter((t) => !t.isMember && !personByEmail[t.email]);
+      if (guestsToCreate.length > 0) {
+        const rows = guestsToCreate.map((g) => ({
+          email: g.email,
+          full_name: g.name || g.email.split('@')[0],
+          roles: ['guest'],
+          metadata: { source: 'admin_add_members_dialog' },
+        }));
+        const { data: created, error: createErr } = await supabase
+          .from('people')
+          .insert(rows)
+          .select('id, email, email_lower');
+        if (createErr) throw createErr;
+        for (const p of (created || [])) {
+          const key = p.email_lower || p.email?.toLowerCase();
+          if (key) personByEmail[key] = p.id;
+        }
+        if ((created || []).length === 0) {
+          throw new Error('People inserts returned zero rows despite no error - RLS may have silently blocked the write.');
+        }
+      }
+
+      // Dedupe: skip anyone already holding an active credential for this event.
+      const { data: existing, error: exErr } = await supabase
+        .from('attendance_credentials')
+        .select('person_id')
+        .eq('event_id', eventId)
+        .eq('status', 'active');
+      if (exErr) throw exErr;
+      const existingPersons = new Set((existing || []).map((r) => r.person_id));
+
+      const seenPersons = new Set<string>();
+      let skippedExisting = 0;
+      const inserts: Record<string, unknown>[] = [];
+      for (const t of targets) {
+        const personId = personByEmail[t.email];
+        if (!personId) continue;
+        if (existingPersons.has(personId)) { skippedExisting += 1; continue; }
+        if (seenPersons.has(personId)) continue;
+        seenPersons.add(personId);
+        inserts.push({
+          id: crypto.randomUUID(),
+          token: makeCredentialToken(),
+          person_id: personId,
+          event_id: eventId,
+          credential_type: 'member_rsvp',
+          status: 'active',
+          metadata: { source: 'admin_add_members_dialog' },
+        });
+      }
+
+      if (inserts.length === 0) {
+        return { added: 0, skippedExisting, missingMembers };
+      }
+
+      // Insert, then verify the rows actually came back (RLS can silently
+      // block writes without raising an error - never report success on zero rows).
+      const { data: insertedRows, error: insErr } = await supabase
+        .from('attendance_credentials')
+        .insert(inserts)
+        .select('id');
+      if (insErr) throw insErr;
+      const added = (insertedRows || []).length;
+      if (added === 0) {
+        throw new Error('Credential inserts returned zero rows despite no error - RLS may have silently blocked the write. No attendees were added.');
+      }
+      if (added < inserts.length) {
+        toast.warning(`Only ${added} of ${inserts.length} credentials were created - verify the attendee list.`);
+      }
+      return { added, skippedExisting, missingMembers };
     },
-    onSuccess: (_, tickets) => {
-      toast.success(`Added ${tickets.length} member${tickets.length !== 1 ? 's' : ''} to event`);
+    onSuccess: (result) => {
+      if (result.added > 0) {
+        toast.success(`Added ${result.added} ${result.added !== 1 ? 'people' : 'person'} to event`);
+      }
+      if (result.skippedExisting > 0) {
+        toast.info(`${result.skippedExisting} already on the event - skipped`);
+      }
+      if (result.missingMembers.length > 0) {
+        toast.error(`No people record found for: ${result.missingMembers.join(', ')}`);
+      }
+      if (result.added === 0 && result.skippedExisting === 0 && result.missingMembers.length === 0) {
+        toast.error('Nothing was added');
+      }
       queryClient.invalidateQueries({ queryKey: ['admin-events'] });
-      queryClient.invalidateQueries({ queryKey: ['event-tickets', eventId] });
+      queryClient.invalidateQueries({ queryKey: ['event-credentials', eventId] });
       handleClose();
     },
     onError: (error: unknown) => {
@@ -140,15 +266,7 @@ export function AddMembersToEventDialog({
       toast.error('Select at least one member');
       return;
     }
-    const tickets = Array.from(selectedIds).map((userId) => ({
-      event_id: eventId,
-      user_id: userId,
-      status: 'confirmed',
-      ticket_type: 'member_free',
-      source: 'admin_added',
-      amount_paid_cents: 0,
-    }));
-    addMutation.mutate(tickets);
+    addMutation.mutate({ profileIds: Array.from(selectedIds) });
   };
 
   const handlePasteSubmit = () => {
@@ -162,16 +280,7 @@ export function AddMembersToEventDialog({
       toast.error('No valid email addresses found');
       return;
     }
-
-    const tickets = unique.map((email) => ({
-      event_id: eventId,
-      guest_email: email,
-      status: 'confirmed',
-      ticket_type: 'member_free',
-      source: 'admin_added',
-      amount_paid_cents: 0,
-    }));
-    addMutation.mutate(tickets);
+    addMutation.mutate({ guestEmails: unique });
   };
 
   const getInitials = (name: string | null, email: string | null) => {

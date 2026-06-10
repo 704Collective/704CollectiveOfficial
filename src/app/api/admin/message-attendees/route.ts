@@ -73,53 +73,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
-    // Fetch all confirmed ticket holders
-    const { data: tickets } = await admin
-      .from('tickets')
-      .select('user_id, guest_email, guest_name')
+    // Fetch all attendees from the canonical attendance_credentials layer
+    // (replaces the legacy tickets + event_public_rsvps recipient build).
+    const { data: creds } = await admin
+      .from('attendance_credentials')
+      .select('person_id')
       .eq('event_id', event_id)
-      .in('status', ['confirmed', 'rsvp']);
+      .in('status', ['active', 'used']);
 
-    const memberIds = (tickets ?? [])
-      .filter((t: any) => t.user_id)
-      .map((t: any) => t.user_id as string);
+    const personIds = Array.from(
+      new Set((creds ?? []).map((c: any) => c.person_id).filter(Boolean)),
+    ) as string[];
 
-    let memberEmails: { email: string; name: string }[] = [];
-    if (memberIds.length > 0) {
-      const { data: profiles } = await admin
-        .from('profiles')
-        .select('email, full_name')
-        .in('id', memberIds)
-        .is('deleted_at', null);
-      memberEmails = (profiles ?? []).map((p: any) => ({ email: p.email, name: p.full_name || 'Member' }));
-    }
-
-    const guestEmails = (tickets ?? [])
-      .filter((t: any) => t.guest_email)
-      .map((t: any) => ({ email: t.guest_email as string, name: t.guest_name || 'Guest' }));
-
-    // Fetch Public RSVPs
-    let publicRsvpEmails: { email: string; name: string }[] = [];
-    const { data: publicRsvps, error: rsvpErr } = await admin
-      .from('event_public_rsvps')
-      .select('first_name, last_name, email')
-      .eq('event_id', event_id)
-      .eq('status', 'rsvp');
-
-    if (rsvpErr) {
-      console.error('[MESSAGE-ATTENDEES] event_public_rsvps query error (non-fatal):', rsvpErr.message);
-    } else {
-      publicRsvpEmails = (publicRsvps ?? [])
-        .filter((r: any) => r.email)
-        .map((r: any) => ({
-          email: r.email as string,
-          name: `${r.first_name ?? ''} ${r.last_name ?? ''}`.trim() || 'Guest',
-        }));
+    let recipients: { email: string; name: string }[] = [];
+    if (personIds.length > 0) {
+      const { data: people } = await admin
+        .from('people')
+        .select('id, email, full_name')
+        .in('id', personIds);
+      recipients = (people ?? [])
+        .filter((p: any) => p.email)
+        .map((p: any) => ({ email: p.email as string, name: p.full_name || 'Guest' }));
     }
 
     // Merge and dedupe by email (case-insensitive). First-seen wins.
     const seenEmails = new Map<string, { email: string; name: string }>();
-    for (const recipient of [...memberEmails, ...guestEmails, ...publicRsvpEmails]) {
+    for (const recipient of recipients) {
       const key = recipient.email.toLowerCase().trim();
       if (!seenEmails.has(key)) seenEmails.set(key, recipient);
     }

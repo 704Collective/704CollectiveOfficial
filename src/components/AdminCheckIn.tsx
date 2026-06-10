@@ -16,10 +16,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 type AttendeeRow = {
-  id: string;
-  source: 'ticket' | 'public_rsvp';
-  user_id: string | null;
-  ticket_type: string | null;
+  id: string; // attendance_credentials id
+  credential_type: string;
+  person_id: string;
   full_name: string;
   email: string;
   avatar_url: string | null;
@@ -76,80 +75,86 @@ export function AdminCheckIn({ adminId }: AdminCheckInProps) {
   const fetchAttendees = useCallback(async () => {
     if (!selectedEventId) return;
 
-    const [ticketsResult, publicRsvpsResult] = await Promise.all([
-      supabase
-        .from('tickets')
-        .select(`
-          id,
-          user_id,
-          checked_in_at,
-          ticket_type,
-          guest_email,
-          guest_name,
-          profiles!tickets_user_id_fkey (
-            id,
-            email,
-            full_name,
-            avatar_url
-          )
-        `)
-        .eq('event_id', selectedEventId)
-        .in('status', ['confirmed', 'rsvp']),
-      supabase
-        .from('event_public_rsvps')
-        .select('id, first_name, last_name, email, phone, checked_in_at, status')
-        .eq('event_id', selectedEventId)
-        .eq('status', 'rsvp'),
-    ]);
+    // Canonical roster: attendance_credentials + people, mirroring CheckInFullScreen.
+    const { data: creds, error: credErr } = await supabase
+      .from('attendance_credentials')
+      .select('id, person_id, credential_type, checked_in_at')
+      .eq('event_id', selectedEventId)
+      .in('credential_type', ['member_rsvp', 'guest_pass', 'public_rsvp'])
+      .in('status', ['active', 'used']);
 
-    type ProfileJoin = { id: string; email: string; full_name: string | null; avatar_url: string | null } | null;
+    if (credErr || !creds) {
+      setAttendees([]);
+      return;
+    }
 
-    const ticketAttendees: AttendeeRow[] = (ticketsResult.data || []).map(t => {
-      const p = t.profiles as unknown as ProfileJoin;
+    const personIds = Array.from(new Set(creds.map(c => c.person_id).filter(Boolean)));
+    const peopleById: Record<string, { full_name: string | null; email: string | null }> = {};
+    if (personIds.length > 0) {
+      const { data: people } = await supabase
+        .from('people')
+        .select('id, full_name, email')
+        .in('id', personIds);
+      for (const p of (people || [])) {
+        peopleById[p.id] = { full_name: p.full_name, email: p.email };
+      }
+    }
+
+    const merged: AttendeeRow[] = creds.map(c => {
+      const p = peopleById[c.person_id];
       return {
-        id: t.id,
-        source: 'ticket' as const,
-        user_id: t.user_id,
-        ticket_type: t.ticket_type,
-        full_name: p?.full_name || t.guest_name || 'Unknown',
-        email: p?.email || t.guest_email || '',
-        avatar_url: p?.avatar_url || null,
-        checked_in_at: t.checked_in_at,
+        id: c.id,
+        credential_type: c.credential_type,
+        person_id: c.person_id,
+        full_name: p?.full_name || 'Unknown',
+        email: p?.email || '',
+        avatar_url: null,
+        checked_in_at: c.checked_in_at,
       };
-    });
-
-    const publicRsvpAttendees: AttendeeRow[] = (publicRsvpsResult.data || []).map(r => ({
-      id: r.id,
-      source: 'public_rsvp' as const,
-      user_id: null,
-      ticket_type: 'public_free',
-      full_name: `${r.first_name} ${r.last_name}`.trim(),
-      email: r.email,
-      avatar_url: null,
-      checked_in_at: r.checked_in_at,
-    }));
-
-    const merged = [...ticketAttendees, ...publicRsvpAttendees].sort((a, b) =>
-      (a.full_name || '').localeCompare(b.full_name || '')
-    );
+    }).sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
 
     setAttendees(merged);
   }, [selectedEventId]);
 
   const handleQuickCheckIn = async (attendee: AttendeeRow) => {
-    setCheckInLoadingId(attendee.id);
-    const now = new Date().toISOString();
-    const updatePayload = { checked_in_at: now, checked_in_by: adminId };
+    if (attendee.checked_in_at) {
+      toast.info(`${attendee.full_name} is already checked in`, {
+        description: `Checked in at ${format(new Date(attendee.checked_in_at), 'h:mm a')}`,
+      });
+      return;
+    }
 
-    const result = attendee.source === 'public_rsvp'
-      ? await supabase.from('event_public_rsvps').update(updatePayload).eq('id', attendee.id)
-      : await supabase.from('tickets').update(updatePayload).eq('id', attendee.id);
+    setCheckInLoadingId(attendee.id);
+
+    // Stamp the canonical attendance_credential, mirroring CheckInFullScreen.
+    const { error } = await supabase
+      .from('attendance_credentials')
+      .update({ checked_in_at: new Date().toISOString(), status: 'used' })
+      .eq('id', attendee.id);
 
     setCheckInLoadingId(null);
 
-    if (result.error) {
+    if (error) {
       toast.error('Check-in failed');
       return;
+    }
+
+    // checked_in_by expects a people id; adminId is an auth user id.
+    // Best-effort, same as CheckInFullScreen - check-in already recorded above.
+    try {
+      const { data: adminPerson } = await supabase
+        .from('people')
+        .select('id')
+        .filter('metadata->>profile_id', 'eq', adminId)
+        .maybeSingle();
+      if (adminPerson) {
+        await supabase
+          .from('attendance_credentials')
+          .update({ checked_in_by: adminPerson.id })
+          .eq('id', attendee.id);
+      }
+    } catch {
+      // non-fatal - check-in already recorded
     }
 
     toast.success(`${attendee.full_name} checked in`);
@@ -205,7 +210,7 @@ export function AdminCheckIn({ adminId }: AdminCheckInProps) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {attendees.map((a) => (
                 <div
-                  key={`${a.source}-${a.id}`}
+                  key={a.id}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '12px 16px', backgroundColor: '#111',
@@ -233,7 +238,7 @@ export function AdminCheckIn({ adminId }: AdminCheckInProps) {
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       }}>
                         {a.email}
-                        {a.source === 'public_rsvp' && (
+                        {a.credential_type === 'public_rsvp' && (
                           <span style={{
                             marginLeft: '8px', padding: '2px 8px', borderRadius: '4px',
                             backgroundColor: 'rgba(198,166,100,0.1)', color: '#C6A664',
