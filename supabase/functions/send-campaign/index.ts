@@ -513,7 +513,7 @@ serve(async (req) => {
       const { data: contacts } = await supabase
         .from("contacts")
         .select("id, email, first_name, last_name")
-        .eq("unsubscribed", false);
+        .or("unsubscribed.is.null,unsubscribed.eq.false");
       recipients = (contacts ?? [])
         .filter((c) => !!c.email)
         .map((c) => ({
