@@ -114,17 +114,29 @@ serve(async (req) => {
       const email = (member.email ?? "").trim();
       if (!email) { skipped++; continue; }
 
-      // Quiet check: any ticket in last 30 days?
-      const { count: recentTickets } = await supabase
-        .from("tickets")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", member.id)
-        .gte("created_at", thirtyDaysAgo);
+      // Quiet check: any attendance credential in last 30 days? Canonical
+      // attendance_credentials via the people email bridge, replacing the
+      // legacy tickets count.
+      let recentRsvps = 0;
+      const { data: personRow } = await supabase
+        .from("people")
+        .select("id")
+        .eq("email_lower", email.toLowerCase())
+        .maybeSingle();
+      if (personRow) {
+        const { count } = await supabase
+          .from("attendance_credentials")
+          .select("id", { count: "exact", head: true })
+          .eq("person_id", personRow.id)
+          .in("status", ["active", "used"])
+          .gte("created_at", thirtyDaysAgo);
+        recentRsvps = count ?? 0;
+      }
 
       const lastSeen = member.last_seen_at ? new Date(member.last_seen_at) : null;
       const recentlyActive = lastSeen && lastSeen.toISOString() > thirtyDaysAgo;
 
-      if ((recentTickets ?? 0) > 0 || recentlyActive) { skipped++; continue; }
+      if (recentRsvps > 0 || recentlyActive) { skipped++; continue; }
 
       // Dedup: re-engaged in last 30 days? (activity_type - correct column)
       const { count: recentContact } = await supabase

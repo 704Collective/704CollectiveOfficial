@@ -1,5 +1,4 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { subMinutes } from 'date-fns';
 import { createClient } from '@/lib/supabase/client';
 
 const supabase = createClient();
@@ -248,12 +247,10 @@ export function useHasTickets(userId: string) {
   return useQuery({
     queryKey: ['hasTickets', userId],
     queryFn: async () => {
-      const { count } = await supabase
-        .from('tickets')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .in('status', ['confirmed', 'rsvp']);
-      return (count ?? 0) > 0;
+      // Canonical attendance_credentials via get_my_events, replacing the
+      // legacy tickets count.
+      const { data } = await supabase.rpc('get_my_events');
+      return (((data ?? []) as unknown) as unknown[]).length > 0;
     },
     staleTime: 10 * 60 * 1000,
     enabled: !!userId,
@@ -265,25 +262,15 @@ export function useHasUpcomingEventRsvp(userId: string) {
   return useQuery({
     queryKey: ['upcomingEventRsvp', userId],
     queryFn: async () => {
+      // Canonical attendance_credentials via get_my_events, replacing the
+      // legacy tickets -> events two-step read.
       const now = new Date().toISOString();
-      const { data: tickets, error: tErr } = await supabase
-        .from('tickets')
-        .select('event_id')
-        .eq('user_id', userId)
-        .in('status', ['confirmed', 'rsvp']);
-      if (tErr) throw tErr;
-      const ids = [...new Set((tickets ?? []).map((t) => t.event_id).filter(Boolean))] as string[];
-      if (ids.length === 0) return false;
-      const thirtyMinsAgo = subMinutes(new Date(), 30).toISOString();
-      const { data: evs, error: eErr } = await supabase
-        .from('events')
-        .select('id')
-        .in('id', ids)
-        .eq('is_published', true)
-        .or(`end_time.gte.${thirtyMinsAgo},and(end_time.is.null,start_time.gte.${thirtyMinsAgo})`)
-        .limit(1);
-      if (eErr) throw eErr;
-      return (evs?.length ?? 0) > 0;
+      const { data, error } = await supabase.rpc('get_my_events');
+      if (error) throw error;
+      type Row = { events: { start_time: string } | null };
+      return (((data ?? []) as unknown) as Row[]).some(
+        (r) => r.events && r.events.start_time >= now,
+      );
     },
     staleTime: 2 * 60 * 1000,
     enabled: !!userId,

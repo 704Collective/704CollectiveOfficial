@@ -178,14 +178,12 @@ function WelcomeContent() {
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
-      const { data: tix } = await supabase
-        .from('tickets')
-        .select('event_id')
-        .eq('user_id', user.id)
-        .in('status', ['rsvp', 'confirmed']);
+      // Canonical RSVP state via get_my_events (attendance_credentials),
+      // replacing the legacy tickets read.
+      const { data: myEvents } = await supabase.rpc('get_my_events');
       const next = new Set<string>();
-      (tix || []).forEach(t => {
-        if (t.event_id) next.add(t.event_id);
+      (((myEvents ?? []) as unknown) as { event_id: string | null }[]).forEach(r => {
+        if (r.event_id) next.add(r.event_id);
       });
       setRsvpedEventIds(next);
     })();
@@ -368,21 +366,19 @@ function WelcomeContent() {
     if (rsvpedEventIds.has(eventId)) return;
     setRsvpBusyId(eventId);
     try {
-      const { error } = await supabase.from('tickets').insert({
-        event_id: eventId,
-        user_id: user.id,
-        ticket_type: 'member_free',
-        status: 'confirmed',
-        source: 'welcome_onboarding_rsvp',
-        amount_paid_cents: 0,
+      // Member RSVP goes through the create-member-rsvp edge function, which
+      // creates a member_rsvp attendance_credential (the canonical layer),
+      // mirroring the event page. invoke() attaches the user's JWT.
+      // The function's body only accepts event_id, so the old
+      // welcome_onboarding_rsvp source attribution is dropped.
+      const { data, error } = await supabase.functions.invoke('create-member-rsvp', {
+        body: { event_id: eventId },
       });
       if (error) {
-        if (error.code === '23505') {
-          toast.info('You already have an RSVP for this event');
-          setRsvpedEventIds(prev => new Set([...prev, eventId]));
-          return;
-        }
         return;
+      }
+      if (data?.already_rsvped) {
+        toast.info('You already have an RSVP for this event');
       }
       setRsvpedEventIds(prev => new Set([...prev, eventId]));
     } finally {

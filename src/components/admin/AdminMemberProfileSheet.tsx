@@ -136,9 +136,22 @@ export function AdminMemberProfileSheet({
     const load = async () => {
       setTicketsLoading(true);
       try {
-        const { data } = await supabase.from('tickets')
+        // Canonical event activity: attendance_credentials via the member's
+        // people row (email bridge), replacing the legacy tickets read.
+        const email = member.email?.trim().toLowerCase();
+        if (!email) { setTickets([]); return; }
+        const { data: personRows } = await supabase
+          .from('people')
+          .select('id')
+          .eq('email_lower', email)
+          .limit(1);
+        const person = personRows?.[0];
+        if (!person) { setTickets([]); return; }
+        const { data } = await supabase
+          .from('attendance_credentials')
           .select('id, status, checked_in_at, created_at, events(id, title, start_time)')
-          .eq('user_id', member.id)
+          .eq('person_id', person.id)
+          .in('status', ['active', 'used'])
           .order('created_at', { ascending: false })
           .limit(20);
         if (data) setTickets(data as unknown as Ticket[]);
