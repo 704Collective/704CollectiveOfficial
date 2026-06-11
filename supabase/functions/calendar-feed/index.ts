@@ -124,26 +124,42 @@ function generateICS(events: Event[], calendarName: string): string {
   return ics.join("\r\n");
 }
 
-// Legacy behavior: only events the member has a non-cancelled ticket for, future only.
+// RSVP feed: events this member holds an active/used attendance credential for,
+// future only. Canonical source is attendance_credentials (bridged profiles -> people
+// by email), replacing the legacy tickets-table read.
 async function fetchRsvpEvents(
   supabase: SupabaseClient,
-  profileId: string,
+  profileEmail: string | null,
 ): Promise<Event[] | { error: string }> {
-  const { data: ticketRows, error: ticketErr } = await supabase
-    .from("tickets")
-    .select("event_id")
-    .eq("user_id", profileId)
-    .neq("status", "cancelled");
+  if (!profileEmail) return [];
 
-  if (ticketErr) {
-    console.error("Calendar tickets query:", ticketErr);
+  const { data: person, error: personErr } = await supabase
+    .from("people")
+    .select("id")
+    .eq("email_lower", profileEmail.toLowerCase())
+    .maybeSingle();
+
+  if (personErr) {
+    console.error("Calendar people query:", personErr);
+    return { error: "Server error" };
+  }
+  if (!person) return [];
+
+  const { data: credRows, error: credErr } = await supabase
+    .from("attendance_credentials")
+    .select("event_id")
+    .eq("person_id", person.id)
+    .in("status", ["active", "used"]);
+
+  if (credErr) {
+    console.error("Calendar credentials query:", credErr);
     return { error: "Server error" };
   }
 
   const eventIds = [
     ...new Set(
-      (ticketRows ?? [])
-        .map((t: { event_id: string | null }) => t.event_id)
+      (credRows ?? [])
+        .map((c: { event_id: string | null }) => c.event_id)
         .filter((id): id is string => typeof id === "string" && id.length > 0),
     ),
   ];
@@ -266,7 +282,7 @@ serve(async (req) => {
     // Validate token; pull member_type for scope authorization.
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id, subscription_status, member_type")
+      .select("id, email, subscription_status, member_type")
       .eq("calendar_token", token)
       .is("deleted_at", null)
       .single();
@@ -295,7 +311,7 @@ serve(async (req) => {
     console.log(`[calendar-feed] scope=${scope} tier=${memberType ?? "unknown"}`);
 
     const result = scope === "rsvp_only"
-      ? await fetchRsvpEvents(supabase, profile.id)
+      ? await fetchRsvpEvents(supabase, (profile.email as string | null) ?? null)
       : await fetchScopeEvents(supabase, scope);
 
     if (!Array.isArray(result)) {
