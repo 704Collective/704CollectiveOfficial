@@ -196,7 +196,7 @@ function ManageMembersModal({
   const fetchMembers = useCallback(async () => {
     const { data } = await supabase
       .from('hub_members')
-      .select('user_id, joined_at, profile:profiles(id, full_name, avatar_url, title)')
+      .select('user_id, joined_at, profile:profiles!hub_members_user_id_fkey(id, full_name, avatar_url, title)')
       .eq('hub_id', hub.id)
       .order('joined_at', { ascending: true });
     setMembers((data ?? []) as unknown as HubMember[]);
