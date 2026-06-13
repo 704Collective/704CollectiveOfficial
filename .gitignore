@@ -46,3 +46,22 @@ next-env.d.ts
 
 .vercel
 .env*.local
+
+# build + audit artifacts
+build-output*.txt
+*.tmp
+*_audit_scan.txt
+*_preview.html
+homepage-dump.txt
+notif_tables.txt
+# one-off patch/utility scripts (keep source in src/ and supabase/)
+/fix_*.py
+/patch_*.py
+/write_*.py
+# data dumps
+/all_uids.json
+/gm_dates.json
+/groupme_notifs.json
+/openapi_spec.json
+/response_body.json
+/test_notifs.json
