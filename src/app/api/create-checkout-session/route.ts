@@ -1,14 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
 import Stripe from 'stripe';
 import { createRateLimiter } from '@/lib/upstash';
-import { getRequestIp } from '@/lib/getRequestIp';
 import { recordRateLimit429 } from '@/lib/rateLimitMetrics';
 
 const limiter = createRateLimiter('create-checkout-session', 10);
 
+function buildSupabase(cookieStore: Awaited<ReturnType<typeof cookies>>) {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            /* Route Handler cookie edge cases */
+          }
+        },
+      },
+    }
+  );
+}
+
 export async function POST(request: NextRequest) {
-  const ip = getRequestIp(request);
-  const { success } = await limiter.limit(ip);
+  const cookieStore = await cookies();
+  const supabase = buildSupabase(cookieStore);
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { success } = await limiter.limit(user.id);
 
   if (!success) {
     await recordRateLimit429(request, '/api/create-checkout-session');
@@ -41,6 +73,9 @@ export async function POST(request: NextRequest) {
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
       return_url: `${origin}/welcome?session_id={CHECKOUT_SESSION_ID}`,
+      customer_email: user.email,
+      client_reference_id: user.id,
+      metadata: { user_id: user.id, source: 'join_checkout' },
     });
 
     return NextResponse.json({ clientSecret: session.client_secret });

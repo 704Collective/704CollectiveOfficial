@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { loadStripe } from '@stripe/stripe-js';
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from '@stripe/react-stripe-js';
 import Nav from '@/components/Nav';
@@ -9,11 +10,29 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { SOCIAL_TIER } from '@/lib/pricing';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
+import { supabase } from '@/integrations/supabase/client';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 export default function CheckoutPage() {
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  // Password-first enforcement: the embedded checkout requires an account, so
+  // logged-out visitors (e.g. from emailed /join/checkout links) go create one.
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled) return;
+      if (!session) {
+        router.replace('/signup');
+        return;
+      }
+      setAuthChecked(true);
+    });
+    return () => { cancelled = true; };
+  }, [router]);
 
   const fetchClientSecret = useCallback(async () => {
     const res = await fetch('/api/create-checkout-session', { method: 'POST' });
@@ -24,6 +43,21 @@ export default function CheckoutPage() {
     }
     return data.clientSecret;
   }, []);
+
+  // Don't mount the checkout (which immediately requests a session) until the
+  // auth check has passed; logged-out visitors are redirected above.
+  if (!authChecked) {
+    return (
+      <>
+        <Nav />
+        <main
+          id="main-content"
+          style={{ paddingTop: '64px', minHeight: '100vh', backgroundColor: '#000000' }}
+        />
+        <Footer />
+      </>
+    );
+  }
 
   return (
     <>
