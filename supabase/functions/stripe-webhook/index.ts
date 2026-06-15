@@ -704,7 +704,7 @@ async function handleCheckoutCompleted(
             .from("ambassador_referrals")
             .insert({
               ambassador_id: ambRow.id,
-              referred_user_id: userId,
+              referred_profile_id: userId,
               referred_email: customerEmail,
               referred_full_name: customerName || null,
               tier: ambassadorTierFromMeta,
@@ -714,7 +714,7 @@ async function handleCheckoutCompleted(
               abuse_flags: flags,
               stripe_subscription_id: typeof session.subscription === "string" ? session.subscription : null,
               stripe_session_id: session.id,
-              signed_up_at: new Date().toISOString(),
+              referred_at: new Date().toISOString(),
               payout_status: "pending",
             })
             .select("id")
