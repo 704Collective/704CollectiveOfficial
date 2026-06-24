@@ -40,7 +40,9 @@ export default function SignupPage() {
     };
     clearGhostSession();
   }, []);
+
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(false);
 
   // Form fields
   const [firstName, setFirstName] = useState('');
@@ -50,7 +52,44 @@ export default function SignupPage() {
   const [password, setPassword]   = useState('');
   const [showPartnerBanner, setShowPartnerBanner] = useState(true);
 
-  // ── Step 1: Create account ──────────────────────────────────────
+  // --- Auto-detect email confirmation while on the verify screen ---
+  // With "Confirm email" ON, signUp returns no session. A session only
+  // appears once the user clicks the confirmation link in this browser.
+  // We listen for that (including clicks in another tab, via storage sync)
+  // and also poll as a backstop, then advance automatically. No fake button.
+  useEffect(() => {
+    if (step !== 'verify') return;
+
+    let cancelled = false;
+
+    const advanceIfConfirmed = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!cancelled && session?.user?.email_confirmed_at) {
+        setStep('choice');
+      }
+    };
+
+    // Check immediately in case confirmation already happened.
+    advanceIfConfirmed();
+
+    // Fires when a session appears in this browser (this tab or another tab).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!cancelled && session?.user?.email_confirmed_at) {
+        setStep('choice');
+      }
+    });
+
+    // Backstop poll in case the cross-tab storage event is missed.
+    const interval = setInterval(advanceIfConfirmed, 4000);
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+      clearInterval(interval);
+    };
+  }, [step]);
+
+  // --- Step 1: Create account ---
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim() || !password.trim()) {
@@ -131,11 +170,7 @@ export default function SignupPage() {
     }
   };
 
-  // ── Step 2: After email verified, show choice ───────────────────
-  // This is shown after user clicks the email link and comes back
-  // For the signup flow we show verify screen, then choice on next visit
-  // But we also show choice directly if they are already verified
-
+  // --- After email verified, show choice ---
   const handlePayNow = () => {
     router.push('/join/checkout');
   };
@@ -155,7 +190,23 @@ export default function SignupPage() {
     }
   };
 
-  // ── Verify screen ───────────────────────────────────────────────
+  // Honest manual fallback on the verify screen: only advances if a real
+  // confirmed session exists; otherwise tells the user it's not detected yet.
+  const handleManualContinue = async () => {
+    setChecking(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.email_confirmed_at) {
+        setStep('choice');
+      } else {
+        toast.error('We haven\'t detected your confirmation yet. Click the link in the email we sent (in this browser), then try again.');
+      }
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  // --- Verify screen ---
   if (step === 'verify') {
     return (
       <div className="min-h-screen bg-background flex flex-col">
@@ -172,9 +223,15 @@ export default function SignupPage() {
               <h1 className="text-2xl font-semibold text-foreground mb-2">Check your email</h1>
               <p className="text-muted-foreground text-sm leading-relaxed">
                 We sent a confirmation link to <strong className="text-foreground">{email}</strong>.
-                Click the link to verify your account, then come back here to complete your signup.
+                Click the link to verify your account. This page will continue automatically once you do.
               </p>
             </div>
+
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Waiting for you to confirm...</span>
+            </div>
+
             <p className="text-xs text-muted-foreground">
               Didn't get it? Check your spam folder or{' '}
               <button
@@ -188,12 +245,17 @@ export default function SignupPage() {
                 resend the email
               </button>
             </p>
+
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => setStep('choice')}
+              onClick={handleManualContinue}
+              disabled={checking}
             >
-              I've verified my email - continue
+              {checking
+                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Checking...</>
+                : "I've confirmed - continue"
+              }
             </Button>
           </div>
         </div>
@@ -202,7 +264,7 @@ export default function SignupPage() {
     );
   }
 
-  // ── Choice screen ───────────────────────────────────────────────
+  // --- Choice screen ---
   if (step === 'choice') {
     return (
       <div className="min-h-screen bg-background flex flex-col">
@@ -273,7 +335,7 @@ export default function SignupPage() {
     );
   }
 
-  // ── Step 1: Signup form ─────────────────────────────────────────
+  // --- Step 1: Signup form ---
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {showPartnerBanner && (
