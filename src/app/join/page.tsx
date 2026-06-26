@@ -330,8 +330,9 @@ function JoinInner() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {/* Full Name */}
                   <div>
-                    <label style={labelStyle}>Full Name <span style={{ color: '#C6A664' }}>*</span></label>
+                    <label htmlFor="join-full-name" style={labelStyle}>Full Name <span style={{ color: '#C6A664' }}>*</span></label>
                     <input
+                      id="join-full-name"
                       type="text"
                       maxLength={100}
                       value={fullName}
@@ -343,8 +344,9 @@ function JoinInner() {
 
                   {/* Email */}
                   <div>
-                    <label style={labelStyle}>Email <span style={{ color: '#C6A664' }}>*</span></label>
+                    <label htmlFor="join-email" style={labelStyle}>Email <span style={{ color: '#C6A664' }}>*</span></label>
                     <input
+                      id="join-email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -355,8 +357,9 @@ function JoinInner() {
 
                   {/* Phone */}
                   <div>
-                    <label style={labelStyle}>Phone Number <span style={{ color: '#C6A664' }}>*</span></label>
+                    <label htmlFor="join-phone" style={labelStyle}>Phone Number <span style={{ color: '#C6A664' }}>*</span></label>
                     <input
+                      id="join-phone"
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(formatPhone(e.target.value))}
@@ -372,8 +375,9 @@ function JoinInner() {
 
                   {/* Password */}
                   <div>
-                    <label style={labelStyle}>Password <span style={{ color: '#C6A664' }}>*</span></label>
+                    <label htmlFor="join-password" style={labelStyle}>Password <span style={{ color: '#C6A664' }}>*</span></label>
                     <input
+                      id="join-password"
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -389,8 +393,9 @@ function JoinInner() {
 
                   {/* Confirm Password */}
                   <div>
-                    <label style={labelStyle}>Confirm Password <span style={{ color: '#C6A664' }}>*</span></label>
+                    <label htmlFor="join-confirm-password" style={labelStyle}>Confirm Password <span style={{ color: '#C6A664' }}>*</span></label>
                     <input
+                      id="join-confirm-password"
                       type="password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
@@ -409,13 +414,14 @@ function JoinInner() {
                     <label style={labelStyle}>
                       What are you most looking for? <span style={{ color: '#C6A664' }}>*</span>
                     </label>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '2px' }}>
+                    <div role="radiogroup" aria-label="What are you most looking for?" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '2px' }}>
                       {GOAL_OPTIONS.map((opt) => {
                         const active = goal === opt.value;
                         return (
                           <button
                             key={opt.value}
                             type="button"
+                            aria-pressed={active}
                             onClick={() => setGoal(opt.value)}
                             style={{
                               padding: '8px 14px',
@@ -498,6 +504,7 @@ function JoinInner() {
                       <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
                         <input
                           type="text"
+                          aria-label="Referral code"
                           placeholder="Enter code"
                           value={referralCodeInput}
                           onChange={(e) => setReferralCodeInput(e.target.value.toUpperCase())}
