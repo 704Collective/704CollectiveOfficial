@@ -526,11 +526,13 @@ export default function Dashboard() {
                   </SectionErrorBoundary>
                 </div>
               )}
-              <SectionErrorBoundary>
-                <div className="card-elevated p-4 sm:p-5">
-                  <NotificationsFeed userId={user.id} />
-                </div>
-              </SectionErrorBoundary>
+              {subscriptionStatus !== 'canceled' && subscriptionStatus !== 'cancelled' && (
+                <SectionErrorBoundary>
+                  <div className="card-elevated p-4 sm:p-5">
+                    <NotificationsFeed userId={user.id} />
+                  </div>
+                </SectionErrorBoundary>
+              )}
             </div>
           </div>
         )}
