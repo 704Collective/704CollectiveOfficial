@@ -14,6 +14,7 @@ import {
 import {
   Calendar,
   DollarSign,
+  Gift,
   Users,
   UserPlus,
   Clock,
@@ -55,6 +56,7 @@ export interface DashboardSnapshot {
   recentMembers: Array<{ full_name: string | null; email: string; member_type: string | null; created_at: string }>;
   eventsToday: number;
   eventsThisWeek: number;
+  guestPassesUsed: number;
 }
 
 async function fetchFinancials(): Promise<FinancialsPayload | null> {
@@ -112,6 +114,7 @@ async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
     upcomingList,
     weekUpcomingEvents,
     pastDueQ,
+    guestPassesUsedQ,
   ] = await Promise.all([
     supabase.from('events').select('*', { count: 'exact', head: true })
       .gte('start_time', sod.toISOString())
@@ -155,6 +158,7 @@ async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
       .from('profiles')
       .select('*', { count: 'exact', head: true })
       .eq('subscription_status', 'past_due'),
+    supabase.from('attendance_credentials').select('*', { count: 'exact', head: true }).eq('credential_type', 'guest_pass').eq('status', 'used'),
   ]);
 
   const upcoming = (upcomingList.data || []) as { id: string; title: string; start_time: string }[];
@@ -207,6 +211,7 @@ async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
     recentMembers: (recentList.data || []) as DashboardSnapshot['recentMembers'],
     eventsToday: todayEv.count || 0,
     eventsThisWeek: weekEv.count || 0,
+    guestPassesUsed: guestPassesUsedQ?.count || 0,
   };
 }
 
@@ -474,6 +479,11 @@ export function AdminOverviewTab({
           <span className="text-green-400 font-bold tabular-nums">+{data.newMembersWeek} new</span>
           <span className="text-muted-foreground">·</span>
           <span className="text-destructive font-bold tabular-nums">-{data.canceledMembersWeek} canceled</span>
+        </div>
+        <div className="flex items-center gap-2 sm:flex-1 sm:justify-center">
+          <Gift className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden />
+          <span className="text-muted-foreground">Guest passes used:</span>
+          <span className="font-bold text-foreground tabular-nums">{data.guestPassesUsed}</span>
         </div>
       </div>
 
