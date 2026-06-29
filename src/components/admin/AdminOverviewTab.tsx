@@ -243,6 +243,17 @@ export function AdminOverviewTab({
     retry: 1,
   });
 
+  const { data: trustedCounts } = useQuery({
+    queryKey: ['admin-member-counts-rpc'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_member_counts');
+      if (error) return null;
+      return Array.isArray(data) ? data[0] : data;
+    },
+    staleTime: STALE_TIME,
+    retry: 1,
+  });
+
   const mrr = financialsData ? Math.round(financialsData.mrr.total) : null;
   const fin30 = financialsData?.revenue.last30.total ?? null;
   const fin60 = financialsData?.revenue.last60.total ?? null;
@@ -285,6 +296,12 @@ export function AdminOverviewTab({
 
   const momUp = momPercent != null && momPercent >= 0;
   const momDown = momPercent != null && momPercent < 0;
+
+  const activeCount = trustedCounts?.active_members ?? data.activeMembers;
+  const payingCount = trustedCounts?.paying_members ?? data.payingMembers;
+  const compedCount = trustedCounts != null
+    ? (trustedCounts.coupon_comped ?? 0) + (trustedCounts.override_comped ?? 0)
+    : data.compedMembers;
 
   return (
     <div className="space-y-8">
@@ -422,9 +439,9 @@ export function AdminOverviewTab({
             <p className="text-xs uppercase tracking-wider text-muted-foreground">MEMBERS</p>
             <Users className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden />
           </div>
-          <p className="text-3xl font-bold tabular-nums">{data.activeMembers}</p>
+          <p className="text-3xl font-bold tabular-nums">{activeCount}</p>
           <p className="text-xs text-muted-foreground mt-1">
-            {data.payingMembers} paying · {data.compedMembers} comp&apos;d
+            {payingCount} paying · {compedCount} comp&apos;d
           </p>
           <p className="mt-3 text-sm inline-flex items-center gap-1.5 text-green-400 font-semibold">
             <UserPlus className="w-4 h-4 shrink-0" aria-hidden />
