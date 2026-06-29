@@ -106,7 +106,7 @@ function useUnreadNotificationCount(userId: string | undefined): number {
         .from('notifications')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId)
-        .eq('is_dismissed', false);
+        .eq('is_read', false);
       setCount(c ?? 0);
     };
 

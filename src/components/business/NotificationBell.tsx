@@ -111,6 +111,30 @@ export function NotificationBell() {
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
   };
 
+  const markVisibleAsSeen = async () => {
+    let unreadIds: string[] = [];
+    setNotifications(prev => {
+      unreadIds = prev.filter(n => !n.is_read).map(n => n.id);
+      if (unreadIds.length === 0) return prev;
+      return prev.map(n =>
+        unreadIds.includes(n.id) ? { ...n, is_read: true } : n
+      );
+    });
+    if (unreadIds.length === 0) return;
+    await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .in('id', unreadIds);
+  };
+
+  const handleToggleOpen = () => {
+    setOpen(v => {
+      const next = !v;
+      if (next) void markVisibleAsSeen();
+      return next;
+    });
+  };
+
   const getIcon = (type: string) => {
     switch (type) {
       case 'new_message':   return <MessageSquare className="w-4 h-4" style={{ color: '#C6A664' }} />;
@@ -126,7 +150,7 @@ export function NotificationBell() {
     <div ref={dropdownRef} style={{ position: 'relative' }}>
       {/* Bell button */}
       <button
-        onClick={() => setOpen(v => !v)}
+        onClick={handleToggleOpen}
         style={{
           position: 'relative',
           width: '36px', height: '36px', borderRadius: '8px',
