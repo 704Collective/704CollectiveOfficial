@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 
 const supabase = createClient();
@@ -197,13 +197,8 @@ export function useUpcomingEvents() {
 }
 
 // ─── Notifications ───────────────────────────────────────────────────────────
-// Mark-as-read runs ONCE per session using a ref, not on every cache refresh.
-
-const markedReadSessions = new Set<string>();
 
 export function useNotifications(userId: string) {
-  const queryClient = useQueryClient();
-
   return useQuery({
     queryKey: ['notifications', userId],
     queryFn: async () => {
@@ -215,26 +210,7 @@ export function useNotifications(userId: string) {
         .limit(10);
 
       if (error) throw error;
-      const notifications = data ?? [];
-
-      // Only mark as read once per session, not on every refetch
-      if (!markedReadSessions.has(userId)) {
-        const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
-        if (unreadIds.length > 0) {
-          await supabase
-            .from('notifications')
-            .update({ is_read: true })
-            .in('id', unreadIds);
-          // Update cache to reflect read status without refetching
-          queryClient.setQueryData(
-            ['notifications', userId],
-            notifications.map(n => ({ ...n, is_read: true }))
-          );
-        }
-        markedReadSessions.add(userId);
-      }
-
-      return notifications;
+      return data ?? [];
     },
     staleTime: 2 * 60 * 1000,
     enabled: !!userId,

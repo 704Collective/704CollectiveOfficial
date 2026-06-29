@@ -67,7 +67,7 @@ export function NotificationDropdown({ user }: NotificationDropdownProps) {
       .limit(50);
     const rows = (data ?? []) as AppNotification[];
     setNotifications(rows);
-    setUnreadCount(rows.filter(n => !n.is_dismissed).length);
+    setUnreadCount(rows.filter(n => !n.is_read).length);
   };
 
   // Load on mount + realtime subscription
@@ -109,17 +109,17 @@ export function NotificationDropdown({ user }: NotificationDropdownProps) {
   const markVisibleAsSeen = async () => {
     let unreadIds: string[] = [];
     setNotifications(prev => {
-      unreadIds = prev.filter(n => !n.is_dismissed).map(n => n.id);
+      unreadIds = prev.filter(n => !n.is_read).map(n => n.id);
       if (unreadIds.length === 0) return prev;
       return prev.map(n =>
-        unreadIds.includes(n.id) ? { ...n, is_dismissed: true, is_read: true } : n
+        unreadIds.includes(n.id) ? { ...n, is_read: true } : n
       );
     });
     setUnreadCount(0);
     if (unreadIds.length === 0) return;
     await supabase
       .from('notifications')
-      .update({ is_dismissed: true, is_read: true })
+      .update({ is_read: true })
       .in('id', unreadIds);
   };
 
