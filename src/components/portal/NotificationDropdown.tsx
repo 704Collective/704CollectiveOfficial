@@ -106,6 +106,28 @@ export function NotificationDropdown({ user }: NotificationDropdownProps) {
     setUnreadCount(0);
   };
 
+  const markVisibleAsSeen = async () => {
+    let unreadIds: string[] = [];
+    setNotifications(prev => {
+      unreadIds = prev.filter(n => !n.is_dismissed).map(n => n.id);
+      if (unreadIds.length === 0) return prev;
+      return prev.map(n =>
+        unreadIds.includes(n.id) ? { ...n, is_dismissed: true, is_read: true } : n
+      );
+    });
+    setUnreadCount(0);
+    if (unreadIds.length === 0) return;
+    await supabase
+      .from('notifications')
+      .update({ is_dismissed: true, is_read: true })
+      .in('id', unreadIds);
+  };
+
+  const handleOpenChange = (next: boolean) => {
+    if (next) void markVisibleAsSeen();
+    setOpen(next);
+  };
+
   const handleClick = async (n: AppNotification) => {
     if (!n.is_dismissed) {
       await supabase.from('notifications').update({ is_dismissed: true, is_read: true }).eq('id', n.id);
@@ -120,7 +142,7 @@ export function NotificationDropdown({ user }: NotificationDropdownProps) {
   const dismissedNotifications = notifications.filter(n => n.is_dismissed);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
