@@ -150,7 +150,7 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
           {linkBtn('/admin/crm/campaigns', Mail, 'Email')}
           {disabledBtn(MessageSquare, 'Texting', 'Coming soon - SMS via Twilio')}
           {sectionBtn({ icon: QrCode, label: 'Check-in', section: 'checkin' })}
-          {linkBtn('/admin/crm', BarChart2, 'CRM')}
+          {/* HIDDEN 2026-06 — CRM/Partner hide-pass, restore later: {linkBtn('/admin/crm', BarChart2, 'CRM')} */}
         </div>
 
         {/* ── Group 2 - BUSINESS ── */}
@@ -160,9 +160,9 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
             {linkBtn('/admin/hubs',       Layers,        'Hubs')}
             {linkBtn('/admin/referrals',  GitPullRequest, 'Referrals')}
             {isAdminOrSuper && linkBtn('/admin/ambassadors', Sparkles, 'Ambassadors')}
-            {isAdminOrSuper && linkBtn('/admin/partners', Handshake, 'Partners')}
-            {isAdminOrSuper && sectionBtn({ icon: ClipboardList, label: 'Inquiries', section: 'inquiries' })}
-            {isAdminOrSuper && linkBtn('/admin/invoices', Receipt,   'Invoices')}
+            {/* HIDDEN 2026-06 — CRM/Partner hide-pass, restore later: {isAdminOrSuper && linkBtn('/admin/partners', Handshake, 'Partners')} */}
+            {/* HIDDEN 2026-06 — CRM/Partner hide-pass, restore later: {isAdminOrSuper && sectionBtn({ icon: ClipboardList, label: 'Inquiries', section: 'inquiries' })} */}
+            {/* HIDDEN 2026-06 — CRM/Partner hide-pass, restore later: {isAdminOrSuper && linkBtn('/admin/invoices', Receipt,   'Invoices')} */}
           </div>
         </div>
 

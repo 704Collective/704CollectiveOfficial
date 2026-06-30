@@ -19,8 +19,9 @@ const STATIC_PAGES: SearchResult[] = [
   { id: 'events', title: 'Events', subtitle: 'Manage events', category: 'page', href: '/admin?section=events', icon: Calendar },
   { id: 'blog', title: 'Blog', subtitle: 'Manage blog posts', category: 'page', href: '/admin/blog', icon: FileText },
   { id: 'settings', title: 'Settings', subtitle: 'Platform settings', category: 'page', href: '/admin/settings', icon: Settings },
-  { id: 'invoices', title: 'Invoices', subtitle: 'Partner invoices', category: 'page', href: '/admin/invoices', icon: Settings },
-  { id: 'partners', title: 'Partners', subtitle: 'Manage partners', category: 'page', href: '/admin/partners', icon: Users },
+  // HIDDEN 2026-06 — CRM/Partner hide-pass, restore later:
+  // { id: 'invoices', title: 'Invoices', subtitle: 'Partner invoices', category: 'page', href: '/admin/invoices', icon: Settings },
+  // { id: 'partners', title: 'Partners', subtitle: 'Manage partners', category: 'page', href: '/admin/partners', icon: Users },
   { id: 'hubs', title: 'Hubs', subtitle: 'Manage hubs', category: 'page', href: '/admin/hubs', icon: Settings },
   { id: 'referrals', title: 'Referrals', subtitle: 'View referrals', category: 'page', href: '/admin/referrals', icon: Settings },
   { id: 'inbox', title: 'Team Inbox', subtitle: 'Admin messaging', category: 'page', href: '/admin/inbox', icon: Settings },
@@ -28,8 +29,9 @@ const STATIC_PAGES: SearchResult[] = [
   { id: 'import', title: 'Import Members', subtitle: 'Bulk import', category: 'page', href: '/admin/import-members', icon: Users },
   { id: 'security', title: 'User Security', subtitle: 'Account security', category: 'page', href: '/admin/user-security', icon: Settings },
   { id: 'applications', title: 'Applications', subtitle: 'Business applications', category: 'page', href: '/admin?section=applications', icon: Users },
-  { id: 'inquiries', title: 'Inquiries', subtitle: 'Partner inquiries', category: 'page', href: '/admin?section=inquiries', icon: Users },
-  { id: 'crm', title: 'CRM', subtitle: 'CRM overview', category: 'page', href: '/admin/crm', icon: Settings },
+  // HIDDEN 2026-06 — CRM/Partner hide-pass, restore later:
+  // { id: 'inquiries', title: 'Inquiries', subtitle: 'Partner inquiries', category: 'page', href: '/admin?section=inquiries', icon: Users },
+  // { id: 'crm', title: 'CRM', subtitle: 'CRM overview', category: 'page', href: '/admin/crm', icon: Settings },
 ];
 
 export function AdminGlobalSearch() {

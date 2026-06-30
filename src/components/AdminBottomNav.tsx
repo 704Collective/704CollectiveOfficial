@@ -23,7 +23,7 @@ const NAV_ITEMS: NavItem[] = [
   { icon: LayoutDashboard, label: 'Overview', section: 'dashboard'      },
   { icon: Calendar,        label: 'Events',   section: 'events'         },
   { icon: Users,           label: 'Members',  href: '/admin/contacts'   },
-  { icon: Layers,          label: 'CRM',      href: '/admin/crm'        },
+  // HIDDEN 2026-06 — CRM/Partner hide-pass, restore later: { icon: Layers, label: 'CRM', href: '/admin/crm' },
   { icon: ScanLine,        label: 'Check-in', section: 'checkin'        },
   { icon: CheckSquare,     label: 'Tasks',    section: 'tasks'          },
   { icon: Settings,        label: 'Settings', href: '/admin/settings'   },

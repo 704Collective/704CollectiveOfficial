@@ -19,7 +19,6 @@ import {
   UserPlus,
   Clock,
   Settings as SettingsIcon,
-  Mail,
   ArrowRight,
   ArrowUpRight,
   ArrowDownRight,
@@ -524,12 +523,6 @@ export function AdminOverviewTab({
           >
             <UserPlus className="w-4 h-4 shrink-0" />
             Add Contact
-          </Button>
-          <Button type="button" variant="outline" className="rounded-full h-11 gap-2" asChild>
-            <Link href="/admin/crm/campaigns/new">
-              <Mail className="w-4 h-4 shrink-0" />
-              Compose Email
-            </Link>
           </Button>
           <Button type="button" variant="outline" className="rounded-full h-11 gap-2" asChild>
             <Link href="/admin/settings">

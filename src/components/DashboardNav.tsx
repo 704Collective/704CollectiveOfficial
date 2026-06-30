@@ -223,15 +223,16 @@ function buildNavEntries(opts: {
     });
   }
 
-  if (opts.canSeePartnerDirectory) {
-    items.push({
-      kind: 'link',
-      key: 'partners',
-      href: '/dashboard/partners',
-      label: 'Partners',
-      icon: Handshake,
-    });
-  }
+  // HIDDEN 2026-06 — CRM/Partner hide-pass, restore later:
+  // if (opts.canSeePartnerDirectory) {
+  //   items.push({
+  //     kind: 'link',
+  //     key: 'partners',
+  //     href: '/dashboard/partners',
+  //     label: 'Partners',
+  //     icon: Handshake,
+  //   });
+  // }
 
   items.push({
     kind: 'link',
