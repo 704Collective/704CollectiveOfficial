@@ -28,6 +28,7 @@ interface Profile {
   cancel_at_period_end?: boolean;
   calendar_token?: string;
   phone?: string | null;
+  partner_status?: string | null;
 }
 
 interface AuthState {
@@ -41,6 +42,7 @@ interface AuthState {
   isBusinessMember: boolean;
   isBanned: boolean;
   isPendingApplication: boolean;
+  isApprovedPartner: boolean;
 }
 
 interface AuthContextValue extends AuthState {
@@ -58,6 +60,7 @@ const LOGGED_OUT_STATE: AuthState = {
   user: null, profile: null, session: null, loading: false,
   isAdmin: false, isSuperAdmin: false, isActiveMember: false,
   isBusinessMember: false, isBanned: false, isPendingApplication: false,
+  isApprovedPartner: false,
 };
 
 function deriveFlags(profile: any) {
@@ -71,7 +74,10 @@ function deriveFlags(profile: any) {
   const isBusinessMember = profile?.member_type === 'business';
   const isBanned = profile?.banned === true;
   const isPendingApplication = profile?.application_status === 'pending';
-  return { isAdmin, isSuperAdmin, isActiveMember, isBusinessMember, isBanned, isPendingApplication };
+  const isApprovedPartner =
+    profile?.member_type === 'partner' &&
+    (profile as any)?.partner_status === 'approved';
+  return { isAdmin, isSuperAdmin, isActiveMember, isBusinessMember, isBanned, isPendingApplication, isApprovedPartner };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

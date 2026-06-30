@@ -43,7 +43,7 @@ const MARKETING_ROUTES = ['/'];
 export function Header() {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, profile, isAdmin, isActiveMember, isSuperAdmin } = useAuth();
+  const { user, profile, isAdmin, isActiveMember, isSuperAdmin, isApprovedPartner } = useAuth();
   const supabaseRef = useRef(createClient());
   const [windowDashboard, setWindowDashboard] = useState(false);
 
@@ -490,7 +490,7 @@ export function Header() {
           )}
 
           {/* Notification bell - always visible for logged-in dashboard pages; desktop-only elsewhere */}
-          {user && (isActiveMember || isAdmin || isSuperAdmin) && (
+          {user && (isActiveMember || isAdmin || isSuperAdmin || isApprovedPartner) && (
             <div className={cn(dashboardMemberHeader ? 'flex' : 'hidden md:flex')}>
               <NotificationDropdown user={user} />
             </div>
