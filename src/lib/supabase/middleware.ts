@@ -13,6 +13,24 @@ const ALWAYS_PUBLIC = [
   '/sitemap.xml',
 ];
 
+const HIDE_CRM_AND_PARTNERS = true; // reversible: set false to restore CRM + Partner Portal access
+
+function getHiddenSectionRedirect(pathname: string, search: string): string | null {
+  // CARVE-OUT FIRST: keep the live email/campaigns tool reachable
+  if (pathname === '/admin/crm/campaigns' || pathname.startsWith('/admin/crm/campaigns/')) return null;
+  // MEMBER / PARTNER-PORTAL → /dashboard
+  if (pathname === '/partner-portal' || pathname.startsWith('/partner-portal/')) return '/dashboard';
+  if (pathname === '/dashboard/partners' || pathname.startsWith('/dashboard/partners/')) return '/dashboard';
+  // ADMIN CRM/PARTNER → /admin
+  if (pathname === '/admin/crm' || pathname.startsWith('/admin/crm/')) return '/admin';
+  if (pathname === '/admin/partners' || pathname.startsWith('/admin/partners/')) return '/admin';
+  if (pathname === '/admin/invoices' || pathname.startsWith('/admin/invoices/')) return '/admin';
+  if (pathname === '/partners/admin' || pathname.startsWith('/partners/admin/')) return '/admin';
+  // INQUIRIES oddball (query param on /admin) — option B: block it too
+  if (pathname === '/admin' && new URLSearchParams(search).get('section') === 'inquiries') return '/admin';
+  return null;
+}
+
 export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
@@ -143,6 +161,19 @@ export async function updateSession(request: NextRequest) {
   // ── 3. Exempt routes — no further checks ───────────────────────────────────
   if (isOpenAuthRoute || isSignupRoute) {
     return supabaseResponse;
+  }
+
+  if (HIDE_CRM_AND_PARTNERS) {
+    const target = getHiddenSectionRedirect(path, request.nextUrl.search);
+    const stripInquiriesQuery =
+      path === '/admin' &&
+      new URLSearchParams(request.nextUrl.search).get('section') === 'inquiries';
+    if (target && (path !== target || stripInquiriesQuery)) {
+      const url = request.nextUrl.clone();
+      url.pathname = target;
+      url.search = ''; // strip any query (e.g. ?section=inquiries) so the redirect target is clean
+      return NextResponse.redirect(url);
+    }
   }
 
   // ── 4. Logged-in protected route checks ────────────────────────────────────
