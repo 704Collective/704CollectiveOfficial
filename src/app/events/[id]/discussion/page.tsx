@@ -16,6 +16,7 @@ import { getInitialsAvatarStyle } from '@/lib/avatarInitialsColor';
 import { DASHBOARD_MAIN } from '@/lib/dashboard-layout';
 import { cn } from '@/lib/utils';
 import { EventDiscussionComposer, type NewDiscussionPost } from '@/components/portal/EventDiscussionComposer';
+import { EventDiscussionLikeButton } from '@/components/portal/EventDiscussionLikeButton';
 
 interface DiscussionEvent { id: string; title: string | null; image_url: string | null; start_time: string | null; category: string | null; }
 interface Author { id: string; full_name: string | null; avatar_url: string | null; }
@@ -250,7 +251,13 @@ export default function EventDiscussionPage() {
                           </div>
                         )}
                         <div className="flex items-center gap-4 mt-3 ml-[52px] text-muted-foreground">
-                          <span className="inline-flex items-center gap-1.5 text-sm"><Heart className={cn('w-4 h-4', postLikedByMe(post.id) && 'fill-rose-500 text-rose-500')} /> {postLikeCount(post.id) || ''}</span>
+                          <EventDiscussionLikeButton
+                            eventId={eventId}
+                            postId={post.id}
+                            userId={user!.id}
+                            initialCount={postLikeCount(post.id)}
+                            initialLiked={postLikedByMe(post.id)}
+                          />
                           <span className="inline-flex items-center gap-1.5 text-sm"><MessageCircle className="w-4 h-4" /> {comments.length || ''}</span>
                         </div>
                         {comments.length > 0 && (
