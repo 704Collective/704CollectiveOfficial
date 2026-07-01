@@ -15,6 +15,7 @@ import { resolvePersonId } from '@/lib/resolvePersonId';
 import { getInitialsAvatarStyle } from '@/lib/avatarInitialsColor';
 import { DASHBOARD_MAIN } from '@/lib/dashboard-layout';
 import { cn } from '@/lib/utils';
+import { EventDiscussionComposer, type NewDiscussionPost } from '@/components/portal/EventDiscussionComposer';
 
 interface DiscussionEvent { id: string; title: string | null; image_url: string | null; start_time: string | null; category: string | null; }
 interface Author { id: string; full_name: string | null; avatar_url: string | null; }
@@ -134,6 +135,8 @@ export default function EventDiscussionPage() {
   const postLikedByMe = (postId: string) => !!user && likes.some(l => l.post_id === postId && l.user_id === user.id);
   const commentLikeCount = (commentId: string) => likes.filter(l => l.comment_id === commentId).length;
 
+  const handlePosted = (post: NewDiscussionPost) => setPosts(prev => [...prev, post as unknown as typeof prev[number]]);
+
   if (access === 'loading' || authLoading) {
     return (
       <>
@@ -191,6 +194,12 @@ export default function EventDiscussionPage() {
                   </div>
                 </div>
               </div>
+
+              <EventDiscussionComposer
+                eventId={eventId}
+                author={{ id: user!.id, full_name: profile?.full_name ?? null, avatar_url: profile?.avatar_url ?? null }}
+                onPosted={handlePosted}
+              />
 
               {photos.length > 0 && (
                 <div className="card-elevated rounded-2xl p-4 mb-4">
