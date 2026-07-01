@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { EventMentionTextarea } from './EventMentionTextarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getInitialsAvatarStyle } from '@/lib/avatarInitialsColor';
@@ -36,7 +36,6 @@ export function EventDiscussionComposer({
 }) {
   const [content, setContent] = useState('');
   const [posting, setPosting] = useState(false);
-  const ref = useRef<HTMLTextAreaElement>(null);
 
   const submit = async () => {
     const text = content.trim();
@@ -66,13 +65,13 @@ export function EventDiscussionComposer({
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <Textarea
-            ref={ref}
+          <EventMentionTextarea
+            eventId={eventId}
             value={content}
-            onChange={e => setContent(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit(); }}
-            placeholder="Share something with the group going… (⌘↵ to post)"
-            className="resize-none min-h-[72px] text-sm w-full"
+            onChange={setContent}
+            onSubmit={submit}
+            placeholder="Share something with the group going…  Type @ to tag someone going. (⌘↵ to post)"
+            className="min-h-[72px] text-sm w-full"
             rows={3}
           />
           <div className="flex justify-end mt-2">
