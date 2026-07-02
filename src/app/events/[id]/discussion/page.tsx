@@ -19,6 +19,8 @@ import { EventDiscussionComposer, type NewDiscussionPost } from '@/components/po
 import { EventDiscussionLikeButton } from '@/components/portal/EventDiscussionLikeButton';
 import { EventDiscussionComments, type DiscComment } from '@/components/portal/EventDiscussionComments';
 
+const isVideoUrl = (u: string) => /\.(mp4|mov|webm)(\?|$)/i.test(u);
+
 interface DiscussionEvent { id: string; title: string | null; image_url: string | null; start_time: string | null; category: string | null; }
 interface Author { id: string; full_name: string | null; avatar_url: string | null; }
 interface DPost { id: string; author_id: string; content: string | null; image_urls: string[] | null; created_at: string; author: Author | null; }
@@ -214,7 +216,11 @@ export default function EventDiscussionPage() {
                   <div className="flex gap-2">
                     {photos.slice(0, 5).map((p) => (
                       <div key={p.id} className="flex-1 aspect-square rounded-lg overflow-hidden border border-border relative">
-                        <Image src={p.thumbnail_url || p.url} alt="" fill className="object-cover" unoptimized sizes="120px" />
+                        {isVideoUrl(p.thumbnail_url || p.url) ? (
+                          <video src={p.url} muted preload="metadata" playsInline className="w-full h-full object-cover bg-black" />
+                        ) : (
+                          <Image src={p.thumbnail_url || p.url} alt="" fill className="object-cover" unoptimized sizes="120px" />
+                        )}
                       </div>
                     ))}
                   </div>
@@ -248,8 +254,21 @@ export default function EventDiscussionPage() {
                         </div>
                         {post.content && <p className="text-sm leading-relaxed whitespace-pre-wrap break-words mt-2 pl-[52px]">{post.content}</p>}
                         {imgs.length > 0 && (
-                          <div className="mt-3 ml-[52px] rounded-xl overflow-hidden border border-border max-w-[420px] relative aspect-video">
-                            <Image src={imgs[0]} alt="" fill className="object-cover" unoptimized sizes="420px" />
+                          <div className={`mt-3 ml-[52px] grid gap-2 max-w-[460px] ${imgs.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                            {imgs.slice(0, 4).map((u, i) => (
+                              <div key={u + i} className="rounded-xl overflow-hidden border border-border relative">
+                                {isVideoUrl(u) ? (
+                                  <video src={u} controls preload="metadata" playsInline className="w-full aspect-video object-cover bg-black" />
+                                ) : (
+                                  <div className="relative aspect-video">
+                                    <Image src={u} alt="" fill className="object-cover" unoptimized sizes="230px" />
+                                    {imgs.length > 4 && i === 3 && (
+                                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-lg font-bold">+{imgs.length - 3}</div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
                           </div>
                         )}
                         <div className="flex items-center gap-4 mt-3 ml-[52px] text-muted-foreground">
