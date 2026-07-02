@@ -56,24 +56,43 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   let dryRun = false;
   let testRecipient = "";
+  let targetEventId: string | null = null;
   try {
     const body = await req.json();
     dryRun = body?.dry_run === true;
     const t = body?.test_recipient_email;
     if (typeof t === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t.trim())) testRecipient = t.trim();
+    const e = body?.event_id;
+    if (typeof e === "string" && e.trim()) targetEventId = e.trim();
   } catch { /* ignore */ }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
   const now = new Date();
   const horizon = new Date(now.getTime() + 120 * 3600 * 1000);
 
-  const { data: events, error: evErr } = await supabase
-    .from("events")
-    .select("id, title, image_url, start_time, location_name")
-    .eq("is_published", true)
-    .is("discussion_opened_at", null)
-    .gt("start_time", now.toISOString())
-    .lte("start_time", horizon.toISOString());
+  let events: { id: string; title: string; image_url: string | null; start_time: string; location_name: string | null }[] | null = null;
+  let evErr: { message: string } | null = null;
+  if (targetEventId && (testRecipient || dryRun)) {
+    const { data: one, error } = await supabase
+      .from("events")
+      .select("id, title, image_url, start_time, location_name")
+      .eq("id", targetEventId)
+      .eq("is_published", true)
+      .maybeSingle();
+    evErr = error;
+    events = one ? [one] : [];
+  } else {
+    if (targetEventId) log("event_id ignored — requires test_recipient_email or dry_run", { eventId: targetEventId });
+    const result = await supabase
+      .from("events")
+      .select("id, title, image_url, start_time, location_name")
+      .eq("is_published", true)
+      .is("discussion_opened_at", null)
+      .gt("start_time", now.toISOString())
+      .lte("start_time", horizon.toISOString());
+    evErr = result.error;
+    events = result.data;
+  }
   if (evErr) {
     log("events query failed", { error: evErr.message });
     return new Response(JSON.stringify({ error: evErr.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
