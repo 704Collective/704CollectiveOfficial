@@ -15,7 +15,9 @@ const CSP = [
     "https://*.stripe.network",
     "https://api.resend.com",
     "https://immortal-alien-83842.upstash.io",
+    "https://*.r2.cloudflarestorage.com",
   ].join(" "),
+  "media-src 'self' blob: https://pub-0fbe8b8a307445918223e9bf8cfedb8f.r2.dev",
   "frame-src https://js.stripe.com https://*.stripe.com https://hooks.stripe.com",
   "object-src 'none'",
 ].join("; ");
