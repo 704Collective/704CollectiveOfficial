@@ -17,6 +17,7 @@ import { DASHBOARD_MAIN } from '@/lib/dashboard-layout';
 import { cn } from '@/lib/utils';
 import { EventDiscussionComposer, type NewDiscussionPost } from '@/components/portal/EventDiscussionComposer';
 import { EventDiscussionLikeButton } from '@/components/portal/EventDiscussionLikeButton';
+import { EventDiscussionComments, type DiscComment } from '@/components/portal/EventDiscussionComments';
 
 interface DiscussionEvent { id: string; title: string | null; image_url: string | null; start_time: string | null; category: string | null; }
 interface Author { id: string; full_name: string | null; avatar_url: string | null; }
@@ -137,6 +138,7 @@ export default function EventDiscussionPage() {
   const commentLikeCount = (commentId: string) => likes.filter(l => l.comment_id === commentId).length;
 
   const handlePosted = (post: NewDiscussionPost) => setPosts(prev => [...prev, post as unknown as typeof prev[number]]);
+  const handleCommentAdded = (c: DiscComment) => setCommentsByPost(prev => ({ ...prev, [c.post_id]: [ ...(prev[c.post_id] ?? []), c as unknown as DComment ] }));
 
   if (access === 'loading' || authLoading) {
     return (
@@ -260,30 +262,13 @@ export default function EventDiscussionPage() {
                           />
                           <span className="inline-flex items-center gap-1.5 text-sm"><MessageCircle className="w-4 h-4" /> {comments.length || ''}</span>
                         </div>
-                        {comments.length > 0 && (
-                          <div className="mt-3 ml-[52px] pl-4 border-l-2 border-border space-y-2.5">
-                            {comments.map(c => (
-                              <div key={c.id} className="flex gap-2.5">
-                                <Avatar className="w-7 h-7 shrink-0 mt-0.5">
-                                  <AvatarImage src={c.author?.avatar_url ?? undefined} />
-                                  <AvatarFallback className="text-[10px] font-semibold" style={getInitialsAvatarStyle(c.author?.id ?? c.author_id, { businessPortal: false })}>
-                                    {initials(c.author?.full_name)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="min-w-0 flex-1">
-                                  <div>
-                                    <span className="text-[13px] font-bold">{c.author?.full_name ?? 'Member'}</span>
-                                    <span className="text-[11px] text-muted-foreground ml-2">{formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}</span>
-                                  </div>
-                                  <p className="text-[13.5px] leading-relaxed whitespace-pre-wrap break-words mt-0.5">{c.content}</p>
-                                  {commentLikeCount(c.id) > 0 && (
-                                    <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5"><Heart className="w-3 h-3" /> {commentLikeCount(c.id)}</span>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        <EventDiscussionComments
+                          eventId={eventId}
+                          postId={post.id}
+                          comments={comments as unknown as DiscComment[]}
+                          currentUser={{ id: user!.id, full_name: profile?.full_name ?? null, avatar_url: profile?.avatar_url ?? null }}
+                          onCommentAdded={handleCommentAdded}
+                        />
                       </div>
                     );
                   })}
