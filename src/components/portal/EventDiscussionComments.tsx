@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getInitialsAvatarStyle } from '@/lib/avatarInitialsColor';
 import { EventMentionTextarea } from './EventMentionTextarea';
+import { notifyAfterDiscussionCommentCreated } from '@/app/actions/eventDiscussionNotifications';
 
 export interface DiscComment {
   id: string;
@@ -65,6 +66,7 @@ export function EventDiscussionComments({
       return;
     }
     onCommentAdded({ ...(data as unknown as DiscComment), author: currentUser });
+    void notifyAfterDiscussionCommentCreated((data as { id: string }).id);
     setValue('');
   };
 
@@ -80,6 +82,7 @@ export function EventDiscussionComments({
     setReplyPosting(false);
     if (error || !data) { toast.error(error?.message || 'Could not reply. Please try again.'); return; }
     onCommentAdded({ ...(data as unknown as DiscComment), author: currentUser });
+    void notifyAfterDiscussionCommentCreated((data as { id: string }).id);
     setReplyValue('');
     setReplyingTo(null);
   };

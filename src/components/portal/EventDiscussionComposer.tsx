@@ -8,6 +8,7 @@ import { EventMentionTextarea } from './EventMentionTextarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getInitialsAvatarStyle } from '@/lib/avatarInitialsColor';
+import { notifyAfterDiscussionPostCreated } from '@/app/actions/eventDiscussionNotifications';
 
 interface ComposerAuthor { id: string; full_name: string | null; avatar_url: string | null; }
 
@@ -52,6 +53,7 @@ export function EventDiscussionComposer({
       return;
     }
     onPosted({ ...(data as unknown as NewDiscussionPost), author });
+    void notifyAfterDiscussionPostCreated((data as { id: string }).id);
     setContent('');
   };
 
