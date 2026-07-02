@@ -55,7 +55,7 @@ async function findEventMentioned(
 
 async function insertBells(
   admin: ReturnType<typeof serviceClient>,
-  rows: { user_id: string; notification_type: string; action_url: string; message: string }[]
+  rows: { user_id: string; type: string; title: string; notification_type: string; action_url: string; message: string }[]
 ) {
   for (const batch of chunk(rows, 100)) {
     await admin.from('notifications').insert(batch);
@@ -93,6 +93,8 @@ export async function notifyAfterDiscussionPostCreated(postId: string) {
   const actionUrl = `/events/${post.event_id}/discussion`;
   await insertBells(admin, targets.map(m => ({
     user_id: m.id,
+    type: 'mention',
+    title: 'Mentioned in event discussion',
     notification_type: 'mention',
     action_url: actionUrl,
     message: `${authorName} mentioned you in an event discussion`,
@@ -119,7 +121,7 @@ export async function notifyAfterDiscussionCommentCreated(commentId: string) {
   const authorName = authorProf?.full_name?.trim() || 'Someone';
   const actionUrl = `/events/${comment.event_id}/discussion`;
 
-  const bellRows: { user_id: string; notification_type: string; action_url: string; message: string }[] = [];
+  const bellRows: { user_id: string; type: string; title: string; notification_type: string; action_url: string; message: string }[] = [];
   const belled = new Set<string>();
 
   // Mentions
@@ -133,7 +135,7 @@ export async function notifyAfterDiscussionCommentCreated(commentId: string) {
       for (const m of targets) {
         if (!belled.has(m.id)) {
           belled.add(m.id);
-          bellRows.push({ user_id: m.id, notification_type: 'mention', action_url: actionUrl, message: `${authorName} mentioned you in an event discussion` });
+          bellRows.push({ user_id: m.id, type: 'mention', title: 'Mentioned in event discussion', notification_type: 'mention', action_url: actionUrl, message: `${authorName} mentioned you in an event discussion` });
         }
       }
     }
@@ -149,7 +151,7 @@ export async function notifyAfterDiscussionCommentCreated(commentId: string) {
     const parentAuthor = parent?.author_id;
     if (parentAuthor && parentAuthor !== user.id && !belled.has(parentAuthor)) {
       belled.add(parentAuthor);
-      bellRows.push({ user_id: parentAuthor, notification_type: 'discussion_reply', action_url: actionUrl, message: `${authorName} replied to your comment in an event discussion` });
+      bellRows.push({ user_id: parentAuthor, type: 'discussion_reply', title: 'New reply in event discussion', notification_type: 'discussion_reply', action_url: actionUrl, message: `${authorName} replied to your comment in an event discussion` });
     }
   }
 
