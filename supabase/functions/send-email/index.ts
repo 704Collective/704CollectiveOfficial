@@ -1713,6 +1713,35 @@ function renewalLapseTemplate(data: { name?: string; isBusiness?: boolean; origi
   };
 }
 
+function discussionOpenTemplate(data: {
+  name: string; eventTitle: string; eventStartTime: string;
+  locationName?: string | null; discussionUrl: string;
+}): { subject: string; html: string } {
+  const name       = escapeHtml(data.name || "there");
+  const eventTitle = escapeHtml(data.eventTitle || "your event");
+  const formatted  = fmtDateTimeET(data.eventStartTime);
+  return {
+    subject: `The discussion for ${data.eventTitle} is open!`,
+    html: baseLayout({
+      title: "Event discussion is open",
+      previewText: `Everyone going to ${data.eventTitle} is talking — hop in!`,
+      content: `
+<h2 style="margin:0 0 16px;font-size:22px;font-weight:700;color:${BRAND.accent};">The conversation has started</h2>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Hey ${name}, the discussion for <strong style="color:${BRAND.text};">${eventTitle}</strong> just opened. Say hi, coordinate plans, and get hyped with everyone going.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:rgba(255,255,255,0.04);border-radius:8px;border:1px solid ${BRAND.border};">
+<tr><td style="padding:20px 24px;">
+<table role="presentation" cellpadding="0" cellspacing="0">
+<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">&#128197;&#160;&#160;${formatted}</td></tr>
+${data.locationName ? `<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">&#128205;&#160;&#160;${escapeHtml(String(data.locationName))}</td></tr>` : ""}
+</table>
+</td></tr>
+</table>
+${ctaButton("Hop into the discussion", data.discussionUrl)}
+<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">You're getting this because you RSVP'd. See you there! — 704 Collective</p>`,
+    }),
+  };
+}
+
 function getTemplate(template: string, data: Record<string, unknown>): { subject: string; html: string } {
   switch (template) {
     case "welcome-back":
@@ -1959,6 +1988,12 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
       return renewalReminder1Template(data as { name?: string; isBusiness?: boolean; renewDate?: string; origin?: string });
     case "renewal-lapse":
       return renewalLapseTemplate(data as { name?: string; isBusiness?: boolean; origin?: string });
+
+    case "discussion-open":
+      return discussionOpenTemplate(data as {
+        name: string; eventTitle: string; eventStartTime: string;
+        locationName?: string | null; discussionUrl: string;
+      });
 
     default:
       throw new Error(`Unknown email template: ${template}`);
