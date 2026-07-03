@@ -145,6 +145,19 @@ serve(async (req) => {
     crypto.getRandomValues(tokenBytes);
     const token = "C-" + Array.from(tokenBytes).map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 10).toUpperCase();
 
+    // Capacity backstop (DB trigger trg_enforce_event_capacity also enforces atomically)
+    const { data: eventCapRow } = await supabaseClient.from("events").select("capacity").eq("id", event_id).single();
+    if (eventCapRow?.capacity != null) {
+      const { data: capCount } = await supabaseClient.rpc("get_event_attendance_count", { p_event_id: event_id });
+      if (typeof capCount === "number" && capCount >= eventCapRow.capacity) {
+        logStep("SOLD OUT after payment — manual refund needed", { paymentId, capCount });
+        return new Response(
+          JSON.stringify({ error: "This event sold out during checkout. Your payment will be refunded.", needs_refund: true, payment_intent: paymentId }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     logStep("Creating attendance credential", { personId, event_id, token });
 
     const { data: credential, error: insertError } = await supabaseClient
@@ -165,6 +178,13 @@ serve(async (req) => {
       .single();
 
     if (insertError) {
+      if (insertError.message?.includes("EVENT_AT_CAPACITY")) {
+        logStep("SOLD OUT after payment — manual refund needed", { paymentId, trigger: true });
+        return new Response(
+          JSON.stringify({ error: "This event sold out during checkout. Your payment will be refunded.", needs_refund: true, payment_intent: paymentId }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       // 23505 = unique violation (one_active_credential_per_person_per_event)
       if ((insertError as { code?: string }).code === "23505") {
         console.warn("[VERIFY-TICKET-PAYMENT] Duplicate active credential detected", {

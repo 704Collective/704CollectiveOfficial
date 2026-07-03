@@ -44,7 +44,7 @@ serve(async (req) => {
     // columns for old events that haven't been migrated yet.
     const { data: eventData, error: eventError } = await supabaseAdmin
       .from("events")
-      .select("required_tier, price_cents, member_price_cents, ticket_price_deprecated, social_member_price_deprecated, business_member_price_deprecated, access_type_deprecated")
+      .select("capacity, required_tier, price_cents, member_price_cents, ticket_price_deprecated, social_member_price_deprecated, business_member_price_deprecated, access_type_deprecated")
       .eq("id", eventId)
       .single();
 
@@ -82,6 +82,18 @@ serve(async (req) => {
         JSON.stringify({ error: "This event is not ticketed - please RSVP for free." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Capacity guard: never open a checkout session for a full event
+    if ((eventData as any).capacity != null) {
+      const { data: capCount } = await supabaseAdmin.rpc("get_event_attendance_count", { p_event_id: eventId });
+      if (typeof capCount === "number" && capCount >= (eventData as any).capacity) {
+        logStep("Blocked: event at capacity", { capCount, capacity: (eventData as any).capacity });
+        return new Response(
+          JSON.stringify({ error: "This event is sold out." }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // --- Auth: getClaims (optional — supports guest checkout) ---
