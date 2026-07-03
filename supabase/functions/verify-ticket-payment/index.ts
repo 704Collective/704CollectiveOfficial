@@ -148,7 +148,11 @@ serve(async (req) => {
     // Capacity backstop (DB trigger trg_enforce_event_capacity also enforces atomically)
     const { data: eventCapRow } = await supabaseClient.from("events").select("capacity").eq("id", event_id).single();
     if (eventCapRow?.capacity != null) {
-      const { data: capCount } = await supabaseClient.rpc("get_event_attendance_count", { p_event_id: event_id });
+      const { count: capCount } = await supabaseClient
+        .from("attendance_credentials")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", event_id)
+        .in("status", ["active", "used"]);
       if (typeof capCount === "number" && capCount >= eventCapRow.capacity) {
         logStep("SOLD OUT after payment — manual refund needed", { paymentId, capCount });
         return new Response(

@@ -86,7 +86,11 @@ serve(async (req) => {
 
     // Capacity guard: never open a checkout session for a full event
     if ((eventData as any).capacity != null) {
-      const { data: capCount } = await supabaseAdmin.rpc("get_event_attendance_count", { p_event_id: eventId });
+      const { count: capCount } = await supabaseAdmin
+        .from("attendance_credentials")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", eventId)
+        .in("status", ["active", "used"]);
       if (typeof capCount === "number" && capCount >= (eventData as any).capacity) {
         logStep("Blocked: event at capacity", { capCount, capacity: (eventData as any).capacity });
         return new Response(

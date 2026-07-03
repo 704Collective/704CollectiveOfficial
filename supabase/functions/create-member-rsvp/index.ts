@@ -141,8 +141,11 @@ serve(async (req) => {
     // Counts active|used credentials via the SECURITY DEFINER RPC. Not atomic;
     // a rare double-submit race could land one seat over - accepted trade-off.
     if (event.capacity != null) {
-      const { data: countData, error: countError } = await adminClient
-        .rpc("get_event_attendance_count", { p_event_id: event_id });
+      const { count: countData, error: countError } = await adminClient
+        .from("attendance_credentials")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", event_id)
+        .in("status", ["active", "used"]);
       if (countError) {
         log("capacity count failed", { error: countError.message });
         return new Response(JSON.stringify({ error: "Could not verify capacity" }), {
