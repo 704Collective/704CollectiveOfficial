@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { format, formatDistanceToNow } from 'date-fns';
-import { ArrowLeft, Lock, Calendar, Heart, MessageCircle, Camera } from 'lucide-react';
+import { ArrowLeft, Lock, Calendar, Heart, MessageCircle } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { DashboardNav } from '@/components/DashboardNav';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { EventDiscussionComposer, type NewDiscussionPost } from '@/components/portal/EventDiscussionComposer';
 import { EventDiscussionLikeButton } from '@/components/portal/EventDiscussionLikeButton';
 import { EventDiscussionComments, type DiscComment } from '@/components/portal/EventDiscussionComments';
+import { EventDiscussionGallery } from '@/components/portal/EventDiscussionGallery';
 
 const isVideoUrl = (u: string) => /\.(mp4|mov|webm)(\?|$)/i.test(u);
 
@@ -26,7 +27,6 @@ interface Author { id: string; full_name: string | null; avatar_url: string | nu
 interface DPost { id: string; author_id: string; content: string | null; image_urls: string[] | null; created_at: string; author: Author | null; }
 interface DComment { id: string; post_id: string; parent_comment_id: string | null; author_id: string; content: string; created_at: string; author: Author | null; }
 interface DLike { post_id: string | null; comment_id: string | null; user_id: string; }
-interface DPhoto { id: string; url: string; thumbnail_url: string | null; uploader_id: string; }
 
 type AccessState = 'loading' | 'full' | 'teaser' | 'denied';
 
@@ -50,7 +50,6 @@ export default function EventDiscussionPage() {
   const [posts, setPosts] = useState<DPost[]>([]);
   const [commentsByPost, setCommentsByPost] = useState<Record<string, DComment[]>>({});
   const [likes, setLikes] = useState<DLike[]>([]);
-  const [photos, setPhotos] = useState<DPhoto[]>([]);
   const [loadingData, setLoadingData] = useState(false);
 
   // Determine access — mirrors can_view_event_discussion exactly (active-member rule + resolvePersonId RSVP bridge).
@@ -111,7 +110,7 @@ export default function EventDiscussionPage() {
     let cancelled = false;
     setLoadingData(true);
     (async () => {
-      const [postsRes, commentsRes, likesRes, photosRes] = await Promise.all([
+      const [postsRes, commentsRes, likesRes] = await Promise.all([
         supabase.from('event_discussion_posts')
           .select('id, author_id, content, image_urls, created_at, author:profiles(id, full_name, avatar_url)')
           .eq('event_id', eventId).is('deleted_at', null).order('created_at', { ascending: true }),
@@ -119,9 +118,6 @@ export default function EventDiscussionPage() {
           .select('id, post_id, parent_comment_id, author_id, content, created_at, author:profiles(id, full_name, avatar_url)')
           .eq('event_id', eventId).is('deleted_at', null).order('created_at', { ascending: true }),
         supabase.from('event_discussion_likes').select('post_id, comment_id, user_id').eq('event_id', eventId),
-        supabase.from('event_discussion_photos')
-          .select('id, url, thumbnail_url, uploader_id')
-          .eq('event_id', eventId).is('deleted_at', null).order('created_at', { ascending: false }).limit(6),
       ]);
       if (cancelled) return;
       setPosts(((postsRes.data ?? []) as any[]).map(normalizeAuthor) as DPost[]);
@@ -129,7 +125,6 @@ export default function EventDiscussionPage() {
       ((commentsRes.data ?? []) as any[]).map(normalizeAuthor).forEach((c: DComment) => { (grouped[c.post_id] ??= []).push(c); });
       setCommentsByPost(grouped);
       setLikes((likesRes.data ?? []) as DLike[]);
-      setPhotos((photosRes.data ?? []) as DPhoto[]);
       setLoadingData(false);
     })();
     return () => { cancelled = true; };
@@ -206,26 +201,7 @@ export default function EventDiscussionPage() {
                 onPosted={handlePosted}
               />
 
-              {photos.length > 0 && (
-                <div className="card-elevated rounded-2xl p-4 mb-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-xs tracking-wide uppercase text-muted-foreground font-bold inline-flex items-center gap-2">
-                      <Camera className="w-3.5 h-3.5" /> Gallery · {photos.length} photos
-                    </h3>
-                  </div>
-                  <div className="flex gap-2">
-                    {photos.slice(0, 5).map((p) => (
-                      <div key={p.id} className="flex-1 aspect-square rounded-lg overflow-hidden border border-border relative">
-                        {isVideoUrl(p.thumbnail_url || p.url) ? (
-                          <video src={p.url} muted preload="metadata" playsInline className="w-full h-full object-cover bg-black" />
-                        ) : (
-                          <Image src={p.thumbnail_url || p.url} alt="" fill className="object-cover" unoptimized sizes="120px" />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <EventDiscussionGallery eventId={eventId} userId={user!.id} isAdmin={isAdmin} />
 
               {loadingData ? (
                 <div className="card-elevated rounded-2xl p-8 text-center text-sm text-muted-foreground">Loading discussion…</div>
