@@ -117,7 +117,7 @@ export function EventDiscussionComposer({
         event_id: eventId,
         author_id: author.id,
         content: text || null,
-        image_urls: uploaded.length ? uploaded.map(u => u.publicUrl) : null,
+        image_urls: uploaded.map(u => u.publicUrl),
       })
       .select('id, author_id, content, image_urls, created_at')
       .single();
