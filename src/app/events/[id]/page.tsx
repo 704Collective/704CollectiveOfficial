@@ -512,6 +512,19 @@ export default function EventDetail() {
         <Link href="/events" style={{ ...linkBtn, backgroundColor: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)', marginBottom: '8px' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><Calendar style={{ width: '13px', height: '13px' }} /> Browse Other Events</span></Link>
         <Link href="/dashboard" style={{ ...linkBtn, color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '8px' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><Ticket style={{ width: '13px', height: '13px' }} /> View My Tickets</span></Link>
         <button onClick={handleCancelRSVP} disabled={isCancelling} style={dangerBtn}><X style={{ width: '14px', height: '14px' }} />{isCancelling ? 'Cancelling...' : 'Cancel RSVP'}</button>
+        {(() => {
+          const opensAtMs = new Date(event.start_time).getTime() - 120 * 60 * 60 * 1000;
+          const discussionOpen = Boolean((event as unknown as { discussion_opened_at?: string | null }).discussion_opened_at) || Date.now() >= opensAtMs;
+          return discussionOpen ? (
+            <Link href={`/events/${event.id}/discussion`} style={{ display: 'block', width: '100%', marginTop: '10px', padding: '13px 24px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, backgroundColor: 'rgba(198,166,100,0.12)', color: '#C6A664', border: '1px solid rgba(198,166,100,0.35)', textAlign: 'center', textDecoration: 'none' }}>
+              Join the Discussion
+            </Link>
+          ) : (
+            <div style={{ width: '100%', marginTop: '10px', padding: '13px 24px', borderRadius: '10px', fontSize: '0.8125rem', fontWeight: 500, backgroundColor: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.35)', border: '1px solid rgba(255,255,255,0.06)', textAlign: 'center', cursor: 'default' }}>
+              Discussion opens 5 days before the event
+            </div>
+          );
+        })()}
       </div>
     );
     if (waitlistPosition) return (
