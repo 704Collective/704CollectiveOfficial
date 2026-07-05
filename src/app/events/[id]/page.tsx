@@ -499,6 +499,9 @@ export default function EventDetail() {
         <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>You attended this one.</h3>
         <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>{checkedInAt ? `Checked in ${format(new Date(checkedInAt), 'MMMM d, yyyy')}` : `Event on ${format(eventDate, 'MMMM d, yyyy')}`}</p>
         <Link href="/events" style={{ ...linkBtn, backgroundColor: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)', marginBottom: '8px' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><Calendar style={{ width: '13px', height: '13px' }} /> Browse Other Events</span></Link>
+        <Link href={`/events/${event.id}/discussion`} style={{ display: 'block', width: '100%', marginTop: '12px', padding: '13px 24px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, backgroundColor: 'rgba(198,166,100,0.12)', color: '#C6A664', border: '1px solid rgba(198,166,100,0.35)', textAlign: 'center', textDecoration: 'none' }}>
+          View the Discussion
+        </Link>
       </div>
     );
     if (hasTicket) return (
