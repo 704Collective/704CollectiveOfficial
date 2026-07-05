@@ -196,6 +196,31 @@ export function AddMembersToEventDialog({
         return { added: 0, skippedExisting, missingMembers };
       }
 
+      // Capacity pre-check before inserting - abort entirely rather than
+      // partially fill the event (the DB trigger remains the atomic guard).
+      // Direct table count, NOT the get_event_attendance_count RPC - it
+      // returns 0 for some callers (same pattern as commit fd862cc).
+      const { data: eventRow, error: capErr } = await supabase
+        .from('events')
+        .select('capacity')
+        .eq('id', eventId)
+        .single();
+      if (capErr) throw capErr;
+      const capacity = eventRow?.capacity as number | null;
+      if (capacity != null) {
+        const { count, error: cntErr } = await supabase
+          .from('attendance_credentials')
+          .select('id', { count: 'exact', head: true })
+          .eq('event_id', eventId)
+          .in('status', ['active', 'used']);
+        if (cntErr) throw cntErr;
+        const current = count ?? 0;
+        if (current + inserts.length > capacity) {
+          toast.error(`Only ${Math.max(0, capacity - current)} spot(s) left — you selected ${inserts.length}.`);
+          throw new Error('CAPACITY_PRECHECK_ABORT');
+        }
+      }
+
       // Insert, then verify the rows actually came back (RLS can silently
       // block writes without raising an error - never report success on zero rows).
       const { data: insertedRows, error: insErr } = await supabase
@@ -230,9 +255,13 @@ export function AddMembersToEventDialog({
       handleClose();
     },
     onError: (error: unknown) => {
-      console.error('[AddMembersToEventDialog] Insert failed', error);
       const message = error instanceof Error ? error.message : String(error);
-      if (message.includes('duplicate key') || message.includes('23505')) {
+      // Pre-check already showed its own toast - nothing more to report.
+      if (message.includes('CAPACITY_PRECHECK_ABORT')) return;
+      console.error('[AddMembersToEventDialog] Insert failed', error);
+      if (message.includes('EVENT_AT_CAPACITY')) {
+        toast.error('Event is at capacity — no members were added.');
+      } else if (message.includes('duplicate key') || message.includes('23505')) {
         toast.error('Some of these members are already on the event');
       } else if (message.includes('row-level security') || message.includes('42501')) {
         toast.error('Permission denied. Check admin role.');
