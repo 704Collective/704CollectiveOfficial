@@ -127,6 +127,8 @@ export async function notifyAfterFeedPostCreated(postId: string) {
     const actionUrl = `${feedPath(feedType)}?post=${postId}`;
     const notifRows = mentionTargets.map((m) => ({
       user_id: m.id,
+      type: 'mention',
+      title: 'Mentioned in a post',
       notification_type: 'mention',
       action_url: actionUrl,
       message: `${authorName} mentioned you in a post`,
@@ -178,6 +180,8 @@ export async function notifyAfterFeedPostCreated(postId: string) {
 
   const notifRows = ids.map((uid) => ({
     user_id: uid,
+    type: 'new_post',
+    title: feedType === 'social' ? 'New Social Feed announcement' : 'New Business Feed post',
     notification_type: 'new_post',
     action_url: actionUrl,
     message,
@@ -233,6 +237,8 @@ export async function notifyAfterFeedCommentCreated(commentId: string) {
   const actionUrl = `${feedPath(feedType)}?post=${comment.post_id}`;
   const notifRows = mentionTargets.map((m) => ({
     user_id: m.id,
+    type: 'mention',
+    title: 'Mentioned in a comment',
     notification_type: 'mention',
     action_url: actionUrl,
     message: `${authorName} mentioned you in a comment`,
@@ -287,6 +293,8 @@ export async function notifyAfterHubPostCreated(hubPostId: string, hubId: string
 
   const notifRows = targets.map((uid) => ({
     user_id: uid,
+    type: 'hub_post',
+    title: 'New hub activity',
     notification_type: 'hub_post',
     action_url: `/dashboard/hubs/${hubId}`,
     message,
