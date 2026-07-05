@@ -55,7 +55,7 @@ interface Participant {
 }
 
 interface LastMessage {
-  content: string | null;
+  body: string | null;
   created_at: string;
   sender_id: string;
 }
@@ -63,7 +63,7 @@ interface LastMessage {
 interface Conversation {
   id: string;
   type: 'direct' | 'group';
-  title: string | null;
+  name: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -75,7 +75,7 @@ interface Message {
   id: string;
   conversation_id: string;
   sender_id: string;
-  content: string | null;
+  body: string | null;
   image_urls: string[] | null;
   file_urls: string[] | null;
   file_names: string[] | null;
@@ -96,7 +96,7 @@ interface MemberSearchResult {
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 function getConversationName(conv: Conversation, currentUserId: string): string {
-  if (conv.type === 'group') return conv.title || 'Group Chat';
+  if (conv.type === 'group') return conv.name || 'Group Chat';
   const other = conv.participants.find((p) => p.user_id !== currentUserId);
   return other?.profile?.full_name || 'Unknown Member';
 }
@@ -170,9 +170,9 @@ function ConversationRow({
             </span>
           )}
         </div>
-        {conv.lastMessage?.content && (
+        {conv.lastMessage?.body && (
           <p className={`text-xs truncate mt-0.5 ${unread ? 'text-white/70' : 'text-white/40'}`}>
-            {conv.lastMessage.content}
+            {conv.lastMessage.body}
           </p>
         )}
         {conv.type === 'group' && (
@@ -244,7 +244,7 @@ function MessageBubble({
               : 'bg-[#2E2E2E] text-white/90 rounded-tl-sm'
           }`}
         >
-          {msg.content && <p className="whitespace-pre-wrap break-words">{msg.content}</p>}
+          {msg.body && <p className="whitespace-pre-wrap break-words">{msg.body}</p>}
           {msg.image_urls && msg.image_urls.length > 0 && (
             <div className="grid grid-cols-2 gap-1 mt-2">
               {msg.image_urls.map((url, i) => (
@@ -377,7 +377,7 @@ export function MessagingView({ initialDirectPeerId }: { initialDirectPeerId?: s
       const { data: lastMsgs } = ids.length
         ? await supabase
             .from('messages')
-            .select('conversation_id, content, created_at, sender_id')
+            .select('conversation_id, body, created_at, sender_id')
             .in('conversation_id', ids)
             .is('deleted_at', null)
             .order('created_at', { ascending: false })
@@ -583,14 +583,14 @@ export function MessagingView({ initialDirectPeerId }: { initialDirectPeerId?: s
 
   const sendMessage = useCallback(async () => {
     if (!draft.trim() || !selectedConvId || !user) return;
-    const content = draft.trim();
+    const body = draft.trim();
     setDraft('');
 
     if (editingMsg) {
       // Edit mode
       await supabase
         .from('messages')
-        .update({ content, is_edited: true, edited_at: new Date().toISOString() })
+        .update({ body, is_edited: true, edited_at: new Date().toISOString() })
         .eq('id', editingMsg.id);
       setEditingMsg(null);
       return;
@@ -603,7 +603,7 @@ export function MessagingView({ initialDirectPeerId }: { initialDirectPeerId?: s
         .insert({
           conversation_id: selectedConvId,
           sender_id: user.id,
-          content,
+          body,
         })
         .select(`*, sender:profiles(id, full_name, avatar_url)`)
         .single();
@@ -880,7 +880,7 @@ export function MessagingView({ initialDirectPeerId }: { initialDirectPeerId?: s
                       key={msg.id}
                       msg={msg}
                       isOwn={msg.sender_id === user.id}
-                      onEdit={(m) => { setEditingMsg(m); setDraft(m.content ?? ''); }}
+                      onEdit={(m) => { setEditingMsg(m); setDraft(m.body ?? ''); }}
                       onDelete={deleteMessage}
                     />
                   ))}
