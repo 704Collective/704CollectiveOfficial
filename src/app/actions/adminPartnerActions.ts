@@ -440,6 +440,8 @@ export async function postAdminInquiryReply(inquiryId: string, content: string):
 
   await gate.admin.from('notifications').insert({
     user_id: inq.partner_id,
+    type: 'inquiry_reply',
+    title: 'Reply to your inquiry',
     notification_type: 'inquiry_reply',
     action_url: '/partner-portal/inquiries',
     message: '704 Collective replied to your event inquiry',

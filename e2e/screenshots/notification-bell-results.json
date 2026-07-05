@@ -1,0 +1,111 @@
+[
+  {
+    "account": "socialtest",
+    "email": "socialtest@704collective.com",
+    "viewport": "desktop",
+    "pass": true,
+    "expectBell": true,
+    "notificationsButtonVisible": true,
+    "headerNotificationsVisible": true,
+    "finalUrl": "https://704collective.com/dashboard",
+    "loginMethod": "member-password",
+    "consoleErrors": [],
+    "error": null
+  },
+  {
+    "account": "socialtest",
+    "email": "socialtest@704collective.com",
+    "viewport": "mobile",
+    "pass": true,
+    "expectBell": true,
+    "notificationsButtonVisible": true,
+    "headerNotificationsVisible": true,
+    "finalUrl": "https://704collective.com/dashboard",
+    "loginMethod": "member-password",
+    "consoleErrors": [],
+    "error": null
+  },
+  {
+    "account": "adam-admin",
+    "email": "adam@cltbucketlist.com",
+    "viewport": "desktop",
+    "pass": true,
+    "expectBell": true,
+    "notificationsButtonVisible": true,
+    "headerNotificationsVisible": false,
+    "finalUrl": "https://704collective.com/admin",
+    "loginMethod": "magic-link",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 400 ()"
+    ],
+    "error": null
+  },
+  {
+    "account": "adam-admin",
+    "email": "adam@cltbucketlist.com",
+    "viewport": "mobile",
+    "pass": true,
+    "expectBell": true,
+    "notificationsButtonVisible": true,
+    "headerNotificationsVisible": false,
+    "finalUrl": "https://704collective.com/admin",
+    "loginMethod": "magic-link",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 400 ()",
+      "`DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.\n\nIf you want to hide the `DialogTitle`, you can wrap it with our VisuallyHidden component.\n\nFor more information, see https://radix-ui.com/primitives/docs/components/dialog"
+    ],
+    "error": null
+  },
+  {
+    "account": "partnertest",
+    "email": "partnertest@704collective.com",
+    "viewport": "desktop",
+    "pass": true,
+    "expectBell": true,
+    "notificationsButtonVisible": true,
+    "headerNotificationsVisible": true,
+    "finalUrl": "https://704collective.com/dashboard",
+    "loginMethod": "member-password",
+    "consoleErrors": [],
+    "error": null
+  },
+  {
+    "account": "partnertest",
+    "email": "partnertest@704collective.com",
+    "viewport": "mobile",
+    "pass": true,
+    "expectBell": true,
+    "notificationsButtonVisible": true,
+    "headerNotificationsVisible": true,
+    "finalUrl": "https://704collective.com/dashboard",
+    "loginMethod": "member-password",
+    "consoleErrors": [],
+    "error": null
+  },
+  {
+    "account": "nonmembertest",
+    "email": "nonmembertest@704collective.com",
+    "viewport": "desktop",
+    "pass": true,
+    "expectBell": false,
+    "notificationsButtonVisible": false,
+    "headerNotificationsVisible": false,
+    "finalUrl": "https://704collective.com/dashboard",
+    "loginMethod": "member-password",
+    "consoleErrors": [],
+    "error": null
+  },
+  {
+    "account": "nonmembertest",
+    "email": "nonmembertest@704collective.com",
+    "viewport": "mobile",
+    "pass": true,
+    "expectBell": false,
+    "notificationsButtonVisible": false,
+    "headerNotificationsVisible": false,
+    "finalUrl": "https://704collective.com/dashboard",
+    "loginMethod": "member-password",
+    "consoleErrors": [],
+    "error": null
+  }
+]

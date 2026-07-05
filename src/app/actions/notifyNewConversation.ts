@@ -32,6 +32,8 @@ export async function notifyNewConversation(params: NotifyParams) {
   await adminClient.from('notifications').insert(
     recipients.map((r) => ({
       user_id: r.id,
+      type: 'new_message',
+      title: 'New message',
       message: `${senderName} sent you a message`,
       notification_type: 'new_message',
       action_url: '/dashboard/messages',

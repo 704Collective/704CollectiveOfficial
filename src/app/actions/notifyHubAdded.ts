@@ -29,6 +29,8 @@ export async function notifyHubAdded(params: NotifyHubAddedParams) {
   // Insert notification row
   await adminClient.from('notifications').insert({
     user_id: recipient.id,
+    type: 'hub_added',
+    title: 'Added to a hub',
     message: `You were added to the hub: ${hubTitle}`,
     notification_type: 'hub_added',
     action_url: `/dashboard/hubs/${hubId}`,

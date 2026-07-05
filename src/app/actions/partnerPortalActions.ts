@@ -215,6 +215,8 @@ export async function submitPartnerEventInquiry(payload: {
   if (ids.length) {
     const rows = ids.map((uid) => ({
       user_id: uid,
+      type: 'new_inquiry',
+      title: 'New partner inquiry',
       notification_type: 'new_inquiry',
       action_url: '/admin',
       message: `${companyName} submitted a ${payload.inquiryType} inquiry (${eventLabel})`,
@@ -264,6 +266,8 @@ export async function postEventInquiryMessage(
       await admin.from('notifications').insert(
         ids.map((uid) => ({
           user_id: uid,
+          type: 'inquiry_message',
+          title: 'New inquiry message',
           notification_type: 'inquiry_message',
           action_url: '/admin',
           message: 'A partner replied on an event inquiry thread',
@@ -278,6 +282,8 @@ export async function postEventInquiryMessage(
       .maybeSingle();
     await admin.from('notifications').insert({
       user_id: inq.partner_id,
+      type: 'inquiry_reply',
+      title: 'Reply to your inquiry',
       notification_type: 'inquiry_reply',
       action_url: '/partner-portal/inquiries',
       message: '704 Collective replied to your event inquiry',
@@ -426,6 +432,8 @@ export async function postPartnerTeamThreadMessage(
       await admin.from('notifications').insert(
         bellIds.map((uid) => ({
           user_id: uid,
+          type: 'partner_team_message',
+          title: 'New partner team message',
           notification_type: 'partner_team_message',
           action_url: '/admin',
           message: 'A partner sent a message on the team thread',
@@ -483,6 +491,8 @@ export async function postPartnerTeamThreadMessage(
 
     await admin.from('notifications').insert({
       user_id: conv.partner_id,
+      type: 'partner_team_reply',
+      title: 'New team reply',
       notification_type: 'partner_team_reply',
       action_url: '/partner-portal/messages',
       message: '704 Collective replied on your team thread',
