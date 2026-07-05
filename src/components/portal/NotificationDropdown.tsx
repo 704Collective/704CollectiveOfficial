@@ -253,7 +253,7 @@ function NotificationRow({
       {!n.is_dismissed && (
         <button
           onClick={onDismiss}
-          className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 text-muted-foreground hover:text-foreground"
+          className="shrink-0 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity mt-0.5 text-muted-foreground hover:text-foreground"
           aria-label="Dismiss"
         >
           <X className="w-3.5 h-3.5" />

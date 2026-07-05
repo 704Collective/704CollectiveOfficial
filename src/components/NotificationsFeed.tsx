@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { Bell, Calendar, Megaphone, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +13,7 @@ interface NotificationsFeedProps {
 }
 
 export function NotificationsFeed({ userId }: NotificationsFeedProps) {
+  const router = useRouter();
   const { data: notifications = [], isLoading } = useNotifications(userId);
   const unreadCount = notifications.filter((n: any) => !n.is_read).length;
 
@@ -66,9 +68,10 @@ export function NotificationsFeed({ userId }: NotificationsFeedProps) {
           {(notifications as any[]).map((notification) => (
             <div
               key={notification.id}
+              onClick={notification.action_url ? () => router.push(notification.action_url) : undefined}
               className={`p-4 rounded-lg border transition-colors ${
                 notification.is_read ? 'border-border bg-background' : 'border-primary/20 bg-primary/5'
-              }`}
+              } ${notification.action_url ? 'cursor-pointer hover:bg-muted/40' : ''}`}
             >
               <div className="flex gap-3">
                 <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
@@ -82,7 +85,7 @@ export function NotificationsFeed({ userId }: NotificationsFeedProps) {
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{notification.message}</p>
-                  {notification.event_id && (
+                  {!notification.action_url && notification.event_id && (
                     <Link href={`/events/${notification.event_id}`} className="text-sm text-primary hover:underline mt-2 inline-block">
                       View event →
                     </Link>

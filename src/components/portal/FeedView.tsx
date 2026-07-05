@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FeedPost, type FeedPostData } from './FeedPost';
@@ -89,12 +89,16 @@ interface FeedViewProps {
   feedType: 'social' | 'business';
   currentUser: User;
   currentProfile: PostAuthor | null;
+  /** Post id from a notification deep-link (?post=) — scrolled to + flashed once loaded. */
+  highlightPostId?: string | null;
 }
 
-export function FeedView({ feedType, currentUser, currentProfile }: FeedViewProps) {
+export function FeedView({ feedType, currentUser, currentProfile, highlightPostId }: FeedViewProps) {
   const queryClient = useQueryClient();
   const queryKey = ['feed', feedType, currentUser.id];
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const [flashPostId, setFlashPostId] = useState<string | null>(null);
+  const highlightedOnce = useRef(false);
 
   const {
     data,
@@ -169,6 +173,20 @@ export function FeedView({ feedType, currentUser, currentProfile }: FeedViewProp
 
   const allPosts = data?.pages.flat() ?? [];
 
+  // Notification deep-link: scroll to + briefly flash the ?post= target if it's in the loaded list.
+  useEffect(() => {
+    if (!highlightPostId || highlightedOnce.current || isLoading) return;
+    if (!allPosts.some(p => p.id === highlightPostId)) return;
+    highlightedOnce.current = true;
+    const el = document.getElementById(`post-${highlightPostId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setFlashPostId(highlightPostId);
+    const timer = setTimeout(() => setFlashPostId(null), 2500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightPostId, isLoading, allPosts.length]);
+
   return (
     <div className="space-y-4 w-full min-w-0">
       <CreatePost
@@ -198,13 +216,22 @@ export function FeedView({ feedType, currentUser, currentProfile }: FeedViewProp
         <>
           <div className="space-y-4">
             {allPosts.map(post => (
-              <FeedPost
+              <div
                 key={post.id}
-                post={post}
-                currentUser={currentUser}
-                onDelete={handleDelete}
-                onEdit={handleEdit}
-              />
+                id={`post-${post.id}`}
+                className={
+                  flashPostId === post.id
+                    ? 'rounded-xl ring-2 ring-[#C6A664] bg-[#C6A664]/5 transition-all duration-500'
+                    : 'transition-all duration-500'
+                }
+              >
+                <FeedPost
+                  post={post}
+                  currentUser={currentUser}
+                  onDelete={handleDelete}
+                  onEdit={handleEdit}
+                />
+              </div>
             ))}
           </div>
 

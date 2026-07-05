@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Header } from '@/components/Header';
 import { DashboardNav } from '@/components/DashboardNav';
@@ -18,6 +18,7 @@ export default function BusinessFeedPage() {
   const router = useRouter();
   usePageTitle('Business Feed');
   const redirectToastShown = useRef(false);
+  const [highlightPostId, setHighlightPostId] = useState<string | null>(null);
 
   const canAccess = isBusinessMember || isAdmin || isSuperAdmin;
 
@@ -50,6 +51,9 @@ export default function BusinessFeedPage() {
 
       <main id="main-content" className={cn(DASHBOARD_MAIN, 'space-y-4')}>
         <h1 className="text-2xl font-semibold text-foreground">Business Feed</h1>
+        <Suspense fallback={null}>
+          <FeedHighlightFromQuery onPostId={setHighlightPostId} />
+        </Suspense>
         <SectionErrorBoundary>
           <FeedView
             feedType="business"
@@ -59,9 +63,18 @@ export default function BusinessFeedPage() {
               full_name: profile.full_name ?? null,
               avatar_url: (profile as any).avatar_url ?? null,
             } : null}
+            highlightPostId={highlightPostId}
           />
         </SectionErrorBoundary>
       </main>
     </div>
   );
+}
+
+/** Reads `?post=` in a Suspense-isolated subtree (Next.js useSearchParams CSR bailout). */
+function FeedHighlightFromQuery({ onPostId }: { onPostId: (id: string | null) => void }) {
+  const searchParams = useSearchParams();
+  const postId = searchParams.get('post');
+  useEffect(() => { onPostId(postId); }, [postId, onPostId]);
+  return null;
 }

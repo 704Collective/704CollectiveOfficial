@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { DashboardNav } from '@/components/DashboardNav';
 import { FeedView } from '@/components/portal/FeedView';
@@ -16,6 +16,7 @@ export default function SocialFeedPage() {
   const { user, profile, loading, isActiveMember, isAdmin, isSuperAdmin } = useAuth();
   const router = useRouter();
   usePageTitle('Social Feed');
+  const [highlightPostId, setHighlightPostId] = useState<string | null>(null);
 
   const memberType = profile?.member_type;
   const isSocialOrBusinessMember = memberType === 'social' || memberType === 'business';
@@ -42,6 +43,9 @@ export default function SocialFeedPage() {
 
       <main id="main-content" className={cn(DASHBOARD_MAIN, 'space-y-4')}>
         <h1 className="text-2xl font-semibold text-foreground">Social Feed</h1>
+        <Suspense fallback={null}>
+          <FeedHighlightFromQuery onPostId={setHighlightPostId} />
+        </Suspense>
         <SectionErrorBoundary>
           <FeedView
             feedType="social"
@@ -51,9 +55,18 @@ export default function SocialFeedPage() {
               full_name: profile.full_name ?? null,
               avatar_url: (profile as any).avatar_url ?? null,
             } : null}
+            highlightPostId={highlightPostId}
           />
         </SectionErrorBoundary>
       </main>
     </div>
   );
+}
+
+/** Reads `?post=` in a Suspense-isolated subtree (Next.js useSearchParams CSR bailout). */
+function FeedHighlightFromQuery({ onPostId }: { onPostId: (id: string | null) => void }) {
+  const searchParams = useSearchParams();
+  const postId = searchParams.get('post');
+  useEffect(() => { onPostId(postId); }, [postId, onPostId]);
+  return null;
 }
