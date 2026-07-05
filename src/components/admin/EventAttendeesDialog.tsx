@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Loader2, CheckCircle2, Clock, UserCheck, Check } from 'lucide-react';
+import { Loader2, CheckCircle2, Clock, UserCheck, Check, Trash2 } from 'lucide-react';
 
 interface AttendeeRow {
   id: string; // attendance_credentials id
@@ -25,6 +25,7 @@ interface AttendeeRow {
   checked_in_at: string | null;
   rsvp_date: string | null;
   contact_route_id: string | null;
+  has_payment: boolean;
 }
 
 interface EventAttendeesDialogProps {
@@ -47,6 +48,7 @@ export function EventAttendeesDialog({
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkChecking, setBulkChecking] = useState(false);
+  const [bulkRemoving, setBulkRemoving] = useState(false);
 
   const fetchAttendees = useCallback(async () => {
     if (!eventId) return;
@@ -57,7 +59,7 @@ export function EventAttendeesDialog({
     // Canonical roster: attendance_credentials (replaces tickets + event_public_rsvps).
     const { data: creds, error: credErr } = await supabase
       .from('attendance_credentials')
-      .select('id, person_id, credential_type, status, checked_in_at, created_at')
+      .select('id, person_id, credential_type, status, checked_in_at, created_at, metadata')
       .eq('event_id', eventId)
       .in('status', ['active', 'used']);
 
@@ -111,6 +113,7 @@ export function EventAttendeesDialog({
         checked_in_at: c.checked_in_at,
         rsvp_date: c.created_at,
         contact_route_id: prof ? encodeURIComponent('profiles:' + prof.id) : null,
+        has_payment: !!(c.metadata as Record<string, unknown> | null)?.stripe_payment_id,
       };
     }).sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
 
@@ -194,6 +197,50 @@ export function EventAttendeesDialog({
     }
   };
 
+  const handleBulkRemoveRefund = async () => {
+    if (selected.size === 0) return;
+    const confirmed = window.confirm(
+      `Remove ${selected.size} attendee(s)? Paid tickets will be refunded via Stripe. This cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    setBulkRemoving(true);
+    try {
+      let okCount = 0;
+      let refundedCount = 0;
+      for (const credentialId of selected) {
+        const { data, error } = await supabase.functions.invoke('admin-refund-ticket', {
+          body: { credential_id: credentialId },
+        });
+        if (error || data?.error) {
+          let message: string = data?.error || error?.message || 'Unknown error';
+          // Non-2xx responses surface as FunctionsHttpError; the real message is in the body.
+          if (error && typeof error === 'object' && 'context' in error) {
+            try {
+              const body = await (error as { context: Response }).context.json();
+              if (body?.error) message = body.error;
+            } catch { /* keep fallback message */ }
+          }
+          const attendee = attendees.find(a => a.id === credentialId);
+          const who = attendee?.full_name || credentialId;
+          toast.error(`Failed to remove ${who}: ${message}`);
+          continue;
+        }
+        okCount += 1;
+        if (data?.refunded) refundedCount += 1;
+      }
+      if (okCount > 0) {
+        toast.success(`${okCount} removed (${refundedCount} refunded)`);
+      }
+      setSelected(new Set());
+      await fetchAttendees();
+    } catch {
+      toast.error('Remove & refund failed');
+    } finally {
+      setBulkRemoving(false);
+    }
+  };
+
   const totalCount = attendees.length;
   const checkedInCount = attendees.filter(a => a.checked_in_at).length;
 
@@ -232,7 +279,7 @@ export function EventAttendeesDialog({
               size="sm"
               className="ml-auto bg-amber-500 hover:bg-amber-400 text-black font-semibold h-8 px-3 text-xs gap-1.5"
               onClick={handleBulkCheckIn}
-              disabled={bulkChecking}
+              disabled={bulkChecking || bulkRemoving}
             >
               {bulkChecking ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -240,6 +287,19 @@ export function EventAttendeesDialog({
                 <UserCheck className="w-3.5 h-3.5" />
               )}
               Check in {selected.size} attendee{selected.size !== 1 ? 's' : ''}
+            </Button>
+            <Button
+              size="sm"
+              className="bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30 font-semibold h-8 px-3 text-xs gap-1.5"
+              onClick={handleBulkRemoveRefund}
+              disabled={bulkChecking || bulkRemoving}
+            >
+              {bulkRemoving ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="w-3.5 h-3.5" />
+              )}
+              Remove &amp; Refund
             </Button>
           </div>
         )}
