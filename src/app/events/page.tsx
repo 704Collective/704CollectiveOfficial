@@ -56,6 +56,19 @@ async function fetchEvents(): Promise<Event[]> {
   return (data || []).map(deriveEventShape);
 }
 
+async function fetchPastEvents(): Promise<Event[]> {
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .eq('is_published', true)
+    .lt('start_time', now)
+    .order('start_time', { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  return (data || []).map(deriveEventShape);
+}
+
 async function fetchTicketCounts(eventIds: string[]): Promise<Record<string, number>> {
   if (eventIds.length === 0) return {};
   // Counts attendance_credentials (status active|used) via a SECURITY DEFINER
@@ -86,6 +99,7 @@ export default function Events() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [view, setView] = useState<'grid' | 'list' | 'calendar'>('grid');
+  const [timeframe, setTimeframe] = useState<'upcoming' | 'past'>('upcoming');
   const [showMembersOnly, setShowMembersOnly] = useState(false);
   const [ticketCounts, setTicketCounts] = useState<Record<string, number>>({});
 
@@ -95,14 +109,23 @@ export default function Events() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: pastEvents = [], isLoading: pastLoading } = useQuery({
+    queryKey: ['publicPastEvents'],
+    queryFn: fetchPastEvents,
+    enabled: timeframe === 'past',
+  });
+
+  const sourceEvents = timeframe === 'past' ? pastEvents : events;
+  const isEventsLoading = timeframe === 'past' ? pastLoading : isLoading;
+
   useEffect(() => {
-    if (events.length > 0) {
-      fetchTicketCounts(events.map(e => e.id)).then(setTicketCounts);
+    if (sourceEvents.length > 0) {
+      fetchTicketCounts(sourceEvents.map(e => e.id)).then(setTicketCounts);
     }
-  }, [events]);
+  }, [sourceEvents]);
 
   const filteredEvents = useMemo(() => {
-    return events.filter(event => {
+    return sourceEvents.filter(event => {
       const matchesSearch = !searchQuery ||
         event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -111,7 +134,7 @@ export default function Events() {
       const matchesMembersOnly = !showMembersOnly || event.is_members_only;
       return matchesSearch && matchesCategory && matchesMembersOnly;
     });
-  }, [events, searchQuery, selectedCategory, showMembersOnly]);
+  }, [sourceEvents, searchQuery, selectedCategory, showMembersOnly]);
 
   const featuredEvent = filteredEvents[0];
   const remainingEvents = filteredEvents.slice(1);
@@ -130,11 +153,11 @@ export default function Events() {
 
   const activeCategories = useMemo(() => {
     const categoriesWithEvents = new Set<string>();
-    events.forEach(event => {
+    sourceEvents.forEach(event => {
       if (event.category && event.category !== 'other') categoriesWithEvents.add(event.category);
     });
     return Object.keys(CATEGORY_CONFIG).filter(c => c !== 'other' && c !== 'members_only' && categoriesWithEvents.has(c));
-  }, [events]);
+  }, [sourceEvents]);
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -146,10 +169,15 @@ export default function Events() {
     if (!user) { router.push('/login'); return; }
     if (isActiveMember) {
       const success = await registerMemberTicket({ ...event, end_time: event.end_time ?? '' });
-      if (success) fetchTicketCounts(events.map(e => e.id)).then(setTicketCounts);
+      if (success) fetchTicketCounts(sourceEvents.map(e => e.id)).then(setTicketCounts);
     } else {
       router.push(`/events/${event.id}`);
     }
+  };
+
+  const handleTimeframeChange = (next: 'upcoming' | 'past') => {
+    setTimeframe(next);
+    if (next === 'past' && view === 'calendar') setView('grid');
   };
 
   // View toggle button style helper
@@ -200,9 +228,15 @@ export default function Events() {
                 />
               </div>
               <div style={{ display: 'flex', gap: '4px' }}>
+                <button onClick={() => handleTimeframeChange('upcoming')} style={{ ...viewBtnStyle(timeframe === 'upcoming'), padding: '10px 14px', fontSize: '0.8125rem', fontWeight: 600 }}>Upcoming</button>
+                <button onClick={() => handleTimeframeChange('past')} style={{ ...viewBtnStyle(timeframe === 'past'), padding: '10px 14px', fontSize: '0.8125rem', fontWeight: 600 }}>Past</button>
+              </div>
+              <div style={{ display: 'flex', gap: '4px' }}>
                 <button onClick={() => setView('grid')} style={viewBtnStyle(view === 'grid')} aria-label="Grid view"><LayoutGrid size={16} /></button>
                 <button onClick={() => setView('list')} style={viewBtnStyle(view === 'list')} aria-label="List view"><List size={16} /></button>
-                <button onClick={() => setView('calendar')} style={viewBtnStyle(view === 'calendar')} aria-label="Calendar view"><Calendar size={16} /></button>
+                {timeframe === 'upcoming' && (
+                  <button onClick={() => setView('calendar')} style={viewBtnStyle(view === 'calendar')} aria-label="Calendar view"><Calendar size={16} /></button>
+                )}
               </div>
             </div>
 
@@ -237,7 +271,7 @@ export default function Events() {
           </div>
 
           {/* Content */}
-          {isLoading ? (
+          {isEventsLoading ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
               {[1,2,3,4,5,6].map(i => (
                 <div key={i} style={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden', backgroundColor: '#1A1A1A' }}>
@@ -253,7 +287,7 @@ export default function Events() {
             <div style={{ textAlign: 'center', padding: '80px 0' }}>
               <Calendar style={{ width: '48px', height: '48px', color: 'rgba(255,255,255,0.15)', margin: '0 auto 16px' }} />
               <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '8px' }}>
-                {hasActiveFilters ? 'No results found' : 'No upcoming events'}
+                {hasActiveFilters ? 'No results found' : timeframe === 'past' ? 'No past events' : 'No upcoming events'}
               </h3>
               <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.45)', marginBottom: '20px' }}>
                 {hasActiveFilters ? 'Try a different search term or category.' : "Check back soon - we're planning something great."}
@@ -269,7 +303,7 @@ export default function Events() {
               <div>
 
                 {/* Calendar view */}
-                {view === 'calendar' && (
+                {view === 'calendar' && timeframe === 'upcoming' && (
                   <div style={{ backgroundColor: '#1A1A1A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: '24px' }}>
                     <EventCalendarView
                       events={filteredEvents}
@@ -283,7 +317,7 @@ export default function Events() {
                 {/* Grid view */}
                 {view === 'grid' && (
                   <>
-                    {featuredEvent && !hasActiveFilters && (
+                    {featuredEvent && !hasActiveFilters && timeframe === 'upcoming' && (
                       <div style={{ marginBottom: '48px' }}>
                         <FeaturedEventBanner
                           event={{ ...featuredEvent, end_time: featuredEvent.end_time ?? '', is_business_only: featuredEvent.is_business_only ?? false }}
@@ -330,7 +364,7 @@ export default function Events() {
                 {/* List view */}
                 {view === 'list' && (
                   <>
-                    {featuredEvent && !hasActiveFilters && (
+                    {featuredEvent && !hasActiveFilters && timeframe === 'upcoming' && (
                       <div style={{ marginBottom: '48px' }}>
                         <FeaturedEventBanner
                           event={{ ...featuredEvent, end_time: featuredEvent.end_time ?? '', is_business_only: featuredEvent.is_business_only ?? false }}
@@ -344,7 +378,12 @@ export default function Events() {
                       </div>
                     )}
                     <div>
-                      {Object.entries(groupedEvents).map(([month, monthEvents]) => (
+                      {Object.entries(groupedEvents)
+                        .sort(([, aEvents], [, bEvents]) => {
+                          if (timeframe !== 'past') return 0;
+                          return new Date(bEvents[0].start_time).getTime() - new Date(aEvents[0].start_time).getTime();
+                        })
+                        .map(([month, monthEvents]) => (
                         <div key={month} style={{ marginBottom: '40px' }}>
                           <h2 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                             {month}

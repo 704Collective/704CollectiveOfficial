@@ -58,6 +58,19 @@ async function fetchEvents(): Promise<Event[]> {
   return (data || []).map(deriveEventShape);
 }
 
+async function fetchPastEvents(): Promise<Event[]> {
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .eq('is_published', true)
+    .lt('start_time', now)
+    .order('start_time', { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  return (data || []).map(deriveEventShape);
+}
+
 async function fetchTicketCounts(eventIds: string[]): Promise<Record<string, number>> {
   if (eventIds.length === 0) return {};
   // Counts attendance_credentials (status active|used) via a SECURITY DEFINER
@@ -88,6 +101,7 @@ export default function BrowseEventsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [view, setView] = useState<'grid' | 'list' | 'calendar'>('grid');
+  const [timeframe, setTimeframe] = useState<'upcoming' | 'past'>('upcoming');
   const [showMembersOnly, setShowMembersOnly] = useState(false);
   const [ticketCounts, setTicketCounts] = useState<Record<string, number>>({});
 
@@ -97,14 +111,23 @@ export default function BrowseEventsPage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: pastEvents = [], isLoading: pastLoading } = useQuery({
+    queryKey: ['browsePastEvents'],
+    queryFn: fetchPastEvents,
+    enabled: timeframe === 'past',
+  });
+
+  const sourceEvents = timeframe === 'past' ? pastEvents : events;
+  const isEventsLoading = timeframe === 'past' ? pastLoading : isLoading;
+
   useEffect(() => {
-    if (events.length > 0) {
-      fetchTicketCounts(events.map(e => e.id)).then(setTicketCounts);
+    if (sourceEvents.length > 0) {
+      fetchTicketCounts(sourceEvents.map(e => e.id)).then(setTicketCounts);
     }
-  }, [events, userTicketIds]);
+  }, [sourceEvents, userTicketIds]);
 
   const filteredEvents = useMemo(() => {
-    return events.filter(event => {
+    return sourceEvents.filter(event => {
       const matchesSearch = !searchQuery ||
         event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -113,7 +136,7 @@ export default function BrowseEventsPage() {
       const matchesMembersOnly = !showMembersOnly || event.is_members_only;
       return matchesSearch && matchesCategory && matchesMembersOnly;
     });
-  }, [events, searchQuery, selectedCategory, showMembersOnly]);
+  }, [sourceEvents, searchQuery, selectedCategory, showMembersOnly]);
 
   const featuredEvent = filteredEvents[0];
   const remainingEvents = filteredEvents.slice(1);
@@ -132,17 +155,17 @@ export default function BrowseEventsPage() {
 
   const activeCategories = useMemo(() => {
     const categoriesWithEvents = new Set<string>();
-    events.forEach(event => {
+    sourceEvents.forEach(event => {
       if (event.category && event.category !== 'other') categoriesWithEvents.add(event.category);
     });
     return Object.keys(CATEGORY_CONFIG).filter(c => c !== 'other' && c !== 'members_only' && categoriesWithEvents.has(c));
-  }, [events]);
+  }, [sourceEvents]);
 
   const handleGetTicket = async (event: Event) => {
     if (!user) { router.push('/login'); return; }
     if (isActiveMember) {
       const success = await registerMemberTicket({ ...event, end_time: event.end_time ?? '' });
-      if (success) fetchTicketCounts(events.map(e => e.id)).then(setTicketCounts);
+      if (success) fetchTicketCounts(sourceEvents.map(e => e.id)).then(setTicketCounts);
     } else {
       router.push(`/events/${event.id}`);
     }
@@ -152,6 +175,11 @@ export default function BrowseEventsPage() {
     setSearchQuery('');
     setSelectedCategory(null);
     setShowMembersOnly(false);
+  };
+
+  const handleTimeframeChange = (next: 'upcoming' | 'past') => {
+    setTimeframe(next);
+    if (next === 'past' && view === 'calendar') setView('grid');
   };
 
   return (
@@ -183,6 +211,22 @@ export default function BrowseEventsPage() {
             </div>
             <div className="flex gap-1">
               <Button
+                variant={timeframe === 'upcoming' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleTimeframeChange('upcoming')}
+              >
+                Upcoming
+              </Button>
+              <Button
+                variant={timeframe === 'past' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleTimeframeChange('past')}
+              >
+                Past
+              </Button>
+            </div>
+            <div className="flex gap-1">
+              <Button
                 variant={view === 'grid' ? 'default' : 'outline'}
                 size="icon"
                 onClick={() => setView('grid')}
@@ -198,14 +242,16 @@ export default function BrowseEventsPage() {
               >
                 <List className="w-4 h-4" />
               </Button>
-              <Button
-                variant={view === 'calendar' ? 'default' : 'outline'}
-                size="icon"
-                onClick={() => setView('calendar')}
-                aria-label="Calendar view"
-              >
-                <Calendar className="w-4 h-4" />
-              </Button>
+              {timeframe === 'upcoming' && (
+                <Button
+                  variant={view === 'calendar' ? 'default' : 'outline'}
+                  size="icon"
+                  onClick={() => setView('calendar')}
+                  aria-label="Calendar view"
+                >
+                  <Calendar className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           </div>
 
@@ -254,7 +300,7 @@ export default function BrowseEventsPage() {
         </div>
 
         {/* Content */}
-        {isLoading ? (
+        {isEventsLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-56 rounded-xl" />)}
           </div>
@@ -262,7 +308,7 @@ export default function BrowseEventsPage() {
           <div className="text-center py-20">
             <Calendar className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">
-              {hasActiveFilters ? 'No results found' : 'No upcoming events'}
+              {hasActiveFilters ? 'No results found' : timeframe === 'past' ? 'No past events' : 'No upcoming events'}
             </h3>
             <p className="text-sm text-muted-foreground mb-4">
               {hasActiveFilters ? 'Try a different search term or category.' : "Check back soon - we're planning something great."}
@@ -276,7 +322,7 @@ export default function BrowseEventsPage() {
             <div className="space-y-10">
 
               {/* Calendar view */}
-              {view === 'calendar' && (
+              {view === 'calendar' && timeframe === 'upcoming' && (
                 <EventCalendarView
                   events={filteredEvents}
                   isUserMember={!!isActiveMember}
@@ -288,7 +334,7 @@ export default function BrowseEventsPage() {
               {/* Grid view */}
               {view === 'grid' && (
                 <>
-                  {featuredEvent && !hasActiveFilters && (
+                  {featuredEvent && !hasActiveFilters && timeframe === 'upcoming' && (
                     <FeaturedEventBanner
                       event={{ ...featuredEvent, end_time: featuredEvent.end_time ?? '', is_business_only: featuredEvent.is_business_only ?? false }}
                       userHasTicket={userTicketIds.has(featuredEvent.id)}
@@ -333,7 +379,7 @@ export default function BrowseEventsPage() {
               {/* List view */}
               {view === 'list' && (
                 <>
-                  {featuredEvent && !hasActiveFilters && (
+                  {featuredEvent && !hasActiveFilters && timeframe === 'upcoming' && (
                     <FeaturedEventBanner
                       event={{ ...featuredEvent, end_time: featuredEvent.end_time ?? '', is_business_only: featuredEvent.is_business_only ?? false }}
                       userHasTicket={userTicketIds.has(featuredEvent.id)}
@@ -345,7 +391,12 @@ export default function BrowseEventsPage() {
                     />
                   )}
                   <div className="space-y-10">
-                    {Object.entries(groupedEvents).map(([month, monthEvents]) => (
+                    {Object.entries(groupedEvents)
+                      .sort(([, aEvents], [, bEvents]) => {
+                        if (timeframe !== 'past') return 0;
+                        return new Date(bEvents[0].start_time).getTime() - new Date(aEvents[0].start_time).getTime();
+                      })
+                      .map(([month, monthEvents]) => (
                       <div key={month}>
                         <h2 className="text-base font-semibold text-foreground mb-3 pb-3 border-b border-border">
                           {month}
