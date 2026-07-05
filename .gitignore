@@ -65,3 +65,9 @@ notif_tables.txt
 /openapi_spec.json
 /response_body.json
 /test_notifs.json
+
+# test artifacts (local browser-test scripts, screenshots, outputs)
+test-assets/
+e2e/screenshots/
+.tmp-*.png
+scripts/test-*.mjs
