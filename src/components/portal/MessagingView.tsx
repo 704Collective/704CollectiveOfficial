@@ -732,7 +732,7 @@ export function MessagingView({ initialDirectPeerId }: { initialDirectPeerId?: s
 
       const { data: conv, error } = await supabase
         .from('conversations')
-        .insert({ type, title: isGroup ? (groupTitle || null) : null, created_by: user.id })
+        .insert({ type, name: isGroup ? (groupTitle || null) : null, created_by: user.id })
         .select()
         .single();
 
