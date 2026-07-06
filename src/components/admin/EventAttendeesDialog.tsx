@@ -271,13 +271,13 @@ export function EventAttendeesDialog({
 
         {/* Bulk action bar */}
         {selected.size > 0 && (
-          <div className="flex-shrink-0 flex items-center gap-3 px-6 py-3 bg-amber-500/10 border-b border-amber-500/20">
-            <span className="text-sm text-amber-400 font-medium">
+          <div className="flex-shrink-0 flex flex-wrap items-center justify-end gap-3 px-6 py-3 bg-amber-500/10 border-b border-amber-500/20">
+            <span className="mr-auto text-sm text-amber-400 font-medium">
               {selected.size} selected
             </span>
             <Button
               size="sm"
-              className="ml-auto bg-amber-500 hover:bg-amber-400 text-black font-semibold h-8 px-3 text-xs gap-1.5"
+              className="bg-amber-500 hover:bg-amber-400 text-black font-semibold h-8 px-3 text-xs gap-1.5"
               onClick={handleBulkCheckIn}
               disabled={bulkChecking || bulkRemoving}
             >
@@ -286,7 +286,8 @@ export function EventAttendeesDialog({
               ) : (
                 <UserCheck className="w-3.5 h-3.5" />
               )}
-              Check in {selected.size} attendee{selected.size !== 1 ? 's' : ''}
+              <span className="sm:hidden">Check in {selected.size}</span>
+              <span className="hidden sm:inline">Check in {selected.size} attendee{selected.size !== 1 ? 's' : ''}</span>
             </Button>
             <Button
               size="sm"
