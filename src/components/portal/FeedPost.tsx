@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { LinkifiedText } from '@/components/ui/LinkifiedText';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -341,7 +342,7 @@ export function FeedPost({ post, currentUser, onDelete, onEdit }: FeedPostProps)
 
       {/* Content */}
       {post.content && (
-        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{post.content}</p>
+        <LinkifiedText text={post.content} className="text-sm leading-relaxed whitespace-pre-wrap break-words" />
       )}
 
       {/* Images */}
@@ -453,7 +454,7 @@ export function FeedPost({ post, currentUser, onDelete, onEdit }: FeedPostProps)
                   <div className="flex-1 min-w-0">
                     <div className="bg-muted/50 rounded-xl px-3 py-2">
                       <p className="text-xs font-semibold">{comment.author?.full_name ?? 'Member'}</p>
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{comment.content}</p>
+                      <LinkifiedText text={comment.content} className="text-sm leading-relaxed whitespace-pre-wrap break-words" />
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 px-1">
                       <span className="text-[11px] text-muted-foreground">

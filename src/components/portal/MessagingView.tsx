@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { LinkifiedText } from '@/components/ui/LinkifiedText';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -244,7 +245,7 @@ function MessageBubble({
               : 'bg-[#2E2E2E] text-white/90 rounded-tl-sm'
           }`}
         >
-          {msg.body && <p className="whitespace-pre-wrap break-words">{msg.body}</p>}
+          {msg.body && <LinkifiedText text={msg.body} className="whitespace-pre-wrap break-words" />}
           {msg.image_urls && msg.image_urls.length > 0 && (
             <div className="grid grid-cols-2 gap-1 mt-2">
               {msg.image_urls.map((url, i) => (

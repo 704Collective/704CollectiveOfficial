@@ -5,6 +5,7 @@ import { Send, Loader2, CornerDownRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { LinkifiedText } from '@/components/ui/LinkifiedText';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getInitialsAvatarStyle } from '@/lib/avatarInitialsColor';
@@ -102,7 +103,7 @@ export function EventDiscussionComments({
               <span className="text-[13px] font-bold">{c.author?.full_name ?? 'Member'}</span>
               <span className="text-[11px] text-muted-foreground ml-2">{formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}</span>
             </div>
-            <p className="text-[13.5px] leading-relaxed whitespace-pre-wrap break-words mt-0.5">{c.content}</p>
+            <LinkifiedText text={c.content} className="text-[13.5px] leading-relaxed whitespace-pre-wrap break-words mt-0.5" />
             <button type="button" onClick={() => { setReplyingTo(replyingTo === c.id ? null : c.id); setReplyValue(''); }} className="text-[11px] font-semibold text-muted-foreground hover:text-foreground mt-0.5">Reply</button>
             {repliesFor(c.id).map(r => (
               <div key={r.id} className="flex gap-2 mt-2 ml-5">
@@ -117,7 +118,7 @@ export function EventDiscussionComments({
                     <span className="text-[12.5px] font-bold">{r.author?.full_name ?? 'Member'}</span>
                     <span className="text-[10.5px] text-muted-foreground ml-2">{formatDistanceToNow(new Date(r.created_at), { addSuffix: true })}</span>
                   </div>
-                  <p className="text-[13px] leading-relaxed whitespace-pre-wrap break-words mt-0.5">{r.content}</p>
+                  <LinkifiedText text={r.content} className="text-[13px] leading-relaxed whitespace-pre-wrap break-words mt-0.5" />
                 </div>
               </div>
             ))}
