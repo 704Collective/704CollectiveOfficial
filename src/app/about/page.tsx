@@ -19,7 +19,6 @@ import { organizationSchema704 } from '@/lib/jsonLdSchemas';
 const team = [
   { name: 'Adam Gould', title: 'Co-Founder', initials: 'AG' },
   { name: 'Timi Gould', title: 'Co-Founder', initials: 'TG' },
-  { name: 'Josh Ahart', title: 'Co-Founder', initials: 'JA' },
   { name: 'Gabbi Baumann', title: 'Co-Founder', initials: 'GB' },
 ];
 
@@ -236,7 +235,7 @@ export default function About() {
                 color: '#FFFFFF',
                 marginBottom: '48px',
               }}>
-                Four friends who knew what Charlotte needed - so they created it
+                Friends who knew what Charlotte needed - so they created it
               </h2>
             </FadeUp>
 
@@ -244,7 +243,7 @@ export default function About() {
               staggerDelay={0.1}
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
+                gridTemplateColumns: 'repeat(3, 1fr)',
                 gap: '20px',
               }}
               className="team-grid"
