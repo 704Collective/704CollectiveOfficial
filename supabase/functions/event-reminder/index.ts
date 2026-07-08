@@ -290,32 +290,43 @@ async function processEvent(
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  // Auth gate: every non-OPTIONS request needs a bearer token. The cron path
+  // passes by strict service-key equality; anything else must resolve to an
+  // admin user. No header at all -> 401 (previously this fell through).
+  const authHeader = req.headers.get("Authorization") || "";
+  const token = authHeader.replace("Bearer ", "").trim();
+  if (!token) {
+    return new Response(JSON.stringify({ error: "Missing authorization" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const isServiceRole = token === SERVICE_KEY;
+  if (!isServiceRole) {
+    const supabaseUser = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false },
+    });
+    const { data: { user } } = await supabaseUser.auth.getUser();
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const supabase = supabaseAdmin();
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+    if (!profile || !["admin", "super_admin"].includes(profile.role ?? "")) {
+      return new Response(JSON.stringify({ error: "Admin access required" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  }
+
   let specificEventId: string | null = null;
   let isTestMode = false;
   let testRecipient = "";
   let dryRun = false;
 
   if (req.method === "POST") {
-    const authHeader = req.headers.get("Authorization");
-    if (authHeader) {
-      const supabaseUser = createClient(SUPABASE_URL, ANON_KEY, {
-        global: { headers: { Authorization: authHeader } },
-        auth: { persistSession: false },
-      });
-      const { data: { user } } = await supabaseUser.auth.getUser();
-      if (!user) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const supabase = supabaseAdmin();
-      const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
-      if (!profile || !["admin", "super_admin"].includes(profile.role ?? "")) {
-        return new Response(JSON.stringify({ error: "Admin access required" }), {
-          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-    }
     try {
       const body = await req.json();
       specificEventId = body?.event_id ?? null;
