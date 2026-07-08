@@ -96,6 +96,7 @@ export function EventDiscussionGallery({
   };
 
   const softRemove = async (photoId: string) => {
+    if (!window.confirm('Remove this photo?')) return;
     const { error } = await supabase
       .from('event_discussion_photos')
       .update({ deleted_at: new Date().toISOString() })
@@ -196,7 +197,7 @@ export function EventDiscussionGallery({
             <Button type="button" size="sm" variant="ghost" onClick={() => void download(lightboxPhoto.url)} className="gap-1.5 text-white hover:text-white">
               <Download className="w-4 h-4" /> Download
             </Button>
-            {isAdmin && (
+            {(lightboxPhoto.uploader_id === userId || isAdmin) && (
               <Button type="button" size="sm" variant="ghost" onClick={() => void softRemove(lightboxPhoto.id)} className="gap-1.5 text-red-400 hover:text-red-300">
                 <Trash2 className="w-4 h-4" /> Remove
               </Button>
