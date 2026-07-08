@@ -1,11 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { Send, Loader2, CornerDownRight } from 'lucide-react';
+import { Send, Loader2, CornerDownRight, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LinkifiedText } from '@/components/ui/LinkifiedText';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getInitialsAvatarStyle } from '@/lib/avatarInitialsColor';
@@ -19,7 +25,15 @@ export interface DiscComment {
   author_id: string;
   content: string;
   created_at: string;
+  updated_at?: string | null;
   author: { id: string; full_name: string | null; avatar_url: string | null } | null;
+}
+
+// "(edited)" only when updated_at is meaningfully after created_at — inserts
+// set both to the same transaction timestamp, so a small threshold filters noise.
+function isEdited(c: DiscComment): boolean {
+  if (!c.updated_at) return false;
+  return new Date(c.updated_at).getTime() - new Date(c.created_at).getTime() > 2000;
 }
 
 function initials(name: string | null | undefined): string {
@@ -34,19 +48,101 @@ export function EventDiscussionComments({
   postId,
   comments,
   currentUser,
+  isAdmin = false,
   onCommentAdded,
+  onCommentUpdated,
+  onCommentDeleted,
 }: {
   eventId: string;
   postId: string;
   comments: DiscComment[];
   currentUser: { id: string; full_name: string | null; avatar_url: string | null };
+  isAdmin?: boolean;
   onCommentAdded: (c: DiscComment) => void;
+  onCommentUpdated?: (commentId: string, content: string, updatedAt: string) => void;
+  onCommentDeleted?: (commentId: string) => void;
 }) {
   const [value, setValue] = useState('');
   const [posting, setPosting] = useState(false);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyValue, setReplyValue] = useState('');
   const [replyPosting, setReplyPosting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const canModify = (c: DiscComment) => c.author_id === currentUser.id || isAdmin;
+
+  const startEdit = (c: DiscComment) => { setEditingId(c.id); setEditValue(c.content); };
+
+  const saveEdit = async (commentId: string) => {
+    const text = editValue.trim();
+    if (!text || editSaving) return;
+    setEditSaving(true);
+    const updatedAt = new Date().toISOString();
+    const { error } = await supabase
+      .from('event_discussion_comments')
+      .update({ content: text, updated_at: updatedAt })
+      .eq('id', commentId);
+    setEditSaving(false);
+    if (error) { toast.error('Could not save edit: ' + error.message); return; }
+    onCommentUpdated?.(commentId, text, updatedAt);
+    setEditingId(null);
+    setEditValue('');
+  };
+
+  const deleteComment = async (commentId: string) => {
+    if (deletingId) return;
+    if (!window.confirm('Delete this comment?')) return;
+    setDeletingId(commentId);
+    const { error } = await supabase
+      .from('event_discussion_comments')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', commentId);
+    setDeletingId(null);
+    if (error) { toast.error('Could not delete: ' + error.message); return; }
+    onCommentDeleted?.(commentId);
+  };
+
+  const commentMenu = (c: DiscComment) => canModify(c) ? (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button type="button" aria-label="Comment actions" className="text-muted-foreground hover:text-foreground ml-1.5 align-middle inline-flex p-0.5 rounded">
+          <MoreHorizontal className="w-3.5 h-3.5" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-[120px]">
+        <DropdownMenuItem onClick={() => startEdit(c)} className="gap-2 text-[13px]">
+          <Pencil className="w-3.5 h-3.5" /> Edit
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => void deleteComment(c.id)} className="gap-2 text-[13px] text-red-500 focus:text-red-500">
+          <Trash2 className="w-3.5 h-3.5" /> Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ) : null;
+
+  const editForm = (c: DiscComment, compact: boolean) => (
+    <div className="mt-1">
+      <EventMentionTextarea
+        eventId={eventId}
+        value={editValue}
+        onChange={setEditValue}
+        onSubmit={() => saveEdit(c.id)}
+        placeholder="Edit your comment…"
+        className={`${compact ? 'min-h-[34px]' : 'min-h-[38px]'} text-sm w-full`}
+        rows={1}
+      />
+      <div className="flex justify-end gap-1 mt-1.5">
+        <Button size="sm" variant="ghost" className="h-7" onClick={() => { setEditingId(null); setEditValue(''); }}>Cancel</Button>
+        <Button size="sm" variant="ghost" className="h-7 gap-1.5" onClick={() => void saveEdit(c.id)} disabled={!editValue.trim() || editSaving}>
+          {editSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Pencil className="w-3.5 h-3.5" />}
+          Save
+        </Button>
+      </div>
+    </div>
+  );
 
   // Only top-level comments here (no parent).
   const topLevel = comments.filter(c => !c.parent_comment_id);
@@ -59,7 +155,7 @@ export function EventDiscussionComments({
     const { data, error } = await supabase
       .from('event_discussion_comments')
       .insert({ event_id: eventId, post_id: postId, parent_comment_id: null, author_id: currentUser.id, content: text })
-      .select('id, post_id, parent_comment_id, author_id, content, created_at')
+      .select('id, post_id, parent_comment_id, author_id, content, created_at, updated_at')
       .single();
     setPosting(false);
     if (error || !data) {
@@ -78,7 +174,7 @@ export function EventDiscussionComments({
     const { data, error } = await supabase
       .from('event_discussion_comments')
       .insert({ event_id: eventId, post_id: postId, parent_comment_id: parentId, author_id: currentUser.id, content: text })
-      .select('id, post_id, parent_comment_id, author_id, content, created_at')
+      .select('id, post_id, parent_comment_id, author_id, content, created_at, updated_at')
       .single();
     setReplyPosting(false);
     if (error || !data) { toast.error(error?.message || 'Could not reply. Please try again.'); return; }
@@ -102,8 +198,12 @@ export function EventDiscussionComments({
             <div>
               <span className="text-[13px] font-bold">{c.author?.full_name ?? 'Member'}</span>
               <span className="text-[11px] text-muted-foreground ml-2">{formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}</span>
+              {isEdited(c) && <span className="text-[11px] text-muted-foreground ml-1.5">(edited)</span>}
+              {commentMenu(c)}
             </div>
-            <LinkifiedText text={c.content} className="text-[13.5px] leading-relaxed whitespace-pre-wrap break-words mt-0.5" />
+            {editingId === c.id ? editForm(c, false) : (
+              <LinkifiedText text={c.content} className="text-[13.5px] leading-relaxed whitespace-pre-wrap break-words mt-0.5" />
+            )}
             <button type="button" onClick={() => { setReplyingTo(replyingTo === c.id ? null : c.id); setReplyValue(''); }} className="text-[11px] font-semibold text-muted-foreground hover:text-foreground mt-0.5">Reply</button>
             {repliesFor(c.id).map(r => (
               <div key={r.id} className="flex gap-2 mt-2 ml-5">
@@ -117,8 +217,12 @@ export function EventDiscussionComments({
                   <div>
                     <span className="text-[12.5px] font-bold">{r.author?.full_name ?? 'Member'}</span>
                     <span className="text-[10.5px] text-muted-foreground ml-2">{formatDistanceToNow(new Date(r.created_at), { addSuffix: true })}</span>
+                    {isEdited(r) && <span className="text-[10.5px] text-muted-foreground ml-1.5">(edited)</span>}
+                    {commentMenu(r)}
                   </div>
-                  <LinkifiedText text={r.content} className="text-[13px] leading-relaxed whitespace-pre-wrap break-words mt-0.5" />
+                  {editingId === r.id ? editForm(r, true) : (
+                    <LinkifiedText text={r.content} className="text-[13px] leading-relaxed whitespace-pre-wrap break-words mt-0.5" />
+                  )}
                 </div>
               </div>
             ))}

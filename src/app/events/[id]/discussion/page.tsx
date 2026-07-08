@@ -25,7 +25,7 @@ const isVideoUrl = (u: string) => /\.(mp4|mov|webm)(\?|$)/i.test(u);
 interface DiscussionEvent { id: string; title: string | null; image_url: string | null; start_time: string | null; category: string | null; }
 interface Author { id: string; full_name: string | null; avatar_url: string | null; }
 interface DPost { id: string; author_id: string; content: string | null; image_urls: string[] | null; created_at: string; author: Author | null; }
-interface DComment { id: string; post_id: string; parent_comment_id: string | null; author_id: string; content: string; created_at: string; author: Author | null; }
+interface DComment { id: string; post_id: string; parent_comment_id: string | null; author_id: string; content: string; created_at: string; updated_at: string | null; author: Author | null; }
 interface DLike { post_id: string | null; comment_id: string | null; user_id: string; }
 
 type AccessState = 'loading' | 'full' | 'teaser' | 'denied';
@@ -115,7 +115,7 @@ export default function EventDiscussionPage() {
           .select('id, author_id, content, image_urls, created_at, author:profiles(id, full_name, avatar_url)')
           .eq('event_id', eventId).is('deleted_at', null).order('created_at', { ascending: true }),
         supabase.from('event_discussion_comments')
-          .select('id, post_id, parent_comment_id, author_id, content, created_at, author:profiles(id, full_name, avatar_url)')
+          .select('id, post_id, parent_comment_id, author_id, content, created_at, updated_at, author:profiles(id, full_name, avatar_url)')
           .eq('event_id', eventId).is('deleted_at', null).order('created_at', { ascending: true }),
         supabase.from('event_discussion_likes').select('post_id, comment_id, user_id').eq('event_id', eventId),
       ]);
@@ -136,6 +136,11 @@ export default function EventDiscussionPage() {
 
   const handlePosted = (post: NewDiscussionPost) => setPosts(prev => [...prev, post as unknown as typeof prev[number]]);
   const handleCommentAdded = (c: DiscComment) => setCommentsByPost(prev => ({ ...prev, [c.post_id]: [ ...(prev[c.post_id] ?? []), c as unknown as DComment ] }));
+  const handleCommentUpdated = (postId: string) => (commentId: string, content: string, updatedAt: string) =>
+    setCommentsByPost(prev => ({ ...prev, [postId]: (prev[postId] ?? []).map(c => c.id === commentId ? { ...c, content, updated_at: updatedAt } : c) }));
+  // Soft-deleted parents take their (now orphaned) replies out of view too, matching the reload state.
+  const handleCommentDeleted = (postId: string) => (commentId: string) =>
+    setCommentsByPost(prev => ({ ...prev, [postId]: (prev[postId] ?? []).filter(c => c.id !== commentId && c.parent_comment_id !== commentId) }));
 
   if (access === 'loading' || authLoading) {
     return (
@@ -262,7 +267,10 @@ export default function EventDiscussionPage() {
                           postId={post.id}
                           comments={comments as unknown as DiscComment[]}
                           currentUser={{ id: user!.id, full_name: profile?.full_name ?? null, avatar_url: profile?.avatar_url ?? null }}
+                          isAdmin={isAdmin}
                           onCommentAdded={handleCommentAdded}
+                          onCommentUpdated={handleCommentUpdated(post.id)}
+                          onCommentDeleted={handleCommentDeleted(post.id)}
                         />
                       </div>
                     );
