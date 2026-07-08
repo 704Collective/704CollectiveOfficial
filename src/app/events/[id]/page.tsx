@@ -908,6 +908,19 @@ export default function EventDetail() {
             <div style={{ alignSelf: 'start', position: 'sticky', top: '24px' }}>
               <div id="ticket-card" style={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '24px 22px', boxShadow: '0 4px 24px rgba(0,0,0,0.2)' }}>
                 {renderTicketCard()}
+                {/* Admin discovery: backend already grants admins full discussion access;
+                    this surfaces the link when they hold no ticket (same open-window rule as members). */}
+                {(() => {
+                  if (!isAdmin || hasTicket) return null;
+                  const opensAtMs = new Date(event.start_time).getTime() - 120 * 60 * 60 * 1000;
+                  const discussionOpen = Boolean((event as unknown as { discussion_opened_at?: string | null }).discussion_opened_at) || Date.now() >= opensAtMs;
+                  if (!discussionOpen) return null;
+                  return (
+                    <Link href={`/events/${event.id}/discussion`} style={{ display: 'block', width: '100%', marginTop: '12px', padding: '13px 24px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, backgroundColor: 'rgba(198,166,100,0.12)', color: '#C6A664', border: '1px solid rgba(198,166,100,0.35)', textAlign: 'center', textDecoration: 'none' }}>
+                      View the Discussion
+                    </Link>
+                  );
+                })()}
               </div>
             </div>
           </div>
