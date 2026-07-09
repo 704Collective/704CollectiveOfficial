@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import * as Sentry from "@sentry/nextjs";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -16,6 +17,7 @@ export default function GlobalError({
 
   useEffect(() => {
     console.error("[app-error]", error?.message ?? "unknown");
+    Sentry.captureException(error);
   }, [error]);
 
   useEffect(() => {

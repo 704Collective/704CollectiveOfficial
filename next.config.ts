@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const CSP = [
   "default-src 'self'",
@@ -17,6 +18,7 @@ const CSP = [
     "https://immortal-alien-83842.upstash.io",
     "https://*.r2.cloudflarestorage.com",
     "https://pub-0fbe8b8a307445918223e9bf8cfedb8f.r2.dev",
+    "https://o4510870703243264.ingest.us.sentry.io",
   ].join(" "),
   "media-src 'self' blob: https://pub-0fbe8b8a307445918223e9bf8cfedb8f.r2.dev",
   "frame-src https://js.stripe.com https://*.stripe.com https://hooks.stripe.com",
@@ -90,4 +92,10 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  // Suppress source-map upload logs during build (upload is skipped entirely
+  // when SENTRY_AUTH_TOKEN is not set).
+  silent: true,
+  widenClientFileUpload: true,
+  telemetry: false,
+});
