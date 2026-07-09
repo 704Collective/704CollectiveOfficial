@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Users } from 'lucide-react';
+import * as Sentry from '@sentry/nextjs';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -24,10 +25,11 @@ export function HubsPreviewWidget({ userId }: HubsPreviewWidgetProps) {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const { data } = await supabase
-        .from('business_hubs')
+      const { data, error } = await supabase
+        .from('hubs')
         .select('id, title, description')
         .limit(3);
+      if (error) Sentry.captureException(error);
       if (cancelled) return;
       setHubs((data ?? []) as Hub[]);
       setLoading(false);
