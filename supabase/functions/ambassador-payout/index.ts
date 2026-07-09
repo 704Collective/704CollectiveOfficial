@@ -44,15 +44,6 @@ const log = (step: string, details?: unknown) => {
   console.log(`[AMBASSADOR-PAYOUT] ${step}${d}`);
 };
 
-/** Returns ISO week label like "2026-W18" */
-function getCurrentWeekLabel(): string {
-  const now = new Date();
-  const startOfYear = new Date(now.getFullYear(), 0, 1);
-  const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / 86400000);
-  const weekNumber = Math.ceil((dayOfYear + startOfYear.getDay() + 1) / 7);
-  return `${now.getFullYear()}-W${String(weekNumber).padStart(2, "0")}`;
-}
-
 /** Returns a string like "by Wednesday, March 18, 2026" (today + 2 business days) */
 function getTransferArrivalEstimate(): string {
   const date = new Date();
@@ -284,7 +275,6 @@ serve(async (req) => {
               amount_cents: rewardCents,
               stripe_transfer_id: transfer.id,
               status: "sent",
-              week_label: getCurrentWeekLabel(),
               sent_at: sentAt,
               created_at: sentAt,
             });
