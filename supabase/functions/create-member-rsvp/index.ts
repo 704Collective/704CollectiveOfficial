@@ -54,7 +54,7 @@ serve(async (req) => {
     // -- Verify active membership --
     const { data: profile, error: profileError } = await adminClient
       .from("profiles")
-      .select("id, subscription_status, membership_override")
+      .select("id, subscription_status, membership_override, member_type, role")
       .eq("id", memberUserId)
       .is("deleted_at", null)
       .single();
@@ -104,7 +104,7 @@ serve(async (req) => {
     // -- Fetch event --
     const { data: event, error: eventError } = await adminClient
       .from("events")
-      .select("id, capacity, is_published")
+      .select("id, capacity, is_published, required_tier")
       .eq("id", event_id)
       .maybeSingle();
 
@@ -115,6 +115,17 @@ serve(async (req) => {
     }
     if (!event.is_published) {
       return new Response(JSON.stringify({ error: "Event is not currently available" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // -- Tier gate: business events admit business members only (admins exempt) --
+    // Server-side mirror of the client gate in useTicketActions; closes the
+    // mobile-CTA / direct-invoke bypass that let social members RSVP.
+    const isAdminOverride = profile.role === "admin" || profile.role === "super_admin";
+    if (event.required_tier === "business" && !isAdminOverride && profile.member_type !== "business") {
+      log("tier gate blocked", { memberUserId, event_id, member_type: profile.member_type });
+      return new Response(JSON.stringify({ error: "This event is for business members only." }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
