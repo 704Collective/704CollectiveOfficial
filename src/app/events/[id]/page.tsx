@@ -463,6 +463,20 @@ export default function EventDetail() {
   const ticketPrice = event.ticket_price ?? 1000;
   const fillPct = event.capacity && event.capacity > 0 ? (ticketCount / event.capacity) * 100 : 0;
 
+  // --- Tier eligibility (shared by the desktop ticket card AND the mobile
+  // sticky CTA — the mobile bar previously skipped this check entirely) ---
+  const userMemberType = (profile?.member_type ?? '') as string;
+  const userRole = (profile?.role ?? '') as string;
+  const isAdminOverride = userRole === 'admin' || userRole === 'super_admin';
+  const isBusinessOnly = event.access_level === 'business_only';
+  const isSocialOnly = event.access_level === 'social_only';
+  const isAccessAll = !event.access_level || event.access_level === 'all';
+  const canRsvp =
+    isAdminOverride ||
+    (isAccessAll && userMemberType !== 'partner') ||
+    (isBusinessOnly && userMemberType === 'business') ||
+    (isSocialOnly && (userMemberType === 'social' || userMemberType === 'business'));
+
   const primaryBtn: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', padding: '13px 24px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, cursor: isActionLoading ? 'wait' : 'pointer', opacity: isActionLoading ? 0.6 : 1, transition: 'all 200ms ease', backgroundColor: '#FFFFFF', color: '#000000', border: 'none' };
   const ghostBtn: React.CSSProperties = { ...primaryBtn, backgroundColor: 'transparent', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)' };
   const dangerBtn: React.CSSProperties = { ...primaryBtn, backgroundColor: 'transparent', color: '#E57373', border: '1px solid rgba(229,115,115,0.15)' };
@@ -700,18 +714,10 @@ export default function EventDetail() {
       );
     }
     if (isActiveMember) {
-      // --- Access level gate ---      // Only shown when user does not already have a ticket (hasTicket is checked above).
-      const userMemberType = (profile?.member_type ?? '') as string;
-      const userRole = (profile?.role ?? '') as string;
-      const isAdminOverride = userRole === 'admin' || userRole === 'super_admin';
-      const isBusinessOnly = event.access_level === 'business_only';
-      const isSocialOnly = event.access_level === 'social_only';
-      const isAccessAll = !event.access_level || event.access_level === 'all';
-      const canRsvp =
-        isAdminOverride ||
-        (isAccessAll && userMemberType !== 'partner') ||
-        (isBusinessOnly && userMemberType === 'business') ||
-        (isSocialOnly && (userMemberType === 'social' || userMemberType === 'business'));
+      // --- Access level gate ---
+      // canRsvp / isBusinessOnly are the shared component-level derivation
+      // (also consumed by the mobile sticky CTA). Only shown when user does
+      // not already have a ticket (hasTicket is checked above).
       if (!canRsvp) return (
         <div style={{ borderRadius: '12px', backgroundColor: 'rgba(255,255,255,0.04)', padding: '20px', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
           <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#C6A664', backgroundColor: 'rgba(198,166,100,0.08)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>
@@ -929,13 +935,23 @@ export default function EventDetail() {
         {!hasTicket && !waitlistPosition && (
           <div className="mobile-sticky-cta" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40, backgroundColor: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(12px)', borderTop: '1px solid rgba(255,255,255,0.06)', padding: '14px 24px', display: 'none' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', maxWidth: '500px', margin: '0 auto' }}>
-              <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: (event.ticket_mode === 'all' && isActiveMember) ? '#C6A664' : (isActiveMember || event.access_type === 'public_free') ? '#4CAF50' : '#FFFFFF' }}>
-                {(event.ticket_mode === 'all' && isActiveMember)
-                  ? formatPrice(resolveMemberPrice() ?? ticketPrice)
-                  : (isActiveMember || ticketPrice <= 0 || event.access_type === 'public_free' ? '' : formatPrice(ticketPrice))}</div>
-              <button onClick={handleMobileCTA} disabled={isActionLoading} style={{ flex: 1, padding: '14px 24px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, backgroundColor: '#FFF', color: '#000', border: 'none', cursor: isActionLoading ? 'wait' : 'pointer', opacity: isActionLoading ? 0.6 : 1 }}>
-                {isActionLoading ? 'Loading...' : getMobileCTAText()}
-              </button>
+              {isActiveMember && !canRsvp ? (
+                /* Same eligibility the desktop card enforces — ineligible members
+                   get a non-actionable state instead of a working RSVP button. */
+                <div style={{ flex: 1, padding: '14px 24px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, backgroundColor: 'rgba(198,166,100,0.08)', color: '#C6A664', border: '1px solid rgba(198,166,100,0.25)', textAlign: 'center', cursor: 'default' }}>
+                  {isBusinessOnly ? 'Business Members Only' : 'Members Only'}
+                </div>
+              ) : (
+                <>
+                  <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: (event.ticket_mode === 'all' && isActiveMember) ? '#C6A664' : (isActiveMember || event.access_type === 'public_free') ? '#4CAF50' : '#FFFFFF' }}>
+                    {(event.ticket_mode === 'all' && isActiveMember)
+                      ? formatPrice(resolveMemberPrice() ?? ticketPrice)
+                      : (isActiveMember || ticketPrice <= 0 || event.access_type === 'public_free' ? '' : formatPrice(ticketPrice))}</div>
+                  <button onClick={handleMobileCTA} disabled={isActionLoading} style={{ flex: 1, padding: '14px 24px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, backgroundColor: '#FFF', color: '#000', border: 'none', cursor: isActionLoading ? 'wait' : 'pointer', opacity: isActionLoading ? 0.6 : 1 }}>
+                    {isActionLoading ? 'Loading...' : getMobileCTAText()}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}
