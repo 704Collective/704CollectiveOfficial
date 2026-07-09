@@ -93,8 +93,12 @@ const nextConfig: NextConfig = {
 };
 
 export default withSentryConfig(nextConfig, {
-  // Suppress source-map upload logs during build (upload is skipped entirely
-  // when SENTRY_AUTH_TOKEN is not set).
+  org: "704-collective",
+  project: "704-collective",
+  // Auth token comes from the environment (set in Vercel). Absent locally,
+  // the source-map upload silently skips — build still succeeds.
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  // Suppress source-map upload logs during build.
   silent: true,
   widenClientFileUpload: true,
   telemetry: false,

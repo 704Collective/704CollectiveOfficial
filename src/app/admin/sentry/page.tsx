@@ -41,14 +41,15 @@ export default function AdminSentryPage() {
         </div>
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight">Sentry</h1>
+          <p className="text-sm font-medium text-emerald-500">Error monitoring is active.</p>
           <p className="text-muted-foreground text-sm leading-relaxed">
-            Sentry error monitoring will be activated after DNS cutover. In-app issue streams and release health will appear
-            here once the SDK is wired to production.
+            The SDK is wired into production — client, server, and API route errors are captured
+            automatically and stream into the Sentry project dashboard.
           </p>
         </div>
         <Button asChild size="lg" className="gap-2">
-          <Link href="https://sentry.io" target="_blank" rel="noopener noreferrer">
-            Open Sentry dashboard
+          <Link href="https://704-collective.sentry.io/issues/" target="_blank" rel="noopener noreferrer">
+            Open Sentry issues
             <ExternalLink className="h-4 w-4" />
           </Link>
         </Button>
