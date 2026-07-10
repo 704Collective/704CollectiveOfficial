@@ -40,6 +40,7 @@ interface Event {
   title: string;
   start_time: string;
   location_name: string | null;
+  capacity: number | null;
 }
 
 interface Profile {
@@ -118,7 +119,7 @@ serve(async (req) => {
   // 1. Find upcoming events created/updated in the last 7 days
   const { data: events, error: eventsError } = await supabase
     .from("events")
-    .select("id, title, start_time, location_name")
+    .select("id, title, start_time, location_name, capacity")
     .gte("start_time", now.toISOString())
     .eq("is_published", true)
     .or(`created_at.gte.${sevenDaysAgo},updated_at.gte.${sevenDaysAgo}`)
@@ -135,6 +136,37 @@ serve(async (req) => {
   }
 
   log("Found upcoming events", { count: events.length, dryRun });
+
+  // 1b. Capacity exclusion: never pitch a sold-out event to guests. Counts
+  // active|used credentials directly (mirrors create-member-rsvp) -- the
+  // get_event_attendance_count RPC undercounts for service-role callers.
+  const openEvents: Event[] = [];
+  for (const event of events as Event[]) {
+    if (event.capacity == null) {
+      openEvents.push(event); // uncapped
+      continue;
+    }
+    const { count, error: countError } = await supabase
+      .from("attendance_credentials")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", event.id)
+      .in("status", ["active", "used"]);
+    if (countError) {
+      // Fail closed: never pitch an event whose capacity we couldn't verify
+      log("Capacity count failed - excluding event", { eventId: event.id, error: countError.message });
+      continue;
+    }
+    if ((count ?? 0) >= event.capacity) {
+      log("Event at capacity - excluded", { eventId: event.id, capacity: event.capacity, count });
+      continue;
+    }
+    openEvents.push(event);
+  }
+
+  if (openEvents.length === 0) {
+    log("All eligible events are at capacity - nothing to send");
+    return new Response(JSON.stringify({ processed: 0, dryRun }), { status: 200 });
+  }
 
   // 2. Find all guest_pass credentials (active or used) - these are people who've been
   //    invited to or attended a 704 event as a guest. Joined to people for name/email.
@@ -205,7 +237,7 @@ serve(async (req) => {
   let totalSent = 0;
   const results: any[] = [];
 
-  for (const event of events as Event[]) {
+  for (const event of openEvents) {
     // 4. Exclude guests already notified about this event
     const { data: alreadyNotified } = await supabase
       .from("guest_event_notifications")
@@ -304,7 +336,7 @@ serve(async (req) => {
   }
 
   if (dryRun) {
-    return new Response(JSON.stringify({ dryRun: true, eventCount: events.length, results }), {
+    return new Response(JSON.stringify({ dryRun: true, eventCount: openEvents.length, results }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
