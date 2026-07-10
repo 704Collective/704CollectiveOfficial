@@ -85,10 +85,44 @@ serve(async (req) => {
       );
     }
 
+    // Internal/test accounts are never nagged
+    const INTERNAL_EXCLUDE = new Set([
+      'adam@cltbucketlist.com',
+      'hello@704collective.com',
+      'businesstest@704collective.com',
+      'timi@cltbucketlist.com',
+    ]);
+    let recipients = needsReminder.filter(
+      (m: any) => !INTERNAL_EXCLUDE.has((m.email || '').toLowerCase()),
+    );
+
+    // 14-day per-member cooldown via contact_activity (mirrors re-engagement's
+    // 30-day pattern: check before send, stamp after successful send).
+    const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+    const candidateIds = recipients.map((m: any) => m.id);
+    if (candidateIds.length > 0) {
+      const { data: recentSends, error: cooldownErr } = await supabase
+        .from('contact_activity')
+        .select('profile_id')
+        .eq('activity_type', 'business_profile_reminder_sent')
+        .gte('created_at', fourteenDaysAgo)
+        .in('profile_id', candidateIds);
+      if (cooldownErr) throw cooldownErr; // fail closed: never risk re-nagging everyone
+      const cooling = new Set((recentSends ?? []).map((r: any) => r.profile_id));
+      recipients = recipients.filter((m: any) => !cooling.has(m.id));
+    }
+
+    if (recipients.length === 0) {
+      return new Response(
+        JSON.stringify({ sent: 0, message: 'All incomplete profiles are excluded or within the 14-day cooldown' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const portalUrl = `${siteUrl}/business-portal/profile`;
 
     // Build batch emails using centralised template
-    const emailPromises = needsReminder.map(async (member: any) => {
+    const emailPromises = recipients.map(async (member: any) => {
       const firstName   = member.full_name?.split(' ')[0] || 'there';
       const companyName = member.business_profiles?.[0]?.company_name || undefined;
       const { subject, html } = await renderTemplate(supabaseUrl, serviceRoleKey, 'business-profile-reminder', {
@@ -123,6 +157,19 @@ serve(async (req) => {
 
       if (res.ok) {
         totalSent += batch.length;
+        // Cooldown stamp: one row per recipient actually emailed in this batch.
+        // recipients[] and emails[] share the same order/indexes.
+        const stampedAt = new Date().toISOString();
+        const activityRows = recipients.slice(i, i + 100).map((m: any) => ({
+          activity_type: 'business_profile_reminder_sent',
+          title: 'Business profile reminder sent',
+          profile_id: m.id,
+          created_at: stampedAt,
+        }));
+        const { error: stampErr } = await supabase.from('contact_activity').insert(activityRows);
+        if (stampErr) {
+          console.error('[business-profile-reminder] cooldown stamp insert failed:', stampErr.message);
+        }
       } else {
         const err = await res.text();
         console.error('[business-profile-reminder] Resend batch error:', err);
@@ -133,7 +180,7 @@ serve(async (req) => {
     console.log(`[business-profile-reminder] Sent ${totalSent}, errors ${totalErrors}`);
 
     return new Response(
-      JSON.stringify({ sent: totalSent, errors: totalErrors, total: needsReminder.length }),
+      JSON.stringify({ sent: totalSent, errors: totalErrors, total: recipients.length }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
