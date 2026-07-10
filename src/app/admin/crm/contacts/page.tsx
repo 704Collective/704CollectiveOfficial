@@ -603,7 +603,7 @@ export default function CrmContactsPage() {
       // 5 — partners table
       const { data: partners } = await supabase
         .from('partners')
-        .select('id, email, full_name, phone, company, created_at, status')
+        .select('id, email, full_name:contact_name, phone, company:business_name, created_at, status')
         .limit(LIMIT);
       for (const p of partners ?? []) {
         if (!p.email) continue;

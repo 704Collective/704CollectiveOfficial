@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { supabase } from '@/integrations/supabase/client';
 
 export type UnifiedSourceTable =
@@ -190,10 +191,11 @@ export async function loadUnifiedContacts(): Promise<UnifiedContact[]> {
     );
   }
 
-  const { data: partners } = await supabase
+  const { data: partners, error: partnersError } = await supabase
     .from('partners')
-    .select('id, email, full_name, phone, company, created_at, status')
+    .select('id, email, full_name:contact_name, phone, company:business_name, created_at, status')
     .limit(LIMIT);
+  if (partnersError) Sentry.captureException(partnersError);
 
   for (const p of partners ?? []) {
     if (!p.email) continue;
