@@ -96,9 +96,25 @@ export function EventAttendeesDialog({
       }
     }
 
+    // Guests/public attendees have no profile — bridge to their contacts row by email
+    // so their rows can route to /admin/contacts/contacts:{id}. One batched query, no N+1.
+    const nonProfileEmails = emails.filter(e => !profileByEmail[e.toLowerCase()]);
+    const contactByEmail: Record<string, { id: string }> = {};
+    if (nonProfileEmails.length > 0) {
+      const lookupEmails = [...new Set([...nonProfileEmails, ...nonProfileEmails.map(e => e.toLowerCase())])];
+      const { data: contactRows } = await supabase
+        .from('contacts')
+        .select('id, email')
+        .in('email', lookupEmails);
+      for (const c of (contactRows || [])) {
+        if (c.email) contactByEmail[c.email.toLowerCase()] = { id: c.id };
+      }
+    }
+
     const merged: AttendeeRow[] = creds.map(c => {
       const person = peopleById[c.person_id];
       const prof = person?.email ? profileByEmail[person.email.toLowerCase()] : undefined;
+      const contact = !prof && person?.email ? contactByEmail[person.email.toLowerCase()] : undefined;
       const kind: AttendeeRow['kind'] =
         c.credential_type === 'member' || c.credential_type === 'member_rsvp' ? 'member'
         : c.credential_type === 'guest_pass' ? 'guest'
@@ -112,7 +128,11 @@ export function EventAttendeesDialog({
         avatar_url: prof?.avatar_url ?? null,
         checked_in_at: c.checked_in_at,
         rsvp_date: c.created_at,
-        contact_route_id: prof ? encodeURIComponent('profiles:' + prof.id) : null,
+        contact_route_id: prof
+          ? encodeURIComponent('profiles:' + prof.id)
+          : contact
+            ? encodeURIComponent('contacts:' + contact.id)
+            : null,
         has_payment: !!(c.metadata as Record<string, unknown> | null)?.stripe_payment_id,
       };
     }).sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
