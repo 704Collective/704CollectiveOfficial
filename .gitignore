@@ -72,3 +72,7 @@ test-assets/
 e2e/screenshots/
 .tmp-*.png
 scripts/test-*.mjs
+
+# Supabase CLI cache + local schema scratch
+supabase/.temp/
+supabase/schemas/
