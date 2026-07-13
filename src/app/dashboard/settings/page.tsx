@@ -350,6 +350,7 @@ export default function SettingsPage() {
               userId={user.id}
               isActiveMember={isActiveMember}
               hasStripeSubscription={canCancelOrPause}
+              hasStripeCustomer={!!p?.stripe_customer_id}
               membershipOverride={!!p?.membership_override}
             />
           </section>

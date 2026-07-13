@@ -17,11 +17,13 @@ import {
 } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import * as Sentry from '@sentry/nextjs';
 
 interface MembershipDangerZoneProps {
   userId: string;
   isActiveMember: boolean;
   hasStripeSubscription: boolean;
+  hasStripeCustomer: boolean;
   /** True when the member's access is granted via admin override (no real Stripe sub). */
   membershipOverride?: boolean;
 }
@@ -37,7 +39,7 @@ const CANCEL_REASONS = [
   'Other',
 ] as const;
 
-export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscription, membershipOverride = false }: MembershipDangerZoneProps) {
+export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscription, hasStripeCustomer, membershipOverride = false }: MembershipDangerZoneProps) {
   const router = useRouter();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [step, setStep] = useState<SurveyStep>('confirm');
@@ -90,13 +92,13 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
     try {
       await saveSurvey(withSurvey);
 
-      if (hasStripeSubscription && !membershipOverride) {
+      if (hasStripeCustomer) {
         // Real Stripe subscription — cancel via edge function
         const { data, error } = await supabase.functions.invoke('cancel-subscription');
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
       } else {
-        // Admin-override membership — cancel by updating profile directly (no Stripe involved)
+        // No Stripe customer at all (pure comp account) — cancel by updating profile directly
         const { error } = await supabase
           .from('profiles')
           .update({
@@ -110,6 +112,7 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
 
       router.push('/membership-ended');
     } catch (err: unknown) {
+      Sentry.captureException(err, { tags: { feature: 'membership-cancel' }, extra: { userId, hasStripeCustomer, membershipOverride } });
       const msg = err instanceof Error ? err.message : 'Failed to cancel membership';
       toast.error(msg);
     } finally {

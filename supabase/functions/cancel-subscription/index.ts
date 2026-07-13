@@ -96,16 +96,31 @@ serve(async (req) => {
       throw new Error("No Stripe customer found for this user.");
     }
 
-    // Find the active subscription
-    const subscriptions = await stripe.subscriptions.list({
+    // Find ALL subscriptions for this customer — no status filter, no limit:1.
+    const allSubs = await stripe.subscriptions.list({
       customer: customerId,
-      status: "active",
-      limit: 1,
+      status: "all",
+      limit: 100,
+    });
+    const LIVE_END_AT_PERIOD = ["active", "trialing"];
+    const LIVE_CANCEL_NOW = ["past_due", "unpaid", "paused", "incomplete"];
+    const liveAtPeriodEnd = allSubs.data.filter((s) => LIVE_END_AT_PERIOD.includes(s.status));
+    const liveCancelNow = allSubs.data.filter((s) => LIVE_CANCEL_NOW.includes(s.status));
+    const liveCount = liveAtPeriodEnd.length + liveCancelNow.length;
+    logStep("Subscription inventory", {
+      total: allSubs.data.length,
+      liveCount,
+      statuses: allSubs.data.map((s) => `${s.id}:${s.status}`),
     });
 
-    if (subscriptions.data.length === 0) {
-      logStep("No active subscription in Stripe - syncing profile state");
+    if (liveCount > 1) {
+      console.error(
+        `[CANCEL-SUBSCRIPTION] ANOMALY: multiple live subscriptions for customer ${customerId} (user ${userId}) — possible double-billing. Cancelling all.`
+      );
+    }
 
+    if (liveCount === 0) {
+      logStep("No live subscription in Stripe - syncing profile state");
       const { data: currentProfile } = await supabaseAdmin
         .from("profiles")
         .select("subscription_status, subscription_ends_at, cancel_at_period_end")
@@ -127,17 +142,21 @@ serve(async (req) => {
         );
       }
 
-      // Stripe was canceled out-of-band (e.g. admin via Dashboard).
-      // Sync the profile so UI stops showing an active state.
+      // Stripe has NOTHING live for this customer (out-of-band cancel). Stamp coherently — and loudly.
+      console.error(
+        `[CANCEL-SUBSCRIPTION] SYNC-PATH: zero live Stripe subscriptions for customer ${customerId} (user ${userId}); stamping profile canceled WITHOUT touching Stripe.`
+      );
       await supabaseAdmin
         .from("profiles")
         .update({
           subscription_status: "canceled",
+          subscription_id: null,
           cancel_at_period_end: false,
           canceled_at: new Date().toISOString(),
+          subscription_ends_at: new Date().toISOString(),
+          membership_override: false,
         })
         .eq("id", userId);
-
       return new Response(
         JSON.stringify({
           success: true,
@@ -148,36 +167,32 @@ serve(async (req) => {
       );
     }
 
-    const subscription = subscriptions.data[0];
-    logStep("Found active subscription", { subscriptionId: subscription.id });
+    // Cancel EVERY live subscription.
+    let latestPeriodEnd: number | null = null;
+    for (const sub of liveAtPeriodEnd) {
+      const updated = await stripe.subscriptions.update(sub.id, { cancel_at_period_end: true });
+      const pe = updated.items?.data?.[0]?.current_period_end ?? updated.cancel_at ?? null;
+      if (pe && (!latestPeriodEnd || pe > latestPeriodEnd)) latestPeriodEnd = pe;
+      logStep("Set cancel_at_period_end", { subscriptionId: sub.id, status: sub.status });
+    }
+    for (const sub of liveCancelNow) {
+      await stripe.subscriptions.cancel(sub.id);
+      logStep("Canceled non-active subscription immediately", { subscriptionId: sub.id, status: sub.status });
+    }
 
-    // Cancel at end of billing period
-    const updatedSubscription = await stripe.subscriptions.update(
-      subscription.id,
-      { cancel_at_period_end: true }
-    );
+    const cancelAt = latestPeriodEnd
+      ? new Date(latestPeriodEnd * 1000).toISOString()
+      : new Date().toISOString();
 
-    // In Basil API, current_period_end moved to item level
-    const itemPeriodEnd = updatedSubscription.items?.data?.[0]?.current_period_end;
-    const cancelAt = itemPeriodEnd
-      ? new Date(itemPeriodEnd * 1000).toISOString()
-      : updatedSubscription.cancel_at
-        ? new Date(updatedSubscription.cancel_at * 1000).toISOString()
-        : null;
-
-    logStep("Subscription set to cancel at period end", { subscriptionId: subscription.id, cancelAt });
-
-    // Keep status as "active" — member still has access until period end.
-    // Set cancel_at_period_end flag so UI can show the pending cancellation state.
-    // Status will flip to "canceled" when Stripe fires customer.subscription.deleted.
+    // Keep status "active" until the webhook flips it; clear override so override+paying members truly end.
     const { error: updateError } = await supabaseAdmin
       .from("profiles")
       .update({
         cancel_at_period_end: true,
         subscription_ends_at: cancelAt,
+        membership_override: false,
       })
       .eq("id", userId);
-
     if (updateError) {
       logStep("WARNING: Failed to update profile", { error: updateError.message });
     } else {
@@ -190,10 +205,7 @@ serve(async (req) => {
         cancel_at: cancelAt,
         message: `Membership will be cancelled at end of billing period (${cancelAt})`,
       }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);

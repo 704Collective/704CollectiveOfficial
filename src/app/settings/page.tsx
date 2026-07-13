@@ -318,7 +318,7 @@ export default function Settings() {
           {/* Danger Zone */}
           {isActiveMember && hasStripeSubscription && (
             <div className="card-elevated p-6 border-destructive/20">
-              <MembershipDangerZone userId={user.id} isActiveMember={isActiveMember} hasStripeSubscription={hasStripeSubscription} />
+              <MembershipDangerZone userId={user.id} isActiveMember={isActiveMember} hasStripeSubscription={hasStripeSubscription} hasStripeCustomer={!!p?.stripe_customer_id} membershipOverride={!!p?.membership_override} />
             </div>
           )}
 
