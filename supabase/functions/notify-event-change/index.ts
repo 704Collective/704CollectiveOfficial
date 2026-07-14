@@ -101,14 +101,14 @@ serve(async (req) => {
           global: { headers: { Authorization: authHeader } },
         });
 
-        const { data: claims, error: claimsErr } = await userClient.auth.getClaims(token);
+        const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
         if (claimsErr) {
           return new Response(JSON.stringify({ error: "Unauthorized" }), {
             status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        const userId = (claims as { sub?: string })?.sub;
+        const userId = (claimsData?.claims as { sub?: string } | undefined)?.sub;
         if (!userId) {
           return new Response(JSON.stringify({ error: "Unauthorized" }), {
             status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
