@@ -300,6 +300,28 @@ serve(async (req) => {
 
     const { sent, failed } = await sendResendBatch(resendKey, emailMessages);
 
+    // Best-effort audit trail: one email_log row per recipient. Batches here are single-chunk
+    // (<=100), so status is all-sent or all-failed. A logging failure must NEVER fail the send.
+    try {
+      const logStatus = failed === 0 ? "sent" : "failed";
+      const nowIso = new Date().toISOString();
+      const logRows = recipients.map((r) => ({
+        to_email: r.email,
+        to_name: r.name,
+        subject,
+        template: "event-change-notification",
+        campaign_id: null,
+        status: logStatus,
+        sent_at: logStatus === "sent" ? nowIso : null,
+        failed_at: logStatus === "failed" ? nowIso : null,
+        metadata: { event_id: eventId, source: "notify-event-change" },
+      }));
+      const { error: logErr } = await adminClient.from("email_log").insert(logRows);
+      if (logErr) log("email_log insert failed (non-fatal)", { error: logErr.message });
+    } catch (logCatch) {
+      log("email_log insert threw (non-fatal)", { error: String(logCatch) });
+    }
+
     log("Notification complete", { sent, failed, total: recipients.length });
 
     return new Response(JSON.stringify({ sent, failed, total: recipients.length, dryRun: false }), {

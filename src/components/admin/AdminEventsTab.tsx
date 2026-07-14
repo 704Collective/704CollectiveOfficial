@@ -32,6 +32,7 @@ import { toast } from 'sonner';
 import { format, getDay, getDate, addHours } from 'date-fns';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import * as Sentry from '@sentry/nextjs';
 import {
   Calendar, Plus, Pencil, Trash2, Search, Copy, Lock,
   ChevronLeft, ChevronRight, MoreHorizontal, ArrowLeft, Upload, X as XIcon, Gift, Mail, Check, UserPlus, Bell, ExternalLink, Send, Loader2, FlaskConical,
@@ -60,6 +61,7 @@ interface Event {
   eventbrite_event_id: string | null;
   eventbrite_published: boolean | null;
   eventbrite_url: string | null;
+  is_published?: boolean | null;
   event_type?: string | null;
   access_type?: string | null;
   access_level?: string | null;
@@ -91,6 +93,18 @@ interface Event {
 
 type AccessType = 'members_only' | 'public_ticketed' | 'public_free';
 type AccessLevel = 'all' | 'social_only' | 'business_only';
+
+// One event occurrence touched by a save, with before/after values used to decide
+// whether (and what) to notify RSVPs about.
+type ChangeOcc = {
+  id: string;
+  is_published: boolean;
+  changed: boolean;
+  oldStartTime: string;
+  newStartTime: string;
+  oldEndTime: string | null;
+  newEndTime: string | null;
+};
 
 interface EventForm {
   membership_tier: 'social' | 'business';
@@ -198,6 +212,13 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   // UI state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  // Snapshot of the 4 notify-relevant fields captured when the edit form opens,
+  // so we can detect what actually changed on save and notify RSVPs accordingly.
+  const [editSnapshot, setEditSnapshot] = useState<{
+    start_time: string; end_time: string | null;
+    location_name: string | null; location_address: string | null;
+    is_published: boolean;
+  } | null>(null);
   const [form, setForm] = useState<EventForm>(getDefaultEventForm());
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'past'>('upcoming');
@@ -331,12 +352,34 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       if (error) throw error;
       return { type: 'created' as const, count: 1 };
     },
-    onSuccess: (result) => {
-      if (result.type === 'updated') toast.success('Event updated');
-      else if (result.type === 'created-recurring') toast.success(`Created ${result.count} recurring events`);
-      else toast.success('Event created');
+    onSuccess: async (result) => {
       setDialogOpen(false);
       invalidateEvents();
+      if (result.type === 'created-recurring') { toast.success(`Created ${result.count} recurring events`); return; }
+      if (result.type === 'created') { toast.success('Event created'); return; }
+
+      // Single-event edit: notify RSVPs if any of the 4 notify-relevant fields changed.
+      const snap = editSnapshot;
+      const newStart = form.start_time ? form.start_time.toISOString() : (snap?.start_time ?? new Date().toISOString());
+      const newEnd = form.end_time ? form.end_time.toISOString() : null;
+      const newLocName = form.location_name.trim() || null;
+      const newLocAddr = form.location_address.trim() || null;
+      const changed = !!snap && (
+        snap.start_time !== newStart ||
+        (snap.end_time ?? null) !== newEnd ||
+        (snap.location_name ?? null) !== newLocName ||
+        (snap.location_address ?? null) !== newLocAddr
+      );
+      const occ: ChangeOcc = {
+        id: editingEvent?.id ?? '',
+        is_published: snap?.is_published ?? false,
+        changed,
+        oldStartTime: snap?.start_time ?? newStart,
+        newStartTime: newStart,
+        oldEndTime: snap?.end_time ?? null,
+        newEndTime: newEnd,
+      };
+      await handlePostSaveNotify([occ], 'Event updated');
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to save event'),
   });
@@ -348,13 +391,32 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       eventData: ReturnType<typeof buildEventData>;
       bulkFields: ReturnType<typeof buildBulkUpdateFields>;
     }) => {
+      const snap = editSnapshot;
+      const newStartIso = form.start_time ? form.start_time.toISOString() : (snap?.start_time ?? new Date().toISOString());
+      const newEndIso = form.end_time ? form.end_time.toISOString() : null;
+      const newLocName = form.location_name.trim() || null;
+      const newLocAddr = form.location_address.trim() || null;
+      const locationChanged = !!snap && ((snap.location_name ?? null) !== newLocName || (snap.location_address ?? null) !== newLocAddr);
+
       const { error } = await supabase.from('events').update(eventData).eq('id', ev.id);
       if (error) throw error;
 
-      if (scope === 'this') return 1;
+      const occurrences: ChangeOcc[] = [{
+        id: ev.id,
+        is_published: snap?.is_published ?? ev.is_published ?? false,
+        changed: locationChanged
+          || (snap?.start_time ?? '') !== newStartIso
+          || (snap?.end_time ?? null) !== newEndIso,
+        oldStartTime: snap?.start_time ?? ev.start_time,
+        newStartTime: newStartIso,
+        oldEndTime: snap?.end_time ?? null,
+        newEndTime: newEndIso,
+      }];
+
+      if (scope === 'this') return { count: 1, occurrences };
 
       const parentId = ev.parent_event_id || ev.id;
-      let query = supabase.from('events').select('id, start_time').neq('id', ev.id);
+      let query = supabase.from('events').select('id, start_time, end_time, is_published').neq('id', ev.id);
       if (ev.parent_event_id) {
         query = query.or(`parent_event_id.eq.${parentId},id.eq.${parentId}`);
       } else { query = query.eq('parent_event_id', ev.id); }
@@ -366,27 +428,40 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
         const newStart = form.start_time!;
         const updates = siblings.map((sib) => {
           const updateData: Record<string, unknown> = { ...bulkFields };
+          let sibNewStart: string = sib.start_time;
+          let sibNewEnd: string | null = sib.end_time ?? null;
           if (timeChg) {
             const sibStart = new Date(sib.start_time);
             sibStart.setHours(newStart.getHours(), newStart.getMinutes(), newStart.getSeconds(), 0);
-            updateData.start_time = sibStart.toISOString();
+            sibNewStart = sibStart.toISOString();
+            updateData.start_time = sibNewStart;
             if (form.end_time && form.start_time) {
               const dur = form.end_time.getTime() - form.start_time.getTime();
-              updateData.end_time = new Date(sibStart.getTime() + dur).toISOString();
+              sibNewEnd = new Date(sibStart.getTime() + dur).toISOString();
+              updateData.end_time = sibNewEnd;
             }
           }
+          occurrences.push({
+            id: sib.id,
+            is_published: sib.is_published ?? false,
+            changed: locationChanged || timeChg,
+            oldStartTime: sib.start_time,
+            newStartTime: sibNewStart,
+            oldEndTime: sib.end_time ?? null,
+            newEndTime: sibNewEnd,
+          });
           return supabase.from('events').update(updateData).eq('id', sib.id);
         });
         await Promise.all(updates);
-        return siblings.length + 1;
+        return { count: siblings.length + 1, occurrences };
       }
-      return 1;
+      return { count: 1, occurrences };
     },
-    onSuccess: (count) => {
-      toast.success(count > 1 ? `Updated ${count} events in the series` : 'Event updated');
+    onSuccess: async ({ count, occurrences }) => {
       setDialogOpen(false);
       setRecurringDialogOpen(false);
       invalidateEvents();
+      await handlePostSaveNotify(occurrences, count > 1 ? `Updated ${count} events in the series` : 'Event updated');
     },
     onError: () => toast.error('Failed to update event'),
   });
@@ -488,12 +563,54 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
     }
   };
 
+  // ── Auto-notify RSVPs on time/location change ──────────────────────────────
+  // Invokes notify-event-change for each changed+published occurrence. The admin's
+  // own session authorizes it (function's admin path). Returns total attendees notified.
+  const fireChangeNotifications = async (occurrences: ChangeOcc[]) => {
+    const newTitle = form.title.trim();
+    const newLocation = [form.location_name.trim(), form.location_address.trim()].filter(Boolean).join(', ');
+    let notified = 0;
+    for (const occ of occurrences) {
+      const res = await supabase.functions.invoke('notify-event-change', {
+        body: {
+          eventId: occ.id,
+          eventName: newTitle,
+          oldStartTime: occ.oldStartTime,
+          newStartTime: occ.newStartTime,
+          oldEndTime: occ.oldEndTime,
+          newEndTime: occ.newEndTime,
+          newLocation,
+          origin: window.location.origin,
+        },
+      });
+      if (res.error) throw res.error;
+      notified += (res.data as { sent?: number } | null)?.sent ?? 0;
+    }
+    return notified;
+  };
+
+  // Fires notifications for the qualifying occurrences and toasts the outcome.
+  // A notify failure never rolls back the save — it just downgrades the toast.
+  const handlePostSaveNotify = async (occurrences: ChangeOcc[], baseToast: string) => {
+    const toNotify = occurrences.filter(o => o.id && o.changed && o.is_published);
+    if (toNotify.length === 0) { toast.success(baseToast); return; }
+    try {
+      const notified = await fireChangeNotifications(toNotify);
+      toast.success(`Saved. Notified ${notified} attendee(s) of the change.`);
+    } catch (err) {
+      toast.success(baseToast);
+      toast.error('Saved, but attendee notification failed — send manually');
+      Sentry.captureException(err);
+    }
+  };
+
   // ── Form helpers ─────────────────────────────────────────────────────────
-  const openCreate = () => { setEditingEvent(null); setForm(getDefaultEventForm()); setDialogOpen(true); };
+  const openCreate = () => { setEditingEvent(null); setEditSnapshot(null); setForm(getDefaultEventForm()); setDialogOpen(true); };
 
   useEffect(() => {
     if (searchParams.get('create_event') !== '1') return;
     setEditingEvent(null);
+    setEditSnapshot(null);
     setForm(getDefaultEventForm());
     setDialogOpen(true);
     const next = new URLSearchParams(searchParams.toString());
@@ -504,6 +621,13 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
 
   const openEdit = (event: Event) => {
     setEditingEvent(event);
+    setEditSnapshot({
+      start_time: event.start_time,
+      end_time: event.end_time ?? null,
+      location_name: event.location_name ?? null,
+      location_address: event.location_address ?? null,
+      is_published: event.is_published ?? false,
+    });
     // Read from *_deprecated columns: that's where the dual-write puts the
     // canonical edit-form values. Bare names (event.ticket_price etc.) are
     // undefined at runtime because the sweep renamed those columns.
@@ -576,6 +700,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
         ? event.ticket_mode
         : (accessType === 'public_ticketed' && (event.ticket_price ?? 0) > 0 ? 'public_only' : 'none');
     setEditingEvent(null);
+    setEditSnapshot(null);
     setForm({
       membership_tier: tier,
       title: event.title, description: event.description || '', start_time: getDefaultStartTime(),
@@ -1418,19 +1543,19 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       <AlertDialog open={recurringDialogOpen} onOpenChange={setRecurringDialogOpen}>
         <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">Update recurring event</AlertDialogTitle>
+            <AlertDialogTitle className="text-foreground">This event repeats weekly</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
-              This event is part of a recurring series. Which events should be updated?
-              {dateChanged(editingEvent) && <span className="block mt-2 text-xs text-amber-400">Note: Time changes will be applied to the selected scope. Date changes only affect this event.</span>}
+              Which events should get these changes? &lsquo;Just this one&rsquo; never touches the other weeks.
+              {dateChanged(editingEvent) && <span className="block mt-2 text-xs text-amber-400">Note: Time changes apply to the selected scope. Date changes only affect this event.</span>}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
             <div className="flex flex-col gap-2 w-full">
-              <Button variant="outline" className="w-full" disabled={submitting} onClick={() => applyBulkEdit('this')}>This event only</Button>
-              <Button variant="outline" className="w-full" disabled={submitting} onClick={() => applyBulkEdit('future')}>This & future events</Button>
-              <Button className="w-full" disabled={submitting} onClick={() => applyBulkEdit('all')}>{submitting ? 'Updating...' : 'All events in series'}</Button>
+              <Button className="w-full" disabled={submitting} onClick={() => applyBulkEdit('this')}>{submitting ? 'Saving...' : 'Just this one (recommended)'}</Button>
+              <Button variant="outline" className="w-full" disabled={submitting} onClick={() => applyBulkEdit('future')}>This + all future weeks</Button>
+              <Button variant="outline" className="w-full" disabled={submitting} onClick={() => applyBulkEdit('all')}>Every event in the series</Button>
             </div>
-            <AlertDialogCancel disabled={submitting} className="w-full mt-1">Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={submitting} className="w-full mt-1">Don&rsquo;t save anything</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
