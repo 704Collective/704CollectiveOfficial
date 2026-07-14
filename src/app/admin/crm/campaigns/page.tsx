@@ -79,6 +79,7 @@ const AUDIENCE_OPTIONS = [
   { value: 'all_contacts',  label: 'All Contacts' },
   { value: 'cancelled',     label: 'Cancelled Members' },
   { value: 'event_guests',  label: 'Event Guests' },
+  { value: 'event_non_members', label: 'Event Attendees (Non-Members)' },
 ];
 
 // All admins and super admins who can be sender
@@ -541,6 +542,7 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
   const [testEmail, setTestEmail] = useState('');
   const [showTestDialog, setShowTestDialog] = useState(false);
   const [audienceCounts, setAudienceCounts] = useState<Record<string, number>>({});
+  const [countingNonMembers, setCountingNonMembers] = useState(false);
   const [audienceEventId, setAudienceEventId] = useState<string | null>(campaign?.audience_event_id ?? null);
   const [events, setEvents] = useState<Array<{ id: string; title: string; start_time: string }>>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
@@ -600,6 +602,42 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
     return () => { cancelled = true; };
   }, []);
 
+  // Live recipient count for the event-scoped non-member audience. Uses the
+  // send-campaign count_only mode so the number matches a real send exactly.
+  useEffect(() => {
+    if (audience !== 'event_non_members' || !audienceEventId) return;
+    let cancelled = false;
+    (async () => {
+      setCountingNonMembers(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-campaign`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session?.access_token}`,
+            apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          },
+          body: JSON.stringify({
+            count_only: true,
+            audience_type: 'event_non_members',
+            audience_event_id: audienceEventId,
+          }),
+        });
+        if (cancelled) return;
+        if (res.ok) {
+          const result = await res.json();
+          setAudienceCounts(prev => ({ ...prev, event_non_members: result.count ?? 0 }));
+        }
+      } catch {
+        // Non-fatal: leave the count unset; confirm dialog will show '?'.
+      } finally {
+        if (!cancelled) setCountingNonMembers(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [audience, audienceEventId]);
+
   const addBlock = (type: BlockType) => {
     const newBlock: Block = { id: uid(), type, content: defaultContent(type) };
     const footerIdx = blocks.findIndex(b => b.type === 'footer');
@@ -628,7 +666,7 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
   };
 
   const handleSendNow = async () => {
-    if (audience === 'event_guests' && !audienceEventId) {
+    if ((audience === 'event_guests' || audience === 'event_non_members') && !audienceEventId) {
       toast.error('Please select an event to target.');
       return;
     }
@@ -648,7 +686,7 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
         from_name: fromName,
         audience: { type: audience },
         audience_type: audience,
-        audience_event_id: audience === 'event_guests' ? audienceEventId : null,
+        audience_event_id: (audience === 'event_guests' || audience === 'event_non_members') ? audienceEventId : null,
         body_json: blocks,
         updated_at: new Date().toISOString(),
       };
@@ -733,7 +771,7 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
         from_name: fromName,
         audience: { type: audience },
         audience_type: audience,
-        audience_event_id: audience === 'event_guests' ? audienceEventId : null,
+        audience_event_id: (audience === 'event_guests' || audience === 'event_non_members') ? audienceEventId : null,
         body_json: blocks,
         status,
         updated_at: new Date().toISOString(),
@@ -863,7 +901,12 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
                 ))}
               </SelectContent>
             </Select>
-            {audienceCounts[audience] !== undefined && (
+            {audience === 'event_non_members' && countingNonMembers ? (
+              <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+                <Users className="w-3 h-3" />
+                counting…
+              </p>
+            ) : audienceCounts[audience] !== undefined && (
               <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
                 <Users className="w-3 h-3" />
                 {audienceCounts[audience]} recipient{audienceCounts[audience] === 1 ? '' : 's'}
@@ -871,7 +914,7 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
             )}
           </div>
 
-          {audience === 'event_guests' && (
+          {(audience === 'event_guests' || audience === 'event_non_members') && (
             <div>
               <Label className="text-xs text-muted-foreground mb-1.5 block">Which event?</Label>
               <Select
@@ -892,7 +935,7 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
               </Select>
               {!audienceEventId && (
                 <p className="text-xs text-amber-400 mt-1">
-                  Please select an event to target its RSVPs.
+                  Please select an event.
                 </p>
               )}
             </div>
