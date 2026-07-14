@@ -210,6 +210,28 @@ serve(async (req) => {
       recipients.push({ email, name });
     }
 
+    // Public RSVPs live in event_public_rsvps (not attendance_credentials). Merge them in,
+    // running through the same lowercased-email dedupe so members already added win.
+    const { data: publicRsvps, error: publicErr } = await adminClient
+      .from("event_public_rsvps")
+      .select("email, first_name, last_name")
+      .eq("event_id", eventId)
+      .eq("status", "rsvp");
+
+    if (publicErr) {
+      log("event_public_rsvps query failed", { eventId, error: publicErr.message });
+      throw publicErr;
+    }
+
+    for (const r of (publicRsvps || []) as any[]) {
+      if (!r.email) continue;
+      const emailLower = r.email.toLowerCase();
+      if (seenEmails.has(emailLower)) continue;
+      seenEmails.add(emailLower);
+      const name = [r.first_name, r.last_name].filter(Boolean).join(" ") || "there";
+      recipients.push({ email: r.email, name });
+    }
+
     if (recipients.length === 0) {
       log("No recipients to notify");
       return new Response(JSON.stringify({ sent: 0, failed: 0, total: 0, dryRun }), {
