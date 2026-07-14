@@ -130,7 +130,14 @@ serve(async (req) => {
       });
     }
 
-    log("Processing event change notification", { eventId, eventName, dryRun });
+    const timesChanged = new Date(oldStartTime).getTime() !== new Date(newStartTime).getTime();
+    if (!timesChanged && !newLocation) {
+      return new Response(JSON.stringify({ error: "newLocation is required for a location-only change (start/end times are unchanged)" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    log("Processing event change notification", { eventId, eventName, dryRun, timesChanged });
 
     const { data: credentials, error: credErr } = await adminClient
       .from("attendance_credentials")
@@ -226,7 +233,9 @@ serve(async (req) => {
     const baseUrl = origin || "https://704collective.com";
     const eventUrl = `${baseUrl}/events/${eventId}`;
 
-    const changeMessage = `This event has been rescheduled from ${oldDate} at ${oldTime} to ${newDate} at ${newTime}.${newLocation ? ` New location: ${newLocation}.` :""}`;
+    const changeMessage = timesChanged
+      ? `This event has been rescheduled from ${oldDate} at ${oldTime} to ${newDate} at ${newTime}.${newLocation ? ` New location: ${newLocation}.` :""}`
+      : `The location for this event has changed. New location: ${newLocation}. The date and time are unchanged: ${newDate} at ${newTime}.`;
 
     log(`Building batch for ${recipients.length} recipients`, { dryRun });
 

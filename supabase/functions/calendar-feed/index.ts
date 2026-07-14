@@ -13,6 +13,7 @@ interface Event {
   start_time: string;
   end_time: string | null;
   location_name: string | null;
+  location_address: string | null;
   updated_at: string | null;
   tags: string[] | null;
 }
@@ -104,6 +105,7 @@ function generateICS(events: Event[], calendarName: string): string {
   for (const event of events) {
     const startDate = new Date(event.start_time);
     const endDate = event.end_time ? new Date(event.end_time) : null;
+    const location = [event.location_name, event.location_address].filter(Boolean).join(", ");
 
     ics.push(
       "BEGIN:VEVENT",
@@ -115,7 +117,7 @@ function generateICS(events: Event[], calendarName: string): string {
       endDate ? `DTEND:${formatDate(endDate)}` : "",
       `SUMMARY:${escapeText(event.title)}`,
       event.description ? `DESCRIPTION:${escapeText(event.description)}` : "",
-      event.location_name ? `LOCATION:${escapeText(event.location_name)}` : "",
+      location ? `LOCATION:${escapeText(location)}` : "",
       "END:VEVENT",
     );
   }
@@ -168,7 +170,7 @@ async function fetchRsvpEvents(
 
   const { data: evs, error: evErr } = await supabase
     .from("events")
-    .select("id, title, description, start_time, end_time, location_name, updated_at")
+    .select("id, title, description, start_time, end_time, location_name, location_address, updated_at")
     .in("id", eventIds)
     .gte("start_time", new Date().toISOString())
     .order("start_time", { ascending: true });
@@ -190,7 +192,7 @@ async function fetchScopeEvents(
 
   let query = supabase
     .from("events")
-    .select("id, title, description, start_time, end_time, location_name, updated_at, tags")
+    .select("id, title, description, start_time, end_time, location_name, location_address, updated_at, tags")
     .gte("start_time", thirtyDaysAgo)
     .order("start_time", { ascending: true });
 
