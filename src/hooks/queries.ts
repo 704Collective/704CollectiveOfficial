@@ -167,6 +167,18 @@ export function useMyRsvpdEvents(userId: string) {
           location_name: ev.location_name,
         });
       }
+
+      // Only events that allow guest passes are eligible for the guest-pass dropdown.
+      if (upcoming.length > 0) {
+        const { data: allowed } = await supabase
+          .from('events')
+          .select('id')
+          .in('id', upcoming.map((e) => e.id))
+          .eq('allows_guest_passes', true);
+        const allowedIds = new Set((allowed ?? []).map((e) => e.id));
+        return upcoming.filter((e) => allowedIds.has(e.id));
+      }
+
       return upcoming;
     },
     staleTime: 5 * 60 * 1000,

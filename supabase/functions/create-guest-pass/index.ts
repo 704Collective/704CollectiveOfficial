@@ -120,7 +120,7 @@ serve(async (req) => {
     // ── Fetch event details ───────────────────────────────────────────────────
     const { data: event, error: eventError } = await adminClient
       .from("events")
-      .select("id, title, start_time, end_time, location_name, location_address")
+      .select("id, title, start_time, end_time, location_name, location_address, allows_guest_passes, capacity")
       .eq("id", event_id)
       .single();
 
@@ -128,6 +128,33 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Event not found" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // ── Guest passes must be enabled for this event ─────────────────────────
+    if (event.allows_guest_passes === false) {
+      return new Response(
+        JSON.stringify({ error: "This event doesn't allow guest passes." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // ── Capacity guard (mirrors create-member-rsvp: attendance_credentials active|used)
+    if (event.capacity != null) {
+      const { count: capCount, error: capErr } = await adminClient
+        .from("attendance_credentials")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", event_id)
+        .in("status", ["active", "used"]);
+      if (capErr) {
+        return new Response(JSON.stringify({ error: "Could not verify capacity" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (typeof capCount === "number" && capCount >= event.capacity) {
+        return new Response(JSON.stringify({ error: "Event is at capacity" }), {
+          status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // ── Generate unique guest_pass_code ───────────────────────────────────────

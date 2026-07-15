@@ -77,7 +77,16 @@ export function GuestPassSection({ userId }: GuestPassSectionProps) {
       });
 
       if (error || data?.error) {
-        toast.error(data?.error || 'Failed to send guest pass');
+        // Non-2xx responses land in error.context (a Response); surface the server message.
+        let serverMessage: string | undefined = data?.error;
+        const ctx = (error as { context?: Response })?.context;
+        if (!serverMessage && ctx && typeof ctx.json === 'function') {
+          try {
+            const body = await ctx.json();
+            if (body?.error) serverMessage = body.error;
+          } catch { /* ignore parse errors */ }
+        }
+        toast.error(serverMessage || 'Failed to send guest pass');
         return;
       }
 
