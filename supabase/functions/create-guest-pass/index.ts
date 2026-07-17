@@ -53,7 +53,7 @@ serve(async (req) => {
     // ── Verify active membership ──────────────────────────────────────────────
     const { data: profile, error: profileError } = await adminClient
       .from("profiles")
-      .select("id, full_name, email, subscription_status, membership_override")
+      .select("id, full_name, email, subscription_status, membership_override, role")
       .eq("id", inviterUserId)
       .is("deleted_at", null)
       .single();
@@ -64,10 +64,14 @@ serve(async (req) => {
       });
     }
 
+    // Super admins can issue guest passes regardless of their own membership,
+    // the event's guest-pass flag, capacity, or the monthly cap.
+    const isSuperAdmin = profile.role === "super_admin";
+
     const isActiveMember =
       profile.subscription_status === "active" || profile.membership_override === true;
 
-    if (!isActiveMember) {
+    if (!isActiveMember && !isSuperAdmin) {
       return new Response(JSON.stringify({ error: "Active membership required to send guest passes" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -94,7 +98,7 @@ serve(async (req) => {
       .filter("metadata->>profile_id", "eq", inviterUserId)
       .maybeSingle();
 
-    if (inviterPerson) {
+    if (!isSuperAdmin && inviterPerson) {
       const monthStart = new Date();
       monthStart.setUTCDate(1);
       monthStart.setUTCHours(0, 0, 0, 0);
@@ -131,7 +135,7 @@ serve(async (req) => {
     }
 
     // ── Guest passes must be enabled for this event ─────────────────────────
-    if (event.allows_guest_passes === false) {
+    if (!isSuperAdmin && event.allows_guest_passes === false) {
       return new Response(
         JSON.stringify({ error: "This event doesn't allow guest passes." }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -139,7 +143,7 @@ serve(async (req) => {
     }
 
     // ── Capacity guard (mirrors create-member-rsvp: attendance_credentials active|used)
-    if (event.capacity != null) {
+    if (!isSuperAdmin && event.capacity != null) {
       const { count: capCount, error: capErr } = await adminClient
         .from("attendance_credentials")
         .select("id", { count: "exact", head: true })
@@ -162,11 +166,14 @@ serve(async (req) => {
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(guestPassCode)}`;
 
     // ── Insert ticket (counts toward event attendee numbers) ──────────────────
-    const ticketMetadata = {
+    const ticketMetadata: Record<string, unknown> = {
       inviter_user_id: inviterUserId,
       guest_pass_code: guestPassCode,
       personal_message: personal_message || null,
     };
+    if (isSuperAdmin) {
+      ticketMetadata.issued_via_admin_override = true;
+    }
 
     const { data: ticket, error: ticketError } = await adminClient
       .from("tickets")

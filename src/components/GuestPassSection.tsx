@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useGuestPassTickets, useMyRsvpdEvents } from '@/hooks/queries';
+import { useAuth } from '@/hooks/useAuth';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 
@@ -24,8 +25,10 @@ export function GuestPassSection({ userId }: GuestPassSectionProps) {
   const supabase = createClient();
   const queryClient = useQueryClient();
 
+  const { isSuperAdmin } = useAuth();
+
   const { data: passes = [], isLoading: passesLoading } = useGuestPassTickets(userId);
-  const { data: rsvpdEvents = [], isLoading: eventsLoading } = useMyRsvpdEvents(userId);
+  const { data: rsvpdEvents = [], isLoading: eventsLoading } = useMyRsvpdEvents(userId, isSuperAdmin);
 
   const [sending, setSending] = useState(false);
   const [showHistory, setShowHistory] = useState(false);

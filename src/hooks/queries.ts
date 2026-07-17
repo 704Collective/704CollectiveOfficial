@@ -136,9 +136,9 @@ export interface RsvpdEvent {
   location_name: string | null;
 }
 
-export function useMyRsvpdEvents(userId: string) {
+export function useMyRsvpdEvents(userId: string, includeGuestPassDisabled = false) {
   return useQuery({
-    queryKey: ['myRsvpdEvents', userId],
+    queryKey: ['myRsvpdEvents', userId, includeGuestPassDisabled],
     queryFn: async () => {
       // Canonical attendance_credentials via get_my_events (rows ordered by
       // events.start_time ASC), replacing the legacy tickets-table read.
@@ -169,7 +169,8 @@ export function useMyRsvpdEvents(userId: string) {
       }
 
       // Only events that allow guest passes are eligible for the guest-pass dropdown.
-      if (upcoming.length > 0) {
+      // Super admins bypass this filter (the edge function honors an admin override).
+      if (!includeGuestPassDisabled && upcoming.length > 0) {
         const { data: allowed } = await supabase
           .from('events')
           .select('id')
