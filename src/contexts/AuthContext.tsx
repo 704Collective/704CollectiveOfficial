@@ -46,11 +46,11 @@ interface AuthState {
 }
 
 interface AuthContextValue extends AuthState {
-  signIn: (email: string, password: string) => Promise<{ data: unknown; error: unknown }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ data: unknown; error: unknown }>;
+  signIn: (email: string, password: string, captchaToken?: string) => Promise<{ data: unknown; error: unknown }>;
+  signUp: (email: string, password: string, fullName: string, captchaToken?: string) => Promise<{ data: unknown; error: unknown }>;
   signInWithGoogle: () => Promise<{ data: unknown; error: unknown }>;
   signOut: () => Promise<{ error: unknown }>;
-  resetPassword: (email: string) => Promise<{ data: unknown; error: unknown }>;
+  resetPassword: (email: string, captchaToken?: string) => Promise<{ data: unknown; error: unknown }>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -146,11 +146,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (session?.user) await fetchAndApply(session.user, session);
   }, [fetchAndApply]);
 
-  const signIn = (email: string, password: string) =>
-    supabaseRef.current.auth.signInWithPassword({ email, password });
+  const signIn = (email: string, password: string, captchaToken?: string) =>
+    supabaseRef.current.auth.signInWithPassword({ email, password, options: { captchaToken } });
 
-  const signUp = (email: string, password: string, fullName: string) =>
-    supabaseRef.current.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
+  const signUp = (email: string, password: string, fullName: string, captchaToken?: string) =>
+    supabaseRef.current.auth.signUp({ email, password, options: { data: { full_name: fullName }, captchaToken } });
 
   const signInWithGoogle = () =>
     supabaseRef.current.auth.signInWithOAuth({
@@ -163,9 +163,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = () => supabaseRef.current.auth.signOut();
 
-  const resetPassword = (email: string) =>
+  const resetPassword = (email: string, captchaToken?: string) =>
     supabaseRef.current.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/reset-password`,
+      captchaToken,
     });
 
   return (

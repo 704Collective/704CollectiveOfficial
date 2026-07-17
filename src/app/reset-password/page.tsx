@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2, CheckCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { z } from 'zod';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
+import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
 
 const emailSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -40,6 +41,9 @@ export default function ResetPassword() {
   const [requestError, setRequestError] = useState('');
   const [fieldError, setFieldError] = useState('');
   const [cooldown, setCooldown] = useState(0);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
+  const resetCaptcha = () => { turnstileRef.current?.reset(); setCaptchaToken(''); };
 
   // ── Update-password form state ──────────────────────────────────────────────
   const [password, setPassword] = useState('');
@@ -82,8 +86,13 @@ export default function ResetPassword() {
     setSending(true);
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?source=recovery`,
+      captchaToken: captchaToken || undefined,
     });
     setSending(false);
+
+    // Captcha tokens are single-use — reset after every attempt so a resend
+    // requires a fresh challenge.
+    resetCaptcha();
 
     if (resetError) {
       setRequestError('Something went wrong. Please try again.');
@@ -237,11 +246,18 @@ export default function ResetPassword() {
                     <span className="font-medium text-foreground">{email}</span>. It may take a
                     minute to arrive. Check your spam folder if you don't see it.
                   </p>
+                  <TurnstileWidget
+                    ref={turnstileRef}
+                    className="flex justify-center"
+                    onSuccess={setCaptchaToken}
+                    onExpire={() => setCaptchaToken('')}
+                    onError={() => setCaptchaToken('')}
+                  />
                   <Button
                     variant="outline"
                     className="w-full"
                     onClick={() => handleRequestReset()}
-                    disabled={cooldown > 0 || sending}
+                    disabled={cooldown > 0 || sending || (TURNSTILE_ENABLED && !captchaToken)}
                   >
                     {sending ? (
                       <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</>
@@ -274,7 +290,14 @@ export default function ResetPassword() {
                       {fieldError && <p className="text-xs text-destructive">{fieldError}</p>}
                     </div>
                     {requestError && <p className="text-sm text-destructive">{requestError}</p>}
-                    <Button type="submit" className="w-full" disabled={sending}>
+                    <TurnstileWidget
+                      ref={turnstileRef}
+                      className="flex justify-center"
+                      onSuccess={setCaptchaToken}
+                      onExpire={() => setCaptchaToken('')}
+                      onError={() => setCaptchaToken('')}
+                    />
+                    <Button type="submit" className="w-full" disabled={sending || (TURNSTILE_ENABLED && !captchaToken)}>
                       {sending ? (
                         <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</>
                       ) : (

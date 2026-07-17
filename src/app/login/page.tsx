@@ -4,11 +4,12 @@ import { Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Loader2, Mail, ArrowLeft } from 'lucide-react';
+import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
 import Nav from '@/components/Nav';
@@ -84,6 +85,12 @@ function Login() {
   // Tab switcher
   const [activeTab, setActiveTab] = useState<'magic' | 'password'>('magic');
 
+  // Cloudflare Turnstile (shared across the password + magic-link forms; only
+  // one form is mounted at a time, so a single token/ref is sufficient).
+  const [captchaToken, setCaptchaToken] = useState('');
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
+  const resetCaptcha = () => { turnstileRef.current?.reset(); setCaptchaToken(''); };
+
   // Smart error hint
   const [showGoogleHint, setShowGoogleHint] = useState(false);
 
@@ -141,9 +148,12 @@ function Login() {
     const { error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
+      options: { captchaToken: captchaToken || undefined },
     });
 
     if (error) {
+      // Captcha tokens are single-use — reset so the user can retry.
+      resetCaptcha();
       if (error.message.includes('Invalid login credentials')) {
         // Check if email exists in profiles — if so, they likely signed up with Google
         const { data } = await supabase
@@ -214,9 +224,11 @@ function Login() {
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
           shouldCreateUser: false,
+          captchaToken: captchaToken || undefined,
         },
       });
       if (error) {
+        resetCaptcha();
         const errorCode = (error as { code?: string }).code;
         const errorStatus = (error as { status?: number }).status;
         const errorMsg = (error.message || '').toLowerCase();
@@ -277,9 +289,11 @@ function Login() {
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
           shouldCreateUser: false,
+          captchaToken: captchaToken || undefined,
         },
       });
       if (error) {
+        resetCaptcha();
         const errorCode = (error as { code?: string }).code;
         const errorStatus = (error as { status?: number }).status;
         const errorMsg = (error.message || '').toLowerCase();
@@ -493,10 +507,17 @@ function Login() {
                       </p>
                     )}
                   </div>
+                  <TurnstileWidget
+                    ref={turnstileRef}
+                    className="flex justify-center"
+                    onSuccess={setCaptchaToken}
+                    onExpire={() => setCaptchaToken('')}
+                    onError={() => setCaptchaToken('')}
+                  />
                   <button
                     type="submit"
-                    disabled={magicLinkLoading || magicLinkCooldown > 0}
-                    style={{ width: '100%', padding: '14px', minHeight: '48px', backgroundColor: '#FFFFFF', color: '#000000', fontWeight: 600, fontSize: '0.9375rem', border: 'none', borderRadius: '8px', cursor: (magicLinkLoading || magicLinkCooldown > 0) ? 'not-allowed' : 'pointer', opacity: (magicLinkLoading || magicLinkCooldown > 0) ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                    disabled={magicLinkLoading || magicLinkCooldown > 0 || (TURNSTILE_ENABLED && !captchaToken)}
+                    style={{ width: '100%', marginTop: '16px', padding: '14px', minHeight: '48px', backgroundColor: '#FFFFFF', color: '#000000', fontWeight: 600, fontSize: '0.9375rem', border: 'none', borderRadius: '8px', cursor: (magicLinkLoading || magicLinkCooldown > 0) ? 'not-allowed' : 'pointer', opacity: (magicLinkLoading || magicLinkCooldown > 0) ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                   >
                     {magicLinkLoading ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />Sending...</> : magicLinkCooldown > 0 ? `Resend in ${magicLinkCooldown}s` : 'Send Sign-In Link'}
                   </button>
@@ -510,7 +531,7 @@ function Login() {
               <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: '24px' }}>
                 <button
                   type="button"
-                  onClick={() => { setActiveTab('magic'); setMagicLinkError(null); setErrors({}); }}
+                  onClick={() => { setActiveTab('magic'); setMagicLinkError(null); setErrors({}); resetCaptcha(); }}
                   style={{
                     flex: 1,
                     padding: '12px 16px',
@@ -529,7 +550,7 @@ function Login() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setActiveTab('password'); setMagicLinkError(null); setErrors({}); }}
+                  onClick={() => { setActiveTab('password'); setMagicLinkError(null); setErrors({}); resetCaptcha(); }}
                   style={{
                     flex: 1,
                     padding: '12px 16px',
@@ -586,10 +607,18 @@ function Login() {
                       )}
                     </div>
 
+                    <TurnstileWidget
+                      ref={turnstileRef}
+                      className="flex justify-center"
+                      onSuccess={setCaptchaToken}
+                      onExpire={() => setCaptchaToken('')}
+                      onError={() => setCaptchaToken('')}
+                    />
+
                     <button
                       type="submit"
-                      disabled={magicLinkLoading || magicLinkCooldown > 0}
-                      style={{ width: '100%', padding: '14px', minHeight: '48px', backgroundColor: '#FFFFFF', color: '#000000', fontWeight: 600, fontSize: '0.9375rem', border: 'none', borderRadius: '8px', cursor: (magicLinkLoading || magicLinkCooldown > 0) ? 'not-allowed' : 'pointer', opacity: (magicLinkLoading || magicLinkCooldown > 0) ? 0.7 : 1, transition: 'all 200ms ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                      disabled={magicLinkLoading || magicLinkCooldown > 0 || (TURNSTILE_ENABLED && !captchaToken)}
+                      style={{ width: '100%', marginTop: '16px', padding: '14px', minHeight: '48px', backgroundColor: '#FFFFFF', color: '#000000', fontWeight: 600, fontSize: '0.9375rem', border: 'none', borderRadius: '8px', cursor: (magicLinkLoading || magicLinkCooldown > 0) ? 'not-allowed' : 'pointer', opacity: (magicLinkLoading || magicLinkCooldown > 0) ? 0.7 : 1, transition: 'all 200ms ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                     >
                       {magicLinkLoading
                         ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />Sending...</>
@@ -764,11 +793,20 @@ function Login() {
                     </Link>
                   </div>
 
+                  {/* Turnstile */}
+                  <TurnstileWidget
+                    ref={turnstileRef}
+                    className="flex justify-center"
+                    onSuccess={setCaptchaToken}
+                    onExpire={() => setCaptchaToken('')}
+                    onError={() => setCaptchaToken('')}
+                  />
+
                   {/* Sign In Button */}
                   <button
                     type="submit"
-                    disabled={loading}
-                    style={{ width: '100%', padding: '14px', minHeight: '48px', backgroundColor: 'transparent', color: '#FFFFFF', fontWeight: 600, fontSize: '0.9375rem', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, transition: 'all 200ms ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                    disabled={loading || (TURNSTILE_ENABLED && !captchaToken)}
+                    style={{ width: '100%', marginTop: '16px', padding: '14px', minHeight: '48px', backgroundColor: 'transparent', color: '#FFFFFF', fontWeight: 600, fontSize: '0.9375rem', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, transition: 'all 200ms ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                   >
                     {loading ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />Signing in...</> : 'Sign in with password'}
                   </button>

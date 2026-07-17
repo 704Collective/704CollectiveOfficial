@@ -3,7 +3,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://*.stripe.com https://*.stripe.network https://cdn.jsdelivr.net",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://*.stripe.com https://*.stripe.network https://cdn.jsdelivr.net https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https: https://*.stripe.com https://q.stripe.com",
   "font-src 'self' data:",
@@ -21,7 +21,7 @@ const CSP = [
     "https://o4510870703243264.ingest.us.sentry.io",
   ].join(" "),
   "media-src 'self' blob: https://pub-0fbe8b8a307445918223e9bf8cfedb8f.r2.dev",
-  "frame-src https://js.stripe.com https://*.stripe.com https://hooks.stripe.com",
+  "frame-src https://js.stripe.com https://*.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com",
   "object-src 'none'",
 ].join("; ");
 

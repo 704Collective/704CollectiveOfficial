@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { SOCIAL_TIER } from '@/lib/pricing';
 import { useRouter } from 'next/navigation';
@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { sendSocialSignupConfirmationEmail } from '@/app/actions/transactionalEmails';
 import { toast } from 'sonner';
 import { Loader2, Crown, Ticket, X } from 'lucide-react';
+import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
 
 type Step = 'form' | 'verify' | 'choice';
 
@@ -51,6 +52,8 @@ export default function SignupPage() {
   const [phone, setPhone]         = useState('');
   const [password, setPassword]   = useState('');
   const [showPartnerBanner, setShowPartnerBanner] = useState(true);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   // --- Auto-detect email confirmation while on the verify screen ---
   // With "Confirm email" ON, signUp returns no session. A session only
@@ -137,10 +140,14 @@ export default function SignupPage() {
             phone: phone.trim(),
           },
           emailRedirectTo: `${window.location.origin}/auth/callback`,
+          captchaToken: captchaToken || undefined,
         },
       });
 
       if (error) {
+        // Captcha tokens are single-use — reset the widget so the user can retry.
+        turnstileRef.current?.reset();
+        setCaptchaToken('');
         if (error.message.toLowerCase().includes('already registered')) {
           toast.error('An account with this email already exists. Try logging in.');
         } else {
@@ -433,7 +440,19 @@ export default function SignupPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <TurnstileWidget
+              ref={turnstileRef}
+              className="flex justify-center"
+              onSuccess={setCaptchaToken}
+              onExpire={() => setCaptchaToken('')}
+              onError={() => setCaptchaToken('')}
+            />
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading || (TURNSTILE_ENABLED && !captchaToken)}
+            >
               {loading
                 ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating account...</>
                 : 'Create Account'
