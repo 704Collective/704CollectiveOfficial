@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
+import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,6 +30,8 @@ export function PartnerApplyForm({
 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -111,6 +114,7 @@ export function PartnerApplyForm({
       const { error: signErr } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
+        options: { captchaToken: captchaToken || undefined },
       });
       if (signErr) {
         toast.message('Application submitted - sign in with your new password.');
@@ -118,6 +122,8 @@ export function PartnerApplyForm({
 
       router.push('/partners/apply/submitted');
     } finally {
+      turnstileRef.current?.reset();
+      setCaptchaToken('');
       setLoading(false);
     }
   };
@@ -401,9 +407,16 @@ export function PartnerApplyForm({
               </Label>
             </div>
 
+            <TurnstileWidget
+              ref={turnstileRef}
+              onSuccess={setCaptchaToken}
+              onExpire={() => setCaptchaToken('')}
+              onError={() => setCaptchaToken('')}
+            />
+
             <Button
               type="submit"
-              disabled={loading}
+              disabled={loading || (TURNSTILE_ENABLED && !captchaToken)}
               className="w-full bg-[#C6A664] hover:bg-[#C6A664]/90 text-[#1A1A1A] font-semibold h-12 rounded-lg shadow-md shadow-black/30"
             >
               {loading ? (

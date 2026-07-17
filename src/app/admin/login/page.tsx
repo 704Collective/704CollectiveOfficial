@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { supabase } from '@/integrations/supabase/client';
+import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,6 +21,8 @@ export default function AdminLogin() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +34,7 @@ export default function AdminLogin() {
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
+        options: { captchaToken: captchaToken || undefined },
       });
 
       if (authError) throw authError;
@@ -53,6 +57,8 @@ export default function AdminLogin() {
         // Not an admin - sign them out
         await supabase.auth.signOut();
         setError('Access denied. You do not have admin privileges.');
+        turnstileRef.current?.reset();
+        setCaptchaToken('');
         setLoading(false);
         return;
       }
@@ -61,6 +67,8 @@ export default function AdminLogin() {
       router.push('/admin');
     } catch (err: any) {
       setError(err.message || 'An error occurred during login');
+      turnstileRef.current?.reset();
+      setCaptchaToken('');
     } finally {
       setLoading(false);
     }
@@ -116,7 +124,18 @@ export default function AdminLogin() {
               />
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <TurnstileWidget
+              ref={turnstileRef}
+              onSuccess={setCaptchaToken}
+              onExpire={() => setCaptchaToken('')}
+              onError={() => setCaptchaToken('')}
+            />
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading || (TURNSTILE_ENABLED && !captchaToken)}
+            >
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

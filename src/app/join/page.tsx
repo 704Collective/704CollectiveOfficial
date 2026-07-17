@@ -4,8 +4,9 @@ import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useState, useEffect, Suspense } from 'react';
+import { useCallback, useState, useEffect, useRef, Suspense } from 'react';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
 import { addDays, format } from 'date-fns';
 import { Calendar, MapPin, Users, ArrowRight, Loader2 } from 'lucide-react';
 import { SOCIAL_TIER, BUSINESS_TIER, FLASH_SALE } from '@/lib/pricing';
@@ -76,6 +77,8 @@ function JoinInner() {
   const [smsConsent, setSmsConsent]         = useState(false);
   const [submitting, setSubmitting]         = useState(false);
   const [formError, setFormError]           = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken]     = useState('');
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   // Ambassador referral state
   const [referralCode, setReferralCode] = useState('');
@@ -190,10 +193,13 @@ function JoinInner() {
           primary_goal: goal,
         },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
+        captchaToken: captchaToken || undefined,
       },
     });
     if (signUpError && signUpError.message !== 'User already registered') {
       setFormError(signUpError.message);
+      turnstileRef.current?.reset();
+      setCaptchaToken('');
       setSubmitting(false);
       return;
     }
@@ -446,11 +452,18 @@ function JoinInner() {
                     <p style={{ fontSize: '0.875rem', color: '#ef4444', margin: 0 }}>{formError}</p>
                   )}
 
+                  <TurnstileWidget
+                    ref={turnstileRef}
+                    onSuccess={setCaptchaToken}
+                    onExpire={() => setCaptchaToken('')}
+                    onError={() => setCaptchaToken('')}
+                  />
+
                   {/* Submit */}
                   <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={submitting || !isFormValid}
+                    disabled={submitting || !isFormValid || (TURNSTILE_ENABLED && !captchaToken)}
                     style={{
                       width: '100%',
                       display: 'flex',
@@ -458,7 +471,7 @@ function JoinInner() {
                       justifyContent: 'center',
                       gap: '8px',
                       padding: '14px 32px',
-                      backgroundColor: submitting || !isFormValid ? 'rgba(255,255,255,0.3)' : '#FFFFFF',
+                      backgroundColor: submitting || !isFormValid || (TURNSTILE_ENABLED && !captchaToken) ? 'rgba(255,255,255,0.3)' : '#FFFFFF',
                       color: '#000000',
                       borderRadius: '10px',
                       fontSize: '0.9375rem',

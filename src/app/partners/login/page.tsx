@@ -1,11 +1,12 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { partnerRedirectTarget } from "@/lib/partnerLoginRedirect";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MarketingPageRoot } from "@/components/MarketingPageRoot";
+import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 
 function PartnerLoginForm() {
   const router = useRouter();
@@ -14,6 +15,8 @@ function PartnerLoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -23,10 +26,13 @@ function PartnerLoginForm() {
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
+      options: { captchaToken: captchaToken || undefined },
     });
 
     if (error) {
       setError(error.message);
+      turnstileRef.current?.reset();
+      setCaptchaToken("");
       setLoading(false);
     } else {
       router.push(partnerRedirectTarget(searchParams.get("redirect")));
@@ -197,15 +203,24 @@ function PartnerLoginForm() {
             </div>
           )}
 
+          <div style={{ marginBottom: "16px" }}>
+            <TurnstileWidget
+              ref={turnstileRef}
+              onSuccess={setCaptchaToken}
+              onExpire={() => setCaptchaToken("")}
+              onError={() => setCaptchaToken("")}
+            />
+          </div>
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (TURNSTILE_ENABLED && !captchaToken)}
             className="btn-gold"
             style={{
               width: "100%",
               padding: "14px",
               fontSize: "0.875rem",
-              opacity: loading ? 0.6 : 1,
+              opacity: loading || (TURNSTILE_ENABLED && !captchaToken) ? 0.6 : 1,
               cursor: loading ? "not-allowed" : "pointer",
             }}
           >

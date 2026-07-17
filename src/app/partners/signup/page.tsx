@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MarketingPageRoot } from "@/components/MarketingPageRoot";
+import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 
 const partnerTypeOptions = [
   {
@@ -37,6 +38,8 @@ export default function PartnerSignup() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   function toggleType(id: string) {
     setSelectedTypes((prev) =>
@@ -65,11 +68,14 @@ export default function PartnerSignup() {
           contact_name: contactName,
           role: "partner",
         },
+        captchaToken: captchaToken || undefined,
       },
     });
 
     if (authError) {
       setError(authError.message);
+      turnstileRef.current?.reset();
+      setCaptchaToken("");
       setLoading(false);
       return;
     }
@@ -549,6 +555,15 @@ export default function PartnerSignup() {
                 </div>
               )}
 
+              <div style={{ marginBottom: "16px" }}>
+                <TurnstileWidget
+                  ref={turnstileRef}
+                  onSuccess={setCaptchaToken}
+                  onExpire={() => setCaptchaToken("")}
+                  onError={() => setCaptchaToken("")}
+                />
+              </div>
+
               <div style={{ display: "flex", gap: "12px" }}>
                 <button
                   type="button"
@@ -564,13 +579,13 @@ export default function PartnerSignup() {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || (TURNSTILE_ENABLED && !captchaToken)}
                   className="btn-gold"
                   style={{
                     flex: 1,
                     padding: "14px",
                     fontSize: "0.875rem",
-                    opacity: loading ? 0.6 : 1,
+                    opacity: loading || (TURNSTILE_ENABLED && !captchaToken) ? 0.6 : 1,
                     cursor: loading ? "not-allowed" : "pointer",
                   }}
                 >

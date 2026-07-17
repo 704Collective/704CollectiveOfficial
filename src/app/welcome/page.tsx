@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, CheckCircle, XCircle, Eye, EyeOff, MapPin, Calendar } from 'lucide-react';
+import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
@@ -53,6 +54,8 @@ function WelcomeContent() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [captchaToken, setCaptchaToken] = useState('');
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
   const [rsvpEvents, setRsvpEvents] = useState<WelcomeEventRow[]>([]);
   const [rsvpedEventIds, setRsvpedEventIds] = useState<Set<string>>(new Set());
   const [rsvpBusyId, setRsvpBusyId] = useState<string | null>(null);
@@ -325,9 +328,12 @@ function WelcomeContent() {
           const { error: signInErr } = await supabase.auth.signInWithPassword({
             email: form.email,
             password: form.password,
+            options: { captchaToken: captchaToken || undefined },
           });
           if (signInErr) {
             setFormErrors({ password: 'This account is already set up. Try signing in.' });
+            turnstileRef.current?.reset();
+            setCaptchaToken('');
             setSubmitting(false);
             return;
           }
@@ -342,10 +348,13 @@ function WelcomeContent() {
       const { error: signInErr } = await supabase.auth.signInWithPassword({
         email: form.email,
         password: form.password,
+        options: { captchaToken: captchaToken || undefined },
       });
 
       if (signInErr) {
         setFormErrors({ password: 'Account created but sign-in failed. Please sign in manually.' });
+        turnstileRef.current?.reset();
+        setCaptchaToken('');
         setSubmitting(false);
         return;
       }
@@ -792,10 +801,18 @@ function WelcomeContent() {
                   />
                 </div>
 
+                {/* Turnstile */}
+                <TurnstileWidget
+                  ref={turnstileRef}
+                  onSuccess={setCaptchaToken}
+                  onExpire={() => setCaptchaToken('')}
+                  onError={() => setCaptchaToken('')}
+                />
+
                 {/* Submit */}
                 <button
                   onClick={handleSubmit}
-                  disabled={submitting}
+                  disabled={submitting || (TURNSTILE_ENABLED && !captchaToken)}
                   style={{
                     width: '100%',
                     minHeight: '52px',
@@ -806,8 +823,8 @@ function WelcomeContent() {
                     marginTop: '4px',
                     border: 'none',
                     borderRadius: '10px',
-                    cursor: submitting ? 'not-allowed' : 'pointer',
-                    opacity: submitting ? 0.7 : 1,
+                    cursor: submitting || (TURNSTILE_ENABLED && !captchaToken) ? 'not-allowed' : 'pointer',
+                    opacity: submitting || (TURNSTILE_ENABLED && !captchaToken) ? 0.7 : 1,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',

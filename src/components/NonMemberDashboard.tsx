@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { SOCIAL_TIER } from '@/lib/pricing';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
 import { toast } from 'sonner';
 import {
   Crown, Briefcase, Calendar, Settings, FileText,
@@ -127,6 +128,8 @@ interface NonMemberDashboardProps {
 export function NonMemberDashboard({ profile, application }: NonMemberDashboardProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [resetCaptchaToken, setResetCaptchaToken] = useState('');
+  const resetTurnstileRef = useRef<TurnstileWidgetHandle>(null);
   const [emailSubject, setEmailSubject] = useState('');
   const [emailBody, setEmailBody] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -311,12 +314,31 @@ export function NonMemberDashboard({ profile, application }: NonMemberDashboardP
                 <Button variant="outline" size="sm" className="w-full" onClick={() => router.push('/settings')}>
                   Edit Profile
                 </Button>
-                <Button variant="outline" size="sm" className="w-full" onClick={async () => {
-                  await supabase.auth.resetPasswordForEmail(profile.email, {
-                    redirectTo: `${window.location.origin}/auth/callback?next=/settings`,
-                  });
-                  toast.success('Password reset email sent');
-                }}>
+                <TurnstileWidget
+                  ref={resetTurnstileRef}
+                  onSuccess={setResetCaptchaToken}
+                  onExpire={() => setResetCaptchaToken('')}
+                  onError={() => setResetCaptchaToken('')}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  disabled={TURNSTILE_ENABLED && !resetCaptchaToken}
+                  onClick={async () => {
+                    const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
+                      redirectTo: `${window.location.origin}/auth/callback?next=/settings`,
+                      captchaToken: resetCaptchaToken || undefined,
+                    });
+                    resetTurnstileRef.current?.reset();
+                    setResetCaptchaToken('');
+                    if (error) {
+                      toast.error(error.message);
+                    } else {
+                      toast.success('Password reset email sent');
+                    }
+                  }}
+                >
                   Reset Password
                 </Button>
               </div>

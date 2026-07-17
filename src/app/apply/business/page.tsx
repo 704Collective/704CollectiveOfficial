@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Nav from '@/components/Nav';
+import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -118,6 +119,8 @@ function BusinessApplicationInner() {
   const [resolvedAmbassador, setResolvedAmbassador] = useState<{ id: string; full_name: string } | null>(null);
   const [referralCodeError, setReferralCodeError] = useState<string | null>(null);
   const [validatingCode, setValidatingCode] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   const set = (key: keyof FormData) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -310,6 +313,7 @@ function BusinessApplicationInner() {
               },
               emailRedirectTo:
                 `${window.location.origin}/auth/callback?source=business-apply`,
+              captchaToken: captchaToken || undefined,
             },
           });
 
@@ -319,6 +323,8 @@ function BusinessApplicationInner() {
           } else {
             toast.error(signupError.message);
           }
+          turnstileRef.current?.reset();
+          setCaptchaToken('');
           setLoading(false);
           return;
         }
@@ -716,7 +722,21 @@ function BusinessApplicationInner() {
               ))}
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading} size="lg">
+            {!user && (
+              <TurnstileWidget
+                ref={turnstileRef}
+                onSuccess={setCaptchaToken}
+                onExpire={() => setCaptchaToken('')}
+                onError={() => setCaptchaToken('')}
+              />
+            )}
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading || (!user && TURNSTILE_ENABLED && !captchaToken)}
+              size="lg"
+            >
               {loading
                 ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Submitting...</>
                 : 'Submit Application'

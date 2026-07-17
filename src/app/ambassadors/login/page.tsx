@@ -1,11 +1,12 @@
 ﻿'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/integrations/supabase/client';
 import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
+import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
 
 function AmbassadorLoginInner() {
   const router = useRouter();
@@ -15,6 +16,12 @@ function AmbassadorLoginInner() {
   const [error, setError] = useState<string | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
+  const resetCaptcha = () => {
+    turnstileRef.current?.reset();
+    setCaptchaToken('');
+  };
 
   // Show invite expiry error if redirected from /ambassadors/welcome
   const searchParams = useSearchParams();
@@ -37,9 +44,11 @@ function AmbassadorLoginInner() {
       const { data, error: authErr } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
+        options: { captchaToken: captchaToken || undefined },
       });
       if (authErr || !data.user) {
         setError('Invalid email or password');
+        resetCaptcha();
         setLoading(false);
         return;
       }
@@ -54,6 +63,7 @@ function AmbassadorLoginInner() {
         setError(
           "This account isn't linked to an ambassador portal. If you're a 704 Collective member, please log in at /login. If you should have ambassador access, contact hello@704collective.com."
         );
+        resetCaptcha();
         setLoading(false);
         return;
       }
@@ -61,6 +71,7 @@ function AmbassadorLoginInner() {
       router.push('/ambassadors/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
+      resetCaptcha();
       setLoading(false);
     }
   }
@@ -99,10 +110,12 @@ function AmbassadorLoginInner() {
         options: {
           emailRedirectTo: `${window.location.origin}/ambassadors/dashboard`,
           shouldCreateUser: false,
+          captchaToken: captchaToken || undefined,
         },
       });
       if (otpErr) {
         setError(otpErr.message);
+        resetCaptcha();
         setLoading(false);
         return;
       }
@@ -110,6 +123,7 @@ function AmbassadorLoginInner() {
       setLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send magic link');
+      resetCaptcha();
       setLoading(false);
     }
   }
@@ -241,14 +255,24 @@ function AmbassadorLoginInner() {
                   />
                 </div>
 
+                {/* Turnstile */}
+                <div style={{ marginBottom: '16px' }}>
+                  <TurnstileWidget
+                    ref={turnstileRef}
+                    onSuccess={setCaptchaToken}
+                    onExpire={() => setCaptchaToken('')}
+                    onError={() => setCaptchaToken('')}
+                  />
+                </div>
+
                 {/* Submit */}
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || (TURNSTILE_ENABLED && !captchaToken)}
                   style={{
                     width: '100%',
                     padding: '13px',
-                    backgroundColor: loading ? 'rgba(198,166,100,0.5)' : '#C6A664',
+                    backgroundColor: loading || (TURNSTILE_ENABLED && !captchaToken) ? 'rgba(198,166,100,0.5)' : '#C6A664',
                     color: '#1A1A1A',
                     border: 'none',
                     borderRadius: '8px',
@@ -313,8 +337,8 @@ function AmbassadorLoginInner() {
                     <button
                       type="button"
                       onClick={() => void handleMagicLink()}
-                      disabled={loading}
-                      style={{ width: '100%', marginTop: '10px', padding: '12px', background: 'transparent', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', fontSize: '0.9375rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.5 : 1 }}
+                      disabled={loading || (TURNSTILE_ENABLED && !captchaToken)}
+                      style={{ width: '100%', marginTop: '10px', padding: '12px', background: 'transparent', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', fontSize: '0.9375rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading || (TURNSTILE_ENABLED && !captchaToken) ? 0.5 : 1 }}
                     >
                       Send me a magic link
                     </button>

@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { supabase } from '@/integrations/supabase/client';
+import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,6 +21,8 @@ export default function RequestAccess() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +39,7 @@ export default function RequestAccess() {
           data: {
             full_name: fullName.trim(),
           },
+          captchaToken: captchaToken || undefined,
         },
       });
 
@@ -65,6 +69,8 @@ export default function RequestAccess() {
       setSuccess(true);
     } catch (err: any) {
       setError(err.message || 'An error occurred');
+      turnstileRef.current?.reset();
+      setCaptchaToken('');
     } finally {
       setLoading(false);
     }
@@ -158,7 +164,18 @@ export default function RequestAccess() {
               </p>
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <TurnstileWidget
+              ref={turnstileRef}
+              onSuccess={setCaptchaToken}
+              onExpire={() => setCaptchaToken('')}
+              onError={() => setCaptchaToken('')}
+            />
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading || (TURNSTILE_ENABLED && !captchaToken)}
+            >
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

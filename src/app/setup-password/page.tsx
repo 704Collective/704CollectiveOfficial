@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
+import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
 import { Loader2, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { z } from 'zod';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
@@ -34,6 +35,8 @@ export default function SetupPassword() {
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSent, setResendSent] = useState(false);
   const [resendError, setResendError] = useState('');
+  const [captchaToken, setCaptchaToken] = useState('');
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   // Wait for Supabase to exchange the recovery token from the URL hash
   useEffect(() => {
@@ -89,10 +92,13 @@ export default function SetupPassword() {
     setResendLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/setup-password`,
+      captchaToken: captchaToken || undefined,
     });
     setResendLoading(false);
     if (error) {
       setResendError(error.message);
+      turnstileRef.current?.reset();
+      setCaptchaToken('');
     } else {
       setResendSent(true);
     }
@@ -164,7 +170,17 @@ export default function SetupPassword() {
                     />
                   </div>
                   {resendError && <p className="text-xs text-destructive">{resendError}</p>}
-                  <Button type="submit" className="w-full" disabled={resendLoading}>
+                  <TurnstileWidget
+                    ref={turnstileRef}
+                    onSuccess={setCaptchaToken}
+                    onExpire={() => setCaptchaToken('')}
+                    onError={() => setCaptchaToken('')}
+                  />
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={resendLoading || (TURNSTILE_ENABLED && !captchaToken)}
+                  >
                     {resendLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</> : 'Send New Setup Link'}
                   </Button>
                 </form>
