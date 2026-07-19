@@ -130,7 +130,7 @@ export function SmartDateTimePicker({ value, onChange, label }: SmartDateTimePic
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {[0, 15, 30, 45].map((m) => (
+            {Array.from({ length: 60 }, (_, i) => i).map((m) => (
               <SelectItem key={m} value={m.toString()}>
                 {m.toString().padStart(2, '0')}
               </SelectItem>
