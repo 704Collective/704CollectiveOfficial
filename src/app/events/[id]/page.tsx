@@ -52,6 +52,8 @@ interface Event {
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  // Read ?claim=1 client-side (avoids the useSearchParams Suspense requirement).
+  const [claimParam, setClaimParam] = useState(false);
   const { user, profile, isActiveMember, isAdmin, isSuperAdmin, loading: authLoading } = useAuth();
   const { hasTicket: checkHasTicket, rsvpLoadingId, showThankYou, setShowThankYou, thankYouType, thankYouEvent, registerMemberTicket, refreshUserTickets } = useTicketActions();
 
@@ -90,6 +92,11 @@ export default function EventDetail() {
 
   const hasTicket = id ? checkHasTicket(id) : false;
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setClaimParam(new URLSearchParams(window.location.search).get('claim') === '1');
+    }
+  }, []);
   useEffect(() => { if (id) fetchEvent(); }, [id]);
   useEffect(() => { if (user && id) { fetchTicketId(); checkWaitlistStatus(); } }, [user, id]);
   useEffect(() => { if (id) fetchTicketCount(); }, [id]);
@@ -290,6 +297,53 @@ export default function EventDetail() {
     const { error } = await supabase.from('event_waitlist').delete().eq('id', waitlistId);
     if (error) { toast.error('Failed to leave waitlist'); return; }
     setWaitlistPosition(null); setWaitlistId(null); toast.success('Left the waitlist');
+  };
+  const handleClaimSeat = async () => {
+    if (!user || !event) return;
+    setIsRegistering(true);
+    try {
+      // Claim an opened waitlist seat via the claim-waitlist-seat edge function.
+      // invoke() attaches the logged-in user's JWT automatically.
+      const { data, error } = await supabase.functions.invoke('claim-waitlist-seat', {
+        body: { event_id: event.id },
+      });
+
+      if (error) {
+        // invoke() treats non-2xx as an error. Surface a distinct toast per status,
+        // preferring the server's specific message when we can read it.
+        let status = 0;
+        let serverMsg = '';
+        try {
+          const ctx = (error as { context?: Response }).context;
+          if (ctx && typeof ctx.status === 'number') status = ctx.status;
+          if (ctx && typeof ctx.json === 'function') {
+            const bodyJson = await ctx.json();
+            if (bodyJson?.error) serverMsg = String(bodyJson.error);
+          }
+        } catch { /* ignore parse errors */ }
+
+        const msg =
+          status === 404 ? (serverMsg || "You're not on the waitlist for this event.") :
+          status === 403 ? (serverMsg || "Your claim window isn't open, or it has expired.") :
+          status === 409 ? (serverMsg || 'That seat was just taken.') :
+          (serverMsg || 'Could not claim the spot. Please try again.');
+        toast.error(msg);
+        setIsRegistering(false);
+        return;
+      }
+
+      // Success: seat claimed, waitlist row removed server-side.
+      setWaitlistPosition(null);
+      setWaitlistId(null);
+      toast.success("You're RSVP'd! Your spot is confirmed.");
+      await refreshUserTickets();
+      await fetchTicketId();
+      fetchTicketCount();
+      setIsRegistering(false);
+    } catch {
+      toast.error('Something went wrong.');
+      setIsRegistering(false);
+    }
   };
   const handlePublicRsvp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -553,6 +607,13 @@ export default function EventDetail() {
           <AlertCircle style={{ width: '22px', height: '22px', color: 'rgba(255,255,255,0.5)' }} />
         </div>
         <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '8px' }}>On the Waitlist</h3>
+        {claimParam && (
+          <div style={{ marginBottom: '16px', padding: '16px', backgroundColor: 'rgba(198,166,100,0.08)', border: '1px solid rgba(198,166,100,0.3)', borderRadius: '8px' }}>
+            <p style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#C6A664', marginBottom: '4px' }}>A spot opened up!</p>
+            <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.6)', marginBottom: '14px', lineHeight: 1.5 }}>Claim it now before it{"'"}s offered to the next member.</p>
+            <button onClick={handleClaimSeat} disabled={isActionLoading} style={{ display: 'inline-block', width: '100%', padding: '13px 24px', backgroundColor: '#C6A664', color: '#1A1A1A', fontWeight: 700, borderRadius: '8px', border: 'none', cursor: isActionLoading ? 'not-allowed' : 'pointer', fontSize: '0.9375rem', minHeight: '44px', opacity: isActionLoading ? 0.6 : 1 }}>{isActionLoading ? 'Claiming...' : 'Claim My Spot'}</button>
+          </div>
+        )}
         <WaitlistBadge position={waitlistPosition} onLeave={handleLeaveWaitlist} />
         <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', marginTop: '12px' }}>We{"'"}ll notify you if a spot opens.</p>
       </div>

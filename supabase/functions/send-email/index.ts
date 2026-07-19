@@ -424,6 +424,55 @@ Questions? Contact <a href="mailto:hello@704collective.com" style="color:${BRAND
   };
 }
 
+function waitlistSpotOpenTemplate(data: {
+  memberName: string;
+  eventTitle: string;
+  eventDate: string;
+  eventTime: string;
+  claimUrl: string;
+  expiresHours: number;
+  origin?: string;
+}): { subject: string; html: string } {
+  const memberName = data.memberName || "there";
+  const eventTitle = data.eventTitle || "an event";
+  const expiresHours = data.expiresHours || 24;
+  const claimUrl = data.claimUrl || (data.origin || "https://704collective.com");
+
+  return {
+    subject: `A spot opened up for ${eventTitle}`,
+    html: baseLayout({
+      title: `A Spot Opened Up - ${eventTitle}`,
+      previewText: `Good news - a seat just opened up for ${escapeHtml(eventTitle)}. Claim it within ${expiresHours} hours.`,
+      content: `
+<p style="margin:0 0 8px;font-size:22px;font-weight:700;color:${BRAND.accent};text-align:center;">A Spot Opened Up!</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};text-align:center;">
+  Hi <strong style="color:${BRAND.text};">${escapeHtml(memberName)}</strong>, good news - a seat just opened up for
+  <strong style="color:${BRAND.text};">${escapeHtml(eventTitle)}</strong> and you're next on the waitlist.
+</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:rgba(255,255,255,0.04);border-radius:8px;border:1px solid ${BRAND.border};">
+<tr><td style="padding:20px 24px;">
+<p style="margin:0 0 12px;font-size:17px;font-weight:600;color:${BRAND.text};">${escapeHtml(eventTitle)}</p>
+<table role="presentation" cellpadding="0" cellspacing="0">
+${data.eventDate ? `<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">&#128197;&nbsp;&nbsp;${escapeHtml(data.eventDate)}</td></tr>` : ""}
+${data.eventTime ? `<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">&#9200;&nbsp;&nbsp;${escapeHtml(data.eventTime)}</td></tr>` : ""}
+</table>
+</td></tr>
+</table>
+<p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};text-align:center;">
+  Claim your spot within <strong style="color:${BRAND.text};">${expiresHours} hours</strong> before it's offered to the next member on the list.
+</p>
+${ctaButton("Claim My Spot", claimUrl)}
+<p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:${BRAND.textMuted};text-align:center;">
+  If the button doesn't work, paste this link into your browser:<br />
+  <span style="color:${BRAND.textSecondary};word-break:break-all;">${escapeHtml(claimUrl)}</span>
+</p>
+<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};text-align:center;">
+  Questions? Contact <a href="mailto:hello@704collective.com" style="color:${BRAND.accent};">hello@704collective.com</a>
+</p>`,
+    }),
+  };
+}
+
 function guestFollowupTemplate(data: {
   guestName: string;
   memberName: string;
@@ -1786,6 +1835,16 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
       return guestFollowupTemplate(data as {
         guestName: string; memberName: string; eventName: string; origin?: string;
       });
+    case "waitlist-spot-open":
+      return waitlistSpotOpenTemplate(data as {
+        memberName: string;
+        eventTitle: string;
+        eventDate: string;
+        eventTime: string;
+        claimUrl: string;
+        expiresHours: number;
+        origin?: string;
+      });
     case "ticket-followup":
       return ticketFollowupTemplate(data as {
         guestName: string; eventName: string; origin?: string;
@@ -2039,7 +2098,7 @@ serve(async (req) => {
 
     // Templates that require service role (internal/admin only)
     const restrictedTemplates = [
-      "admin-invite", "welcome-setup", "welcome-back", "welcome-new", "public-rsvp-confirmation", "password-setup", "event-change", "guest-followup",
+      "admin-invite", "welcome-setup", "welcome-back", "welcome-new", "public-rsvp-confirmation", "password-setup", "event-change", "guest-followup", "waitlist-spot-open",
       "ticket-followup", "guest-pass", "feed-mention", "partner-application-submitted",
       "partner-new-application-admin", "partner-welcome-invite", "partner-application-denied",
       "partner-event-inquiry-admin", "partner-inquiry-admin-reply-partner", "partner-team-first-superadmin",
