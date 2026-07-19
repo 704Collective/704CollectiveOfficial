@@ -148,10 +148,11 @@ serve(async (req) => {
       );
     }
 
-    // -- Capacity check (attendance_credentials has no capacity trigger) --
-    // Counts active|used credentials via the SECURITY DEFINER RPC. Not atomic;
-    // a rare double-submit race could land one seat over - accepted trade-off.
-    if (event.capacity != null) {
+    // -- Capacity check (also enforced atomically by trg_enforce_event_capacity) --
+    // Counts active|used credentials. Not atomic here; the DB trigger is the
+    // authoritative guard. Admins (admin|super_admin) bypass both layers via
+    // the admin_override stamp added to the credential metadata below.
+    if (event.capacity != null && !isAdminOverride) {
       const { count: countData, error: countError } = await adminClient
         .from("attendance_credentials")
         .select("id", { count: "exact", head: true })
@@ -178,6 +179,12 @@ serve(async (req) => {
     const credToken = "C-" + Array.from(tokenBytes)
       .map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 10).toUpperCase();
 
+    const credMetadata: Record<string, unknown> = { source: "create_member_rsvp" };
+    if (isAdminOverride) {
+      credMetadata.admin_override = "true";
+      credMetadata.issued_via_admin_override = true;
+    }
+
     const { data: cred, error: credError } = await adminClient
       .from("attendance_credentials")
       .insert({
@@ -186,7 +193,7 @@ serve(async (req) => {
         event_id,
         credential_type: "member_rsvp",
         status: "active",
-        metadata: { source: "create_member_rsvp" },
+        metadata: credMetadata,
       })
       .select("token")
       .single();

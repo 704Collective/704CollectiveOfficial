@@ -195,6 +195,9 @@ export default function EventDetail() {
   };
 
   const isAtCapacity = event?.capacity != null && ticketCount >= event.capacity;
+  // Super admins can RSVP past capacity (server + DB honor an admin override).
+  // Only affects CTA rendering; the attendee count display stays honest.
+  const ctaAtCapacity = isAtCapacity && !isSuperAdmin;
 
   const handleMemberRegister = async () => { if (!event) return; const s = await registerMemberTicket(event); if (s) { fetchTicketCount(); fetchTicketId(); } };
   const handleCancelRSVP = async () => {
@@ -736,7 +739,7 @@ export default function EventDetail() {
         </div>
       );
 
-      if (isAtCapacity) return (
+      if (ctaAtCapacity) return (
         <div style={{ textAlign: 'center' }}>
           <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#E57373', backgroundColor: 'rgba(229,115,115,0.06)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Event Full</span>
           <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>Join the Waitlist</h3>
@@ -753,6 +756,9 @@ export default function EventDetail() {
           <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>Member Event</h3>
           <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>RSVP - it{"'"}s on us.</p>
           <button onClick={handleMemberRegisterWithWaitlistFallback} disabled={isActionLoading} style={primaryBtn}>{isActionLoading ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> RSVPing...</> : 'RSVP'}</button>
+          {isSuperAdmin && isAtCapacity && (
+            <p style={{ fontSize: '0.75rem', color: '#C6A664', marginTop: '10px' }}>Admin override - event is full</p>
+          )}
         </div>
       );
 
@@ -793,10 +799,10 @@ export default function EventDetail() {
   const getMobileCTAText = () => {
     if (event.access_type === 'public_free') {
       if (!user) return 'RSVP - No Account Needed';
-      return isAtCapacity ? 'Join Waitlist' : 'RSVP';
+      return ctaAtCapacity ? 'Join Waitlist' : 'RSVP';
     }
     if (!user) return event.is_members_only ? 'Sign In to RSVP' : 'Purchase Ticket';
-    if (isActiveMember) return isAtCapacity ? 'Join Waitlist' : 'RSVP';
+    if (isActiveMember) return ctaAtCapacity ? 'Join Waitlist' : 'RSVP';
     return 'Purchase Ticket';
   };
   const handleMobileCTA = () => {
@@ -806,7 +812,7 @@ export default function EventDetail() {
         if (form) form.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
-      if (isAtCapacity) handleJoinWaitlist();
+      if (ctaAtCapacity) handleJoinWaitlist();
       else handleMemberRegisterWithWaitlistFallback();
       return;
     }
@@ -820,7 +826,7 @@ export default function EventDetail() {
       if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
-    if (isActiveMember) { if (isAtCapacity) handleJoinWaitlist(); else handleMemberRegisterWithWaitlistFallback(); return; }
+    if (isActiveMember) { if (ctaAtCapacity) handleJoinWaitlist(); else handleMemberRegisterWithWaitlistFallback(); return; }
     handlePurchaseTicket();
   };
 

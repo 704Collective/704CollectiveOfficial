@@ -173,6 +173,7 @@ serve(async (req) => {
     };
     if (isSuperAdmin) {
       ticketMetadata.issued_via_admin_override = true;
+      ticketMetadata.admin_override = "true";
     }
 
     const { data: ticket, error: ticketError } = await adminClient
@@ -270,7 +271,11 @@ serve(async (req) => {
               credential_type: "guest_pass",
               status: "active",
               issued_by_person_id: inviterPersonId,
-              metadata: { source: "create_guest_pass", guest_pass_code: guestPassCode },
+              metadata: {
+                source: "create_guest_pass",
+                guest_pass_code: guestPassCode,
+                ...(isSuperAdmin ? { admin_override: "true" } : {}),
+              },
             });
           if (credErr) {
             if ((credErr as { code?: string }).code === "23505") {
