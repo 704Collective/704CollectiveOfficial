@@ -213,8 +213,11 @@ function JoinInner() {
         setSubmitting(false);
         return;
       }
-      // user_id is null for the already-registered case; capture-prospect guards on it
-      newUserId = signUpData?.user?.id ?? null;
+      // user_id is null for the already-registered case; capture-prospect guards on it.
+      // Supabase obfuscation: signUp with an EXISTING email (confirmations on) returns a
+      // decoy user whose identities array is empty - treat that as already-registered.
+      const isDecoyUser = (signUpData?.user?.identities?.length ?? 0) === 0;
+      newUserId = isDecoyUser ? null : (signUpData?.user?.id ?? null);
     }
 
     // STEP TWO - Persist signup data (blocking - do not proceed to Stripe on failure)
@@ -232,6 +235,7 @@ function JoinInner() {
       },
     });
     if (captureError) {
+      console.error('[join] capture-prospect failed:', captureError, (captureError as { context?: unknown })?.context);
       setFormError('We could not save your details. Please try again.');
       setSubmitting(false);
       return;

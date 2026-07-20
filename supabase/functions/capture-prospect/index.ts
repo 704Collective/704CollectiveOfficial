@@ -98,56 +98,52 @@ serve(async (req) => {
       }
     }
 
-    // 4 + 5. Profile and onboarding writes - only when user_id is provided
+    // 4 + 5. Profile and onboarding writes - only when user_id is provided AND
+    // a real profiles row exists (signUp decoy ids and races otherwise FK-explode).
+    // These writes are NON-FATAL: never block the checkout path over them.
     if (user_id) {
-      const writeErrors: string[] = [];
-
-      // 4. Update profiles
-      const { error: profileError } = await supabase
+      const { data: profileRow, error: profileLookupError } = await supabase
         .from("profiles")
-        .update({
-          phone: phone ?? null,
-          sms_consent: consentTrue,
-          sms_consent_at: consentTrue ? (sms_consent_at ?? new Date().toISOString()) : null,
-          referred_by_code: cleanCode || null,
-          referred_by_ambassador_id: (ambassador_id && ambassador_id.trim() !== "") ? ambassador_id.trim() : null,
-        })
-        .eq("id", user_id);
-
-      if (profileError) {
-        console.error("[capture-prospect] profiles update error:", profileError);
-        writeErrors.push(`profiles: ${profileError.message}`);
+        .select("id")
+        .eq("id", user_id)
+        .maybeSingle();
+      if (profileLookupError) {
+        console.error("[capture-prospect] profile lookup error (non-fatal):", profileLookupError);
       }
-
-      // 5. Insert onboarding_responses
-      if (primary_goal && primary_goal.trim() !== "") {
-        const { error: onboardingError } = await supabase
-          .from("onboarding_responses")
-          .upsert(
-            {
-              user_id,
-              responses: { primary_goal: primary_goal.trim() },
-              version: 1,
-              completed_at: new Date().toISOString(),
-            },
-            { onConflict: "user_id,version", ignoreDuplicates: true }
-          );
-
-        if (onboardingError) {
-          console.error("[capture-prospect] onboarding_responses insert error:", onboardingError);
-          writeErrors.push(`onboarding_responses: ${onboardingError.message}`);
+      if (profileRow) {
+        // 4. Update profiles
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({
+            phone: phone ?? null,
+            sms_consent: consentTrue,
+            sms_consent_at: consentTrue ? (sms_consent_at ?? new Date().toISOString()) : null,
+            referred_by_code: cleanCode || null,
+            referred_by_ambassador_id: (ambassador_id && ambassador_id.trim() !== "") ? ambassador_id.trim() : null,
+          })
+          .eq("id", user_id);
+        if (profileError) {
+          console.error("[capture-prospect] profiles update error (non-fatal):", profileError);
         }
-      }
-
-      // 6. Surface any write failures to the caller
-      if (writeErrors.length > 0) {
-        return new Response(
-          JSON.stringify({ success: false, errors: writeErrors }),
-          {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+        // 5. Insert onboarding_responses
+        if (primary_goal && primary_goal.trim() !== "") {
+          const { error: onboardingError } = await supabase
+            .from("onboarding_responses")
+            .upsert(
+              {
+                user_id,
+                responses: { primary_goal: primary_goal.trim() },
+                version: 1,
+                completed_at: new Date().toISOString(),
+              },
+              { onConflict: "user_id,version", ignoreDuplicates: true }
+            );
+          if (onboardingError) {
+            console.error("[capture-prospect] onboarding_responses insert error (non-fatal):", onboardingError);
           }
-        );
+        }
+      } else {
+        console.error("[capture-prospect] no profiles row for user_id (skipping profile/onboarding writes):", user_id);
       }
     }
 
