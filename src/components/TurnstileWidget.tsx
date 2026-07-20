@@ -3,7 +3,7 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 
-const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "0x4AAAAAAD3gqCivsYyImeUH";
+const SITE_KEY = (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "").trim() || "0x4AAAAAAD3gqCivsYyImeUH";
 
 /**
  * Whether Cloudflare Turnstile is configured. When false (env var absent, e.g.
