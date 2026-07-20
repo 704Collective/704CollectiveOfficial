@@ -8,6 +8,11 @@ Sentry.init({
   replaysSessionSampleRate: 0,
   replaysOnErrorSampleRate: 0,
   environment: process.env.NODE_ENV,
+  ignoreErrors: [
+    "Object Not Found Matching Id",
+    "window.webkit.messageHandlers",
+    "Lock broken by another request",
+  ],
 });
 
 // Required for App Router navigation instrumentation.
