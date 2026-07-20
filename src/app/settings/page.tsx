@@ -39,10 +39,14 @@ export default function Settings() {
   // This prevents the Cancel/Pause/Manage flows from being shown to users
   // whose subscription was canceled in Stripe Dashboard but still in their
   // grace period.
+  // A real Stripe subscription (has a subscription_id) means the member can
+  // self-manage billing via the portal, whether or not an admin also set an
+  // override. Only true comps (active, no subscription_id) see the
+  // "managed by an administrator" message instead.
   const hasStripeSubscription =
     !!p?.stripe_customer_id
     && isActiveMember
-    && !p?.membership_override
+    && !!p?.subscription_id
     && p?.subscription_status === 'active'
     && !p?.cancel_at_period_end;
 

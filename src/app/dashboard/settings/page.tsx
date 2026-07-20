@@ -53,7 +53,7 @@ export default function SettingsPage() {
   const hasStripeSubscription =
     !!p?.stripe_customer_id
     && isActiveMember
-    && !p?.membership_override
+    && !!p?.subscription_id
     && p?.subscription_status === 'active';
 
   // canCancelOrPause: gates the cancel/pause buttons that hit our edge functions.
@@ -318,7 +318,7 @@ export default function SettingsPage() {
             )}
           </div>
 
-          {p?.membership_override && (
+          {p?.membership_override && !p?.subscription_id && (
             <p className="text-xs text-muted-foreground">Your membership is managed by an administrator.</p>
           )}
 

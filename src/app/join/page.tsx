@@ -161,6 +161,12 @@ function JoinInner() {
     password.length >= 8 &&
     password === confirmPassword;
 
+  // Only anonymous visitors create a Supabase account (signUp), which is the
+  // only step that needs a captcha token. A logged-in non-member already has an
+  // account and goes straight to checkout, so the captcha must not gate them.
+  const willSignUp = !user;
+  const captchaGateActive = willSignUp && TURNSTILE_ENABLED && !captchaToken;
+
   const handleSubmit = async () => {
     if (!isFormValid || submitting) return;
     // Block if a referral code was typed but didn't resolve to a valid ambassador
@@ -177,34 +183,39 @@ function JoinInner() {
     const ambassadorIdToUse = resolvedAmbassador?.id ?? null;
     const referralCodeToUse = referralCode || null;
 
-    // STEP ONE - Create Supabase account first so we have a user_id for downstream writes
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: email.trim(),
-      password: password,
-      options: {
-        data: {
-          full_name: fullName.trim(),
-          sms_consent: smsConsent,
-          sms_consent_at: consentTimestamp,
-          sms_consent_user_agent: consentUserAgent,
-          referral_code: referralCodeToUse,
-          ambassador_id: ambassadorIdToUse,
-          phone: cleanPhone,
-          primary_goal: goal,
+    // STEP ONE - Create a Supabase account for anonymous visitors so we have a
+    // user_id for downstream writes. signUp is the only captcha-gated call; a
+    // logged-in non-member already has an account, so skip it (and the captcha).
+    let newUserId = user?.id ?? null;
+    if (willSignUp) {
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password: password,
+        options: {
+          data: {
+            full_name: fullName.trim(),
+            sms_consent: smsConsent,
+            sms_consent_at: consentTimestamp,
+            sms_consent_user_agent: consentUserAgent,
+            referral_code: referralCodeToUse,
+            ambassador_id: ambassadorIdToUse,
+            phone: cleanPhone,
+            primary_goal: goal,
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          captchaToken: captchaToken || undefined,
         },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-        captchaToken: captchaToken || undefined,
-      },
-    });
-    if (signUpError && signUpError.message !== 'User already registered') {
-      setFormError(signUpError.message);
-      turnstileRef.current?.reset();
-      setCaptchaToken('');
-      setSubmitting(false);
-      return;
+      });
+      if (signUpError && signUpError.message !== 'User already registered') {
+        setFormError(signUpError.message);
+        turnstileRef.current?.reset();
+        setCaptchaToken('');
+        setSubmitting(false);
+        return;
+      }
+      // user_id is null for the already-registered case; capture-prospect guards on it
+      newUserId = signUpData?.user?.id ?? null;
     }
-    // user_id is null for the already-registered case; capture-prospect guards on it
-    const newUserId = signUpData?.user?.id ?? null;
 
     // STEP TWO - Persist signup data (blocking - do not proceed to Stripe on failure)
     const { data: captureData, error: captureError } = await supabase.functions.invoke('capture-prospect', {
@@ -463,7 +474,7 @@ function JoinInner() {
                   <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={submitting || !isFormValid || (TURNSTILE_ENABLED && !captchaToken)}
+                    disabled={submitting || !isFormValid || captchaGateActive}
                     style={{
                       width: '100%',
                       display: 'flex',
@@ -471,7 +482,7 @@ function JoinInner() {
                       justifyContent: 'center',
                       gap: '8px',
                       padding: '14px 32px',
-                      backgroundColor: submitting || !isFormValid || (TURNSTILE_ENABLED && !captchaToken) ? 'rgba(255,255,255,0.3)' : '#FFFFFF',
+                      backgroundColor: submitting || !isFormValid || captchaGateActive ? 'rgba(255,255,255,0.3)' : '#FFFFFF',
                       color: '#000000',
                       borderRadius: '10px',
                       fontSize: '0.9375rem',
