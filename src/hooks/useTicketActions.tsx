@@ -196,6 +196,7 @@ export function useTicketActions(): UseTicketActionsReturn {
         setUserTicketIds(prev => new Set([...prev, event.id]));
         setThankYouType('member');
         setThankYouEvent({
+          id: event.id,
           title: event.title,
           startTime: event.start_time,
           endTime: event.end_time,

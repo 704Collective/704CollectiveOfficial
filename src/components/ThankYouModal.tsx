@@ -7,6 +7,7 @@ import { SOCIAL_TIER } from '@/lib/pricing';
 type ThankYouType = 'new_member' | 'member' | 'guest';
 
 export interface ThankYouEvent {
+  id?: string;
   title: string;
   startTime: string;
   endTime: string;
@@ -21,17 +22,19 @@ interface ThankYouModalProps {
   event?: ThankYouEvent;
 }
 
+// new Date() safely parses both the space-separated and T-separated forms; emit UTC with trailing Z.
 function toGCalTime(iso: string): string {
-  return iso.replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  return new Date(iso).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 }
 
-function downloadIcs(title: string, startTime: string, endTime: string, location: string) {
-  const fmt = (iso: string) => iso.replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+function downloadIcs(title: string, startTime: string, endTime: string, location: string, eventId?: string) {
+  const fmt = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
   const ics = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     'PRODID:-//704 Collective//NONSGML v1.0//EN',
     'BEGIN:VEVENT',
+    ...(eventId ? [`UID:${eventId}@704collective.com`] : []),
     `DTSTART:${fmt(startTime)}`,
     `DTEND:${fmt(endTime)}`,
     `SUMMARY:${title}`,
@@ -134,7 +137,7 @@ export function ThankYouModal({ open, onOpenChange, type, event }: ThankYouModal
                     Google Calendar
                   </a>
                   <button
-                    onClick={() => downloadIcs(event.title, event.startTime, event.endTime, event.location)}
+                    onClick={() => downloadIcs(event.title, event.startTime, event.endTime, event.location, event.id)}
                     style={outlineBtn as React.CSSProperties}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>

@@ -388,6 +388,9 @@ serve(async (req) => {
             qrCodeUrl,
             guestPassCode,
             origin,
+            startTimeIso: event.start_time,
+            endTimeIso: event.end_time,
+            eventId: event_id,
           },
         }),
       });

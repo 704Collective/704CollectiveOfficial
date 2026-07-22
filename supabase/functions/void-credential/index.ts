@@ -110,6 +110,57 @@ serve(async (req) => {
 
     log("credential voided", { credId: credResult.data.id, personId: personId, event_id: event_id });
 
+    // ── Cancellation confirmation email to the cancelling member ──────────────
+    // Fires on every successful self-void, independent of capacity/waitlist.
+    // Non-fatal: the void has already succeeded above; a send failure must
+    // NEVER fail the cancellation. Sent service-role (same pattern as the
+    // waitlist notify below) so the restricted "rsvp-cancelled" template is allowed.
+    try {
+      const { data: cancelEvt } = await adminClient
+        .from("events")
+        .select("id, title, start_time, end_time")
+        .eq("id", event_id)
+        .maybeSingle();
+
+      if (cancelEvt && user.email) {
+        const origin = Deno.env.get("NEXT_PUBLIC_SITE_URL") || "https://704collective.com";
+        const start = cancelEvt.start_time ? new Date(cancelEvt.start_time) : null;
+        const eventDate = start
+          ? start.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/New_York" })
+          : "";
+        const eventTime = start
+          ? start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" })
+          : "";
+        const cancelEmailRes = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${serviceRoleKey}`,
+          },
+          body: JSON.stringify({
+            to: user.email,
+            template: "rsvp-cancelled",
+            data: {
+              eventName: cancelEvt.title || "your event",
+              eventDate,
+              eventTime,
+              startTimeIso: cancelEvt.start_time,
+              endTimeIso: cancelEvt.end_time,
+              eventId: cancelEvt.id,
+              origin,
+            },
+          }),
+        });
+        if (!cancelEmailRes.ok) {
+          log("cancellation email send FAILED (non-fatal)", { status: cancelEmailRes.status, body: await cancelEmailRes.text() });
+        } else {
+          log("cancellation email sent", { to: user.email, event_id: event_id });
+        }
+      }
+    } catch (cancelEmailErr) {
+      log("cancellation email error (non-fatal)", String(cancelEmailErr));
+    }
+
     // ── Waitlist auto-notify (additive; NEVER breaks the void) ────────────────
     // A seat may have just freed up. If the event has finite capacity and now
     // has an open seat, offer it to the next eligible waitlister with a timed

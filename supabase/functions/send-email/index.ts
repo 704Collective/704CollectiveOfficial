@@ -255,9 +255,63 @@ ${ctaButton("Set Up Your Account", data.setupLink)}
   };
 }
 
+interface EmailAttachment {
+  filename: string;
+  content: string; // base64
+  content_type?: string;
+}
+
 function toGCalTime(iso: string): string {
-  // Format: YYYYMMDDTHHmmssZ (UTC)
-  return iso.replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  // Format: YYYYMMDDTHHmmssZ (UTC). new Date() safely parses both the
+  // space-separated and T-separated forms; emit UTC with a trailing Z.
+  return new Date(iso).toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+}
+
+// UTF-8-safe base64 (btoa alone throws on non-latin1 chars).
+function toBase64Utf8(str: string): string {
+  const bytes = new TextEncoder().encode(str);
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin);
+}
+
+// Minimal single-event VEVENT/VCALENDAR string (UTC times, trailing Z).
+// Defaults to an "add" invite (METHOD:PUBLISH, SEQUENCE:0). Pass method:"CANCEL"
+// + status:"CANCELLED" + sequence:1 with the SAME uid to produce a cancellation
+// that calendar clients match to the original event and remove.
+function buildEventIcs(opts: {
+  title: string;
+  startIso: string;
+  endIso?: string;
+  location?: string;
+  description?: string;
+  uid: string;
+  method?: "PUBLISH" | "CANCEL";
+  status?: "CONFIRMED" | "CANCELLED";
+  sequence?: number;
+}): string {
+  const fmt = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+  const esc = (t: string) => t.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//704 Collective//Events//EN",
+    "CALSCALE:GREGORIAN",
+    `METHOD:${opts.method ?? "PUBLISH"}`,
+    "BEGIN:VEVENT",
+    `UID:${opts.uid}`,
+    `DTSTAMP:${fmt(new Date().toISOString())}`,
+    `DTSTART:${fmt(opts.startIso)}`,
+    ...(opts.endIso ? [`DTEND:${fmt(opts.endIso)}`] : []),
+    `SUMMARY:${esc(opts.title)}`,
+    ...(opts.description ? [`DESCRIPTION:${esc(opts.description)}`] : []),
+    ...(opts.location ? [`LOCATION:${esc(opts.location)}`] : []),
+    `SEQUENCE:${opts.sequence ?? 0}`,
+    ...(opts.status ? [`STATUS:${opts.status}`] : []),
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ];
+  return lines.join("\r\n");
 }
 
 function rsvpConfirmationTemplate(data: {
@@ -350,6 +404,71 @@ ${ctaButton("View Event Details", data.eventUrl)}
   };
 }
 
+function rsvpCancelledTemplate(data: {
+  name?: string;
+  eventName: string;
+  eventDate?: string;
+  eventTime?: string;
+  eventLocation?: string;
+  startTimeIso?: string;
+  endTimeIso?: string;
+  eventId?: string;
+  origin?: string;
+}): { subject: string; html: string; attachments?: EmailAttachment[] } {
+  const name = data.name || "there";
+  const eventName = data.eventName || "your event";
+  const base = data.origin || "https://704collective.com";
+
+  // Cancellation ICS: same UID as the add-path so calendar clients match and
+  // remove the event when the recipient opens it (METHOD:CANCEL + STATUS:CANCELLED + SEQUENCE:1).
+  let attachments: EmailAttachment[] | undefined;
+  if (data.startTimeIso && data.eventId) {
+    const ics = buildEventIcs({
+      title: eventName,
+      startIso: data.startTimeIso,
+      endIso: data.endTimeIso,
+      location: data.eventLocation,
+      uid: `${data.eventId}@704collective.com`,
+      method: "CANCEL",
+      status: "CANCELLED",
+      sequence: 1,
+    });
+    attachments = [{ filename: "cancel.ics", content: toBase64Utf8(ics), content_type: "text/calendar" }];
+  }
+
+  const detailsBlock = (data.eventDate || data.eventTime || data.eventLocation)
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:rgba(255,255,255,0.04);border-radius:8px;border:1px solid ${BRAND.border};">
+<tr><td style="padding:20px 24px;">
+<table role="presentation" cellpadding="0" cellspacing="0">
+${data.eventDate ? `<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">&#128197;&nbsp;&nbsp;${escapeHtml(data.eventDate)}</td></tr>` : ""}
+${data.eventTime ? `<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">&#9200;&nbsp;&nbsp;${escapeHtml(data.eventTime)}</td></tr>` : ""}
+${data.eventLocation ? `<tr><td style="padding:4px 0;font-size:15px;color:${BRAND.textSecondary};">&#128205;&nbsp;&nbsp;${escapeHtml(data.eventLocation)}</td></tr>` : ""}
+</table>
+</td></tr>
+</table>`
+    : "";
+
+  const icsNote = attachments
+    ? `<p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">&#128197; Opening the attached <strong>cancel.ics</strong> file removes this event from your calendar.</p>`
+    : "";
+
+  return {
+    subject: `Your RSVP for ${eventName} has been cancelled`,
+    html: baseLayout({
+      title: `RSVP Cancelled: ${eventName}`,
+      previewText: `Your RSVP for ${eventName} has been cancelled.`,
+      content: `
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${escapeHtml(name)},</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Your RSVP for <strong>${escapeHtml(eventName)}</strong> has been cancelled. Your spot has been released.</p>
+${detailsBlock}
+${icsNote}
+${ctaButton("Browse Upcoming Events", `${base}/events`)}
+<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">Changed your mind? You can RSVP again any time from the event page.</p>`,
+    }),
+    attachments,
+  };
+}
+
 function guestPassTemplate(data: {
   guestName: string;
   eventTitle: string;
@@ -361,12 +480,17 @@ function guestPassTemplate(data: {
   qrCodeUrl: string;
   guestPassCode: string;
   origin?: string;
+  // Calendar fields (guests get a Google link + an attached per-event ICS;
+  // never a member subscription-feed / calendarToken link).
+  startTimeIso?: string;
+  endTimeIso?: string;
+  eventId?: string;
   // Legacy fields (backward compat — ignored in new flow)
   memberName?: string;
   eventName?: string | null;
   passCode?: string;
   expiresDate?: string;
-}): { subject: string; html: string } {
+}): { subject: string; html: string; attachments?: EmailAttachment[] } {
   const guestName = data.guestName || "there";
   const inviterName = data.inviterName || data.memberName || "A member";
   const eventTitle = data.eventTitle || data.eventName || "an upcoming event";
@@ -374,6 +498,46 @@ function guestPassTemplate(data: {
     (data.passCode ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(data.passCode)}` : "");
   const passCode = data.guestPassCode || data.passCode || "";
   const base = data.origin || "https://704collective.com";
+
+  // ── Calendar block + ICS attachment (only when time data is available) ──
+  // Google Calendar is a plain https link (reliable in all mail clients);
+  // the per-event ICS ships as a real Resend attachment (data: URIs and the
+  // download attribute are stripped by Gmail/Apple Mail, so a link is not
+  // reliable — an attachment is). No calendarToken/subscription link for guests.
+  let calendarBlock = "";
+  let attachments: EmailAttachment[] | undefined;
+  if (data.startTimeIso && data.endTimeIso) {
+    const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE` +
+      `&text=${encodeURIComponent(eventTitle)}` +
+      `&dates=${toGCalTime(data.startTimeIso)}/${toGCalTime(data.endTimeIso)}` +
+      `&details=${encodeURIComponent(`You're invited to ${eventTitle}! ${base}`)}` +
+      `&location=${encodeURIComponent(data.eventLocation || "")}`;
+
+    calendarBlock = `
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;width:100%;">
+<tr><td align="center">
+<p style="margin:0 0 12px;font-size:14px;font-weight:600;color:${BRAND.text};">Add to your calendar</p>
+<table role="presentation" cellpadding="0" cellspacing="0">
+<tr>
+<td style="padding:0 6px;">
+<a href="${gcalUrl}" target="_blank" style="display:inline-block;padding:10px 20px;background-color:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:8px;font-size:14px;font-weight:600;color:${BRAND.accent};text-decoration:none;">&#128197; Google Calendar</a>
+</td>
+</tr>
+</table>
+<p style="margin:12px 0 0;font-size:12px;color:${BRAND.textMuted};">&#127822; Apple Calendar / Outlook: open the attached <strong>event.ics</strong> file.</p>
+</td></tr>
+</table>`;
+
+    const ics = buildEventIcs({
+      title: eventTitle,
+      startIso: data.startTimeIso,
+      endIso: data.endTimeIso,
+      location: data.eventLocation,
+      description: `You're invited to ${eventTitle}!`,
+      uid: data.eventId ? `${data.eventId}@704collective.com` : `${passCode || crypto.randomUUID()}@704collective.com`,
+    });
+    attachments = [{ filename: "event.ics", content: toBase64Utf8(ics), content_type: "text/calendar" }];
+  }
 
   const personalMessageBlock = data.personalMessage
     ? `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;">
@@ -416,11 +580,13 @@ ${qrUrl ? `<img src="${qrUrl}" alt="Guest Pass QR Code" width="220" height="220"
 <p style="margin:0;font-size:16px;font-weight:700;color:${BRAND.text};font-family:monospace;letter-spacing:2px;">${escapeHtml(passCode)}</p>
 </td></tr>
 </table>
+${calendarBlock}
 ${ctaButton("Learn More About 704 Collective", base)}
 <p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};text-align:center;">
 Questions? Contact <a href="mailto:hello@704collective.com" style="color:${BRAND.accent};">hello@704collective.com</a>
 </p>`,
     }),
+    attachments,
   };
 }
 
@@ -1791,7 +1957,7 @@ ${ctaButton("Hop into the discussion", data.discussionUrl)}
   };
 }
 
-function getTemplate(template: string, data: Record<string, unknown>): { subject: string; html: string } {
+function getTemplate(template: string, data: Record<string, unknown>): { subject: string; html: string; attachments?: EmailAttachment[] } {
   switch (template) {
     case "welcome-back":
       return welcomeBackTemplate(data as { name: string; calendarUrl: string; origin?: string });
@@ -1824,6 +1990,18 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
         startTimeIso?: string;
         endTimeIso?: string;
         calendarToken?: string;
+      });
+    case "rsvp-cancelled":
+      return rsvpCancelledTemplate(data as {
+        name?: string;
+        eventName: string;
+        eventDate?: string;
+        eventTime?: string;
+        eventLocation?: string;
+        startTimeIso?: string;
+        endTimeIso?: string;
+        eventId?: string;
+        origin?: string;
       });
     case "event-change":
       return eventChangeTemplate(data as {
@@ -1863,6 +2041,9 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
         qrCodeUrl: string;
         guestPassCode: string;
         origin?: string;
+        startTimeIso?: string;
+        endTimeIso?: string;
+        eventId?: string;
         memberName?: string;
         eventName?: string | null;
         passCode?: string;
@@ -2099,7 +2280,7 @@ serve(async (req) => {
     // Templates that require service role (internal/admin only)
     const restrictedTemplates = [
       "admin-invite", "welcome-setup", "welcome-back", "welcome-new", "public-rsvp-confirmation", "password-setup", "event-change", "guest-followup", "waitlist-spot-open",
-      "ticket-followup", "guest-pass", "feed-mention", "partner-application-submitted",
+      "ticket-followup", "guest-pass", "rsvp-cancelled", "feed-mention", "partner-application-submitted",
       "partner-new-application-admin", "partner-welcome-invite", "partner-application-denied",
       "partner-event-inquiry-admin", "partner-inquiry-admin-reply-partner", "partner-team-first-superadmin",
       "partner-team-reply-partner", "partner-account-deletion-request", "social-signup-confirmation",
@@ -2180,7 +2361,9 @@ serve(async (req) => {
 
     log("Sending email", { to, template });
 
-    let { subject, html } = getTemplate(template, data || {});
+    const templateResult = getTemplate(template, data || {});
+    let { subject, html } = templateResult;
+    const attachments = templateResult.attachments;
     // --- Unsubscribe link policy ---
     // Marketing templates show a working unsubscribe link ONLY to non-active-members.
     // Active members + all transactional/internal mail get the link removed entirely.
@@ -2241,6 +2424,7 @@ serve(async (req) => {
         subject,
         html,
         text,
+        ...(attachments && attachments.length ? { attachments } : {}),
       }),
     });
 

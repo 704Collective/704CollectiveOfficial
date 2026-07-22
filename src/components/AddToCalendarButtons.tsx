@@ -2,9 +2,9 @@
 
 import { Calendar, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { format } from 'date-fns';
 
 export interface CalendarEvent {
+  id?: string;
   title: string;
   description?: string;
   startTime: Date | string;
@@ -17,12 +17,8 @@ interface AddToCalendarButtonsProps {
   className?: string;
 }
 
-function formatDateForGoogle(date: Date): string {
-  return format(date, "yyyyMMdd'T'HHmmss");
-}
-
-function formatDateForICS(date: Date): string {
-  return format(date, "yyyyMMdd'T'HHmmss");
+function formatDateUTC(date: Date): string {
+  return date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
 }
 
 function escapeText(text: string): string {
@@ -43,7 +39,7 @@ function generateGoogleCalendarUrl(event: CalendarEvent): string {
   const params = new URLSearchParams({
     action: 'TEMPLATE',
     text: event.title,
-    dates: `${formatDateForGoogle(startDate)}/${formatDateForGoogle(endDate)}`,
+    dates: `${formatDateUTC(startDate)}/${formatDateUTC(endDate)}`,
   });
 
   if (event.description) {
@@ -67,8 +63,8 @@ function generateICSContent(event: CalendarEvent): string {
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',
-    `DTSTART:${formatDateForICS(startDate)}`,
-    `DTEND:${formatDateForICS(endDate)}`,
+    `DTSTART:${formatDateUTC(startDate)}`,
+    `DTEND:${formatDateUTC(endDate)}`,
     `SUMMARY:${escapeText(event.title)}`,
   ];
 
@@ -80,8 +76,8 @@ function generateICSContent(event: CalendarEvent): string {
   }
 
   lines.push(
-    `UID:${crypto.randomUUID()}@704social.com`,
-    `DTSTAMP:${formatDateForICS(new Date())}`,
+    `UID:${event.id ? `${event.id}@704collective.com` : `${crypto.randomUUID()}@704social.com`}`,
+    `DTSTAMP:${formatDateUTC(new Date())}`,
     'END:VEVENT',
     'END:VCALENDAR'
   );
