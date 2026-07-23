@@ -300,6 +300,7 @@ function buildEventIcs(opts: {
     `METHOD:${opts.method ?? "PUBLISH"}`,
     "BEGIN:VEVENT",
     `UID:${opts.uid}`,
+    `ORGANIZER;CN=704 Collective:mailto:no-reply@704collective.com`,
     `DTSTAMP:${fmt(new Date().toISOString())}`,
     `DTSTART:${fmt(opts.startIso)}`,
     ...(opts.endIso ? [`DTEND:${fmt(opts.endIso)}`] : []),
