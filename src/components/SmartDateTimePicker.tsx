@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -33,6 +33,14 @@ export function SmartDateTimePicker({ value, onChange, label }: SmartDateTimePic
   const hours12 = hours24 === 0 ? 12 : hours24 > 12 ? hours24 - 12 : hours24;
   const minutes = value ? value.getMinutes() : 0;
   const period = hours24 >= 12 ? 'PM' : 'AM';
+
+  const minuteOptions = useMemo(() => {
+    const intervals = [0, 10, 20, 30, 40, 50];
+    if (!intervals.includes(minutes)) {
+      return [...intervals, minutes].sort((a, b) => a - b);
+    }
+    return intervals;
+  }, [minutes]);
 
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) return;
@@ -130,7 +138,7 @@ export function SmartDateTimePicker({ value, onChange, label }: SmartDateTimePic
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {Array.from({ length: 60 }, (_, i) => i).map((m) => (
+            {minuteOptions.map((m) => (
               <SelectItem key={m} value={m.toString()}>
                 {m.toString().padStart(2, '0')}
               </SelectItem>
