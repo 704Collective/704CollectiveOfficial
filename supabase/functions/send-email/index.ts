@@ -470,6 +470,58 @@ ${ctaButton("Browse Upcoming Events", `${base}/events`)}
   };
 }
 
+// ── Host message ────────────────────────────────────────────────────────────
+// Sent to an event's host when an RSVP'd member messages them from the event
+// page. All identity fields (name/email/phone) are resolved SERVER-SIDE by the
+// message-event-host function — never trusted from the client.
+function hostMessageTemplate(data: {
+  hostName?: string;
+  memberName?: string;
+  memberEmail?: string;
+  memberPhone?: string;
+  eventName?: string;
+  eventDate?: string;
+  message?: string;
+  origin?: string;
+}): { subject: string; html: string } {
+  const hostName = data.hostName || "there";
+  const memberName = data.memberName || "A member";
+  const eventName = data.eventName || "your event";
+  const message = (data.message || "").trim();
+  const phone = data.memberPhone && data.memberPhone.trim() ? data.memberPhone.trim() : "not provided";
+  const email = data.memberEmail && data.memberEmail.trim() ? data.memberEmail.trim() : "not provided";
+
+  const contextLine = data.eventDate
+    ? `<p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:${BRAND.textMuted};">Regarding <strong style="color:${BRAND.textSecondary};">${escapeHtml(eventName)}</strong> &middot; ${escapeHtml(data.eventDate)}</p>`
+    : `<p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:${BRAND.textMuted};">Regarding <strong style="color:${BRAND.textSecondary};">${escapeHtml(eventName)}</strong></p>`;
+
+  return {
+    subject: `Question about ${eventName} from ${memberName}`,
+    html: baseLayout({
+      title: `Message about ${eventName}`,
+      previewText: `${memberName} sent you a question about ${eventName}.`,
+      content: `
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${escapeHtml(hostName)},</p>
+<p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};"><strong>${escapeHtml(memberName)}</strong> sent you a message as the host of this event:</p>
+${contextLine}
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:rgba(255,255,255,0.04);border-left:3px solid ${BRAND.accent};border-radius:8px;">
+<tr><td style="padding:16px 20px;">
+<p style="margin:0;font-size:15px;line-height:1.7;color:${BRAND.text};white-space:pre-wrap;">${escapeHtml(message)}</p>
+</td></tr>
+</table>
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;background-color:${BRAND.surface};border-radius:8px;border:1px solid ${BRAND.border};">
+<tr><td style="padding:16px 20px;">
+<p style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:${BRAND.textMuted};">Reply directly to</p>
+<p style="margin:0 0 4px;font-size:15px;color:${BRAND.text};"><strong>${escapeHtml(memberName)}</strong></p>
+<p style="margin:0 0 4px;font-size:14px;color:${BRAND.textSecondary};">Email: <a href="mailto:${escapeHtml(email)}" style="color:${BRAND.accent};text-decoration:none;">${escapeHtml(email)}</a></p>
+<p style="margin:0;font-size:14px;color:${BRAND.textSecondary};">Phone: ${escapeHtml(phone)}</p>
+</td></tr>
+</table>
+<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">You're receiving this because you're listed as the host of ${escapeHtml(eventName)}.</p>`,
+    }),
+  };
+}
+
 function guestPassTemplate(data: {
   guestName: string;
   eventTitle: string;
@@ -2004,6 +2056,17 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
         eventId?: string;
         origin?: string;
       });
+    case "host-message":
+      return hostMessageTemplate(data as {
+        hostName?: string;
+        memberName?: string;
+        memberEmail?: string;
+        memberPhone?: string;
+        eventName?: string;
+        eventDate?: string;
+        message?: string;
+        origin?: string;
+      });
     case "event-change":
       return eventChangeTemplate(data as {
         name: string; eventName: string;
@@ -2281,7 +2344,7 @@ serve(async (req) => {
     // Templates that require service role (internal/admin only)
     const restrictedTemplates = [
       "admin-invite", "welcome-setup", "welcome-back", "welcome-new", "public-rsvp-confirmation", "password-setup", "event-change", "guest-followup", "waitlist-spot-open",
-      "ticket-followup", "guest-pass", "rsvp-cancelled", "feed-mention", "partner-application-submitted",
+      "ticket-followup", "guest-pass", "rsvp-cancelled", "host-message", "feed-mention", "partner-application-submitted",
       "partner-new-application-admin", "partner-welcome-invite", "partner-application-denied",
       "partner-event-inquiry-admin", "partner-inquiry-admin-reply-partner", "partner-team-first-superadmin",
       "partner-team-reply-partner", "partner-account-deletion-request", "social-signup-confirmation",

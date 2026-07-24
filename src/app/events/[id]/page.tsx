@@ -7,7 +7,8 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Calendar, Clock, MapPin, Users, ArrowLeft, Check, Ticket, X, AlertCircle, Loader2 } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, ArrowLeft, Check, Ticket, X, AlertCircle, Loader2, MessageSquare } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import Nav from '@/components/Nav';
 import { Footer } from '@/components/Footer';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -41,6 +42,7 @@ interface Event {
   business_member_price?: number | null;
   category: string | null;
   allows_guest_passes: boolean | null;
+  host_id?: string | null;
   access_type?: 'members_only' | 'public_ticketed' | 'public_free';
   access_level: string | null;
   ticket_mode: 'none' | 'public_only' | 'all' | null;
@@ -58,6 +60,10 @@ export default function EventDetail() {
   const { hasTicket: checkHasTicket, rsvpLoadingId, showThankYou, setShowThankYou, thankYouType, thankYouEvent, registerMemberTicket, refreshUserTickets } = useTicketActions();
 
   const [event, setEvent] = useState<Event | null>(null);
+  const [hostName, setHostName] = useState<string | null>(null);
+  const [hostDialogOpen, setHostDialogOpen] = useState(false);
+  const [hostMessage, setHostMessage] = useState('');
+  const [hostSending, setHostSending] = useState(false);
   usePageTitle(event ? event.title : 'Event Details');
   const [loading, setloading] = useState(true);
   const [ticketId, setTicketId] = useState<string | null>(null);
@@ -153,6 +159,49 @@ export default function EventDetail() {
 
     setEvent(derived as Event);
     setloading(false);
+
+    // Resolve the host's display name (members can read profile names, same as
+    // the discussion author join). Kept separate from the event row.
+    if (data.host_id) {
+      const { data: hostRow } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', data.host_id)
+        .maybeSingle();
+      setHostName(hostRow?.full_name ?? null);
+    } else {
+      setHostName(null);
+    }
+  };
+
+  const handleSendHostMessage = async () => {
+    if (!event?.host_id) return;
+    const trimmed = hostMessage.trim();
+    if (!trimmed) { toast.error('Please write a message first.'); return; }
+    if (trimmed.length > 1000) { toast.error('Message must be 1000 characters or fewer.'); return; }
+    setHostSending(true);
+    try {
+      const { error } = await supabase.functions.invoke('message-event-host', {
+        body: { event_id: event.id, message: trimmed },
+      });
+      if (error) {
+        const status = (error as { context?: { status?: number } })?.context?.status;
+        if (status === 429) {
+          toast.error("You've sent a message recently — please wait a few minutes.");
+        } else {
+          toast.error('Could not send your message. Please try again.');
+        }
+        return;
+      }
+      const firstName = (hostName || 'the host').split(' ')[0];
+      toast.success(`Message sent to ${firstName}`);
+      setHostMessage('');
+      setHostDialogOpen(false);
+    } catch {
+      toast.error('Could not send your message. Please try again.');
+    } finally {
+      setHostSending(false);
+    }
   };
 
   useEffect(() => {
@@ -583,6 +632,20 @@ export default function EventDetail() {
         <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>You{"'"}re RSVP{"'"}d!</h3>
         <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>See you on {format(eventDate, 'MMMM d')}.</p>
         <div style={{ marginBottom: '10px' }}><AddToCalendarButtons event={{ id: event.id, title: event.title, description: event.description || '', startTime: event.start_time, endTime: event.end_time, location: event.location_name || '' }} /></div>
+        {event.host_id && hostName && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '12px', marginBottom: '10px', padding: '16px', borderRadius: '12px', background: 'rgba(198,166,100,0.08)', border: '1px solid rgba(198,166,100,0.35)', textAlign: 'left' }}>
+            <div>
+              <p style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'rgba(198,166,100,0.9)', margin: '0 0 4px' }}>Your host</p>
+              <p style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>Hosted by {hostName}</p>
+            </div>
+            <button
+              onClick={() => setHostDialogOpen(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', padding: '11px 20px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, backgroundColor: 'rgba(198,166,100,0.15)', color: '#C6A664', border: '1px solid rgba(198,166,100,0.4)', cursor: 'pointer' }}
+            >
+              <MessageSquare style={{ width: '15px', height: '15px' }} /> Message Host
+            </button>
+          </div>
+        )}
         <Link href="/events" style={{ ...linkBtn, backgroundColor: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)', marginBottom: '8px' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><Calendar style={{ width: '13px', height: '13px' }} /> Browse Other Events</span></Link>
         <Link href="/dashboard" style={{ ...linkBtn, color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '8px' }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><Ticket style={{ width: '13px', height: '13px' }} /> View My Tickets</span></Link>
         <button onClick={handleCancelRSVP} disabled={isCancelling} style={dangerBtn}><X style={{ width: '14px', height: '14px' }} />{isCancelling ? 'Cancelling...' : 'Cancel RSVP'}</button>
@@ -1025,6 +1088,36 @@ export default function EventDetail() {
         {!hasTicket && !waitlistPosition && <div className="mobile-spacer" style={{ height: '80px', display: 'none' }} />}
 
         <ThankYouModal open={showThankYou} onOpenChange={setShowThankYou} type={thankYouType} event={thankYouEvent ?? undefined} />
+
+        <Dialog open={hostDialogOpen} onOpenChange={(o) => { if (!hostSending) setHostDialogOpen(o); }}>
+          <DialogContent className="sm:max-w-[480px]">
+            <DialogHeader>
+              <DialogTitle>Message {hostName ? hostName.split(' ')[0] : 'the host'}</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground -mt-1">
+              Your name and contact info are shared with the host so they can reply.
+            </p>
+            <textarea
+              value={hostMessage}
+              onChange={(e) => setHostMessage(e.target.value.slice(0, 1000))}
+              maxLength={1000}
+              rows={5}
+              placeholder={`Ask ${hostName ? hostName.split(' ')[0] : 'the host'} a question about this event…`}
+              disabled={hostSending}
+              className="w-full rounded-lg border border-input bg-transparent p-3 text-sm outline-none focus:ring-1 focus:ring-ring resize-none"
+            />
+            <div className="text-right text-xs text-muted-foreground">{hostMessage.length}/1000</div>
+            <DialogFooter>
+              <button
+                onClick={handleSendHostMessage}
+                disabled={hostSending || !hostMessage.trim()}
+                style={{ ...primaryBtn, opacity: (hostSending || !hostMessage.trim()) ? 0.6 : 1, cursor: (hostSending || !hostMessage.trim()) ? 'not-allowed' : 'pointer' }}
+              >
+                {hostSending ? <><Loader2 style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} /> Sending…</> : 'Send'}
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         </MarketingPageRoot>
       </div>
       <Footer />

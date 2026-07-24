@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { format, formatDistanceToNow } from 'date-fns';
-import { ArrowLeft, Lock, Calendar, Heart, MessageCircle, MoreHorizontal, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Lock, Calendar, Heart, MessageCircle, MoreHorizontal, Pencil, Trash2, Loader2, Star } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { DashboardNav } from '@/components/DashboardNav';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -31,7 +31,7 @@ import { LinkifiedText } from '@/components/ui/LinkifiedText';
 
 const isVideoUrl = (u: string) => /\.(mp4|mov|webm)(\?|$)/i.test(u);
 
-interface DiscussionEvent { id: string; title: string | null; image_url: string | null; start_time: string | null; category: string | null; }
+interface DiscussionEvent { id: string; title: string | null; image_url: string | null; start_time: string | null; category: string | null; host_id?: string | null; }
 interface Author { id: string; full_name: string | null; avatar_url: string | null; }
 interface DPost { id: string; author_id: string; content: string | null; image_urls: string[] | null; created_at: string; updated_at?: string | null; author: Author | null; }
 
@@ -62,6 +62,7 @@ export default function EventDiscussionPage() {
 
   const [access, setAccess] = useState<AccessState>('loading');
   const [ev, setEv] = useState<DiscussionEvent | null>(null);
+  const [hostName, setHostName] = useState<string | null>(null);
   const [going, setGoing] = useState<number>(0);
   const [posts, setPosts] = useState<DPost[]>([]);
   const [commentsByPost, setCommentsByPost] = useState<Record<string, DComment[]>>({});
@@ -116,8 +117,15 @@ export default function EventDiscussionPage() {
     let cancelled = false;
     (async () => {
       const { data: evData } = await supabase
-        .from('events').select('id, title, image_url, start_time, category').eq('id', eventId).single();
+        .from('events').select('id, title, image_url, start_time, category, host_id').eq('id', eventId).single();
       if (!cancelled && evData) setEv(evData as DiscussionEvent);
+      if (!cancelled && evData?.host_id) {
+        const { data: hostRow } = await supabase
+          .from('profiles').select('full_name').eq('id', evData.host_id).maybeSingle();
+        if (!cancelled) setHostName(hostRow?.full_name ?? null);
+      } else if (!cancelled) {
+        setHostName(null);
+      }
       const { data: att } = await supabase.rpc('get_event_attendees', { p_event_id: eventId });
       if (!cancelled && att) setGoing((att as any).member_count ?? 0);
     })();
@@ -252,6 +260,15 @@ export default function EventDiscussionPage() {
                   </div>
                 </div>
               </div>
+
+              {ev?.host_id && hostName && (
+                <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 mb-4 flex items-center gap-2.5">
+                  <Star className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-hidden />
+                  <p className="text-sm text-muted-foreground">
+                    Hosted by <span className="font-semibold text-foreground">{hostName}</span>
+                  </p>
+                </div>
+              )}
 
               <EventDiscussionComposer
                 eventId={eventId}

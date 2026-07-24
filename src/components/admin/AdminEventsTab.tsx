@@ -18,6 +18,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SmartDateTimePicker } from '@/components/SmartDateTimePicker';
 import { RecurrenceSelector, RecurrenceRule, parseRecurrenceRule } from '@/components/RecurrenceSelector';
@@ -35,7 +37,7 @@ import { cn } from '@/lib/utils';
 import * as Sentry from '@sentry/nextjs';
 import {
   Calendar, Plus, Pencil, Trash2, Search, Copy, Lock,
-  ChevronLeft, ChevronRight, MoreHorizontal, ArrowLeft, Upload, X as XIcon, Gift, Mail, Check, UserPlus, Bell, ExternalLink, Send, Loader2, FlaskConical,
+  ChevronLeft, ChevronRight, MoreHorizontal, ArrowLeft, Upload, X as XIcon, Gift, Mail, Check, UserPlus, Bell, ExternalLink, Send, Loader2, FlaskConical, ChevronsUpDown,
 } from 'lucide-react';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -58,6 +60,7 @@ interface Event {
   parent_event_id: string | null;
   tags: string[] | null;
   allows_guest_passes: boolean;
+  host_id?: string | null;
   eventbrite_event_id: string | null;
   eventbrite_published: boolean | null;
   eventbrite_url: string | null;
@@ -109,6 +112,7 @@ type ChangeOcc = {
 interface EventForm {
   membership_tier: 'social' | 'business';
   title: string;
+  host_id: string | null;
   description: string;
   start_time: Date | undefined;
   end_time: Date | undefined;
@@ -145,7 +149,7 @@ const getDefaultStartTime = (): Date => { const d = new Date(); d.setHours(18, 0
 const getDefaultEndTime = (s: Date): Date => { const e = new Date(s); e.setHours(e.getHours() + 2); return e; };
 const getDefaultEventForm = (): EventForm => ({
   membership_tier: 'social',
-  title: '', description: '', start_time: getDefaultStartTime(), end_time: getDefaultEndTime(getDefaultStartTime()),
+  title: '', host_id: null, description: '', start_time: getDefaultStartTime(), end_time: getDefaultEndTime(getDefaultStartTime()),
   location_name: '', location_address: '', image_url: '', capacity: '',
   access_type: 'members_only', access_level: 'all', ticket_mode: 'none',
   public_ticket_price: '0', social_member_price: '0', business_member_price: '0',
@@ -198,6 +202,34 @@ async function fetchEventsData(page: number, filter: 'all' | 'upcoming' | 'past'
   return { events, totalCount: count || 0, rsvpCounts, followupCounts, publicCountMap };
 }
 
+// ── Host picker options ──────────────────────────────────────────────────────
+// Admins + super_admins (from user_roles) joined to profiles for id/name/email.
+// The shared 704 inbox (hello@704collective.com) is excluded — it is not a
+// person who can host. Deduped by profile id.
+interface HostOption { id: string; full_name: string; email: string }
+
+async function fetchHostOptions(): Promise<HostOption[]> {
+  const { data: roleRows, error: roleErr } = await supabase
+    .from('user_roles')
+    .select('user_id, role')
+    .in('role', ['admin', 'super_admin']);
+  if (roleErr) throw roleErr;
+
+  const ids = [...new Set((roleRows || []).map(r => r.user_id).filter(Boolean))];
+  if (ids.length === 0) return [];
+
+  const { data: profs, error: profErr } = await supabase
+    .from('profiles')
+    .select('id, full_name, email')
+    .in('id', ids);
+  if (profErr) throw profErr;
+
+  return (profs || [])
+    .filter(p => (p.email || '').toLowerCase() !== 'hello@704collective.com')
+    .map(p => ({ id: p.id as string, full_name: (p.full_name as string) || '(no name)', email: (p.email as string) || '' }))
+    .sort((a, b) => a.full_name.localeCompare(b.full_name));
+}
+
 interface AdminEventsTabProps {
   onNavigateToDashboard: () => void;
 }
@@ -208,6 +240,14 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
+
+  // Event host picker (admins + super_admins, minus the shared inbox).
+  const { data: hostOptions = [] } = useQuery({
+    queryKey: ['event-host-options'],
+    queryFn: fetchHostOptions,
+    staleTime: 5 * 60 * 1000,
+  });
+  const [hostPickerOpen, setHostPickerOpen] = useState(false);
 
   // UI state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -656,7 +696,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
         : (accessType === 'public_ticketed' && tp > 0 ? 'public_only' : 'none');
     setForm({
       membership_tier: tier,
-      title: event.title, description: event.description || '', start_time: new Date(event.start_time),
+      title: event.title, host_id: event.host_id ?? null, description: event.description || '', start_time: new Date(event.start_time),
       end_time: event.end_time ? new Date(event.end_time) : undefined, location_name: event.location_name || '',
       location_address: event.location_address || '', image_url: event.image_url || '',
       capacity: event.capacity?.toString() || '',
@@ -703,7 +743,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
     setEditSnapshot(null);
     setForm({
       membership_tier: tier,
-      title: event.title, description: event.description || '', start_time: getDefaultStartTime(),
+      title: event.title, host_id: event.host_id ?? null, description: event.description || '', start_time: getDefaultStartTime(),
       end_time: getDefaultEndTime(getDefaultStartTime()), location_name: event.location_name || '',
       location_address: event.location_address || '', image_url: event.image_url || '',
       capacity: event.capacity?.toString() || '',
@@ -753,6 +793,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
 
     return {
       title: form.title.trim(), description: form.description.trim() || null,
+      host_id: form.host_id || null,
       start_time: form.start_time ? form.start_time.toISOString() : new Date().toISOString(),
       end_time: form.end_time ? form.end_time.toISOString() : null,
       location_name: form.location_name.trim() || null, location_address: form.location_address.trim() || null,
@@ -923,6 +964,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   const handleSubmit = () => {
     if (!form.title.trim()) { toast.error('Event title is required'); return; }
     if (form.title.trim().length > 200) { toast.error('Event title must be under 200 characters'); return; }
+    if (!form.host_id) { toast.error('Event host is required'); return; }
     if (!form.start_time) { toast.error('Start time is required'); return; }
     if (form.end_time && form.start_time && form.end_time <= form.start_time) { toast.error('End time must be after start time'); return; }
     if (form.access_type !== 'public_free') {
@@ -1301,6 +1343,51 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                 const t = e.target.value; const d = detectCategoryFromTitle(t);
                 setForm(prev => ({ ...prev, title: t, ...(d && prev.category === 'other' ? { category: d } : {}) }));
               }} placeholder="Event title" />
+            </div>
+            <div className="space-y-2">
+              <Label>Event Host *</Label>
+              {(() => {
+                const selectedHost = hostOptions.find(h => h.id === form.host_id);
+                return (
+                  <Popover open={hostPickerOpen} onOpenChange={setHostPickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={hostPickerOpen}
+                        className={cn('w-full justify-between font-normal', !selectedHost && 'text-muted-foreground')}
+                      >
+                        {selectedHost ? selectedHost.full_name : 'Select a host…'}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search admins…" />
+                        <CommandList>
+                          <CommandEmpty>No admins found.</CommandEmpty>
+                          <CommandGroup>
+                            {hostOptions.map(h => (
+                              <CommandItem
+                                key={h.id}
+                                value={`${h.full_name} ${h.email}`}
+                                onSelect={() => { setForm(prev => ({ ...prev, host_id: h.id })); setHostPickerOpen(false); }}
+                              >
+                                <Check className={cn('mr-2 h-4 w-4', form.host_id === h.id ? 'opacity-100' : 'opacity-0')} />
+                                <div className="flex flex-col">
+                                  <span>{h.full_name}</span>
+                                  <span className="text-xs text-muted-foreground">{h.email}</span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                );
+              })()}
             </div>
             <div className="space-y-2">
               <Label>Category</Label>
