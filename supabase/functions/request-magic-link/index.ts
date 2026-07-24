@@ -40,39 +40,44 @@ serve(async (req) => {
     }
 
     // ── Rate limit check ─────────────────────────────────────────────────────
-    const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60 * 1000).toISOString();
+    // rate_limits schema: (key text, count int, window_start timestamptz).
+    // Select newest row for the key so duplicate rows never break the limiter.
+    // Any DB error is logged and fails open (never throws, never blocks); when the
+    // limit is hit we still return the generic 200 to preserve anti-enumeration.
+    const now = new Date();
+    const rlKey = `magic-link:${email}`;
+    const windowMs = RATE_LIMIT_WINDOW_MINUTES * 60 * 1000;
 
-    const { data: rateRow } = await adminClient
+    const { data: rlRows, error: rlSelErr } = await adminClient
       .from("rate_limits")
-      .select("id, attempts, window_start")
-      .eq("identifier", `magic-link:${email}`)
-      .gte("window_start", windowStart)
-      .maybeSingle();
-
-    if (rateRow && rateRow.attempts >= RATE_LIMIT_MAX_ATTEMPTS) {
-      // Return generic success — don't reveal rate limiting to prevent enumeration
-      return new Response(JSON.stringify(GENERIC_SUCCESS), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Upsert rate_limits row, incrementing attempts
-    if (rateRow) {
-      await adminClient
-        .from("rate_limits")
-        .update({ attempts: rateRow.attempts + 1, updated_at: new Date().toISOString() })
-        .eq("id", rateRow.id);
+      .select("id, count, window_start")
+      .eq("key", rlKey)
+      .order("window_start", { ascending: false })
+      .limit(1);
+    if (rlSelErr) {
+      console.error("RATE_LIMIT_DB_ERROR [request-magic-link] select", rlSelErr);
     } else {
-      await adminClient
-        .from("rate_limits")
-        .insert({
-          identifier: `magic-link:${email}`,
-          attempts: 1,
-          window_start: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
+      const rlRow = rlRows && rlRows.length > 0 ? rlRows[0] : null;
+      if (rlRow) {
+        const withinWindow = now.getTime() - new Date(rlRow.window_start).getTime() < windowMs;
+        if (withinWindow) {
+          if (rlRow.count >= RATE_LIMIT_MAX_ATTEMPTS) {
+            // Return generic success — don't reveal rate limiting to prevent enumeration
+            return new Response(JSON.stringify(GENERIC_SUCCESS), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          const { error: rlUpdErr } = await adminClient.from("rate_limits").update({ count: rlRow.count + 1 }).eq("id", rlRow.id);
+          if (rlUpdErr) console.error("RATE_LIMIT_DB_ERROR [request-magic-link] update", rlUpdErr);
+        } else {
+          const { error: rlResetErr } = await adminClient.from("rate_limits").update({ count: 1, window_start: now.toISOString() }).eq("id", rlRow.id);
+          if (rlResetErr) console.error("RATE_LIMIT_DB_ERROR [request-magic-link] reset", rlResetErr);
+        }
+      } else {
+        const { error: rlInsErr } = await adminClient.from("rate_limits").insert({ key: rlKey, count: 1, window_start: now.toISOString() });
+        if (rlInsErr) console.error("RATE_LIMIT_DB_ERROR [request-magic-link] insert", rlInsErr);
+      }
     }
 
     // ── Check profile exists ─────────────────────────────────────────────────

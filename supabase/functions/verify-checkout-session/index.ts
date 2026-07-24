@@ -17,29 +17,38 @@ const RATE_LIMIT_MAX = 10;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 async function checkRateLimit(supabase: any, key: string, max: number): Promise<boolean> {
-  const { data } = await supabase
-    .from("rate_limits")
-    .select("attempts, window_start")
-    .eq("key", key)
-    .maybeSingle();
-
+  // rate_limits schema: (key text, count int, window_start timestamptz).
+  // Select newest row for the key so duplicate rows never break the limiter.
+  // Any DB error is logged and fails open (never throws, never blocks).
   const now = new Date();
-  if (!data) {
-    await supabase.from("rate_limits").upsert({ key, attempts: 1, window_start: now.toISOString() }, { onConflict: "key" });
+  const { data: rows, error: selErr } = await supabase
+    .from("rate_limits")
+    .select("id, count, window_start")
+    .eq("key", key)
+    .order("window_start", { ascending: false })
+    .limit(1);
+  if (selErr) {
+    console.error("RATE_LIMIT_DB_ERROR [verify-checkout-session] select", selErr);
     return false;
   }
 
-  const windowStart = new Date(data.window_start);
-  if (now.getTime() - windowStart.getTime() > RATE_LIMIT_WINDOW_MS) {
-    await supabase.from("rate_limits").upsert({ key, attempts: 1, window_start: now.toISOString() }, { onConflict: "key" });
-    return false;
+  const row = rows && rows.length > 0 ? rows[0] : null;
+  if (row) {
+    const withinWindow = now.getTime() - new Date(row.window_start).getTime() < RATE_LIMIT_WINDOW_MS;
+    if (withinWindow) {
+      if (row.count >= max) {
+        return true;
+      }
+      const { error: updErr } = await supabase.from("rate_limits").update({ count: row.count + 1 }).eq("id", row.id);
+      if (updErr) { console.error("RATE_LIMIT_DB_ERROR [verify-checkout-session] update", updErr); return false; }
+    } else {
+      const { error: resetErr } = await supabase.from("rate_limits").update({ count: 1, window_start: now.toISOString() }).eq("id", row.id);
+      if (resetErr) { console.error("RATE_LIMIT_DB_ERROR [verify-checkout-session] reset", resetErr); return false; }
+    }
+  } else {
+    const { error: insErr } = await supabase.from("rate_limits").insert({ key, count: 1, window_start: now.toISOString() });
+    if (insErr) { console.error("RATE_LIMIT_DB_ERROR [verify-checkout-session] insert", insErr); return false; }
   }
-
-  if (data.attempts >= max) {
-    return true;
-  }
-
-  await supabase.from("rate_limits").update({ attempts: data.attempts + 1 }).eq("key", key);
   return false;
 }
 
