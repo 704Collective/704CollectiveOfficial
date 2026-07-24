@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { format, formatDistanceToNow } from 'date-fns';
-import { ArrowLeft, Lock, Calendar, Heart, MessageCircle, MoreHorizontal, Pencil, Trash2, Loader2, Star } from 'lucide-react';
+import { ArrowLeft, Lock, Calendar, Heart, MessageCircle, MoreHorizontal, Pencil, Trash2, Loader2, Star, MessageSquare } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { DashboardNav } from '@/components/DashboardNav';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,6 +64,9 @@ export default function EventDiscussionPage() {
   const [access, setAccess] = useState<AccessState>('loading');
   const [ev, setEv] = useState<DiscussionEvent | null>(null);
   const [hostName, setHostName] = useState<string | null>(null);
+  const [hostDialogOpen, setHostDialogOpen] = useState(false);
+  const [hostMessage, setHostMessage] = useState('');
+  const [hostSending, setHostSending] = useState(false);
   const [going, setGoing] = useState<number>(0);
   const [posts, setPosts] = useState<DPost[]>([]);
   const [commentsByPost, setCommentsByPost] = useState<Record<string, DComment[]>>({});
@@ -170,6 +174,41 @@ export default function EventDiscussionPage() {
   const handleCommentDeleted = (postId: string) => (commentId: string) =>
     setCommentsByPost(prev => ({ ...prev, [postId]: (prev[postId] ?? []).filter(c => c.id !== commentId && c.parent_comment_id !== commentId) }));
 
+  const handleSendHostMessage = async () => {
+    if (!ev?.host_id) return;
+    const trimmed = hostMessage.trim();
+    if (!trimmed) { toast.error('Please write a message first.'); return; }
+    if (trimmed.length > 1000) { toast.error('Message must be 1000 characters or fewer.'); return; }
+    setHostSending(true);
+    try {
+      const { error } = await supabase.functions.invoke('message-event-host', {
+        body: { event_id: ev.id, message: trimmed },
+      });
+      if (error) {
+        const ctx = (error as { context?: { status?: number; json?: () => Promise<{ error?: string }> } })?.context;
+        const status = ctx?.status;
+        if (status === 429) {
+          toast.error("You've sent a message recently — please wait a few minutes.");
+        } else if (status === 403) {
+          let msg = 'You must RSVP to this event before messaging the host';
+          try { const body = await ctx?.json?.(); if (body?.error) msg = body.error; } catch { /* keep default */ }
+          toast.error(msg);
+        } else {
+          toast.error('Could not send your message. Please try again.');
+        }
+        return;
+      }
+      const firstName = (hostName || 'the host').split(' ')[0];
+      toast.success(`Message sent to ${firstName}`);
+      setHostMessage('');
+      setHostDialogOpen(false);
+    } catch {
+      toast.error('Could not send your message. Please try again.');
+    } finally {
+      setHostSending(false);
+    }
+  };
+
   const startPostEdit = (p: DPost) => { setEditingPostId(p.id); setEditPostValue(p.content ?? ''); };
 
   const savePostEdit = async (postId: string) => {
@@ -262,11 +301,21 @@ export default function EventDiscussionPage() {
               </div>
 
               {ev?.host_id && hostName && (
-                <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 mb-4 flex items-center gap-2.5">
-                  <Star className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-hidden />
-                  <p className="text-sm text-muted-foreground">
-                    Hosted by <span className="font-semibold text-foreground">{hostName}</span>
-                  </p>
+                <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 mb-4 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Star className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-hidden />
+                    <p className="text-sm text-muted-foreground">
+                      Hosted by <span className="font-semibold text-foreground">{hostName}</span>
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setHostDialogOpen(true)}
+                    className="gap-1.5 self-start sm:self-auto shrink-0 h-8 border-amber-500/40 text-amber-500 hover:bg-amber-500/10 hover:text-amber-400"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" /> Message Host
+                  </Button>
                 </div>
               )}
 
@@ -392,6 +441,32 @@ export default function EventDiscussionPage() {
           )}
         </div>
       </div>
+
+      <Dialog open={hostDialogOpen} onOpenChange={(o) => { if (!hostSending) setHostDialogOpen(o); }}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>Message {hostName ? hostName.split(' ')[0] : 'the host'}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground -mt-1">
+            Your name and contact info are shared with the host so they can reply.
+          </p>
+          <textarea
+            value={hostMessage}
+            onChange={(e) => setHostMessage(e.target.value.slice(0, 1000))}
+            maxLength={1000}
+            rows={5}
+            placeholder={`Ask ${hostName ? hostName.split(' ')[0] : 'the host'} a question about this event…`}
+            disabled={hostSending}
+            className="w-full rounded-lg border border-input bg-transparent p-3 text-sm outline-none focus:ring-1 focus:ring-ring resize-none"
+          />
+          <div className="text-right text-xs text-muted-foreground">{hostMessage.length}/1000</div>
+          <DialogFooter>
+            <Button onClick={handleSendHostMessage} disabled={hostSending || !hostMessage.trim()} className="gap-1.5">
+              {hostSending ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</> : 'Send'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
