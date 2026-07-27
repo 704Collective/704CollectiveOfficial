@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import Nav from '@/components/Nav';
 import { Footer } from '@/components/Footer';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import { useTicketActions } from '@/hooks/useTicketActions';
+import { useTicketActions, sendRsvpConfirmationEmail } from '@/hooks/useTicketActions';
 import { SEOJsonLd } from '@/components/SEOJsonLd';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -331,6 +331,14 @@ export default function EventDetail() {
         toast.error('You already have an RSVP for this event.');
       } else {
         toast.success("You're RSVP'd!");
+        // Confirmation email — identical payload to registerMemberTicket.
+        // Fire-and-forget; never fatal. Waitlist branch above does NOT send
+        // (waitlisted ≠ RSVP'd).
+        void sendRsvpConfirmationEmail({
+          event,
+          memberName: profile?.full_name,
+          credentialToken: data?.credential_token ?? null,
+        });
       }
       await refreshUserTickets();
       await fetchTicketId();

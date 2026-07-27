@@ -1,0 +1,13 @@
+-- events.ics_sequence -- DOCUMENTATION ONLY. Do NOT run or re-apply this file.
+-- Already applied manually to develop and prod 2026-07-24 (integer, NOT NULL,
+-- default 0, verified via information_schema on both). This file exists purely
+-- for schema history; the IF NOT EXISTS guard keeps it a safe no-op if executed.
+--
+-- Purpose: a monotonic per-event counter feeding the iCalendar VEVENT SEQUENCE.
+-- It advances ONLY on event edits (times/location) via notify-event-change, so
+-- calendar updates supersede the original invite; cancels READ it (no increment)
+-- to emit a matching CANCEL with a strictly-greater SEQUENCE.
+--
+-- Increment is done in application code (notify-event-change) with an optimistic
+-- read + conditional update guard - no RPC/function backs this column.
+alter table events add column if not exists ics_sequence integer not null default 0;

@@ -118,7 +118,7 @@ serve(async (req) => {
     try {
       const { data: cancelEvt } = await adminClient
         .from("events")
-        .select("id, title, start_time, end_time")
+        .select("id, title, start_time, end_time, ics_sequence")
         .eq("id", event_id)
         .maybeSingle();
 
@@ -147,6 +147,7 @@ serve(async (req) => {
               startTimeIso: cancelEvt.start_time,
               endTimeIso: cancelEvt.end_time,
               eventId: cancelEvt.id,
+              icsSequence: cancelEvt.ics_sequence ?? 0,
               origin,
             },
           }),

@@ -25,6 +25,67 @@ export interface TicketActionEvent {
   ticket_mode: string | null;
 }
 
+/** Minimal event fields needed for the rsvp-confirmation email payload. */
+export type RsvpConfirmationEvent = Pick<
+  TicketActionEvent,
+  'id' | 'title' | 'start_time' | 'end_time' | 'location_name'
+>;
+
+/**
+ * Fire-and-forget RSVP confirmation email (template rsvp-confirmation).
+ * Never throws to the caller — failures are logged and swallowed so they
+ * cannot fail an already-successful RSVP.
+ */
+export async function sendRsvpConfirmationEmail(opts: {
+  event: RsvpConfirmationEvent;
+  memberName?: string | null;
+  credentialToken?: string | null;
+}): Promise<void> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { data: freshProfile } = await supabase
+      .from('profiles')
+      .select('calendar_token')
+      .eq('id', session.user.id)
+      .single();
+
+    console.log('Sending RSVP confirmation email for event:', opts.event.id, 'to:', session.user.email);
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://704collective.com';
+    const eventDate = new Date(opts.event.start_time);
+    const endDate = new Date(opts.event.end_time);
+    await supabase.functions.invoke('send-email', {
+      body: {
+        template: 'rsvp-confirmation',
+        to: session.user.email,
+        data: {
+          name: opts.memberName || 'there',
+          eventName: opts.event.title,
+          eventDate: format(eventDate, 'EEEE, MMMM d, yyyy'),
+          eventTime: `${format(eventDate, 'h:mm a')} - ${format(endDate, 'h:mm a')}`,
+          eventLocation: opts.event.location_name || 'TBA',
+          eventUrl: `${origin}/events/${opts.event.id}`,
+          eventId: opts.event.id,
+          startTimeIso: opts.event.start_time,
+          endTimeIso: opts.event.end_time || opts.event.start_time,
+          calendarToken: freshProfile?.calendar_token || null,
+          origin,
+          ticket_id: opts.credentialToken ?? null,
+          plusOne: false,
+        },
+      },
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    }).catch((emailErr: unknown) => {
+      console.warn('[useTicketActions] Confirmation email failed:', emailErr);
+    });
+  } catch (emailErr: unknown) {
+    console.warn('[useTicketActions] Confirmation email failed:', emailErr);
+  }
+}
+
 interface UseTicketActionsReturn {
   /** Set of event IDs the current user has confirmed tickets for */
   userTicketIds: Set<string>;
@@ -205,9 +266,16 @@ export function useTicketActions(): UseTicketActionsReturn {
         setShowThankYou(true);
 
         // ── Confirmation email + calendar connect prompt ────────────────────
-        // Fetch session + fresh profile once; use both for email and prompt.
+        // Email via shared helper (same payload as event-detail path). Calendar
+        // prompt stays here — only list/browse RSVPs open the thank-you modal.
         void (async () => {
           try {
+            await sendRsvpConfirmationEmail({
+              event,
+              memberName: p?.full_name,
+              credentialToken,
+            });
+
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
@@ -216,37 +284,6 @@ export function useTicketActions(): UseTicketActionsReturn {
               .select('calendar_token')
               .eq('id', session.user.id)
               .single();
-
-            // ── Confirmation email ──────────────────────────────────────────
-            console.log('Sending RSVP confirmation email for event:', event.id, 'to:', session.user.email);
-            const origin = typeof window !== 'undefined' ? window.location.origin : 'https://704collective.com';
-            const eventDate = new Date(event.start_time);
-            const endDate = new Date(event.end_time);
-            await supabase.functions.invoke('send-email', {
-              body: {
-                template: 'rsvp-confirmation',
-                to: session.user.email,
-                data: {
-                  name: p?.full_name || 'there',
-                  eventName: event.title,
-                  eventDate: format(eventDate, 'EEEE, MMMM d, yyyy'),
-                  eventTime: `${format(eventDate, 'h:mm a')} - ${format(endDate, 'h:mm a')}`,
-                  eventLocation: event.location_name || 'TBA',
-                  eventUrl: `${origin}/events/${event.id}`,
-                  startTimeIso: event.start_time,
-                  endTimeIso: event.end_time || event.start_time,
-                  calendarToken: freshProfile?.calendar_token || null,
-                  origin,
-                  ticket_id: credentialToken,
-                  plusOne: false,
-                },
-              },
-              headers: {
-                Authorization: `Bearer ${session.access_token}`,
-              },
-            }).catch((emailErr: unknown) => {
-              console.warn('[useTicketActions] Confirmation email failed:', emailErr);
-            });
 
             if (freshProfile?.calendar_token) return; // already connected
 

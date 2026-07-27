@@ -209,9 +209,32 @@ function publicRsvpConfirmationTemplate(data: {
   eventLocation: string;
   eventAddress?: string;
   origin?: string;
-}): { subject: string; html: string } {
+  // Optional fields for a real organizer invite (METHOD:REQUEST invite.ics)
+  startTimeIso?: string;
+  endTimeIso?: string;
+  eventId?: string;
+  recipientEmail?: string;
+}): { subject: string; html: string; attachments?: EmailAttachment[] } {
   const name = data.name || "there";
   const base = data.origin || "https://704collective.com";
+
+  // Same METHOD:REQUEST invite.ics + UID scheme as rsvpConfirmationTemplate.
+  let attachments: EmailAttachment[] | undefined;
+  if (data.startTimeIso && data.eventId) {
+    const ics = buildEventIcs({
+      title: data.eventName,
+      startIso: data.startTimeIso,
+      endIso: data.endTimeIso,
+      location: [data.eventLocation, data.eventAddress].filter(Boolean).join(", ") || undefined,
+      uid: `${data.eventId}@704collective.com`,
+      method: "REQUEST",
+      status: "CONFIRMED",
+      sequence: 0,
+      attendeeEmail: data.recipientEmail,
+    });
+    attachments = [{ filename: "invite.ics", content: toBase64Utf8(ics), content_type: "text/calendar; method=REQUEST" }];
+  }
+
   return {
     subject: `You're confirmed: ${data.eventName}`,
     html: baseLayout({
@@ -234,6 +257,7 @@ function publicRsvpConfirmationTemplate(data: {
 ${ctaButton("Learn About 704 Collective", `${base}/join`)}
 <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">No pressure - just glad you're coming.</p>`,
     }),
+    attachments,
   };
 }
 
@@ -286,12 +310,16 @@ function buildEventIcs(opts: {
   location?: string;
   description?: string;
   uid: string;
-  method?: "PUBLISH" | "CANCEL";
+  method?: "PUBLISH" | "CANCEL" | "REQUEST";
   status?: "CONFIRMED" | "CANCELLED";
   sequence?: number;
+  attendeeEmail?: string;
 }): string {
   const fmt = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
   const esc = (t: string) => t.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+  // A REQUEST is an organizer invite; default its STATUS to CONFIRMED when the
+  // caller did not specify one (matches how calendar clients expect invites).
+  const status = opts.status ?? (opts.method === "REQUEST" ? "CONFIRMED" : undefined);
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -301,6 +329,7 @@ function buildEventIcs(opts: {
     "BEGIN:VEVENT",
     `UID:${opts.uid}`,
     `ORGANIZER;CN=704 Collective:mailto:no-reply@704collective.com`,
+    ...(opts.attendeeEmail ? [`ATTENDEE;CN=${opts.attendeeEmail};ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:${opts.attendeeEmail}`] : []),
     `DTSTAMP:${fmt(new Date().toISOString())}`,
     `DTSTART:${fmt(opts.startIso)}`,
     ...(opts.endIso ? [`DTEND:${fmt(opts.endIso)}`] : []),
@@ -308,7 +337,7 @@ function buildEventIcs(opts: {
     ...(opts.description ? [`DESCRIPTION:${esc(opts.description)}`] : []),
     ...(opts.location ? [`LOCATION:${esc(opts.location)}`] : []),
     `SEQUENCE:${opts.sequence ?? 0}`,
-    ...(opts.status ? [`STATUS:${opts.status}`] : []),
+    ...(status ? [`STATUS:${status}`] : []),
     "END:VEVENT",
     "END:VCALENDAR",
   ];
@@ -328,7 +357,10 @@ function rsvpConfirmationTemplate(data: {
   startTimeIso?: string;
   endTimeIso?: string;
   calendarToken?: string;
-}): { subject: string; html: string } {
+  // Optional fields for a real organizer invite (METHOD:REQUEST invite.ics)
+  eventId?: string;
+  recipientEmail?: string;
+}): { subject: string; html: string; attachments?: EmailAttachment[] } {
   const name = data.name || "there";
   const qrUrl = data.qrData
     ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.qrData)}`
@@ -380,6 +412,26 @@ ${icsUrl ? `<td style="padding:0 6px;">
 </table>`;
   }
 
+  // Real organizer invite (METHOD:REQUEST) attached as invite.ics so Apple Mail /
+  // Outlook surface an accept/decline card. The GCal + subscription-feed links
+  // above remain as a fallback. Same UID scheme as the cancel path so clients
+  // match this invite to any later CANCEL for the same event.
+  let attachments: EmailAttachment[] | undefined;
+  if (data.startTimeIso && data.eventId) {
+    const ics = buildEventIcs({
+      title: data.eventName,
+      startIso: data.startTimeIso,
+      endIso: data.endTimeIso,
+      location: data.eventLocation,
+      uid: `${data.eventId}@704collective.com`,
+      method: "REQUEST",
+      status: "CONFIRMED",
+      sequence: 0,
+      attendeeEmail: data.recipientEmail,
+    });
+    attachments = [{ filename: "invite.ics", content: toBase64Utf8(ics), content_type: "text/calendar; method=REQUEST" }];
+  }
+
   return {
     subject: `You're in! ${data.eventName}`,
     html: baseLayout({
@@ -402,6 +454,7 @@ ${calendarBlock}
 ${ctaButton("View Event Details", data.eventUrl)}
 <p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.textMuted};">Need to cancel? You can update your RSVP on the event page.</p>`,
     }),
+    attachments,
   };
 }
 
@@ -415,13 +468,18 @@ function rsvpCancelledTemplate(data: {
   endTimeIso?: string;
   eventId?: string;
   origin?: string;
+  // Current per-event ICS sequence (advanced only on event edits). The cancel
+  // must carry a SEQUENCE strictly greater than the last invite/update so
+  // calendar clients accept the removal.
+  icsSequence?: number;
 }): { subject: string; html: string; attachments?: EmailAttachment[] } {
   const name = data.name || "there";
   const eventName = data.eventName || "your event";
   const base = data.origin || "https://704collective.com";
 
   // Cancellation ICS: same UID as the add-path so calendar clients match and
-  // remove the event when the recipient opens it (METHOD:CANCEL + STATUS:CANCELLED + SEQUENCE:1).
+  // remove the event when the recipient opens it (METHOD:CANCEL + STATUS:CANCELLED).
+  // SEQUENCE = current counter + 1 so it supersedes the latest invite/update.
   let attachments: EmailAttachment[] | undefined;
   if (data.startTimeIso && data.eventId) {
     const ics = buildEventIcs({
@@ -432,7 +490,7 @@ function rsvpCancelledTemplate(data: {
       uid: `${data.eventId}@704collective.com`,
       method: "CANCEL",
       status: "CANCELLED",
-      sequence: 1,
+      sequence: (data.icsSequence ?? 0) + 1,
     });
     attachments = [{ filename: "cancel.ics", content: toBase64Utf8(ics), content_type: "text/calendar" }];
   }
@@ -538,6 +596,7 @@ function guestPassTemplate(data: {
   startTimeIso?: string;
   endTimeIso?: string;
   eventId?: string;
+  recipientEmail?: string;
   // Legacy fields (backward compat — ignored in new flow)
   memberName?: string;
   eventName?: string | null;
@@ -588,8 +647,11 @@ function guestPassTemplate(data: {
       location: data.eventLocation,
       description: `You're invited to ${eventTitle}!`,
       uid: data.eventId ? `${data.eventId}@704collective.com` : `${passCode || crypto.randomUUID()}@704collective.com`,
+      method: "REQUEST",
+      status: "CONFIRMED",
+      attendeeEmail: data.recipientEmail,
     });
-    attachments = [{ filename: "event.ics", content: toBase64Utf8(ics), content_type: "text/calendar" }];
+    attachments = [{ filename: "event.ics", content: toBase64Utf8(ics), content_type: "text/calendar; method=REQUEST" }];
   }
 
   const personalMessageBlock = data.personalMessage
@@ -2025,6 +2087,10 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
         eventLocation: string;
         eventAddress?: string;
         origin?: string;
+        startTimeIso?: string;
+        endTimeIso?: string;
+        eventId?: string;
+        recipientEmail?: string;
       });
     case "password-setup":
       return passwordSetupTemplate(data as { name: string; setupLink: string });
@@ -2043,6 +2109,8 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
         startTimeIso?: string;
         endTimeIso?: string;
         calendarToken?: string;
+        eventId?: string;
+        recipientEmail?: string;
       });
     case "rsvp-cancelled":
       return rsvpCancelledTemplate(data as {
@@ -2055,6 +2123,7 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
         endTimeIso?: string;
         eventId?: string;
         origin?: string;
+        icsSequence?: number;
       });
     case "host-message":
       return hostMessageTemplate(data as {
@@ -2108,6 +2177,7 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
         startTimeIso?: string;
         endTimeIso?: string;
         eventId?: string;
+        recipientEmail?: string;
         memberName?: string;
         eventName?: string | null;
         passCode?: string;
@@ -2365,8 +2435,13 @@ serve(async (req) => {
         });
       }
       try {
-        const { subject, html } = getTemplate(body.template, body.data ?? {});
-        return new Response(JSON.stringify({ success: true, subject, html }), {
+        const { subject, html, attachments } = getTemplate(body.template, body.data ?? {});
+        return new Response(JSON.stringify({
+          success: true,
+          subject,
+          html,
+          ...(attachments && attachments.length ? { attachments } : {}),
+        }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -2425,7 +2500,10 @@ serve(async (req) => {
 
     log("Sending email", { to, template });
 
-    const templateResult = getTemplate(template, data || {});
+    // Inject the recipient address so templates that emit a METHOD:REQUEST
+    // organizer invite (rsvp-confirmation, public-rsvp-confirmation, guest-pass)
+    // can stamp the ATTENDEE line. Harmless for every other template.
+    const templateResult = getTemplate(template, { ...(data || {}), recipientEmail: to });
     let { subject, html } = templateResult;
     const attachments = templateResult.attachments;
     // --- Unsubscribe link policy ---

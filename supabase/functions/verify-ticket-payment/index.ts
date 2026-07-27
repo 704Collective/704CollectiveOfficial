@@ -269,6 +269,7 @@ serve(async (req) => {
                 eventTime: `${formatTime(eventDate)} - ${formatTime(endDate)}`,
                 eventLocation: eventData.location_name || "TBA",
                 eventUrl: `${origin}/events/${event_id}`,
+                eventId: event_id,
                 qrData,
                 origin,
                 startTimeIso: eventData.start_time,

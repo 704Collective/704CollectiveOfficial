@@ -71,6 +71,55 @@ async function sendResendBatch(
   return { sent, failed };
 }
 
+// UTF-8-safe base64 (btoa alone throws on non-latin1 chars).
+// keep in sync with send-email toBase64Utf8
+function toBase64Utf8(str: string): string {
+  const bytes = new TextEncoder().encode(str);
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin);
+}
+
+// keep in sync with send-email buildEventIcs
+function buildEventIcs(opts: {
+  title: string;
+  startIso: string;
+  endIso?: string;
+  location?: string;
+  description?: string;
+  uid: string;
+  method?: "PUBLISH" | "CANCEL" | "REQUEST";
+  status?: "CONFIRMED" | "CANCELLED";
+  sequence?: number;
+  attendeeEmail?: string;
+}): string {
+  const fmt = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+  const esc = (t: string) => t.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+  const status = opts.status ?? (opts.method === "REQUEST" ? "CONFIRMED" : undefined);
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//704 Collective//Events//EN",
+    "CALSCALE:GREGORIAN",
+    `METHOD:${opts.method ?? "PUBLISH"}`,
+    "BEGIN:VEVENT",
+    `UID:${opts.uid}`,
+    `ORGANIZER;CN=704 Collective:mailto:no-reply@704collective.com`,
+    ...(opts.attendeeEmail ? [`ATTENDEE;CN=${opts.attendeeEmail};ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:${opts.attendeeEmail}`] : []),
+    `DTSTAMP:${fmt(new Date().toISOString())}`,
+    `DTSTART:${fmt(opts.startIso)}`,
+    ...(opts.endIso ? [`DTEND:${fmt(opts.endIso)}`] : []),
+    `SUMMARY:${esc(opts.title)}`,
+    ...(opts.description ? [`DESCRIPTION:${esc(opts.description)}`] : []),
+    ...(opts.location ? [`LOCATION:${esc(opts.location)}`] : []),
+    `SEQUENCE:${opts.sequence ?? 0}`,
+    ...(status ? [`STATUS:${status}`] : []),
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ];
+  return lines.join("\r\n");
+}
+
 const NAME_PLACEHOLDER = "[[RECIPIENT_NAME]]";
 
 serve(async (req) => {
@@ -275,6 +324,72 @@ serve(async (req) => {
     const resendKey = Deno.env.get("RESEND_API_KEY");
     if (!resendKey) throw new Error("RESEND_API_KEY not set");
 
+    // ── Advance the per-event ICS sequence so the calendar update supersedes the
+    // original invite (a VEVENT SEQUENCE must increase for the same UID). No RPC:
+    // read the current value, then conditionally bump it guarded on the value we
+    // read (optimistic concurrency). Event edits are a single-admin action so
+    // contention is near zero; if a concurrent writer beats us (0 rows updated),
+    // we re-read and retry once. On ANY error we log ICS_SEQ_ERROR and fall back
+    // to the text-only email — sequence coherence is best-effort, never a blocker.
+    let icsSequence: number | null = null;
+    try {
+      for (let attempt = 0; attempt < 2 && icsSequence === null; attempt++) {
+        const { data: seqRow, error: readErr } = await adminClient
+          .from("events")
+          .select("ics_sequence")
+          .eq("id", eventId)
+          .single();
+        if (readErr) throw readErr;
+
+        const current = typeof seqRow?.ics_sequence === "number" ? seqRow.ics_sequence : 0;
+        const next = current + 1;
+
+        const { data: updatedRows, error: updErr } = await adminClient
+          .from("events")
+          .update({ ics_sequence: next })
+          .eq("id", eventId)
+          .eq("ics_sequence", current)
+          .select("ics_sequence");
+        if (updErr) throw updErr;
+
+        if (updatedRows && updatedRows.length > 0) {
+          icsSequence = next; // won the CAS
+        }
+        // else: another writer changed it between read and update — loop re-reads once.
+      }
+      if (icsSequence === null) {
+        console.error("[NOTIFY-EVENT-CHANGE] ICS_SEQ_ERROR", "optimistic increment lost the CAS twice");
+      }
+    } catch (seqErr) {
+      console.error("[NOTIFY-EVENT-CHANGE] ICS_SEQ_ERROR", String(seqErr));
+    }
+
+    // Authoritative POST-edit event fields for the ICS. The admin save is committed
+    // before this function runs, so the row already holds the new values; fall back
+    // to the request payload if the row can't be read.
+    let icsStart: string | undefined = newStartTime;
+    let icsEnd: string | undefined = newEndTime || undefined;
+    let icsLocation: string | undefined = newLocation || undefined;
+    try {
+      const { data: freshEvt } = await adminClient
+        .from("events")
+        .select("start_time, end_time, location_name, location_address")
+        .eq("id", eventId)
+        .maybeSingle();
+      if (freshEvt) {
+        icsStart = freshEvt.start_time ?? icsStart;
+        icsEnd = freshEvt.end_time ?? icsEnd;
+        icsLocation = [freshEvt.location_name, freshEvt.location_address].filter(Boolean).join(", ") || icsLocation;
+      }
+    } catch (freshErr) {
+      log("fresh event fetch failed (non-fatal, using payload values)", { error: String(freshErr) });
+    }
+
+    // Only attach a METHOD:REQUEST update.ics when we have a coherent sequence and
+    // a start time. Resend's batch endpoint does NOT support attachments, so when
+    // attaching we fan out to individual /emails sends with a short delay.
+    const attachInvite = icsSequence !== null && !!icsStart;
+
     const { subject, html: htmlTemplate } = await renderTemplate(
       supabaseUrl, serviceRoleKey, "event-change-notification",
       {
@@ -298,7 +413,48 @@ serve(async (req) => {
       };
     });
 
-    const { sent, failed } = await sendResendBatch(resendKey, emailMessages);
+    let sent = 0;
+    let failed = 0;
+    if (attachInvite) {
+      // Individual sends (POST /emails) so each recipient gets their own invite
+      // with an ATTENDEE line. A short delay keeps us under Resend's send rate.
+      for (const msg of emailMessages) {
+        const attendeeEmail = msg.to[0];
+        try {
+          const ics = buildEventIcs({
+            title: eventName,
+            startIso: icsStart!,
+            endIso: icsEnd,
+            location: icsLocation,
+            uid: `${eventId}@704collective.com`,
+            method: "REQUEST",
+            status: "CONFIRMED",
+            sequence: icsSequence!,
+            attendeeEmail,
+          });
+          const res = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${resendKey}` },
+            body: JSON.stringify({
+              ...msg,
+              attachments: [{ filename: "update.ics", content: toBase64Utf8(ics), content_type: "text/calendar; method=REQUEST" }],
+            }),
+          });
+          if (res.ok) {
+            sent++;
+          } else {
+            failed++;
+            log("individual send failed", { status: res.status, body: await res.text() });
+          }
+        } catch (sendErr) {
+          failed++;
+          log("individual send error", { error: String(sendErr) });
+        }
+        await new Promise(r => setTimeout(r, 250));
+      }
+    } else {
+      ({ sent, failed } = await sendResendBatch(resendKey, emailMessages));
+    }
 
     // Best-effort audit trail: one email_log row per recipient. Batches here are single-chunk
     // (<=100), so status is all-sent or all-failed. A logging failure must NEVER fail the send.

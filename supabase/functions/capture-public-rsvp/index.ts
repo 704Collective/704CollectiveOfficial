@@ -360,6 +360,9 @@ serve(async (req) => {
             eventLocation: event.location_name || "TBA",
             eventAddress: event.location_address || undefined,
             origin: emailOrigin,
+            eventId: event_id,
+            startTimeIso: event.start_time,
+            endTimeIso: event.end_time || undefined,
           },
         }),
       });

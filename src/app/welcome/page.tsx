@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { sendWelcomeOnboardingCompleteEmail } from '@/app/actions/transactionalEmails';
+import { sendRsvpConfirmationEmail } from '@/hooks/useTicketActions';
 import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import { format } from 'date-fns';
@@ -384,12 +385,26 @@ function WelcomeContent() {
         body: { event_id: eventId },
       });
       if (error) {
+        // No waitlist fallback on welcome — and no confirmation email on error.
         return;
       }
       if (data?.already_rsvped) {
         toast.info('You already have an RSVP for this event');
+        setRsvpedEventIds(prev => new Set([...prev, eventId]));
+        return;
       }
       setRsvpedEventIds(prev => new Set([...prev, eventId]));
+      // Confirmation email — shared helper (identical payload to event-detail /
+      // registerMemberTicket). Fire-and-forget; never fatal to onboarding.
+      const ev = rsvpEvents.find(e => e.id === eventId);
+      if (ev) {
+        const memberName = [form.firstName, form.lastName].filter(Boolean).join(' ').trim() || null;
+        void sendRsvpConfirmationEmail({
+          event: ev,
+          memberName,
+          credentialToken: data?.credential_token ?? null,
+        });
+      }
     } finally {
       setRsvpBusyId(null);
     }
