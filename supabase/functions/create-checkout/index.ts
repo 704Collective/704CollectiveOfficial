@@ -96,6 +96,8 @@ serve(async (req) => {
     const smsConsentAt = smsConsent ? new Date().toISOString() : "";
     const rawReferralCode: string | null = typeof body.referral_code === "string" ? body.referral_code : null;
     const rawAmbassadorId: string | null = typeof body.ambassador_id === "string" ? body.ambassador_id : null;
+    const rawPromoCode: string =
+      typeof body.promoCode === "string" ? body.promoCode.trim() : "";
 
     // ── Server-side ambassador re-validation ───────────────────────────
     // The /join form already validated, but we re-verify here so a tampered
@@ -204,9 +206,37 @@ serve(async (req) => {
       : `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`;
     logStep("Success URL determined", { authenticated: !!userId, successUrl });
 
+    // ── Optional server-side promo attach ──────────────────────────────
+    // Typed codes on Stripe Hosted Checkout are unreliable on this account;
+    // when the client sends promoCode we resolve it and attach by id.
+    // Absent/empty promoCode keeps prior behavior (allow_promotion_codes).
+    // Referral-wins: validated ambassador + promoCode → ignore promo (matches UI).
+    let resolvedPromoId: string | null = null;
+    if (rawPromoCode && validatedAmbassadorId) {
+      logStep("PROMO_IGNORED_AMBASSADOR", {
+        code: rawPromoCode,
+        ambassador_id: validatedAmbassadorId,
+      });
+    } else if (rawPromoCode) {
+      const promoList = await stripe.promotionCodes.list({
+        code: rawPromoCode,
+        active: true,
+        limit: 1,
+      });
+      const found = promoList.data[0];
+      if (!found) {
+        logStep("Invalid promo code", { code: rawPromoCode });
+        return new Response(JSON.stringify({ error: "invalid_promo_code" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      resolvedPromoId = found.id;
+      logStep("Promo code resolved", { code: rawPromoCode, promo_id: resolvedPromoId });
+    }
+
     // Create checkout session for subscription
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
-      allow_promotion_codes: true,
       customer: customerId,
       customer_email: customerId ? undefined : checkoutEmail || undefined,
       line_items: [
@@ -229,6 +259,13 @@ serve(async (req) => {
         ambassador_tier: validatedAmbassadorId ? "social" : "",
       },
     };
+
+    // Stripe forbids allow_promotion_codes together with discounts.
+    if (resolvedPromoId) {
+      sessionParams.discounts = [{ promotion_code: resolvedPromoId }];
+    } else {
+      sessionParams.allow_promotion_codes = true;
+    }
 
     const session = await stripe.checkout.sessions.create(sessionParams);
     logStep("Checkout session created", { sessionId: session.id, url: session.url });

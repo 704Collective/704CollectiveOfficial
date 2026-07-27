@@ -87,6 +87,11 @@ function JoinInner() {
   const [referralCodeError, setReferralCodeError] = useState<string | null>(null);
   const [validatingCode, setValidatingCode] = useState(false);
 
+  // Stripe discount / promotion code (server-attached on create-checkout)
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [appliedPromoCode, setAppliedPromoCode] = useState('');
+  const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
+
   // Tier picker Social card loading state
   const [socialLoading, setSocialLoading] = useState(false);
 
@@ -143,6 +148,10 @@ function JoinInner() {
     setResolvedAmbassador({ id: ambassador.id, full_name: ambassador.full_name });
     setReferralCode(trimmed);
     setReferralCodeError(null);
+    // Referral pricing and Stripe promos are mutually exclusive in the UI.
+    setPromoCodeInput('');
+    setAppliedPromoCode('');
+    setPromoCodeError(null);
   }, []);
 
   // Pre-fill from ?ref= and auto-validate.
@@ -247,6 +256,11 @@ function JoinInner() {
     }
 
     // STEP THREE - Redirect to Stripe checkout
+    // Promo is only sent when no ambassador referral is applied (UI enforces this).
+    const promoCodeToUse =
+      !ambassadorIdToUse && (appliedPromoCode || promoCodeInput).trim()
+        ? (appliedPromoCode || promoCodeInput).trim()
+        : null;
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: {
@@ -257,9 +271,31 @@ function JoinInner() {
           sms_consent: smsConsent,
           referral_code: referralCodeToUse,
           ambassador_id: ambassadorIdToUse,
+          ...(promoCodeToUse ? { promoCode: promoCodeToUse } : {}),
         },
       });
-      if (error) throw error;
+
+      let serverError: string | undefined =
+        (data as { error?: string } | null)?.error;
+      const ctx = (error as { context?: Response } | null)?.context;
+      if (!serverError && ctx && typeof ctx.json === 'function') {
+        try {
+          const body = await ctx.json();
+          if (body?.error) serverError = body.error;
+        } catch {
+          /* ignore parse errors */
+        }
+      }
+
+      if (serverError === 'invalid_promo_code') {
+        setPromoCodeError("That code isn't valid or has expired");
+        setFormError(null);
+        setSubmitting(false);
+        return;
+      }
+      if (error || serverError) {
+        throw new Error(serverError || (error instanceof Error ? error.message : 'Checkout failed'));
+      }
       const url = (data as { url?: string })?.url;
       if (!url) throw new Error('No checkout URL returned');
       window.location.href = url;
@@ -564,16 +600,83 @@ function JoinInner() {
                     </details>
                   )}
 
-                  <details>
-                    <summary style={{ cursor: 'pointer', fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)' }}>
-                      Have a discount code?
-                    </summary>
-                    <p style={{ marginTop: '10px', marginBottom: 0, fontSize: '0.875rem', color: 'rgba(255,255,255,0.55)', lineHeight: 1.6 }}>
-                      Great! You{"'"}ll be able to apply your discount code on the next page during Stripe checkout. Just click{' '}
-                      <strong style={{ color: 'rgba(255,255,255,0.85)' }}>Continue to Checkout</strong>{' '}
-                      below and enter your code there.
+                  {/* Discount / promo — hidden when ambassador referral pricing is active */}
+                  {resolvedAmbassador ? (
+                    <p style={{ margin: 0, fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.5 }}>
+                      Referral pricing applied — discount codes can{"'"}t be combined.
                     </p>
-                  </details>
+                  ) : (
+                    <details
+                      onToggle={(e) => {
+                        // Collapsing dismisses promo entirely so a hidden invalid/stale
+                        // code cannot still be sent on Continue.
+                        if (!(e.currentTarget as HTMLDetailsElement).open) {
+                          setPromoCodeInput('');
+                          setAppliedPromoCode('');
+                          setPromoCodeError(null);
+                        }
+                      }}
+                    >
+                      <summary style={{ cursor: 'pointer', fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)' }}>
+                        Have a discount code?
+                        {appliedPromoCode ? (
+                          <span style={{ color: '#C6A664', marginLeft: '8px', fontWeight: 600 }}>
+                            {appliedPromoCode}
+                          </span>
+                        ) : null}
+                      </summary>
+                      <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
+                        <input
+                          type="text"
+                          aria-label="Discount code"
+                          placeholder="Enter code"
+                          value={promoCodeInput}
+                          onChange={(e) => {
+                            setPromoCodeInput(e.target.value.toUpperCase());
+                            setPromoCodeError(null);
+                            if (appliedPromoCode) setAppliedPromoCode('');
+                          }}
+                          style={{ ...inputStyle, flex: 1, textTransform: 'uppercase' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const trimmed = promoCodeInput.trim();
+                            if (!trimmed) {
+                              setAppliedPromoCode('');
+                              setPromoCodeError(null);
+                              return;
+                            }
+                            setAppliedPromoCode(trimmed);
+                            setPromoCodeError(null);
+                          }}
+                          style={{
+                            padding: '0 18px',
+                            backgroundColor: '#C6A664',
+                            color: '#1A1A1A',
+                            border: 'none',
+                            borderRadius: '10px',
+                            fontSize: '0.875rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Apply
+                        </button>
+                      </div>
+                      {promoCodeError && (
+                        <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '6px', marginBottom: 0 }}>
+                          {promoCodeError}
+                        </p>
+                      )}
+                      {appliedPromoCode && !promoCodeError && (
+                        <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.75rem', marginTop: '6px', marginBottom: 0 }}>
+                          Code will be applied at checkout. Clear the field to join without it.
+                        </p>
+                      )}
+                    </details>
+                  )}
 
                   {/* SMS consent - optional opt-in (Twilio A2P 10DLC compliance) */}
                   <div style={{
