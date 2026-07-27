@@ -39,12 +39,17 @@ const CANCEL_REASONS = [
   'Other',
 ] as const;
 
+const CANCEL_FAILED_MESSAGE =
+  'Your cancellation did NOT go through - please try again or email hello@704collective.com';
+
 export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscription, hasStripeCustomer, membershipOverride = false }: MembershipDangerZoneProps) {
   const router = useRouter();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [step, setStep] = useState<SurveyStep>('confirm');
   const [cancelConfirmation, setCancelConfirmation] = useState('');
   const [loading, setLoading] = useState(false);
+  const [cancelFailed, setCancelFailed] = useState(false);
+  const [lastWithSurvey, setLastWithSurvey] = useState(false);
 
   // Survey state
   const [surveyReason, setSurveyReason] = useState<string | null>(null);
@@ -61,6 +66,7 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
 
   const openDialog = () => {
     resetDialog();
+    setCancelFailed(false);
     setCancelDialogOpen(true);
   };
 
@@ -69,7 +75,7 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
     resetDialog();
   };
 
-  /** Persist survey (best-effort, non-blocking). */
+  /** Persist survey after a confirmed cancel (best-effort, non-blocking). */
   const saveSurvey = async (withAnswers: boolean) => {
     if (!withAnswers) return;
     try {
@@ -89,32 +95,23 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
 
   const executeCancellation = async (withSurvey: boolean) => {
     setLoading(true);
+    setCancelFailed(false);
+    setLastWithSurvey(withSurvey);
     try {
-      await saveSurvey(withSurvey);
+      // All cancels go through the edge function (Stripe or profile-only).
+      const { data, error } = await supabase.functions.invoke('cancel-subscription');
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      if (hasStripeCustomer) {
-        // Real Stripe subscription — cancel via edge function
-        const { data, error } = await supabase.functions.invoke('cancel-subscription');
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
-      } else {
-        // No Stripe customer at all (pure comp account) — cancel by updating profile directly
-        const { error } = await supabase
-          .from('profiles')
-          .update({
-            subscription_status: 'canceled',
-            membership_override: false,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', userId);
-        if (error) throw error;
-      }
-
+      // Survey only after confirmed success — never evidence of a failed cancel.
+      void saveSurvey(withSurvey);
       router.push('/membership-ended');
     } catch (err: unknown) {
-      Sentry.captureException(err, { tags: { feature: 'membership-cancel' }, extra: { userId, hasStripeCustomer, membershipOverride } });
-      const msg = err instanceof Error ? err.message : 'Failed to cancel membership';
-      toast.error(msg);
+      Sentry.captureException(err, {
+        tags: { feature: 'membership-cancel' },
+        extra: { userId, hasStripeCustomer, membershipOverride },
+      });
+      setCancelFailed(true);
     } finally {
       setLoading(false);
     }
@@ -129,7 +126,8 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
   };
 
   const handleSurveySubmit = () => executeCancellation(true);
-  const handleSkipSurvey   = () => executeCancellation(false);
+  const handleSkipSurvey = () => executeCancellation(false);
+  const handleRetryCancel = () => executeCancellation(lastWithSurvey);
 
   // Show for active Stripe subscribers OR admin-override members
   if (!isActiveMember || (!hasStripeSubscription && !membershipOverride)) return null;
@@ -145,6 +143,27 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
         <X className="w-4 h-4 mr-2" />
         Cancel Membership
       </Button>
+
+      {cancelFailed && (
+        <div
+          role="alert"
+          className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 space-y-3"
+        >
+          <p className="text-sm font-medium text-destructive">{CANCEL_FAILED_MESSAGE}</p>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleRetryCancel}
+            disabled={loading}
+          >
+            {loading ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Retrying…</>
+            ) : (
+              'Try Again'
+            )}
+          </Button>
+        </div>
+      )}
 
       {/* ── Dialog ────────────────────────────────────────────── */}
       <Dialog open={cancelDialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }}>
@@ -209,6 +228,27 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
               </DialogHeader>
 
               <div className="space-y-5 py-2">
+                {cancelFailed && (
+                  <div
+                    role="alert"
+                    className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 space-y-2"
+                  >
+                    <p className="text-sm font-medium text-destructive">{CANCEL_FAILED_MESSAGE}</p>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleRetryCancel}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Retrying…</>
+                      ) : (
+                        'Try Again'
+                      )}
+                    </Button>
+                  </div>
+                )}
+
                 {/* Q1 - reason */}
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Why are you cancelling?</Label>

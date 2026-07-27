@@ -93,7 +93,27 @@ serve(async (req) => {
     }
 
     if (!customerId) {
-      throw new Error("No Stripe customer found for this user.");
+      // Comp / override-only members: no Stripe customer — cancel profile server-side.
+      logStep("No Stripe customer - profile-only cancel", { userId });
+      const { error: profileOnlyError } = await supabaseAdmin
+        .from("profiles")
+        .update({
+          subscription_status: "canceled",
+          membership_override: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", userId);
+      if (profileOnlyError) {
+        throw new Error(`Profile-only cancel failed: ${profileOnlyError.message}`);
+      }
+      return new Response(
+        JSON.stringify({
+          success: true,
+          mode: "profile_only",
+          message: "Your membership has been canceled.",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
     }
 
     // Find ALL subscriptions for this customer — no status filter, no limit:1.
@@ -132,6 +152,7 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({
             success: true,
+            mode: "stripe",
             already_canceled: true,
             ends_at: currentProfile?.subscription_ends_at ?? null,
             message: currentProfile?.subscription_ends_at
@@ -160,6 +181,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
+          mode: "stripe",
           synced: true,
           message: "Your subscription has been canceled.",
         }),
@@ -168,6 +190,8 @@ serve(async (req) => {
     }
 
     // Cancel EVERY live subscription.
+    // Stripe API failures throw into the outer catch — we never stamp the DB
+    // canceled when a live sub exists and Stripe cancel did not succeed.
     let latestPeriodEnd: number | null = null;
     for (const sub of liveAtPeriodEnd) {
       const updated = await stripe.subscriptions.update(sub.id, { cancel_at_period_end: true });
@@ -202,6 +226,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
+        mode: "stripe",
         cancel_at: cancelAt,
         message: `Membership will be cancelled at end of billing period (${cancelAt})`,
       }),
