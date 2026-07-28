@@ -28,6 +28,9 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [billingLoading, setBillingLoading] = useState(false);
   const [subscribeLoading, setSubscribeLoading] = useState(false);
+  const [livePriceDisplay, setLivePriceDisplay] = useState<string | null>(null);
+  const [priceLoading, setPriceLoading] = useState(false);
+  const [planTierLabel, setPlanTierLabel] = useState('Social');
 
   const p = profile as any;
   // Only treat the user as having an actionable Stripe subscription when:
@@ -54,6 +57,13 @@ export default function Settings() {
     if (p) {
       setFullName(p.full_name || '');
       setAvatarUrl(p.avatar_url || '');
+      setPlanTierLabel(
+        p.member_type === 'business'
+          ? 'Business'
+          : p.member_type === 'partner'
+            ? 'Partner'
+            : 'Social'
+      );
     }
   }, [profile]);
 
@@ -62,6 +72,67 @@ export default function Settings() {
       router.push('/login');
     }
   }, [user, loading, router]);
+
+  // Live "what you pay" — never hardcode a dollar amount for current plan.
+  useEffect(() => {
+    if (!user || !isActiveMember) {
+      setLivePriceDisplay(null);
+      setPriceLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setPriceLoading(true);
+    void (async () => {
+      try {
+        const res = await fetch('/api/billing/current-subscription', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        const json = (await res.json()) as {
+          ok?: boolean;
+          priceCents?: number;
+          priceDisplay?: string;
+          tierLabel?: string;
+          tier?: string;
+        };
+        if (cancelled) return;
+        const live =
+          json?.ok &&
+          typeof json.priceCents === 'number' &&
+          json.priceCents > 0 &&
+          typeof json.priceDisplay === 'string' &&
+          json.priceDisplay.startsWith('$')
+            ? json.priceDisplay
+            : null;
+        setLivePriceDisplay(live);
+        if (json?.ok && json.tierLabel) {
+          // Prefer API tier label when available (Business vs Social).
+          setPlanTierLabel(
+            json.tier === 'business'
+              ? 'Business'
+              : json.tier === 'partner'
+                ? 'Partner'
+                : json.tier === 'social'
+                  ? 'Social'
+                  : json.tierLabel.replace(/ Membership$/i, '')
+          );
+        }
+      } catch {
+        if (!cancelled) setLivePriceDisplay(null);
+      } finally {
+        if (!cancelled) setPriceLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, isActiveMember]);
+
+  const membershipPlanLabel = !isActiveMember
+    ? 'No active membership'
+    : livePriceDisplay
+      ? `${planTierLabel} - ${livePriceDisplay}`
+      : planTierLabel;
 
   const handleSave = async () => {
     if (!user) return;
@@ -269,7 +340,10 @@ export default function Settings() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-4 rounded-lg bg-muted/50">
                 <div>
                   <p className="font-medium">
-                    {isActiveMember ? `Social - ${SOCIAL_TIER.monthlyPriceFull}` : 'No active membership'}
+                    {membershipPlanLabel}
+                    {priceLoading && isActiveMember && !livePriceDisplay && (
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">…</span>
+                    )}
                   </p>
                   {p.member_since && (
                     <p className="text-sm text-muted-foreground">

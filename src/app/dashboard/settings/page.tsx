@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { SOCIAL_TIER } from '@/lib/pricing';
 import { User, Key, Bell, CreditCard, Calendar, LogOut, Loader2, Camera, Copy, Check } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { DashboardNav } from '@/components/DashboardNav';
@@ -34,6 +33,8 @@ export default function SettingsPage() {
   const [phone, setPhone] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [tokenCopied, setTokenCopied] = useState(false);
+  const [livePriceDisplay, setLivePriceDisplay] = useState<string | null>(null);
+  const [priceLoading, setPriceLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const p = profile as any;
@@ -46,6 +47,47 @@ export default function SettingsPage() {
       setAvatarUrl((profile as any)?.avatar_url || '');
     }
   }, [profile]);
+
+  // Live "what you pay" from Stripe via /api/billing/current-subscription — never hardcode.
+  useEffect(() => {
+    if (!user || !isActiveMember) {
+      setLivePriceDisplay(null);
+      setPriceLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setPriceLoading(true);
+    void (async () => {
+      try {
+        const res = await fetch('/api/billing/current-subscription', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        const json = (await res.json()) as {
+          ok?: boolean;
+          priceCents?: number;
+          priceDisplay?: string;
+        };
+        if (cancelled) return;
+        const live =
+          json?.ok &&
+          typeof json.priceCents === 'number' &&
+          json.priceCents > 0 &&
+          typeof json.priceDisplay === 'string' &&
+          json.priceDisplay.startsWith('$')
+            ? json.priceDisplay
+            : null;
+        setLivePriceDisplay(live);
+      } catch {
+        if (!cancelled) setLivePriceDisplay(null);
+      } finally {
+        if (!cancelled) setPriceLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, isActiveMember]);
 
   // hasStripeSubscription: gates the "Manage Billing" button (Stripe Customer Portal).
   // Safe to show whenever there's an active Stripe sub — portal lets users
@@ -76,8 +118,10 @@ export default function SettingsPage() {
       : p?.member_type === 'partner'
         ? 'Partner'
         : 'Social';
-  const monthlyPrice =
-    p?.member_type === 'business' ? '$300' : p?.member_type === 'partner' ? '-' : SOCIAL_TIER.monthlyPrice;
+
+  const membershipPlanLabel = livePriceDisplay
+    ? `${memberType} - ${livePriceDisplay}`
+    : memberType;
 
   const handleSaveProfile = async () => {
     if (!user) return;
@@ -302,7 +346,10 @@ export default function SettingsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
               <p className="text-sm font-medium">
-                {memberType} - {monthlyPrice}/month
+                {membershipPlanLabel}
+                {priceLoading && !livePriceDisplay && (
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">…</span>
+                )}
               </p>
               {memberSince && (
                 <p className="text-xs text-muted-foreground mt-0.5">Member since {memberSince}</p>

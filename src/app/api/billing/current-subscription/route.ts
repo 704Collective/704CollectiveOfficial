@@ -142,7 +142,7 @@ export async function GET() {
       });
     } catch (err) {
       console.error('[api/billing/current-subscription] Stripe fetch failed:', err);
-      // Fall back to profile-derived data on Stripe failure
+      // Tier from profile only — never invent a dollar amount when Stripe is unavailable.
       return NextResponse.json({
         ok: true,
         tier: profile.member_type === 'business' ? 'business' : 'social',
@@ -150,8 +150,8 @@ export async function GET() {
           profile.member_type === 'business'
             ? 'Business Membership'
             : 'Social Membership',
-        priceCents: profile.member_type === 'business' ? 30000 : 4900,
-        priceDisplay: profile.member_type === 'business' ? '$300/month' : '$49/month',
+        priceCents: undefined,
+        priceDisplay: undefined,
         interval: 'month',
         status: profile.subscription_status ?? 'unknown',
         cancelAtPeriodEnd: !!profile.cancel_at_period_end,

@@ -73,14 +73,28 @@ export function MembershipTierBadge() {
 
   const style = TIER_STYLES[data.tier];
 
+  // Only show a dollar amount when Stripe returned a live unit_amount-based display.
+  // Never show placeholders ("-", "Comped") or invented fallbacks as "what you pay".
+  const livePriceDisplay =
+    typeof data.priceCents === 'number' &&
+    data.priceCents > 0 &&
+    typeof data.priceDisplay === 'string' &&
+    data.priceDisplay.startsWith('$')
+      ? data.priceDisplay
+      : null;
+
   // Build status sub-line
   let statusLine = '';
   if (data.membershipOverride) {
     statusLine = 'Comped by admin';
   } else if (data.status === 'trialing' && data.trialEnd) {
-    statusLine = `Trial - ${data.priceDisplay} after ${format(new Date(data.trialEnd), 'MMM d')}`;
+    statusLine = livePriceDisplay
+      ? `Trial - ${livePriceDisplay} after ${format(new Date(data.trialEnd), 'MMM d')}`
+      : `Trial ends ${format(new Date(data.trialEnd), 'MMM d')}`;
   } else if (data.status === 'trialing') {
-    statusLine = `Trial - ${data.priceDisplay} when trial ends`;
+    statusLine = livePriceDisplay
+      ? `Trial - ${livePriceDisplay} when trial ends`
+      : 'Trial active';
   } else if (data.status === 'active' && data.cancelAtPeriodEnd && data.currentPeriodEnd) {
     statusLine = `Ending ${format(new Date(data.currentPeriodEnd), 'MMM d, yyyy')}`;
   } else if (data.status === 'active' && data.currentPeriodEnd) {
@@ -93,8 +107,6 @@ export function MembershipTierBadge() {
     statusLine = data.currentPeriodEnd
       ? `Access until ${format(new Date(data.currentPeriodEnd), 'MMM d')}`
       : 'Canceled';
-  } else {
-    statusLine = data.priceDisplay ?? '';
   }
 
   return (
@@ -119,7 +131,9 @@ export function MembershipTierBadge() {
         </div>
         {statusLine && <p className="text-xs text-muted-foreground mt-0.5">{statusLine}</p>}
       </div>
-      <p className={`text-sm font-bold ${style.text} shrink-0`}>{data.priceDisplay}</p>
+      {livePriceDisplay && (
+        <p className={`text-sm font-bold ${style.text} shrink-0`}>{livePriceDisplay}</p>
+      )}
     </div>
   );
 }
