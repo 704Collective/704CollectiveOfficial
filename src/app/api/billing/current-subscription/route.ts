@@ -26,6 +26,8 @@ export interface SubscriptionTierResponse {
     durationInMonths: number | null;
   } | null;
   membershipOverride?: boolean;
+  /** ISO date when set — external annual payer (not a Stripe sub). Additive; older clients ignore. */
+  paidThrough?: string | null;
   error?: string;
 }
 
@@ -45,7 +47,9 @@ export async function GET() {
     // Pull profile
     const { data: profile, error: profileErr } = await supabase
       .from('profiles')
-      .select('stripe_customer_id, subscription_id, subscription_status, member_type, membership_override, subscription_ends_at, cancel_at_period_end')
+      .select(
+        'stripe_customer_id, subscription_id, subscription_status, member_type, membership_override, subscription_ends_at, cancel_at_period_end, external_paid_through',
+      )
       .eq('id', user.id)
       .single();
 
@@ -56,22 +60,47 @@ export async function GET() {
       );
     }
 
-    // Admin-comped members short-circuit (no Stripe sub expected)
+    // Override short-circuit (access without Stripe). External payers first —
+    // membership_override is only the access mechanism; external_paid_through
+    // means they paid outside Stripe, not a comp.
     if (profile.membership_override === true) {
+      const tier =
+        profile.member_type === 'business'
+          ? 'business'
+          : profile.member_type === 'partner'
+            ? 'partner'
+            : 'social';
+      const tierLabel =
+        profile.member_type === 'business'
+          ? 'Business Membership'
+          : profile.member_type === 'partner'
+            ? 'Partner'
+            : 'Social Membership';
+
+      if (profile.external_paid_through) {
+        const paidThrough = new Date(profile.external_paid_through).toISOString();
+        return NextResponse.json({
+          ok: true,
+          tier,
+          tierLabel,
+          priceCents: 0,
+          priceDisplay: 'Annual member',
+          interval: 'year',
+          status: 'active',
+          cancelAtPeriodEnd: false,
+          trialEnd: null,
+          currentPeriodEnd: null,
+          isAmbassadorPrice: false,
+          discount: null,
+          membershipOverride: true,
+          paidThrough,
+        } as SubscriptionTierResponse);
+      }
+
       return NextResponse.json({
         ok: true,
-        tier:
-          profile.member_type === 'business'
-            ? 'business'
-            : profile.member_type === 'partner'
-              ? 'partner'
-              : 'social',
-        tierLabel:
-          profile.member_type === 'business'
-            ? 'Business Membership'
-            : profile.member_type === 'partner'
-              ? 'Partner'
-              : 'Social Membership',
+        tier,
+        tierLabel,
         priceCents: 0,
         priceDisplay: 'Comped',
         interval: 'month',
@@ -82,6 +111,7 @@ export async function GET() {
         isAmbassadorPrice: false,
         discount: null,
         membershipOverride: true,
+        paidThrough: null,
       } as SubscriptionTierResponse);
     }
 

@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { AdminMemberBillingCard } from '@/components/admin/AdminMemberBillingCard';
 import { toast } from 'sonner';
 
 interface GuestPassEventRow {
@@ -663,6 +664,12 @@ export default function AdminContactDetailPage() {
                     <div className="flex justify-between gap-2"><span className="text-muted-foreground">Phone</span><span className="font-medium">{(row as { phone?: string }).phone || '-'}</span></div>
                   </CardContent>
                 </Card>
+                {isMember && (
+                  <AdminMemberBillingCard
+                    profileId={typeof profile?.id === 'string' ? profile.id : null}
+                    isSuperAdmin={isSuperAdmin}
+                  />
+                )}
                 <Card>
                   <CardContent className="p-5 space-y-2 text-sm">
                     <p className="text-xs uppercase tracking-wider text-muted-foreground/70 mb-2">Portal Status</p>

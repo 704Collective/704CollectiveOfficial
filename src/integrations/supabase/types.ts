@@ -592,17 +592,23 @@ export type Database = {
           admin_notes: string | null
           avatar_url: string | null
           calendar_token: string
+          cancel_at_period_end: boolean | null
+          canceled_at: string | null
+          comp_reason: string | null
           created_at: string | null
           deactivated_at: string | null
           deactivation_reason: string | null
           deleted_at: string | null
           email: string
+          external_paid_through: string | null
+          external_payment_note: string | null
           full_name: string | null
           has_completed_onboarding_rsvp: boolean
           hubspot_contact_id: string | null
           id: string
           imported_at: string | null
           is_founding_member: boolean
+          is_locked_in_pricing: boolean
           member_since: string | null
           member_type: string | null
           membership_duration: string | null
@@ -610,6 +616,7 @@ export type Database = {
           notify_announcements: boolean | null
           notify_event_reminders: boolean | null
           notify_new_events: boolean | null
+          role: string
           stripe_customer_id: string | null
           subscription_ends_at: string | null
           subscription_id: string | null
@@ -621,17 +628,23 @@ export type Database = {
           admin_notes?: string | null
           avatar_url?: string | null
           calendar_token?: string
+          cancel_at_period_end?: boolean | null
+          canceled_at?: string | null
+          comp_reason?: string | null
           created_at?: string | null
           deactivated_at?: string | null
           deactivation_reason?: string | null
           deleted_at?: string | null
           email: string
+          external_paid_through?: string | null
+          external_payment_note?: string | null
           full_name?: string | null
           has_completed_onboarding_rsvp?: boolean
           hubspot_contact_id?: string | null
           id: string
           imported_at?: string | null
           is_founding_member?: boolean
+          is_locked_in_pricing?: boolean
           member_since?: string | null
           member_type?: string | null
           membership_duration?: string | null
@@ -639,6 +652,7 @@ export type Database = {
           notify_announcements?: boolean | null
           notify_event_reminders?: boolean | null
           notify_new_events?: boolean | null
+          role?: string
           stripe_customer_id?: string | null
           subscription_ends_at?: string | null
           subscription_id?: string | null
@@ -650,17 +664,23 @@ export type Database = {
           admin_notes?: string | null
           avatar_url?: string | null
           calendar_token?: string
+          cancel_at_period_end?: boolean | null
+          canceled_at?: string | null
+          comp_reason?: string | null
           created_at?: string | null
           deactivated_at?: string | null
           deactivation_reason?: string | null
           deleted_at?: string | null
           email?: string
+          external_paid_through?: string | null
+          external_payment_note?: string | null
           full_name?: string | null
           has_completed_onboarding_rsvp?: boolean
           hubspot_contact_id?: string | null
           id?: string
           imported_at?: string | null
           is_founding_member?: boolean
+          is_locked_in_pricing?: boolean
           member_since?: string | null
           member_type?: string | null
           membership_duration?: string | null
@@ -668,6 +688,7 @@ export type Database = {
           notify_announcements?: boolean | null
           notify_event_reminders?: boolean | null
           notify_new_events?: boolean | null
+          role?: string
           stripe_customer_id?: string | null
           subscription_ends_at?: string | null
           subscription_id?: string | null

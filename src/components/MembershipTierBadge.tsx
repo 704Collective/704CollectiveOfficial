@@ -24,6 +24,7 @@ interface TierSummary {
     durationInMonths: number | null;
   } | null;
   membershipOverride?: boolean;
+  paidThrough?: string | null;
 }
 
 const TIER_STYLES = {
@@ -32,6 +33,13 @@ const TIER_STYLES = {
   partner: { bg: 'bg-muted/30', border: 'border-border', text: 'text-muted-foreground', dot: 'bg-muted-foreground' },
   unknown: { bg: 'bg-muted/30', border: 'border-border', text: 'text-muted-foreground', dot: 'bg-muted-foreground' },
 } as const;
+
+function shortTierLabel(tier: TierSummary['tier'], tierLabel?: string) {
+  if (tier === 'business') return 'Business';
+  if (tier === 'partner') return 'Partner';
+  if (tier === 'social') return 'Social';
+  return tierLabel?.replace(/ Membership$/i, '') || 'Membership';
+}
 
 export function MembershipTierBadge() {
   const [data, setData] = useState<TierSummary | null>(null);
@@ -72,10 +80,12 @@ export function MembershipTierBadge() {
   }
 
   const style = TIER_STYLES[data.tier];
+  const isExternalAnnual = typeof data.paidThrough === 'string' && !!data.paidThrough;
 
   // Only show a dollar amount when Stripe returned a live unit_amount-based display.
-  // Never show placeholders ("-", "Comped") or invented fallbacks as "what you pay".
+  // Never show placeholders ("-", "Comped", "Annual member") or invented fallbacks.
   const livePriceDisplay =
+    !isExternalAnnual &&
     typeof data.priceCents === 'number' &&
     data.priceCents > 0 &&
     typeof data.priceDisplay === 'string' &&
@@ -83,9 +93,15 @@ export function MembershipTierBadge() {
       ? data.priceDisplay
       : null;
 
+  const title = isExternalAnnual
+    ? `${shortTierLabel(data.tier, data.tierLabel)} - Annual member`
+    : data.tierLabel;
+
   // Build status sub-line
   let statusLine = '';
-  if (data.membershipOverride) {
+  if (isExternalAnnual) {
+    statusLine = `Renews ${format(new Date(data.paidThrough!), 'MMM d, yyyy')}`;
+  } else if (data.membershipOverride) {
     statusLine = 'Comped by admin';
   } else if (data.status === 'trialing' && data.trialEnd) {
     statusLine = livePriceDisplay
@@ -96,7 +112,7 @@ export function MembershipTierBadge() {
       ? `Trial - ${livePriceDisplay} when trial ends`
       : 'Trial active';
   } else if (data.status === 'active' && data.cancelAtPeriodEnd && data.currentPeriodEnd) {
-    statusLine = `Ending ${format(new Date(data.currentPeriodEnd), 'MMM d, yyyy')}`;
+    statusLine = `Ends ${format(new Date(data.currentPeriodEnd), 'MMM d, yyyy')}`;
   } else if (data.status === 'active' && data.currentPeriodEnd) {
     statusLine = `Renews ${format(new Date(data.currentPeriodEnd), 'MMM d, yyyy')}`;
   } else if (data.status === 'past_due') {
@@ -114,7 +130,7 @@ export function MembershipTierBadge() {
       <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${style.dot}`} aria-hidden />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <p className={`text-sm font-semibold ${style.text}`}>{data.tierLabel}</p>
+          <p className={`text-sm font-semibold ${style.text}`}>{title}</p>
           {data.isAmbassadorPrice && (
             <span className="text-[10px] font-semibold uppercase tracking-wide bg-[#C6A664]/20 text-[#C6A664] px-1.5 py-0.5 rounded">
               Ambassador

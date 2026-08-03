@@ -31,6 +31,10 @@ export default function Settings() {
   const [livePriceDisplay, setLivePriceDisplay] = useState<string | null>(null);
   const [priceLoading, setPriceLoading] = useState(false);
   const [planTierLabel, setPlanTierLabel] = useState('Social');
+  const [billingPeriodEnd, setBillingPeriodEnd] = useState<string | null>(null);
+  const [billingCancelAtPeriodEnd, setBillingCancelAtPeriodEnd] = useState(false);
+  const [billingDiscountLabel, setBillingDiscountLabel] = useState<string | null>(null);
+  const [billingPaidThrough, setBillingPaidThrough] = useState<string | null>(null);
 
   const p = profile as any;
   // Only treat the user as having an actionable Stripe subscription when:
@@ -77,6 +81,10 @@ export default function Settings() {
   useEffect(() => {
     if (!user || !isActiveMember) {
       setLivePriceDisplay(null);
+      setBillingPeriodEnd(null);
+      setBillingCancelAtPeriodEnd(false);
+      setBillingDiscountLabel(null);
+      setBillingPaidThrough(null);
       setPriceLoading(false);
       return;
     }
@@ -94,9 +102,22 @@ export default function Settings() {
           priceDisplay?: string;
           tierLabel?: string;
           tier?: string;
+          cancelAtPeriodEnd?: boolean;
+          currentPeriodEnd?: string | null;
+          paidThrough?: string | null;
+          discount?: {
+            couponName?: string;
+            couponCode?: string | null;
+            percentOff?: number | null;
+            amountOffCents?: number | null;
+          } | null;
         };
         if (cancelled) return;
+        const paidThrough =
+          json?.ok && typeof json.paidThrough === 'string' ? json.paidThrough : null;
+        setBillingPaidThrough(paidThrough);
         const live =
+          !paidThrough &&
           json?.ok &&
           typeof json.priceCents === 'number' &&
           json.priceCents > 0 &&
@@ -105,6 +126,24 @@ export default function Settings() {
             ? json.priceDisplay
             : null;
         setLivePriceDisplay(live);
+        setBillingPeriodEnd(
+          json?.ok && typeof json.currentPeriodEnd === 'string' ? json.currentPeriodEnd : null,
+        );
+        setBillingCancelAtPeriodEnd(!!(json?.ok && json.cancelAtPeriodEnd));
+        if (json?.ok && json.discount) {
+          const d = json.discount;
+          const amountLabel =
+            typeof d.percentOff === 'number'
+              ? `${d.percentOff}% off`
+              : typeof d.amountOffCents === 'number'
+                ? `$${(d.amountOffCents / 100).toFixed(d.amountOffCents % 100 === 0 ? 0 : 2)} off`
+                : null;
+          setBillingDiscountLabel(
+            [d.couponCode || d.couponName, amountLabel].filter(Boolean).join(' · ') || null,
+          );
+        } else {
+          setBillingDiscountLabel(null);
+        }
         if (json?.ok && json.tierLabel) {
           // Prefer API tier label when available (Business vs Social).
           setPlanTierLabel(
@@ -118,7 +157,13 @@ export default function Settings() {
           );
         }
       } catch {
-        if (!cancelled) setLivePriceDisplay(null);
+        if (!cancelled) {
+          setLivePriceDisplay(null);
+          setBillingPeriodEnd(null);
+          setBillingCancelAtPeriodEnd(false);
+          setBillingDiscountLabel(null);
+          setBillingPaidThrough(null);
+        }
       } finally {
         if (!cancelled) setPriceLoading(false);
       }
@@ -130,9 +175,17 @@ export default function Settings() {
 
   const membershipPlanLabel = !isActiveMember
     ? 'No active membership'
-    : livePriceDisplay
-      ? `${planTierLabel} - ${livePriceDisplay}`
-      : planTierLabel;
+    : billingPaidThrough
+      ? `${planTierLabel} - Annual member`
+      : livePriceDisplay
+        ? `${planTierLabel} - ${livePriceDisplay}`
+        : planTierLabel;
+
+  const periodEndIso =
+    billingPaidThrough || billingPeriodEnd || p?.subscription_ends_at || null;
+  const endsAtPeriodEnd = billingPaidThrough
+    ? false
+    : billingCancelAtPeriodEnd || !!p?.cancel_at_period_end;
 
   const handleSave = async () => {
     if (!user) return;
@@ -350,9 +403,15 @@ export default function Settings() {
                       Member since {format(new Date(p.member_since), 'MMMM yyyy')}
                     </p>
                   )}
-                  {isActiveMember && p.subscription_ends_at && (
+                  {isActiveMember && periodEndIso && (
                     <p className="text-sm text-muted-foreground">
-                      Next billing: {format(new Date(p.subscription_ends_at), 'MMMM d, yyyy')}
+                      {endsAtPeriodEnd ? 'Ends' : 'Renews'}{' '}
+                      {format(new Date(periodEndIso), 'MMMM d, yyyy')}
+                    </p>
+                  )}
+                  {isActiveMember && billingDiscountLabel && (
+                    <p className="text-sm text-muted-foreground">
+                      Discount: {billingDiscountLabel}
                     </p>
                   )}
                 </div>
