@@ -73,6 +73,9 @@ e2e/screenshots/
 .tmp-*.png
 scripts/test-*.mjs
 
+# member-data reports — never commit
+outputs/
+
 # Supabase CLI cache + local schema scratch
 supabase/.temp/
 supabase/schemas/
