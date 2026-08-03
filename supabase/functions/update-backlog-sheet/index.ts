@@ -29,7 +29,9 @@ type Action =
   | { action: "update_by_id"; id: string; updates: Partial<BacklogRow> }
   | { action: "bulk_append"; rows: BacklogRow[] }
   | { action: "find_by_id"; id: string }
-  | { action: "list_all" };
+  | { action: "list_all" }
+  | { action: "delete_by_id"; id: string }
+  | { action: "bulk_delete"; ids: string[] };
 
 // WRITE column order - A..I only. Columns J/K are read-only and excluded on purpose.
 const COL_ORDER: (keyof BacklogRow)[] = [
@@ -264,6 +266,58 @@ async function updateRow(
   }
 }
 
+// Resolve the numeric sheetId (gid) for the Backlog tab
+async function getBacklogSheetGid(
+  spreadsheetId: string,
+  accessToken: string
+): Promise<number> {
+  const url = sheetsUrl(spreadsheetId, "?fields=sheets.properties");
+  const res = await sheetsRequest("GET", url, accessToken);
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Sheets metadata failed (${res.status}): ${errText}`);
+  }
+  const data = await res.json() as {
+    sheets?: { properties?: { title?: string; sheetId?: number } }[];
+  };
+  const match = (data.sheets ?? []).find(
+    (s) => s.properties?.title === SHEET_TAB
+  );
+  if (match?.properties?.sheetId == null) {
+    throw new Error(`Sheet tab "${SHEET_TAB}" not found`);
+  }
+  return match.properties.sheetId;
+}
+
+// Delete rows by 1-based row numbers (descending) via deleteDimension
+async function deleteRowsByNumbers(
+  spreadsheetId: string,
+  accessToken: string,
+  rowNums: number[]
+): Promise<number> {
+  if (rowNums.length === 0) return 0;
+  const gid = await getBacklogSheetGid(spreadsheetId, accessToken);
+  // Delete bottom-up so indices stay valid
+  const sorted = [...rowNums].sort((a, b) => b - a);
+  const requests = sorted.map((rowNum) => ({
+    deleteDimension: {
+      range: {
+        sheetId: gid,
+        dimension: "ROWS",
+        startIndex: rowNum - 1, // 0-based inclusive
+        endIndex: rowNum, // exclusive
+      },
+    },
+  }));
+  const url = sheetsUrl(spreadsheetId, ":batchUpdate");
+  const res = await sheetsRequest("POST", url, accessToken, { requests });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Sheets delete failed (${res.status}): ${errText}`);
+  }
+  return sorted.length;
+}
+
 // ---------------------------------------------------------------------------
 // Main handler
 // ---------------------------------------------------------------------------
@@ -275,10 +329,17 @@ serve(async (req) => {
 
   const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
 
-  // Auth check: caller must supply BACKLOG_AUTH_SECRET as Bearer token
+  // Auth: BACKLOG_AUTH_SECRET (preferred), BACKLOG_AGENT_SECRET (ops/agents),
+  // or SUPABASE_SERVICE_ROLE_KEY when that env is present in the function runtime.
   const authHeader = req.headers.get("Authorization");
-  const serviceKey = Deno.env.get("BACKLOG_AUTH_SECRET");
-  if (!authHeader || authHeader.replace("Bearer ", "") !== serviceKey) {
+  const bearer = authHeader?.replace(/^Bearer\s+/i, "") ?? "";
+  const allowed = [
+    Deno.env.get("BACKLOG_AUTH_SECRET"),
+    Deno.env.get("BACKLOG_AGENT_SECRET"),
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+  ].filter((v): v is string => !!v && v.length > 0);
+  const authorized = !!bearer && allowed.includes(bearer);
+  if (!authorized) {
     return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
       status: 401,
       headers: jsonHeaders,
@@ -417,6 +478,54 @@ serve(async (req) => {
       });
       return new Response(
         JSON.stringify({ ok: true, rows_affected: 1, data: merged }),
+        { headers: jsonHeaders }
+      );
+    }
+
+    // ---- delete_by_id ------------------------------------------------------
+    if (body.action === "delete_by_id") {
+      const found = await findRowById(sheetId, accessToken, body.id);
+      if (!found) {
+        return new Response(
+          JSON.stringify({ ok: true, rows_affected: 0, data: null }),
+          { headers: jsonHeaders }
+        );
+      }
+      const deleted = await deleteRowsByNumbers(sheetId, accessToken, [
+        found.rowNum,
+      ]);
+      console.log("[UPDATE-BACKLOG-SHEET] delete_by_id succeeded", {
+        id: body.id,
+        rows_affected: deleted,
+      });
+      return new Response(
+        JSON.stringify({ ok: true, rows_affected: deleted }),
+        { headers: jsonHeaders }
+      );
+    }
+
+    // ---- bulk_delete -------------------------------------------------------
+    if (body.action === "bulk_delete") {
+      if (!Array.isArray(body.ids) || body.ids.length === 0) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "ids must be a non-empty array" }),
+          { status: 400, headers: jsonHeaders }
+        );
+      }
+      const rowNums: number[] = [];
+      const missing: string[] = [];
+      for (const id of body.ids) {
+        const found = await findRowById(sheetId, accessToken, id);
+        if (found) rowNums.push(found.rowNum);
+        else missing.push(id);
+      }
+      const deleted = await deleteRowsByNumbers(sheetId, accessToken, rowNums);
+      console.log("[UPDATE-BACKLOG-SHEET] bulk_delete succeeded", {
+        rows_affected: deleted,
+        missing,
+      });
+      return new Response(
+        JSON.stringify({ ok: true, rows_affected: deleted, missing }),
         { headers: jsonHeaders }
       );
     }
