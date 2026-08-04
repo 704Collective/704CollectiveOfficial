@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import {
@@ -10,7 +11,24 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-async function requireSuperAdmin() {
+function bearerMatchesServiceRole(authHeader: string | null): boolean {
+  const expected = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!expected || !authHeader) return false;
+  const m = authHeader.match(/^Bearer\s+(.+)$/i);
+  if (!m?.[1]) return false;
+  const provided = m[1].trim();
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
+/** Super_admin session, or ops Bearer service-role key. */
+async function requireSuperAdminOrServiceRole(req: NextRequest) {
+  if (bearerMatchesServiceRole(req.headers.get('authorization'))) {
+    return { user: null as null, via: 'service_role' as const };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -26,7 +44,7 @@ async function requireSuperAdmin() {
   if (me?.role !== 'super_admin') {
     return { error: NextResponse.json({ ok: false, error: 'Super admin required' }, { status: 403 }) };
   }
-  return { user };
+  return { user, via: 'super_admin' as const };
 }
 
 function siteBaseFrom(req: NextRequest, origin?: string | null): string {
@@ -40,7 +58,7 @@ function siteBaseFrom(req: NextRequest, origin?: string | null): string {
 
 /** Pre-check an invitee email before sending. */
 export async function GET(req: NextRequest) {
-  const gate = await requireSuperAdmin();
+  const gate = await requireSuperAdminOrServiceRole(req);
   if (gate.error) return gate.error;
 
   const email = req.nextUrl.searchParams.get('email');
@@ -64,7 +82,7 @@ export async function GET(req: NextRequest) {
 
 /** Create or upgrade a comp'd member and send the welcome / activate email. */
 export async function POST(req: NextRequest) {
-  const gate = await requireSuperAdmin();
+  const gate = await requireSuperAdminOrServiceRole(req);
   if (gate.error) return gate.error;
 
   let body: CompInviteBody;
