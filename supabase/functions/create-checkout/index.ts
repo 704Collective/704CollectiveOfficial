@@ -207,9 +207,8 @@ serve(async (req) => {
     logStep("Success URL determined", { authenticated: !!userId, successUrl });
 
     // ── Optional server-side promo attach ──────────────────────────────
-    // Typed codes on Stripe Hosted Checkout are unreliable on this account;
-    // when the client sends promoCode we resolve it and attach by id.
-    // Absent/empty promoCode keeps prior behavior (allow_promotion_codes).
+    // Native Stripe Checkout promo box is broken account-wide; codes are
+    // pre-applied from /join only (resolve → attach by id). No allow_promotion_codes.
     // Referral-wins: validated ambassador + promoCode → ignore promo (matches UI).
     let resolvedPromoId: string | null = null;
     if (rawPromoCode && validatedAmbassadorId) {
@@ -260,11 +259,8 @@ serve(async (req) => {
       },
     };
 
-    // Stripe forbids allow_promotion_codes together with discounts.
     if (resolvedPromoId) {
       sessionParams.discounts = [{ promotion_code: resolvedPromoId }];
-    } else {
-      sessionParams.allow_promotion_codes = true;
     }
 
     const session = await stripe.checkout.sessions.create(sessionParams);

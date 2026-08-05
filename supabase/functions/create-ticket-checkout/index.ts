@@ -239,7 +239,6 @@ serve(async (req) => {
     logStep("Success URL determined", { authenticated: !!userId, successUrl });
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
-      allow_promotion_codes: true,
       customer: customerId,
       customer_email: customerId ? undefined : userEmail,
       line_items: [
