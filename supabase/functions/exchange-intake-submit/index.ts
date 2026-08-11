@@ -329,8 +329,8 @@ serve(async (req) => {
         const { data: newPerson, error: personErr } = await admin
           .from("people")
           .insert({
+            // email_lower is GENERATED ALWAYS from email. Never write it.
             email,
-            email_lower: email,
             full_name: `${firstName} ${lastName}`,
             phone,
             roles: ["guest"],
@@ -342,8 +342,8 @@ serve(async (req) => {
           .select("id")
           .single();
         if (personErr) {
-          log("people insert failed", { error: personErr.message });
-          return json({ error: "Could not complete registration" }, 500);
+          log("people insert failed", { error: personErr.message, code: (personErr as { code?: string }).code, details: (personErr as { details?: string }).details });
+          return json({ error: "Could not complete registration", debug: personErr.message }, 500);
         }
         personId = newPerson.id;
       }
@@ -466,14 +466,14 @@ serve(async (req) => {
     if (existingIntake) {
       const { error: updErr } = await admin.from("exchange_intake").update(intakePayload).eq("id", existingIntake.id);
       if (updErr) {
-        log("intake update failed", { error: updErr.message });
-        return json({ error: "Could not save your registration" }, 500);
+        log("intake update failed", { error: updErr.message, code: (updErr as { code?: string }).code, details: (updErr as { details?: string }).details });
+        return json({ error: "Could not save your registration", debug: updErr.message }, 500);
       }
     } else {
       const { error: insErr } = await admin.from("exchange_intake").insert(intakePayload);
       if (insErr) {
-        log("intake insert failed", { error: insErr.message });
-        return json({ error: "Could not save your registration" }, 500);
+        log("intake insert failed", { error: insErr.message, code: (insErr as { code?: string }).code, details: (insErr as { details?: string }).details });
+        return json({ error: "Could not save your registration", debug: insErr.message }, 500);
       }
     }
 
