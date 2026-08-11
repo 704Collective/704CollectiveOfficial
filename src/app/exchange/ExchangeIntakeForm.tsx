@@ -202,6 +202,24 @@ export default function ExchangeIntakeForm({
     return <Shell><p style={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>Loading...</p></Shell>;
   }
 
+  // Invited variant with a token that never resolved - show a dead end, not an empty form.
+  if (variant === 'invited' && error && !email) {
+    return (
+      <Shell>
+        <EventHeader />
+        <div style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '28px 24px', textAlign: 'center' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#FFFFFF', margin: '0 0 10px' }}>This link isn&apos;t valid</h2>
+          <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.6)', margin: '0 0 18px', lineHeight: 1.6 }}>
+            It may have already been used, or the address got cut off somewhere along the way. Email us and we&apos;ll sort it out.
+          </p>
+          <a href="mailto:hello@704collective.com" style={{ color: GOLD, fontWeight: 600, fontSize: '0.9375rem', textDecoration: 'underline' }}>
+            hello@704collective.com
+          </a>
+        </div>
+      </Shell>
+    );
+  }
+
   if (done) {
     return (
       <Shell>
@@ -210,8 +228,8 @@ export default function ExchangeIntakeForm({
           <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#FFFFFF', margin: '0 0 10px' }}>You&rsquo;re in.</h2>
           <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.7)', margin: '0 0 6px', lineHeight: 1.6 }}>
             {doneParticipation === 'social_only'
-              ? 'We&rsquo;ll see you in the beer garden. Come find us.'
-              : 'You&rsquo;re registered for the business exchange from 7 to 8 PM, plus the social hour before and after.'}
+              ? "We'll see you in the beer garden. Come find us."
+              : "You're registered for the business exchange from 7 to 8 PM, plus the social hour before and after."}
           </p>
           <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.45)', margin: '14px 0 0' }}>
             A confirmation email is on its way with the details.
