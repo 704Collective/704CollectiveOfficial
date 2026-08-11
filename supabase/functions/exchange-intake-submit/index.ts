@@ -236,21 +236,22 @@ serve(async (req) => {
           // Resolve the person: prefer the stored person_id, then profile link, then email.
           let healPersonId: string | null = fullRow.person_id ?? null;
 
-          if (!healPersonId) {
-            const { data: healProfile } = await admin
-              .from("profiles")
+          // Resolve the profile once and keep it - it is needed later so a
+          // healed person row is linked instead of becoming a fresh orphan.
+          const { data: healProfile } = await admin
+            .from("profiles")
+            .select("id, member_type, subscription_status, membership_override")
+            .ilike("email", fullRow.email)
+            .is("deleted_at", null)
+            .maybeSingle();
+
+          if (!healPersonId && healProfile?.id) {
+            const { data: linkedPerson } = await admin
+              .from("people")
               .select("id")
-              .ilike("email", fullRow.email)
-              .is("deleted_at", null)
+              .filter("metadata->>profile_id", "eq", healProfile.id)
               .maybeSingle();
-            if (healProfile?.id) {
-              const { data: linkedPerson } = await admin
-                .from("people")
-                .select("id")
-                .filter("metadata->>profile_id", "eq", healProfile.id)
-                .maybeSingle();
-              if (linkedPerson) healPersonId = linkedPerson.id;
-            }
+            if (linkedPerson) healPersonId = linkedPerson.id;
           }
 
           if (!healPersonId) {
@@ -263,6 +264,14 @@ serve(async (req) => {
           }
 
           if (!healPersonId) {
+            // An invited row belongs to an existing member, so link the person to
+            // their profile and mark them as a member, not a guest.
+            const healIsActiveMember = Boolean(
+              healProfile &&
+              (healProfile.subscription_status === "active" ||
+                healProfile.subscription_status === "trialing" ||
+                healProfile.membership_override === true)
+            );
             const { data: madePerson, error: makePersonErr } = await admin
               .from("people")
               .insert({
@@ -270,12 +279,21 @@ serve(async (req) => {
                 email: String(fullRow.email).toLowerCase(),
                 full_name: `${fullRow.first_name} ${fullRow.last_name}`,
                 phone: fullRow.phone,
-                roles: ["guest"],
-                metadata: { source: "exchange_intake_heal" },
+                roles: healIsActiveMember ? ["member"] : ["guest"],
+                ...(healIsActiveMember
+                  ? {
+                      member_tier: healProfile?.member_type === "business" ? "business" : "social",
+                      member_status: "active",
+                    }
+                  : {}),
+                metadata: {
+                  source: "exchange_intake_heal",
+                  ...(healProfile?.id ? { profile_id: healProfile.id } : {}),
+                },
               })
               .select("id")
               .single();
-            if (makePersonErr) log("heal: people insert failed", { error: makePersonErr.message });
+            if (makePersonErr) log("heal: people insert failed", { error: makePersonErr.message, code: (makePersonErr as { code?: string }).code });
             else healPersonId = madePerson.id;
           }
 
