@@ -249,10 +249,10 @@ serve(async (req) => {
       } else {
         const { data: newPerson, error: personErr } = await supabase
           .from("people")
-          .insert({
-            email: cleanEmail,
-            email_lower: cleanEmail,
-            full_name: fullName,
+      .insert({
+        // email_lower is GENERATED ALWAYS from email. Never write it.
+        email: cleanEmail,
+        full_name: fullName,
             phone: cleanPhone,
             roles: ["guest"],
             sms_consent: sms_consent === true,
