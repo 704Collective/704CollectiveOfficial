@@ -218,7 +218,7 @@ serve(async (req) => {
         .eq("id", row.id);
       if (updErr) {
         log("invited update failed", { error: updErr.message, code: (updErr as { code?: string }).code });
-        return json({ error: "Could not save your answers", debug: updErr.message }, 500);
+        return json({ error: "Could not save your answers" }, 500);
       }
 
       // Self-healing: an invited row assumes the person already holds a credential.
@@ -475,7 +475,7 @@ serve(async (req) => {
           .single();
         if (personErr) {
           log("people insert failed", { error: personErr.message, code: (personErr as { code?: string }).code, details: (personErr as { details?: string }).details });
-          return json({ error: "Could not complete registration", debug: personErr.message }, 500);
+          return json({ error: "Could not complete registration" }, 500);
         }
         personId = newPerson.id;
       }
@@ -599,13 +599,13 @@ serve(async (req) => {
       const { error: updErr } = await admin.from("exchange_intake").update(intakePayload).eq("id", existingIntake.id);
       if (updErr) {
         log("intake update failed", { error: updErr.message, code: (updErr as { code?: string }).code, details: (updErr as { details?: string }).details });
-        return json({ error: "Could not save your registration", debug: updErr.message }, 500);
+        return json({ error: "Could not save your registration" }, 500);
       }
     } else {
       const { error: insErr } = await admin.from("exchange_intake").insert(intakePayload);
       if (insErr) {
         log("intake insert failed", { error: insErr.message, code: (insErr as { code?: string }).code, details: (insErr as { details?: string }).details });
-        return json({ error: "Could not save your registration", debug: insErr.message }, 500);
+        return json({ error: "Could not save your registration" }, 500);
       }
     }
 
