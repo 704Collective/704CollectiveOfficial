@@ -178,11 +178,11 @@ serve(async (req) => {
                 })
                 .eq("id", existingPerson.id);
             } else {
-              await adminClient
+              const { error: personInsertErr } = await adminClient
                 .from("people")
                 .insert({
+                  // email_lower is GENERATED ALWAYS from email. Never write it.
                   email,
-                  email_lower: email,
                   full_name: fullName,
                   ...(member.phone ? { phone: member.phone.trim() } : {}),
                   roles: ["member"],
@@ -192,6 +192,9 @@ serve(async (req) => {
                   joined_at: new Date().toISOString(),
                   metadata: { profile_id: newUserId, source: "import_members" },
                 });
+              if (personInsertErr) {
+                log("People row insert FAILED (non-blocking)", { email, error: personInsertErr.message, code: (personInsertErr as { code?: string }).code });
+              }
             }
           } catch (peopleErr) {
             const msg = peopleErr instanceof Error ? peopleErr.message : String(peopleErr);
