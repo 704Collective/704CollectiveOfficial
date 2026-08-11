@@ -49,6 +49,7 @@ interface Event {
   required_tier?: string | null;
   price_cents?: number | null;
   member_price_cents?: number | null;
+  intake_form_slug?: string | null;
 }
 
 export default function EventDetail() {
@@ -249,6 +250,13 @@ export default function EventDetail() {
     const { data } = await supabase.from('event_waitlist').select('id, position').eq('event_id', id).eq('user_id', user.id).maybeSingle();
     if (data) { setWaitlistPosition(data.position); setWaitlistId(data.id); }
   };
+
+  // Events with an intake form send everyone except business members to the form
+  // instead of RSVPing directly. Null slug (every other event) changes nothing.
+  const intakeSlug = event?.intake_form_slug ?? null;
+  const isBusinessMemberViewer = (profile?.member_type ?? '') === 'business';
+  const useIntakeForm = Boolean(intakeSlug) && !isBusinessMemberViewer;
+  const intakeHref = intakeSlug ? `/${intakeSlug}/rsvp` : '#';
 
   const isAtCapacity = event?.capacity != null && ticketCount >= event.capacity;
   // Super admins can RSVP past capacity (server + DB honor an admin override).
@@ -690,9 +698,17 @@ export default function EventDetail() {
       </div>
     );
     if (!user) {
-      if (event.access_type === 'public_free') return (
-        <div style={{ width: '100%', boxSizing: 'border-box' }}>
-          <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '6px' }}>RSVP - no account needed</h3>
+    if (event.access_type === 'public_free' && useIntakeForm) return (
+      <div style={{ textAlign: 'center' }}>
+        <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '6px' }}>RSVP - no account needed</h3>
+        <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>A few quick questions and you are in.</p>
+        <Link href={intakeHref} style={{ ...linkBtn, backgroundColor: '#C6A664', color: '#1A1A1A', fontWeight: 700 }}>RSVP</Link>
+      </div>
+    );
+
+    if (event.access_type === 'public_free') return (
+      <div style={{ width: '100%', boxSizing: 'border-box' }}>
+        <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '6px' }}>RSVP - no account needed</h3>
           <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', marginBottom: '18px' }}>Open to everyone.</p>
           {publicRsvpFull ? (
             <div style={{ textAlign: 'center', padding: '16px 0' }}>
@@ -882,6 +898,15 @@ export default function EventDetail() {
       const memberPrice = resolveMemberPrice();
       const standardPrice = event.ticket_price ?? 0;
 
+      if ((!memberPrice || memberPrice === 0) && useIntakeForm) return (
+        <div style={{ textAlign: 'center' }}>
+          <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#4CAF50', backgroundColor: 'rgba(76,175,80,0.06)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Member Benefit</span>
+          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>Member Event</h3>
+          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>A few quick questions and you are in.</p>
+          <Link href={intakeHref} style={{ ...linkBtn, backgroundColor: '#C6A664', color: '#1A1A1A', fontWeight: 700 }}>RSVP</Link>
+        </div>
+      );
+
       if (!memberPrice || memberPrice === 0) return (
         <div style={{ textAlign: 'center' }}>
           <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#4CAF50', backgroundColor: 'rgba(76,175,80,0.06)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Member Benefit</span>
@@ -909,6 +934,14 @@ export default function EventDetail() {
         </div>
       );
     }
+    if (event.access_type === 'public_free' && useIntakeForm) return (
+      <div style={{ textAlign: 'center' }}>
+        <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>RSVP</h3>
+        <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>A few quick questions and you are in.</p>
+        <Link href={intakeHref} style={{ ...linkBtn, backgroundColor: '#C6A664', color: '#1A1A1A', fontWeight: 700 }}>RSVP</Link>
+      </div>
+    );
+
     if (event.access_type === 'public_free') return (
       <div style={{ textAlign: 'center' }}>
         <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>RSVP</h3>
@@ -938,6 +971,7 @@ export default function EventDetail() {
     return 'Purchase Ticket';
   };
   const handleMobileCTA = () => {
+    if (useIntakeForm) { router.push(intakeHref); return; }
     if (event.access_type === 'public_free') {
       if (!user) {
         const form = document.querySelector('form');

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useAuth } from '@/hooks/useAuth';
 
 const EVENT_ID = process.env.NEXT_PUBLIC_EXCHANGE_EVENT_ID || '';
 const GOLD = '#C6A664';
@@ -62,6 +63,9 @@ export default function ExchangeIntakeForm({
   const [full, setFull] = useState(false);
   const [booting, setBooting] = useState(variant === 'invited');
   const [alreadyDone, setAlreadyDone] = useState(false);
+  const [prefilledFromSession, setPrefilledFromSession] = useState(false);
+
+  const { user, profile, loading: authLoading } = useAuth();
 
   const fnUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/exchange-intake-submit`;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -95,6 +99,20 @@ export default function ExchangeIntakeForm({
     })();
     return () => { cancelled = true; };
   }, [variant, inviteToken, fnUrl, headers]);
+
+  // Logged-in members hitting the public or commonwealth form already exist in
+  // our system. Prefill and lock their details so they are not retyping what we have.
+  useEffect(() => {
+    if (variant === 'invited' || authLoading || !user) return;
+    if (prefilledFromSession) return;
+    const full = (profile?.full_name ?? '').trim();
+    const parts = full.split(/\s+/);
+    if (parts.length > 0 && parts[0]) setFirstName(parts[0]);
+    if (parts.length > 1) setLastName(parts.slice(1).join(' '));
+    if (user.email) setEmail(user.email);
+    if (profile?.phone) setPhone(profile.phone);
+    setPrefilledFromSession(true);
+  }, [variant, authLoading, user, profile, prefilledFromSession]);
 
   // Public and commonwealth: check whether the relevant pool is full
   useEffect(() => {
@@ -331,7 +349,21 @@ export default function ExchangeIntakeForm({
           </div>
         )}
 
-        {variant !== 'invited' && (
+        {variant !== 'invited' && prefilledFromSession && (
+          <div style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '14px 16px' }}>
+            <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', margin: '0 0 4px' }}>Registering as</p>
+            <p style={{ fontSize: '0.9375rem', color: '#FFFFFF', fontWeight: 600, margin: 0 }}>{firstName} {lastName}</p>
+            <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', margin: '2px 0 0' }}>{email}</p>
+            {!phone && (
+              <div style={{ marginTop: '12px' }}>
+                <label style={labelStyle} htmlFor="phs">Phone</label>
+                <input id="phs" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required style={inputStyle} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {variant !== 'invited' && !prefilledFromSession && (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
