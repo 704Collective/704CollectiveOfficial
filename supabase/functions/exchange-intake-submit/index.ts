@@ -217,11 +217,125 @@ serve(async (req) => {
         })
         .eq("id", row.id);
       if (updErr) {
-        log("invited update failed", { error: updErr.message });
-        return json({ error: "Could not save your answers" }, 500);
+        log("invited update failed", { error: updErr.message, code: (updErr as { code?: string }).code });
+        return json({ error: "Could not save your answers", debug: updErr.message }, 500);
       }
+
+      // Self-healing: an invited row assumes the person already holds a credential.
+      // If they do not (RSVP canceled, or the row was pre-created before RSVP),
+      // issue one now against the house pool so they are genuinely registered.
+      let healedToken: string | null = null;
+      try {
+        const { data: fullRow } = await admin
+          .from("exchange_intake")
+          .select("id, event_id, email, person_id, credential_id, first_name, last_name, phone")
+          .eq("id", row.id)
+          .maybeSingle();
+
+        if (fullRow) {
+          // Resolve the person: prefer the stored person_id, then profile link, then email.
+          let healPersonId: string | null = fullRow.person_id ?? null;
+
+          if (!healPersonId) {
+            const { data: healProfile } = await admin
+              .from("profiles")
+              .select("id")
+              .ilike("email", fullRow.email)
+              .is("deleted_at", null)
+              .maybeSingle();
+            if (healProfile?.id) {
+              const { data: linkedPerson } = await admin
+                .from("people")
+                .select("id")
+                .filter("metadata->>profile_id", "eq", healProfile.id)
+                .maybeSingle();
+              if (linkedPerson) healPersonId = linkedPerson.id;
+            }
+          }
+
+          if (!healPersonId) {
+            const { data: byEmail } = await admin
+              .from("people")
+              .select("id")
+              .eq("email_lower", String(fullRow.email).toLowerCase())
+              .maybeSingle();
+            if (byEmail) healPersonId = byEmail.id;
+          }
+
+          if (!healPersonId) {
+            const { data: madePerson, error: makePersonErr } = await admin
+              .from("people")
+              .insert({
+                // email_lower is GENERATED ALWAYS from email. Never write it.
+                email: String(fullRow.email).toLowerCase(),
+                full_name: `${fullRow.first_name} ${fullRow.last_name}`,
+                phone: fullRow.phone,
+                roles: ["guest"],
+                metadata: { source: "exchange_intake_heal" },
+              })
+              .select("id")
+              .single();
+            if (makePersonErr) log("heal: people insert failed", { error: makePersonErr.message });
+            else healPersonId = madePerson.id;
+          }
+
+          if (healPersonId) {
+            const { data: haveCred } = await admin
+              .from("attendance_credentials")
+              .select("id, token")
+              .eq("person_id", healPersonId)
+              .eq("event_id", fullRow.event_id)
+              .eq("status", "active")
+              .maybeSingle();
+
+            if (haveCred) {
+              healedToken = haveCred.token;
+              if (!fullRow.credential_id || !fullRow.person_id) {
+                await admin.from("exchange_intake")
+                  .update({ person_id: healPersonId, credential_id: haveCred.id, updated_at: new Date().toISOString() })
+                  .eq("id", row.id);
+              }
+            } else {
+              const poolUsed = await countPool(admin, fullRow.event_id, "house");
+              if (poolUsed >= POOL_CAPS["house"]) {
+                log("heal: house pool full, answers saved but no credential issued", { intakeId: row.id });
+              } else {
+                const { data: newCred, error: newCredErr } = await admin
+                  .from("attendance_credentials")
+                  .insert({
+                    token: makeToken("C-"),
+                    person_id: healPersonId,
+                    event_id: fullRow.event_id,
+                    credential_type: "member_rsvp",
+                    status: "active",
+                    metadata: { source: "exchange_intake_heal", pool: "house", form_variant: "invited" },
+                  })
+                  .select("id, token")
+                  .single();
+                if (newCredErr) {
+                  log("heal: credential insert failed", { error: newCredErr.message, code: (newCredErr as { code?: string }).code });
+                } else {
+                  healedToken = newCred.token;
+                  await admin.from("exchange_intake")
+                    .update({ person_id: healPersonId, credential_id: newCred.id, updated_at: new Date().toISOString() })
+                    .eq("id", row.id);
+                  log("heal: credential issued", { intakeId: row.id, token: newCred.token });
+                }
+              }
+            }
+          }
+        }
+      } catch (healErr) {
+        log("heal block threw (non-blocking)", { error: healErr instanceof Error ? healErr.message : String(healErr) });
+      }
+
       log("invited answers saved", { intakeId: row.id });
-      return json({ success: true, already_submitted: false, participation: "business_and_social" });
+      return json({
+        success: true,
+        already_submitted: false,
+        participation: "business_and_social",
+        credential_token: healedToken,
+      });
     }
 
     // ══ PATH 2 and 3: commonwealth and public ════════════════════════════════
