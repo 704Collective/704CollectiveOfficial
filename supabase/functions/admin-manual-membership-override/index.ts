@@ -105,8 +105,8 @@ Deno.serve(async (req) => {
       const { data: newPerson, error: createPersonErr } = await supabaseAdmin
         .from('people')
         .insert({
+          // email_lower is GENERATED ALWAYS from email. Never write it.
           email: normalizedEmail,
-          email_lower: normalizedEmail,
           full_name: full_name ?? null,
           member_tier: member_tier ?? null,
           member_status: member_status ?? null,
