@@ -253,6 +253,51 @@ Deno.serve(async (req) => {
       }
     }
 
+    // --- Step 5b: Bridge the people row to the profile ---
+    // The people row is created in Step 3, before authUserId exists. Without this
+    // the row is a permanent orphan that resolvePersonId can never find, so the
+    // member's own dashboard, RSVPs and wallet pass all fail to resolve.
+    if (peopleRow?.id && authUserId) {
+      try {
+        const { data: currentPerson } = await supabaseAdmin
+          .from('people')
+          .select('metadata')
+          .eq('id', peopleRow.id)
+          .maybeSingle()
+
+        const prevMeta =
+          currentPerson?.metadata && typeof currentPerson.metadata === 'object'
+            ? (currentPerson.metadata as Record<string, unknown>)
+            : {}
+
+        if (!prevMeta['profile_id']) {
+          const { error: bridgeErr } = await supabaseAdmin
+            .from('people')
+            .update({
+              metadata: { ...prevMeta, profile_id: authUserId, bridged_by: 'admin_manual_membership_override' },
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', peopleRow.id)
+
+          if (bridgeErr) {
+            console.error('Bridge people to profile failed (non-fatal):', bridgeErr)
+          } else {
+            changes.push('bridged people row to profile')
+          }
+        } else if (prevMeta['profile_id'] !== authUserId) {
+          // Never overwrite an existing link. Surface the mismatch instead.
+          console.error('people.metadata.profile_id mismatch', {
+            peopleId: peopleRow.id,
+            existing: prevMeta['profile_id'],
+            expected: authUserId,
+          })
+          changes.push('WARNING: people row already linked to a different profile - left untouched')
+        }
+      } catch (bridgeCatchErr) {
+        console.error('Bridge block threw (non-fatal):', bridgeCatchErr)
+      }
+    }
+
     // --- Step 6: Cancel business-only event credentials on demotion ---
     const wasDemoted = priorTier === 'business' && member_tier === 'social'
     if (wasDemoted && peopleRow) {
