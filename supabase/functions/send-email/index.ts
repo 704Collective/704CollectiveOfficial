@@ -2415,12 +2415,22 @@ serve(async (req) => {
     const body = await req.json();
 
     // ── Render-only mode: return rendered HTML without sending ──────────────
+    // Restricted templates must not be renderable with a bare anon key. The
+    // send path below enforces this; the render path returns early, so it needs
+    // its own gate or the anon key leaks internal template markup.
     if (body.mode === "render") {
       if (!body.template || typeof body.template !== "string") {
         return new Response(JSON.stringify({ error: "Missing template" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
+
+      if (!isServiceRole && restrictedTemplates.includes(body.template)) {
+        return new Response(
+          JSON.stringify({ error: "This template requires elevated access" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
       }
       try {
         const { subject, html, attachments } = getTemplate(body.template, body.data ?? {});
