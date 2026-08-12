@@ -231,33 +231,69 @@ serve(async (req) => {
     // Best-effort - must not break the event_public_rsvps RSVP saved above.
     let credentialToken: string | null = null;
     try {
-      // Find or create the person by email_lower.
-      let personId: string | null = null;
-      const { data: existingPerson } = await supabase
-        .from("people")
-        .select("id, roles")
-        .eq("email_lower", cleanEmail)
+      // Who is this? A member RSVPing while logged out must be recognised, or
+      // they get a public_rsvp credential their own dashboard cannot see
+      // (the event page looks for credential_type = 'member_rsvp').
+      const { data: rsvpProfile } = await supabase
+        .from("profiles")
+        .select("id, member_type, subscription_status, membership_override")
+        .ilike("email", cleanEmail)
+        .is("deleted_at", null)
         .maybeSingle();
+
+      const isActiveMemberRsvp = Boolean(
+        rsvpProfile &&
+        (rsvpProfile.subscription_status === "active" ||
+          rsvpProfile.subscription_status === "trialing" ||
+          rsvpProfile.membership_override === true)
+      );
+
+      // Find or create the person. Prefer the profile bridge, fall back to email.
+      let personId: string | null = null;
+
+      if (rsvpProfile?.id) {
+        const { data: bridgedPerson } = await supabase
+          .from("people")
+          .select("id, roles")
+          .filter("metadata->>profile_id", "eq", rsvpProfile.id)
+          .maybeSingle();
+        if (bridgedPerson) personId = bridgedPerson.id;
+      }
+
+      const { data: existingPerson } = personId
+        ? { data: null as { id: string; roles: string[] | null } | null }
+        : await supabase
+            .from("people")
+            .select("id, roles")
+            .eq("email_lower", cleanEmail)
+            .maybeSingle();
 
       if (existingPerson) {
         personId = existingPerson.id;
-        const roles: string[] = existingPerson.roles ?? [];
-        if (!roles.includes("guest")) {
-          roles.push("guest");
-          await supabase.from("people").update({ roles, updated_at: new Date().toISOString() }).eq("id", personId);
+        // Never stamp an active member as a guest.
+        if (!isActiveMemberRsvp) {
+          const roles: string[] = existingPerson.roles ?? [];
+          if (!roles.includes("guest")) {
+            roles.push("guest");
+            await supabase.from("people").update({ roles, updated_at: new Date().toISOString() }).eq("id", personId);
+          }
         }
-      } else {
+      } else if (!personId) {
         const { data: newPerson, error: personErr } = await supabase
           .from("people")
-      .insert({
-        // email_lower is GENERATED ALWAYS from email. Never write it.
-        email: cleanEmail,
-        full_name: fullName,
+          .insert({
+            // email_lower is GENERATED ALWAYS from email. Never write it.
+            email: cleanEmail,
+            full_name: fullName,
             phone: cleanPhone,
-            roles: ["guest"],
+            roles: isActiveMemberRsvp ? ["member"] : ["guest"],
             sms_consent: sms_consent === true,
             sms_consent_at: sms_consent === true ? new Date().toISOString() : null,
-            metadata: { source: "capture_public_rsvp" },
+            metadata: {
+              source: "capture_public_rsvp",
+              // Link to the profile when one exists, so this row is never an orphan.
+              ...(rsvpProfile?.id ? { profile_id: rsvpProfile.id } : {}),
+            },
           })
           .select("id")
           .single();
@@ -292,7 +328,8 @@ serve(async (req) => {
               token,
               person_id: personId,
               event_id,
-              credential_type: "public_rsvp",
+              // Members get member_rsvp so their own dashboard shows the RSVP.
+              credential_type: isActiveMemberRsvp ? "member_rsvp" : "public_rsvp",
               status: "active",
               metadata: { source: "capture_public_rsvp" },
             })
