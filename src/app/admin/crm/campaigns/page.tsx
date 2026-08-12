@@ -563,15 +563,16 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
 
   useEffect(() => {
     async function fetchCounts() {
-      const [activeQ, socialQ, businessQ, nonMemberQ, cancelledQ, guestsQ, superAdminsQ] = await Promise.all([
+      const [activeQ, socialQ, businessQ, nonMemberQ, cancelledQ, superAdminsQ] = await Promise.all([
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').is('deleted_at', null),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').eq('member_type', 'social').is('deleted_at', null),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'active').eq('member_type', 'business').is('deleted_at', null),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('member_type', 'non_member').is('deleted_at', null),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('subscription_status', 'canceled').is('deleted_at', null),
-        supabase.from('contacts').select('*', { count: 'exact', head: true }).eq('contact_type', 'guest'),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'super_admin').is('deleted_at', null),
       ]);
+      // all_contacts and event_guests are resolved via send-campaign count_only
+      // below, so the preview always matches the real send. Do not guess them here.
       setAudienceCounts({
         self: 1,
         super_admins: superAdminsQ.count ?? 0,
@@ -579,9 +580,7 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
         social: socialQ.count ?? 0,
         business: businessQ.count ?? 0,
         non_member: nonMemberQ.count ?? 0,
-        all_contacts: (activeQ.count ?? 0) + (nonMemberQ.count ?? 0),
         cancelled: cancelledQ.count ?? 0,
-        event_guests: guestsQ.count ?? 0,
       });
     }
     void fetchCounts();
@@ -602,10 +601,20 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
     return () => { cancelled = true; };
   }, []);
 
-  // Live recipient count for the event-scoped non-member audience. Uses the
-  // send-campaign count_only mode so the number matches a real send exactly.
+  // Live recipient counts resolved through send-campaign count_only mode, so the
+  // preview number always matches what a real send would deliver.
+  // Covers the three audiences whose recipients cannot be counted from a single
+  // simple table query: the two event-scoped ones and all_contacts.
   useEffect(() => {
-    if (audience !== 'event_non_members' || !audienceEventId) return;
+    const needsServerCount =
+      audience === 'event_non_members' ||
+      audience === 'event_guests' ||
+      audience === 'all_contacts';
+    if (!needsServerCount) return;
+
+    const isEventScoped = audience === 'event_non_members' || audience === 'event_guests';
+    if (isEventScoped && !audienceEventId) return;
+
     let cancelled = false;
     (async () => {
       setCountingNonMembers(true);
@@ -620,14 +629,14 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
           },
           body: JSON.stringify({
             count_only: true,
-            audience_type: 'event_non_members',
-            audience_event_id: audienceEventId,
+            audience_type: audience,
+            audience_event_id: isEventScoped ? audienceEventId : null,
           }),
         });
         if (cancelled) return;
         if (res.ok) {
           const result = await res.json();
-          setAudienceCounts(prev => ({ ...prev, event_non_members: result.count ?? 0 }));
+          setAudienceCounts(prev => ({ ...prev, [audience]: result.count ?? 0 }));
         }
       } catch {
         // Non-fatal: leave the count unset; confirm dialog will show '?'.
@@ -901,7 +910,7 @@ function CampaignComposer({ campaign, onBack, onSaved }: { campaign: Campaign | 
                 ))}
               </SelectContent>
             </Select>
-            {audience === 'event_non_members' && countingNonMembers ? (
+            {countingNonMembers ? (
               <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
                 <Users className="w-3 h-3" />
                 counting…

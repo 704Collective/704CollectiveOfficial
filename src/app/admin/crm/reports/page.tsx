@@ -7,7 +7,7 @@ import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import {
   Plus, Settings, X,
   Users, DollarSign, TrendingUp, Mail, BarChart2,
-  Activity, Target, Star, ArrowUpRight, GripVertical,
+  Activity, Target, Star, GripVertical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -57,7 +57,6 @@ const WIDGET_CATALOG: { type: WidgetType; label: string; desc: string; icon: Rea
   { type: 'revenue_chart',       label: 'Revenue Chart',        desc: 'Monthly revenue (bar chart)',          icon: BarChart2,   defaultWidth: 6, defaultHeight: 2 },
   { type: 'top_campaigns',       label: 'Top Campaigns',        desc: 'Best performing email campaigns',      icon: Mail,        defaultWidth: 6, defaultHeight: 2 },
   { type: 'active_drips',        label: 'Active Drips',         desc: 'Active drip campaign enrollments',     icon: Activity,    defaultWidth: 3, defaultHeight: 1 },
-  { type: 'conversion_rate',     label: 'Conversion Rate',      desc: 'Contact to member conversion %',       icon: ArrowUpRight,defaultWidth: 3, defaultHeight: 1 },
   { type: 'survey_responses',    label: 'Survey Responses',     desc: 'Recent survey response count',         icon: Star,        defaultWidth: 3, defaultHeight: 1 },
 ];
 
@@ -127,12 +126,6 @@ function useWidgetData(type: WidgetType) {
             setData(totSent > 0 ? Math.round((totClick / totSent) * 100) : 0);
             break;
           }
-          case 'conversion_rate': {
-            const { count: contacts } = await supabase.from('contacts').select('id', { count: 'exact', head: true });
-            const { count: converted } = await supabase.from('contacts').select('id', { count: 'exact', head: true }).not('converted_to_member_id', 'is', null);
-            setData(contacts && contacts > 0 ? Math.round(((converted ?? 0) / contacts) * 100) : 0);
-            break;
-          }
           case 'member_growth_chart': {
             const months = Array.from({ length: 6 }, (_, i) => {
               const d = subMonths(new Date(), 5 - i);
@@ -183,7 +176,7 @@ function WidgetRenderer({ widget, onDelete, editMode }: { widget: Widget; onDele
     if (widget.widget_type === 'mrr' || widget.widget_type === 'pipeline_value') {
       return v >= 1000 ? `$${(v / 1000).toFixed(1)}k` : `$${v}`;
     }
-    if (widget.widget_type === 'email_open_rate' || widget.widget_type === 'email_click_rate' || widget.widget_type === 'conversion_rate') return `${v}%`;
+    if (widget.widget_type === 'email_open_rate' || widget.widget_type === 'email_click_rate') return `${v}%`;
     return v?.toLocaleString() ?? '0';
   };
 
