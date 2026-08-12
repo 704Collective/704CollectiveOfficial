@@ -270,6 +270,39 @@ serve(async (req) => {
 
       if (existingPerson) {
         personId = existingPerson.id;
+
+        // Found by email, not by the profile bridge. If a profile exists, this
+        // row predates the bridge and is invisible to resolvePersonId. Stamp it
+        // so the member's own dashboard can find their RSVP.
+        if (rsvpProfile?.id) {
+          const { data: currentPerson } = await supabase
+            .from("people")
+            .select("metadata, roles")
+            .eq("id", personId)
+            .maybeSingle();
+          const prevMeta =
+            currentPerson?.metadata && typeof currentPerson.metadata === "object"
+              ? (currentPerson.metadata as Record<string, unknown>)
+              : {};
+          if (!prevMeta["profile_id"]) {
+            const prevRoles: string[] = Array.isArray(currentPerson?.roles) ? [...currentPerson.roles] : [];
+            const healedRoles =
+              isActiveMemberRsvp && !prevRoles.includes("member")
+                ? [...prevRoles, "member"]
+                : prevRoles;
+            const { error: bridgeErr } = await supabase
+              .from("people")
+              .update({
+                metadata: { ...prevMeta, profile_id: rsvpProfile.id },
+                ...(healedRoles.length !== prevRoles.length ? { roles: healedRoles } : {}),
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", personId);
+            if (bridgeErr) log("profile bridge backfill failed (non-fatal)", { error: bridgeErr.message });
+            else log("profile bridge backfilled", { personId, profileId: rsvpProfile.id });
+          }
+        }
+
         // Never stamp an active member as a guest.
         if (!isActiveMemberRsvp) {
           const roles: string[] = existingPerson.roles ?? [];
