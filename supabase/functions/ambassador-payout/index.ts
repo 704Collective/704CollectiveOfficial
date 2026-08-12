@@ -104,16 +104,12 @@ serve(async (req) => {
   const authHeader = req.headers.get("Authorization") || "";
   const token = authHeader.replace("Bearer ", "").trim();
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-
-  let isServiceRole = token === serviceRoleKey;
-  if (!isServiceRole && token.startsWith("sb_secret_")) isServiceRole = true;
-  if (!isServiceRole && token.startsWith("eyJ")) {
-    try {
-      const payload = JSON.parse(atob(token.split(".")[1]));
-      const supabaseRef = (Deno.env.get("SUPABASE_URL") || "").replace("https://", "").split(".")[0];
-      if (payload.role === "service_role" && payload.ref === supabaseRef) isServiceRole = true;
-    } catch (_e) { /* ignore */ }
-  }
+  // Exact match only. Prefix checks and unverified JWT payload decoding both
+  // accept forged tokens - neither proves the caller holds a real secret.
+  const altSecretKey = Deno.env.get("SB_SECRET_KEY") ?? "";
+  const isServiceRole =
+    (serviceRoleKey.length > 0 && token === serviceRoleKey) ||
+    (altSecretKey.length > 0 && token === altSecretKey);
 
   if (!isServiceRole) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {

@@ -2390,26 +2390,14 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization") || "";
     const token = authHeader.replace("Bearer ", "");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-
-    let isServiceRole = token === serviceRoleKey;
-
-    // Accept new-format Supabase secret keys
-    if (!isServiceRole && token.startsWith("sb_secret_")) {
-      isServiceRole = true;
-    }
-
-    // Accept legacy JWT if payload indicates service_role and project ref matches
-    if (!isServiceRole && token.startsWith("eyJ")) {
-      try {
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        const supabaseRef = (Deno.env.get("SUPABASE_URL") || "").replace("https://", "").split(".")[0];
-        if (payload.role === "service_role" && payload.ref === supabaseRef) {
-          isServiceRole = true;
-        }
-      } catch (_e) {
-        // Not a valid JWT — leave isServiceRole false
-      }
-    }
+    // Exact match only. A prefix check (e.g. startsWith("sb_secret_")) would
+    // accept any forged token beginning with that string, and decoding a JWT
+    // payload without verifying its signature proves nothing - the payload is
+    // plain base64 that anyone can author.
+    const altSecretKey = Deno.env.get("SB_SECRET_KEY") ?? "";
+    let isServiceRole =
+      (serviceRoleKey.length > 0 && token === serviceRoleKey) ||
+      (altSecretKey.length > 0 && token === altSecretKey);
 
     // Templates that require service role (internal/admin only)
     const restrictedTemplates = [
