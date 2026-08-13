@@ -486,8 +486,30 @@ async function resolveAudience(
     if (contactsErr) {
       return { recipients: [], error: `all_contacts query failed: ${contactsErr.message}` };
     }
+
+    // Exclude anyone who is already a paying or comped member. Roughly 22 percent
+    // of the contacts table overlaps active members, and this audience is used for
+    // prospect-facing copy - pitching membership to people who already pay reads
+    // as though we do not know our own members.
+    const { data: memberEmails, error: memberErr } = await supabase
+      .from("profiles")
+      .select("email, subscription_status, membership_override, deleted_at")
+      .is("deleted_at", null);
+    if (memberErr) {
+      return { recipients: [], error: `all_contacts member lookup failed: ${memberErr.message}` };
+    }
+    const activeMemberEmails = new Set(
+      (memberEmails ?? [])
+        .filter((p) =>
+          p.email &&
+          (p.subscription_status === "active" ||
+            p.subscription_status === "trialing" ||
+            p.membership_override === true))
+        .map((p) => String(p.email).toLowerCase()),
+    );
+
     recipients = (contacts ?? [])
-      .filter((c) => !!c.email)
+      .filter((c) => !!c.email && !activeMemberEmails.has(String(c.email).toLowerCase()))
       .map((c) => ({
         email: c.email,
         name: c.full_name || null,
