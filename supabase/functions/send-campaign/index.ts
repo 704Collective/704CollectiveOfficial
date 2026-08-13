@@ -491,10 +491,14 @@ async function resolveAudience(
     // of the contacts table overlaps active members, and this audience is used for
     // prospect-facing copy - pitching membership to people who already pay reads
     // as though we do not know our own members.
+    // Explicit high limit. PostgREST defaults to 1000 rows, and a truncated
+    // exclusion set would silently let members back into the audience - the same
+    // no-error, quietly-wrong failure shape as the first_name bug above.
     const { data: memberEmails, error: memberErr } = await supabase
       .from("profiles")
       .select("email, subscription_status, membership_override, deleted_at")
-      .is("deleted_at", null);
+      .is("deleted_at", null)
+      .limit(100000);
     if (memberErr) {
       return { recipients: [], error: `all_contacts member lookup failed: ${memberErr.message}` };
     }
