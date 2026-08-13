@@ -476,30 +476,42 @@ async function resolveAudience(
       .filter(([k]) => !memberEmails.has(k) && !unsubEmails.has(k))
       .map(([, v]) => v);
   } else if (audienceType === "all_contacts") {
-    const { data: contacts } = await supabase
+    // contacts has full_name only - it has never had first_name / last_name.
+    // Selecting those columns made PostgREST return 400, and because the error
+    // was discarded this audience silently resolved to zero recipients.
+    const { data: contacts, error: contactsErr } = await supabase
       .from("contacts")
-      .select("id, email, first_name, last_name")
+      .select("id, email, full_name")
       .or("unsubscribed.is.null,unsubscribed.eq.false");
+    if (contactsErr) {
+      return { recipients: [], error: `all_contacts query failed: ${contactsErr.message}` };
+    }
     recipients = (contacts ?? [])
       .filter((c) => !!c.email)
       .map((c) => ({
         email: c.email,
-        name: [c.first_name, c.last_name].filter(Boolean).join(" ") || null,
+        name: c.full_name || null,
         contact_id: c.id,
       }));
   } else if (audienceType === "segment" && opts.audienceSegmentIds?.length) {
-    const { data: taggedContacts } = await supabase
+    // Same column mismatch as all_contacts above - the embed resolved to
+    // contacts_1.first_name, which does not exist, so every tagged segment
+    // silently produced an empty audience.
+    const { data: taggedContacts, error: taggedErr } = await supabase
       .from("contact_tags")
-      .select("contact_id, contacts(id, email, first_name, last_name)")
+      .select("contact_id, contacts(id, email, full_name)")
       .in("tag", opts.audienceSegmentIds);
+    if (taggedErr) {
+      return { recipients: [], error: `segment query failed: ${taggedErr.message}` };
+    }
     const seen = new Set<string>();
     for (const row of taggedContacts ?? []) {
-      const c = row.contacts as { id: string; email: string; first_name: string; last_name: string } | null;
+      const c = row.contacts as { id: string; email: string; full_name: string | null } | null;
       if (c && c.email && !seen.has(c.id)) {
         seen.add(c.id);
         recipients.push({
           email: c.email,
-          name: [c.first_name, c.last_name].filter(Boolean).join(" ") || null,
+          name: c.full_name || null,
           contact_id: c.id,
         });
       }
