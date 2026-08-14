@@ -17,7 +17,8 @@ const inputStyle: React.CSSProperties = {
   backgroundColor: 'rgba(255,255,255,0.05)',
   border: '1px solid rgba(255,255,255,0.1)',
   borderRadius: '8px', color: '#FFFFFF',
-  fontSize: '0.9375rem', outline: 'none',
+  // 1rem must stay >= 16px: iOS Safari auto-zooms on focus below that.
+  fontSize: '1rem', outline: 'none',
 };
 
 const labelStyle: React.CSSProperties = {
@@ -419,6 +420,16 @@ export default function ExchangeIntakeForm({
               <textarea id="q4" value={seeking} onChange={(e) => setSeeking(e.target.value)} required rows={3} style={{ ...inputStyle, minHeight: '84px', resize: 'vertical', fontFamily: 'inherit' }} />
             </div>
           </>
+        )}
+
+        {variant === 'public' && (
+          <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', margin: 0, lineHeight: 1.6 }}>
+            Live at The Village at Commonwealth? RSVP through{' '}
+            <Link href="/exchange/commonwealth" style={{ color: GOLD, fontWeight: 600, textDecoration: 'underline' }}>
+              your community&rsquo;s page
+            </Link>
+            .
+          </p>
         )}
 
         {error && <p style={{ fontSize: '0.8125rem', color: ERR, margin: 0 }}>{error}</p>}
