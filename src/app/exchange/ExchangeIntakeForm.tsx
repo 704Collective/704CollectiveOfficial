@@ -37,6 +37,43 @@ function btnStyle(disabled: boolean): React.CSSProperties {
   };
 }
 
+// Shell and EventHeader must stay at module scope. Defined inside the component they
+// would be new function types on every render, so React would unmount and remount the
+// whole subtree on each keystroke, blurring the focused input and dismissing the
+// keyboard on iOS.
+const Shell = ({ children }: { children: React.ReactNode }) => (
+  <main style={{ minHeight: '100dvh', backgroundColor: '#000', padding: '32px 20px 64px' }}>
+    <div style={{ maxWidth: '520px', margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '28px' }}>
+        <Link href="/" aria-label="704 Collective">
+          <Image src="/logo.png" alt="704 Collective" width={72} height={72} style={{ borderRadius: '50%' }} priority />
+        </Link>
+      </div>
+      {children}
+      <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginTop: '32px' }}>
+        704 Collective &middot; Charlotte, NC
+      </p>
+    </div>
+  </main>
+);
+
+const EventHeader = () => (
+  <div style={{ marginBottom: '28px', textAlign: 'center' }}>
+    <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#FFFFFF', margin: '0 0 8px', lineHeight: 1.2 }}>
+      The Exchange Mixer
+    </h1>
+    <p style={{ fontSize: '0.9375rem', color: GOLD, fontWeight: 600, margin: '0 0 4px' }}>
+      Thursday, August 27 &middot; 6:30 - 8:30 PM
+    </p>
+    <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)', margin: 0 }}>
+      Beer Garden at The Village at Commonwealth
+    </p>
+    <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.35)', margin: '2px 0 0' }}>
+      1308 Lorna St, Charlotte, NC
+    </p>
+  </div>
+);
+
 export default function ExchangeIntakeForm({
   variant,
   inviteToken,
@@ -181,40 +218,6 @@ export default function ExchangeIntakeForm({
       setLoading(false);
     }
   }
-
-  // ---- shell ----
-  const Shell = ({ children }: { children: React.ReactNode }) => (
-    <main style={{ minHeight: '100dvh', backgroundColor: '#000', padding: '32px 20px 64px' }}>
-      <div style={{ maxWidth: '520px', margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '28px' }}>
-          <Link href="/" aria-label="704 Collective">
-            <Image src="/logo.png" alt="704 Collective" width={72} height={72} style={{ borderRadius: '50%' }} priority />
-          </Link>
-        </div>
-        {children}
-        <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginTop: '32px' }}>
-          704 Collective &middot; Charlotte, NC
-        </p>
-      </div>
-    </main>
-  );
-
-  const EventHeader = () => (
-    <div style={{ marginBottom: '28px', textAlign: 'center' }}>
-      <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#FFFFFF', margin: '0 0 8px', lineHeight: 1.2 }}>
-        The Exchange Mixer
-      </h1>
-      <p style={{ fontSize: '0.9375rem', color: GOLD, fontWeight: 600, margin: '0 0 4px' }}>
-        Thursday, August 27 &middot; 6:30 - 8:30 PM
-      </p>
-      <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)', margin: 0 }}>
-        Beer Garden at The Village at Commonwealth
-      </p>
-      <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.35)', margin: '2px 0 0' }}>
-        1308 Lorna St, Charlotte, NC
-      </p>
-    </div>
-  );
 
   // ---- states ----
   if (booting) {
