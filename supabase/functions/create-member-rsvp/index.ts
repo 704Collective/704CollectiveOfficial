@@ -3,6 +3,7 @@
 // service-role-bearer pattern here.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { resolvePerson } from "../_shared/resolvePerson.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,7 +55,9 @@ serve(async (req) => {
     // -- Verify active membership --
     const { data: profile, error: profileError } = await adminClient
       .from("profiles")
-      .select("id, subscription_status, membership_override, member_type, role")
+      // email, full_name and phone are here for the resolver: people.email is
+      // NOT NULL, so a mint needs them.
+      .select("id, email, full_name, phone, subscription_status, membership_override, member_type, role")
       .eq("id", memberUserId)
       .is("deleted_at", null)
       .single();
@@ -85,21 +88,22 @@ serve(async (req) => {
     }
 
     // -- Resolve the member's canonical people row --
-    // Every member has a people row (verified during the people backfill).
-    // A null result here is a hard error, not a leniency case.
-    const { data: person, error: personError } = await adminClient
-      .from("people")
-      .select("id")
-      .filter("metadata->>profile_id", "eq", memberUserId)
-      .maybeSingle();
+    // Resolver mints-or-heals; a missing people row is a fixable state, not an error.
+    const { personId, via, healed } = await resolvePerson(adminClient, {
+      authUserId: memberUserId,
+      email: profile.email,
+      profile,
+      source: "create_member_rsvp",
+      mint: true,
+    });
 
-    if (personError || !person) {
-      log("person row not found", { memberUserId, error: personError?.message });
-      return new Response(JSON.stringify({ error: "Member record not found" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    if (!personId) {
+      log("RESOLVER-NULL: person neither resolved nor minted", { memberUserId });
+      return new Response(JSON.stringify({ error: "Could not resolve member record" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const personId = person.id;
+    log("person resolved", { personId, via, healed });
 
     // -- Fetch event --
     const { data: event, error: eventError } = await adminClient
