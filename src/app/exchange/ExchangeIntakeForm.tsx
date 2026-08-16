@@ -102,6 +102,11 @@ export default function ExchangeIntakeForm({
   const [booting, setBooting] = useState(variant === 'invited');
   const [alreadyDone, setAlreadyDone] = useState(false);
   const [prefilledFromSession, setPrefilledFromSession] = useState(false);
+  // Whether we still have to ask for a phone number is decided ONCE, from the prefill
+  // snapshot, at the moment the session is read. It must never be derived from the live
+  // `phone` value: a `!phone` guard flips false on the first keystroke, which unmounts
+  // the input mid-typing, drops the iOS keyboard, and submits a one-digit phone number.
+  const [needsPhone, setNeedsPhone] = useState(false);
 
   const { user, profile, loading: authLoading } = useAuth();
 
@@ -149,6 +154,7 @@ export default function ExchangeIntakeForm({
     if (parts.length > 1) setLastName(parts.slice(1).join(' '));
     if (user.email) setEmail(user.email);
     if (profile?.phone) setPhone(profile.phone);
+    setNeedsPhone(!profile?.phone);
     setPrefilledFromSession(true);
   }, [variant, authLoading, user, profile, prefilledFromSession]);
 
@@ -358,7 +364,7 @@ export default function ExchangeIntakeForm({
             <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', margin: '0 0 4px' }}>Registering as</p>
             <p style={{ fontSize: '0.9375rem', color: '#FFFFFF', fontWeight: 600, margin: 0 }}>{firstName} {lastName}</p>
             <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', margin: '2px 0 0' }}>{email}</p>
-            {!phone && (
+            {needsPhone && (
               <div style={{ marginTop: '12px' }}>
                 <label style={labelStyle} htmlFor="phs">Phone</label>
                 <input id="phs" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required style={inputStyle} />
