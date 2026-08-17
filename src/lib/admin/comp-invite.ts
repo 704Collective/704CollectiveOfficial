@@ -76,6 +76,51 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+/**
+ * Resolution order for this module, matching supabase/functions/_shared/resolvePerson.ts:
+ *   1. people.auth_user_id            - the real column
+ *   2. people.metadata->>profile_id   - the legacy sticky note, safety net
+ *   3. people.email_lower             - pre-bridge rows, healed by the caller
+ *
+ * The shared edge-function resolver is NOT imported here on purpose: it is a Deno
+ * module whose type import is a URL specifier ("https://esm.sh/@supabase/supabase-js"),
+ * which the Next build cannot resolve, and tsconfig excludes supabase/ from the app's
+ * program entirely. The frontend resolver in src/lib/identity is no good either - it is
+ * bound to the browser client singleton and is read-only by design. So this file
+ * replicates the order and the born-linked insert instead of sharing code, and the
+ * bridge step below writes the auth_user_id column directly.
+ */
+async function locatePersonRow(
+  admin: SupabaseClient,
+  opts: { authUserId?: string | null; email: string; columns: string },
+): Promise<{ row: Record<string, unknown>; via: 'auth_column' | 'bridge' | 'email' } | null> {
+  if (opts.authUserId) {
+    const { data: byColumn } = await admin
+      .from('people')
+      .select(opts.columns)
+      .eq('auth_user_id', opts.authUserId)
+      .maybeSingle();
+    // The select list is a runtime string, so PostgREST cannot type the row here.
+    if (byColumn) return { row: byColumn as unknown as Record<string, unknown>, via: 'auth_column' };
+
+    const { data: byBridge } = await admin
+      .from('people')
+      .select(opts.columns)
+      .filter('metadata->>profile_id', 'eq', opts.authUserId)
+      .maybeSingle();
+    if (byBridge) return { row: byBridge as unknown as Record<string, unknown>, via: 'bridge' };
+  }
+
+  const { data: byEmail } = await admin
+    .from('people')
+    .select(opts.columns)
+    .eq('email_lower', opts.email)
+    .maybeSingle();
+  if (byEmail) return { row: byEmail as unknown as Record<string, unknown>, via: 'email' };
+
+  return null;
+}
+
 /** Resolve auth.users id by email without creating anything. */
 export async function findAuthUserIdByEmail(
   admin: SupabaseClient,
@@ -184,13 +229,22 @@ export async function precheckCompInvite(
     .select('id, email, full_name, is_active, referral_code, profile_id, type')
     .eq('email', email);
 
-  const { data: peopleRow } = await admin
-    .from('people')
-    .select('*')
-    .eq('email_lower', email)
-    .maybeSingle();
+  // Full resolution, not a bare email match: the profile in hand IS the auth user
+  // id, so the precheck sees the same row the invite will act on.
+  const located = await locatePersonRow(admin, {
+    authUserId: profile?.id ?? null,
+    email,
+    columns: '*',
+  });
+  const peopleRow = located?.row ?? null;
 
   const flags = knownInviteeFlags(email);
+  if (located) {
+    flags.push(`people row resolved via ${located.via}`);
+    if (located.via === 'email' && profile?.id) {
+      flags.push('people row is not linked to the profile yet - invite will link it');
+    }
+  }
   const ambassadors = (ambassadorRows ?? []) as CompInvitePrecheck['ambassadors'];
   const contacts = (contactRows ?? []) as Array<Record<string, unknown>>;
 
@@ -253,11 +307,16 @@ async function syncPeopleBestEffort(
 ): Promise<string | null> {
   try {
     // email_lower is a generated column — never write it (lookup via email_lower is fine).
-    const { data: existingPerson } = await admin
-      .from('people')
-      .select('id, roles, metadata, joined_at, phone')
-      .eq('email_lower', opts.email)
-      .maybeSingle();
+    // Resolution is the full order: the comp invite always holds the auth user id, so
+    // an already-linked row is found by its column and never by a lucky email match.
+    const located = await locatePersonRow(admin, {
+      authUserId: opts.userId,
+      email: opts.email,
+      columns: 'id, roles, metadata, joined_at, phone, auth_user_id',
+    });
+    const existingPerson = located?.row as
+      | { id: string; roles: string[] | null; metadata: unknown; joined_at: string | null; phone: string | null; auth_user_id: string | null }
+      | undefined;
 
     if (existingPerson) {
       const prevRoles = Array.isArray(existingPerson.roles) ? [...existingPerson.roles] : [];
@@ -281,16 +340,23 @@ async function syncPeopleBestEffort(
       };
       if (opts.phone?.trim()) updates.phone = opts.phone.trim();
       if (!existingPerson.joined_at) updates.joined_at = new Date().toISOString();
+      // A row reached by email is not linked yet. Writing the column is the heal;
+      // the mirror trigger keeps metadata.profile_id in step, which the update above
+      // also sets explicitly, exactly as this function always has.
+      if (!existingPerson.auth_user_id) updates.auth_user_id = opts.userId;
 
       const { error } = await admin.from('people').update(updates).eq('id', existingPerson.id);
       if (error) return `people sync update failed: ${error.message}`;
       return null;
     }
 
+    // Born linked: auth_user_id is set in the insert itself, so this row is never
+    // an orphan waiting on a backfill. metadata keeps the same keys as before.
     const { error } = await admin.from('people').insert({
       email: opts.email,
       full_name: opts.fullName,
       ...(opts.phone?.trim() ? { phone: opts.phone.trim() } : {}),
+      auth_user_id: opts.userId,
       roles: ['member'],
       member_tier: opts.memberType,
       member_status: 'active',

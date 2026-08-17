@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { resolvePerson } from "../_shared/resolvePerson.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -150,50 +151,72 @@ serve(async (req) => {
             log("Profile upsert error", { email, error: profileErr.message });
           }
 
-          // Also create a people row (new canonical schema) - link via metadata.profile_id.
-          // Best-effort - admin import must not fail if people insert errors.
+          // The people row goes through the shared resolver, so an import agrees with
+          // every other door about identity. The profile was just written above and is
+          // an active override member, so a minted row comes out a member with the
+          // right tier and auth_user_id set from birth, and a pre-existing row found by
+          // email is adopted (mirror fills metadata.profile_id) instead of being
+          // relinked by hand. Two queries per member at worst, inside the existing
+          // BATCH_SIZE loop - nothing here fans out per row.
+          // Best-effort - admin import must not fail if the people write errors.
           try {
-            const { data: existingPerson } = await adminClient
-              .from("people")
-              .select("id, roles")
-              .eq("email_lower", email)
-              .maybeSingle();
+            const { personId, via } = await resolvePerson(adminClient, {
+              authUserId: newUserId,
+              email,
+              profile: {
+                id: newUserId,
+                email,
+                full_name: fullName,
+                phone: member.phone ? String(member.phone).trim() : null,
+                member_type: membershipTier || "social",
+                subscription_status: "active",
+                membership_override: true,
+              },
+              nameHint: fullName,
+              ...(member.phone ? { phoneHint: String(member.phone).trim() } : {}),
+              source: "import_members",
+              mint: true,
+            });
 
-            if (existingPerson) {
-              // Upgrade existing row: ensure member role + active status + profile link
-              const newRoles: string[] = Array.isArray(existingPerson.roles) ? [...existingPerson.roles] : [];
-              if (!newRoles.includes("member")) newRoles.push("member");
-              await adminClient
+            if (!personId) {
+              log("People row resolution FAILED (non-blocking)", { email });
+            } else {
+              // The import-specific stamps the resolver does not own. roles, tier and
+              // status are already correct for a minted or healed member; this carries
+              // the comp semantics (override_paying), the display name and phone the
+              // CSV supplied, and joined_at - the same fields this function always set.
+              // metadata is merged rather than replaced, so nothing that was already on
+              // the row is thrown away for the sake of restamping the source.
+              const { data: current } = await adminClient
+                .from("people")
+                .select("roles, metadata, joined_at")
+                .eq("id", personId)
+                .maybeSingle();
+              const roles: string[] = Array.isArray(current?.roles) ? [...current.roles] : [];
+              if (!roles.includes("member")) roles.push("member");
+              const prevMeta =
+                current?.metadata && typeof current.metadata === "object"
+                  ? (current.metadata as Record<string, unknown>)
+                  : {};
+
+              const { error: stampErr } = await adminClient
                 .from("people")
                 .update({
                   full_name: fullName,
-                  ...(member.phone ? { phone: member.phone.trim() } : {}),
-                  roles: newRoles,
+                  ...(member.phone ? { phone: String(member.phone).trim() } : {}),
+                  roles,
                   member_tier: membershipTier || "social",
                   member_status: "active",
                   override_paying: true,
                   joined_at: new Date().toISOString(),
-                  metadata: { profile_id: newUserId, source: "import_members" },
+                  metadata: { ...prevMeta, source: "import_members", profile_id: newUserId },
                   updated_at: new Date().toISOString(),
                 })
-                .eq("id", existingPerson.id);
-            } else {
-              const { error: personInsertErr } = await adminClient
-                .from("people")
-                .insert({
-                  // email_lower is GENERATED ALWAYS from email. Never write it.
-                  email,
-                  full_name: fullName,
-                  ...(member.phone ? { phone: member.phone.trim() } : {}),
-                  roles: ["member"],
-                  member_tier: membershipTier || "social",
-                  member_status: "active",
-                  override_paying: true,
-                  joined_at: new Date().toISOString(),
-                  metadata: { profile_id: newUserId, source: "import_members" },
-                });
-              if (personInsertErr) {
-                log("People row insert FAILED (non-blocking)", { email, error: personInsertErr.message, code: (personInsertErr as { code?: string }).code });
+                .eq("id", personId);
+              if (stampErr) {
+                log("People row stamp FAILED (non-blocking)", { email, error: stampErr.message });
+              } else {
+                log("People row synced", { email, personId, via });
               }
             }
           } catch (peopleErr) {

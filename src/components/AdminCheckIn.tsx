@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import { CheckInFullScreen } from '@/components/CheckInFullScreen';
 import { supabase } from '@/integrations/supabase/client';
+import { resolvePersonId } from '@/lib/identity/resolvePerson';
 import { toast } from 'sonner';
 
 type AttendeeRow = {
@@ -139,18 +140,16 @@ export function AdminCheckIn({ adminId }: AdminCheckInProps) {
       return;
     }
 
-    // checked_in_by expects a people id; adminId is an auth user id.
+    // checked_in_by expects a people id; adminId is an auth user id. The shared
+    // resolver answers that question the same way everywhere: auth_user_id column
+    // first, the legacy metadata.profile_id sticky note only as a fallback.
     // Best-effort, same as CheckInFullScreen - check-in already recorded above.
     try {
-      const { data: adminPerson } = await supabase
-        .from('people')
-        .select('id')
-        .filter('metadata->>profile_id', 'eq', adminId)
-        .maybeSingle();
-      if (adminPerson) {
+      const { personId: adminPersonId } = await resolvePersonId(adminId);
+      if (adminPersonId) {
         await supabase
           .from('attendance_credentials')
-          .update({ checked_in_by: adminPerson.id })
+          .update({ checked_in_by: adminPersonId })
           .eq('id', attendee.id);
       }
     } catch {

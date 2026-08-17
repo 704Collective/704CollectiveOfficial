@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { resolvePerson } from '../_shared/resolvePerson.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -90,53 +91,65 @@ Deno.serve(async (req) => {
     }
 
     const changes: string[] = []
+    let peopleUpdated = false
 
-    // --- Step 3: Find or create the people row by email ---
-    let { data: peopleRow } = await supabaseAdmin
-      .from('people')
-      .select('id, member_tier, member_status, full_name, override_paying, phone, phone_e164, roles')
+    // --- Step 3: Find the profile, then the people row by full resolution ---
+    // The profile is read first because profiles.id IS the auth user id, and that
+    // is what makes real resolution possible here. Order matches the shared
+    // resolver: auth_user_id column, then the legacy metadata.profile_id sticky
+    // note, then email_lower for rows that predate the bridge.
+    let { data: existingProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('id, email, member_type, subscription_status, membership_override, phone')
       .ilike('email', normalizedEmail)
       .maybeSingle()
 
+    const PERSON_COLUMNS =
+      'id, auth_user_id, member_tier, member_status, full_name, override_paying, phone, phone_e164, roles'
+
+    let peopleRow: {
+      id: string
+      auth_user_id: string | null
+      member_tier: string | null
+      member_status: string | null
+      full_name: string | null
+      override_paying: boolean | null
+      phone: string | null
+      phone_e164: string | null
+      roles: string[] | null
+    } | null = null
+
+    if (existingProfile?.id) {
+      const { data: byColumn } = await supabaseAdmin
+        .from('people').select(PERSON_COLUMNS).eq('auth_user_id', existingProfile.id).maybeSingle()
+      peopleRow = (byColumn as typeof peopleRow) ?? null
+      if (!peopleRow) {
+        const { data: byBridge } = await supabaseAdmin
+          .from('people').select(PERSON_COLUMNS).filter('metadata->>profile_id', 'eq', existingProfile.id).maybeSingle()
+        peopleRow = (byBridge as typeof peopleRow) ?? null
+      }
+    }
+    if (!peopleRow) {
+      const { data: byEmail } = await supabaseAdmin
+        .from('people').select(PERSON_COLUMNS).eq('email_lower', normalizedEmail).maybeSingle()
+      peopleRow = (byEmail as typeof peopleRow) ?? null
+    }
+
     const priorTier = peopleRow?.member_tier ?? null
 
-    if (!peopleRow) {
-      // No people row exists — create one
-      const { data: newPerson, error: createPersonErr } = await supabaseAdmin
-        .from('people')
-        .insert({
-          // email_lower is GENERATED ALWAYS from email. Never write it.
-          email: normalizedEmail,
-          full_name: full_name ?? null,
-          member_tier: member_tier ?? null,
-          member_status: member_status ?? null,
-          override_paying: override_paying ?? false,
-          phone: phone ?? null,
-          phone_e164: normalizeE164(phone),
-          roles: member_status === 'active' ? ['member'] : [],
-          joined_at: member_status === 'active' ? new Date().toISOString() : null,
-        })
-        .select('id, member_tier, member_status')
-        .single()
-
-      if (createPersonErr) {
-        console.error('Create people row failed:', createPersonErr)
-        return new Response(JSON.stringify({ error: `Failed to create people row: ${createPersonErr.message}` }), {
-          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
-      }
-      peopleRow = { ...newPerson, full_name: full_name ?? null, override_paying: override_paying ?? false, phone: phone ?? null, phone_e164: normalizeE164(phone), roles: member_status === 'active' ? ['member'] : [] } as any
-      changes.push('created people row')
-    } else {
-      // Update existing people row
+    // An existing row is updated here, exactly as before. A missing row is NOT
+    // created yet: creation waits until the auth user exists in Step 4, so the
+    // new row can be born linked instead of needing the backfill this function
+    // used to perform afterwards.
+    if (peopleRow) {
       const peopleUpdate: Record<string, unknown> = {}
       if (member_tier !== null && member_tier !== undefined && member_tier !== peopleRow.member_tier) {
         peopleUpdate.member_tier = member_tier
-        changes.push(`tier: ${peopleRow.member_tier ?? 'null'} 胢↙ ${member_tier}`)
+        changes.push(`tier: ${peopleRow.member_tier ?? 'null'} -> ${member_tier}`)
       }
       if (member_status !== null && member_status !== undefined && member_status !== peopleRow.member_status) {
         peopleUpdate.member_status = member_status
-        changes.push(`status: ${peopleRow.member_status ?? 'null'} 胢↙ ${member_status}`)
+        changes.push(`status: ${peopleRow.member_status ?? 'null'} -> ${member_status}`)
         if (member_status === 'active' && !peopleRow.roles?.includes('member')) {
           peopleUpdate.roles = [...(peopleRow.roles ?? []), 'member']
         }
@@ -146,7 +159,7 @@ Deno.serve(async (req) => {
       }
       if (override_paying !== null && override_paying !== undefined && override_paying !== peopleRow.override_paying) {
         peopleUpdate.override_paying = override_paying
-        changes.push(`override_paying: ${peopleRow.override_paying} 胢↙ ${override_paying}`)
+        changes.push(`override_paying: ${peopleRow.override_paying} -> ${override_paying}`)
       }
       if (phone !== null && phone !== undefined && phone !== peopleRow.phone) {
         peopleUpdate.phone = phone
@@ -168,16 +181,11 @@ Deno.serve(async (req) => {
             status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           })
         }
+        peopleUpdated = true
       }
     }
 
     // --- Step 4: Find or create the auth.users + profiles rows ---
-    let { data: existingProfile } = await supabaseAdmin
-      .from('profiles')
-      .select('id, email, member_type, subscription_status, membership_override, phone')
-      .ilike('email', normalizedEmail)
-      .maybeSingle()
-
     let authUserId: string | null = existingProfile?.id ?? null
     let createdAuth = false
 
@@ -196,7 +204,7 @@ Deno.serve(async (req) => {
 
       if (createAuthErr) {
         console.error('Create auth user failed:', createAuthErr)
-        return new Response(JSON.stringify({ error: `Failed to create auth user: ${createAuthErr.message}`, partial_success: { people_updated: true, changes } }), {
+        return new Response(JSON.stringify({ error: `Failed to create auth user: ${createAuthErr.message}`, partial_success: { people_updated: peopleUpdated, changes } }), {
           status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
       }
@@ -218,7 +226,7 @@ Deno.serve(async (req) => {
     // --- Step 5: Mirror tier/status to profiles ---
     if (existingProfile && authUserId) {
       const profileUpdate: Record<string, unknown> = {}
-      // Map new schema 胢↙ old profiles columns
+      // Map new schema -> old profiles columns
       if (member_tier !== null && member_tier !== undefined) {
         profileUpdate.member_type = member_tier
       }
@@ -253,54 +261,93 @@ Deno.serve(async (req) => {
       }
     }
 
-    // --- Step 5b: Bridge the people row to the profile ---
-    // The people row is created in Step 3, before authUserId exists. Without this
-    // the row is a permanent orphan that resolvePersonId can never find, so the
-    // member's own dashboard, RSVPs and wallet pass all fail to resolve.
-    if (peopleRow?.id && authUserId) {
+    // --- Step 5b: Resolve or mint the people row through the shared resolver ---
+    // This replaces both the old hand-rolled insert and the metadata bridge that
+    // followed it. A missing row is minted here, after the auth user exists, so
+    // auth_user_id is set in the insert itself and the mirror trigger fills
+    // metadata.profile_id. An existing unlinked row is adopted by the resolver's
+    // heal. A row already owned by a DIFFERENT auth user is still never stolen.
+    let personId: string | null = peopleRow?.id ?? null
+
+    if (peopleRow && authUserId && peopleRow.auth_user_id && peopleRow.auth_user_id !== authUserId) {
+      console.error('people.auth_user_id mismatch', {
+        peopleId: peopleRow.id,
+        existing: peopleRow.auth_user_id,
+        expected: authUserId,
+      })
+      changes.push('WARNING: people row already linked to a different profile - left untouched')
+    } else if (!peopleRow || (authUserId && !peopleRow.auth_user_id)) {
       try {
-        const { data: currentPerson } = await supabaseAdmin
-          .from('people')
-          .select('metadata')
-          .eq('id', peopleRow.id)
-          .maybeSingle()
+        const wasMissing = !peopleRow
+        const { personId: resolvedId, via } = await resolvePerson(supabaseAdmin, {
+          ...(authUserId ? { authUserId } : {}),
+          email: normalizedEmail,
+          ...(authUserId
+            ? {
+                profile: {
+                  id: authUserId,
+                  email: normalizedEmail,
+                  full_name: full_name ?? existingProfile?.email ?? null,
+                  phone: phone ?? null,
+                  member_type: member_tier ?? existingProfile?.member_type ?? null,
+                  subscription_status: member_status === 'active' ? 'active' : (member_status ?? null),
+                  membership_override: override_paying ?? existingProfile?.membership_override ?? null,
+                },
+              }
+            : {}),
+          ...(full_name ? { nameHint: full_name } : {}),
+          ...(phone ? { phoneHint: phone } : {}),
+          source: 'admin_manual_membership_override',
+          mint: true,
+        })
 
-        const prevMeta =
-          currentPerson?.metadata && typeof currentPerson.metadata === 'object'
-            ? (currentPerson.metadata as Record<string, unknown>)
-            : {}
-
-        if (!prevMeta['profile_id']) {
-          const { error: bridgeErr } = await supabaseAdmin
-            .from('people')
-            .update({
-              metadata: { ...prevMeta, profile_id: authUserId, bridged_by: 'admin_manual_membership_override' },
-              updated_at: new Date().toISOString(),
+        if (!resolvedId) {
+          if (wasMissing) {
+            return new Response(JSON.stringify({ error: 'Failed to create people row: resolver returned no person id' }), {
+              status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             })
-            .eq('id', peopleRow.id)
-
-          if (bridgeErr) {
-            console.error('Bridge people to profile failed (non-fatal):', bridgeErr)
-          } else {
-            changes.push('bridged people row to profile')
           }
-        } else if (prevMeta['profile_id'] !== authUserId) {
-          // Never overwrite an existing link. Surface the mismatch instead.
-          console.error('people.metadata.profile_id mismatch', {
-            peopleId: peopleRow.id,
-            existing: prevMeta['profile_id'],
-            expected: authUserId,
-          })
-          changes.push('WARNING: people row already linked to a different profile - left untouched')
+          console.error('Resolver returned no person id for an existing row', { email: normalizedEmail })
+        } else {
+          personId = resolvedId
+          if (wasMissing) {
+            // Apply this function's own field semantics to the fresh row. The
+            // request, not the profile, is the authority on tier, status and the
+            // override flag, and a non-active create still gets no roles - the
+            // same shape the old insert produced.
+            const { error: stampErr } = await supabaseAdmin
+              .from('people')
+              .update({
+                full_name: full_name ?? null,
+                member_tier: member_tier ?? null,
+                member_status: member_status ?? null,
+                override_paying: override_paying ?? false,
+                phone: phone ?? null,
+                phone_e164: normalizeE164(phone),
+                roles: member_status === 'active' ? ['member'] : [],
+                joined_at: member_status === 'active' ? new Date().toISOString() : null,
+              })
+              .eq('id', personId)
+            if (stampErr) {
+              console.error('Create people row failed:', stampErr)
+              return new Response(JSON.stringify({ error: `Failed to create people row: ${stampErr.message}` }), {
+                status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              })
+            }
+            changes.push('created people row')
+            if (authUserId) changes.push('bridged people row to profile')
+          } else {
+            changes.push(via === 'healed' ? 'bridged people row to profile' : 'people row resolved')
+          }
         }
-      } catch (bridgeCatchErr) {
-        console.error('Bridge block threw (non-fatal):', bridgeCatchErr)
+      } catch (resolveErr) {
+        console.error('Resolver block threw (non-fatal):', resolveErr)
       }
     }
 
     // --- Step 6: Cancel business-only event credentials on demotion ---
     const wasDemoted = priorTier === 'business' && member_tier === 'social'
-    if (wasDemoted && peopleRow) {
+    if (wasDemoted && personId) {
       const { data: businessEvents } = await supabaseAdmin
         .from('events')
         .select('id')
@@ -312,7 +359,7 @@ Deno.serve(async (req) => {
         const { error: cancelErr, count } = await supabaseAdmin
           .from('attendance_credentials')
           .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
-          .eq('person_id', peopleRow.id)
+          .eq('person_id', personId)
           .in('event_id', businessEventIds)
           .in('status', ['active', 'used'])
         if (cancelErr) {
@@ -362,7 +409,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      people_id: peopleRow?.id,
+      people_id: personId ?? undefined,
       auth_user_id: authUserId,
       created_auth: createdAuth,
       changes,

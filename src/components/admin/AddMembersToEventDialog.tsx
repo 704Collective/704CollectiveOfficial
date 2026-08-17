@@ -105,16 +105,40 @@ export function AddMembersToEventDialog({
   // shape) instead of the legacy tickets table.
   const addMutation = useMutation({
     mutationFn: async (input: { profileIds?: string[]; guestEmails?: string[] }): Promise<AddResult> => {
-      // Resolve targets to { email, name }.
-      const targets: { email: string; name: string | null; isMember: boolean }[] = [];
+      // Resolve targets to { email, name }. A selected member also carries their
+      // profile id, which IS their auth user id: that is what lets a people row
+      // created here be born linked instead of needing a backfill later. The
+      // membership columns come along so a row minted for an active member is
+      // stamped a member, matching the backend resolver's promotion rule.
+      type Target = {
+        email: string;
+        name: string | null;
+        isMember: boolean;
+        profileId?: string;
+        isActiveMember?: boolean;
+        memberTier?: string;
+      };
+      const targets: Target[] = [];
       if (input.profileIds?.length) {
         const { data: profs, error: profErr } = await supabase
           .from('profiles')
-          .select('id, email, full_name')
+          .select('id, email, full_name, member_type, subscription_status, membership_override')
           .in('id', input.profileIds);
         if (profErr) throw profErr;
         for (const p of (profs || [])) {
-          if (p.email) targets.push({ email: p.email.toLowerCase(), name: p.full_name, isMember: true });
+          if (!p.email) continue;
+          const isActiveMember =
+            p.subscription_status === 'active' ||
+            p.subscription_status === 'trialing' ||
+            p.membership_override === true;
+          targets.push({
+            email: p.email.toLowerCase(),
+            name: p.full_name,
+            isMember: true,
+            profileId: p.id,
+            isActiveMember,
+            memberTier: p.member_type === 'business' ? 'business' : 'social',
+          });
         }
       }
       for (const e of (input.guestEmails || [])) {
@@ -135,11 +159,47 @@ export function AddMembersToEventDialog({
         if (key) personByEmail[key] = p.id;
       }
 
-      // Members must already have a people row - collect misses, don't fail the batch.
-      const missingMembers = targets
-        .filter((t) => t.isMember && !personByEmail[t.email])
-        .map((t) => t.email);
-
+      // A member without a people row used to be reported as a failure and skipped.
+      // Now the row is created here, BORN LINKED: auth_user_id carries the member's
+      // profile id and the mirror trigger fills metadata.profile_id, so the row is
+      // findable by the resolver from the first second of its life. Member fields
+      // follow the same rule the backend resolver uses - an actually-paying profile
+      // becomes a member row, anyone lapsed stays a guest. The source string is the
+      // one this dialog has always written; it is allowlisted in the RSVP-opening
+      // gate, so an admin add still works during a locked window.
+      const missingMembers: string[] = [];
+      const membersToCreate = targets.filter(
+        (t) => t.isMember && t.profileId && !personByEmail[t.email],
+      );
+      if (membersToCreate.length > 0) {
+        const rows = membersToCreate.map((m) => ({
+          email: m.email,
+          full_name: m.name || m.email.split('@')[0],
+          auth_user_id: m.profileId,
+          roles: m.isActiveMember ? ['member'] : ['guest'],
+          ...(m.isActiveMember
+            ? { member_tier: m.memberTier, member_status: 'active' }
+            : {}),
+          metadata: { source: 'admin_add_members_dialog' },
+        }));
+        const { data: bornLinked, error: memberCreateErr } = await supabase
+          .from('people')
+          .insert(rows)
+          .select('id, email, email_lower');
+        if (memberCreateErr) {
+          // Never fail the batch over this: report the misses exactly as before.
+          console.error('[AddMembersToEventDialog] born-linked member insert failed', memberCreateErr);
+          missingMembers.push(...membersToCreate.map((m) => m.email));
+        } else {
+          for (const p of (bornLinked || [])) {
+            const key = p.email_lower || p.email?.toLowerCase();
+            if (key) personByEmail[key] = p.id;
+          }
+          missingMembers.push(
+            ...membersToCreate.filter((m) => !personByEmail[m.email]).map((m) => m.email),
+          );
+        }
+      }
       // Pasted guests without a people row get one created first.
       const guestsToCreate = targets.filter((t) => !t.isMember && !personByEmail[t.email]);
       if (guestsToCreate.length > 0) {

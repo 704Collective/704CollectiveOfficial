@@ -226,6 +226,7 @@ export default function AdminContactDetailPage() {
         }
       }
       // Load the canonical `people` row by email for the override panel
+      // email-only by design: a contact may have no auth user
       const lookupEmail = parsed.table === 'profiles'
         ? ((await supabase.from('profiles').select('email').eq('id', parsed.id).maybeSingle()).data?.email ?? null)
         : ((await supabase.from('contacts').select('email').eq('id', parsed.id).maybeSingle()).data?.email ?? null);

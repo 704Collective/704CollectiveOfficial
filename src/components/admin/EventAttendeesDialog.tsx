@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { resolvePersonId } from '@/lib/identity/resolvePerson';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Loader2, CheckCircle2, Clock, UserCheck, Check, Trash2 } from 'lucide-react';
@@ -184,19 +185,16 @@ export function EventAttendeesDialog({
       const results = await Promise.all(updates);
       const errorCount = results.filter(r => r.error).length;
 
-      // checked_in_by expects a people id; adminId is an auth user id.
+      // checked_in_by expects a people id; adminId is an auth user id, resolved
+      // through the shared helper (auth_user_id column first, sticky note second).
       // Best-effort, mirroring CheckInFullScreen - check-ins already recorded above.
       if (adminId) {
         try {
-          const { data: adminPerson } = await supabase
-            .from('people')
-            .select('id')
-            .filter('metadata->>profile_id', 'eq', adminId)
-            .maybeSingle();
-          if (adminPerson) {
+          const { personId: adminPersonId } = await resolvePersonId(adminId);
+          if (adminPersonId) {
             await supabase
               .from('attendance_credentials')
-              .update({ checked_in_by: adminPerson.id })
+              .update({ checked_in_by: adminPersonId })
               .in('id', ids);
           }
         } catch {

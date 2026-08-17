@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
+import { resolvePersonId } from '@/lib/identity/resolvePerson';
 import { toast } from 'sonner';
 import { canAttendEvent } from '@/lib/eventEligibility';
 
@@ -358,19 +359,16 @@ export function CheckInFullScreen({
       return;
     }
 
-    // checked_in_by expects a person id. adminId is an auth user id; the
-    // people row for the admin is found via metadata.profile_id. Best-effort:
-    // if it resolves, stamp it; if not, the check-in still succeeded above.
+    // checked_in_by expects a person id. adminId is an auth user id, so the
+    // shared resolver does the lookup: auth_user_id column first, the legacy
+    // metadata.profile_id sticky note only as a fallback. Best-effort: if it
+    // resolves, stamp it; if not, the check-in still succeeded above.
     try {
-      const { data: adminPerson } = await supabase
-        .from('people')
-        .select('id')
-        .filter('metadata->>profile_id', 'eq', adminId)
-        .maybeSingle();
-      if (adminPerson) {
+      const { personId: adminPersonId } = await resolvePersonId(adminId);
+      if (adminPersonId) {
         await supabase
           .from('attendance_credentials')
-          .update({ checked_in_by: adminPerson.id })
+          .update({ checked_in_by: adminPersonId })
           .eq('id', credential.id);
       }
     } catch {
@@ -401,18 +399,15 @@ export function CheckInFullScreen({
       return;
     }
 
-    // checked_in_by expects a people id; adminId is an auth user id.
+    // checked_in_by expects a people id; adminId is an auth user id, resolved
+    // through the same shared helper as the QR path.
     // Best-effort, same as the QR path - check-in already succeeded above.
     try {
-      const { data: adminPerson } = await supabase
-        .from('people')
-        .select('id')
-        .filter('metadata->>profile_id', 'eq', adminId)
-        .maybeSingle();
-      if (adminPerson) {
+      const { personId: adminPersonId } = await resolvePersonId(adminId);
+      if (adminPersonId) {
         await supabase
           .from('attendance_credentials')
-          .update({ checked_in_by: adminPerson.id })
+          .update({ checked_in_by: adminPersonId })
           .eq('id', attendee.id);
       }
     } catch {
