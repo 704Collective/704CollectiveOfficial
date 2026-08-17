@@ -19,6 +19,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SmartDateTimePicker } from '@/components/SmartDateTimePicker';
@@ -92,6 +93,8 @@ interface Event {
   ticket_price_deprecated?: number | null;
   social_member_price_deprecated?: number | null;
   business_member_price_deprecated?: number | null;
+  // Null means RSVPs are open as soon as the event is published.
+  rsvp_opens_at?: string | null;
 }
 
 type AccessType = 'members_only' | 'public_ticketed' | 'public_free';
@@ -116,6 +119,9 @@ interface EventForm {
   description: string;
   start_time: Date | undefined;
   end_time: Date | undefined;
+  // 'immediate' writes null (open as soon as published); 'scheduled' writes the picker value.
+  rsvp_opens_mode: 'immediate' | 'scheduled';
+  rsvp_opens_at: Date | undefined;
   location_name: string;
   location_address: string;
   image_url: string;
@@ -150,6 +156,7 @@ const getDefaultEndTime = (s: Date): Date => { const e = new Date(s); e.setHours
 const getDefaultEventForm = (): EventForm => ({
   membership_tier: 'social',
   title: '', host_id: null, description: '', start_time: getDefaultStartTime(), end_time: getDefaultEndTime(getDefaultStartTime()),
+  rsvp_opens_mode: 'immediate', rsvp_opens_at: undefined,
   location_name: '', location_address: '', image_url: '', capacity: '',
   access_type: 'members_only', access_level: 'all', ticket_mode: 'none',
   public_ticket_price: '0', social_member_price: '0', business_member_price: '0',
@@ -254,10 +261,14 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   // Snapshot of the 4 notify-relevant fields captured when the edit form opens,
   // so we can detect what actually changed on save and notify RSVPs accordingly.
+  // rsvp_opens_at rides along so a bulk save can tell whether the admin actually
+  // touched the opening time this session. It is deliberately NOT part of the
+  // notify-relevant comparison below — moving an opening time emails nobody.
   const [editSnapshot, setEditSnapshot] = useState<{
     start_time: string; end_time: string | null;
     location_name: string | null; location_address: string | null;
     is_published: boolean;
+    rsvp_opens_at: string | null;
   } | null>(null);
   const [form, setForm] = useState<EventForm>(getDefaultEventForm());
   const [search, setSearch] = useState('');
@@ -437,6 +448,12 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       const newLocName = form.location_name.trim() || null;
       const newLocAddr = form.location_address.trim() || null;
       const locationChanged = !!snap && ((snap.location_name ?? null) !== newLocName || (snap.location_address ?? null) !== newLocAddr);
+      // Opening time is absent from bulkFields on purpose: copying one absolute
+      // instant onto every week would open the whole series at once. It is only
+      // written to siblings when this save actually changed it, and then it is
+      // recomputed from each sibling's own start.
+      const newOpensIso = rsvpOpensAtIso();
+      const opensChanged = !!snap && (snap.rsvp_opens_at ?? null) !== newOpensIso;
 
       const { error } = await supabase.from('events').update(eventData).eq('id', ev.id);
       if (error) throw error;
@@ -479,6 +496,14 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
               const dur = form.end_time.getTime() - form.start_time.getTime();
               sibNewEnd = new Date(sibStart.getTime() + dur).toISOString();
               updateData.end_time = sibNewEnd;
+            }
+          }
+          if (opensChanged) {
+            if (!newOpensIso || !form.start_time) {
+              updateData.rsvp_opens_at = null;
+            } else {
+              const offsetMs = form.start_time.getTime() - new Date(newOpensIso).getTime();
+              updateData.rsvp_opens_at = new Date(new Date(sibNewStart).getTime() - offsetMs).toISOString();
             }
           }
           occurrences.push({
@@ -667,6 +692,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       location_name: event.location_name ?? null,
       location_address: event.location_address ?? null,
       is_published: event.is_published ?? false,
+      rsvp_opens_at: event.rsvp_opens_at ?? null,
     });
     // Read from *_deprecated columns: that's where the dual-write puts the
     // canonical edit-form values. Bare names (event.ticket_price etc.) are
@@ -697,7 +723,10 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
     setForm({
       membership_tier: tier,
       title: event.title, host_id: event.host_id ?? null, description: event.description || '', start_time: new Date(event.start_time),
-      end_time: event.end_time ? new Date(event.end_time) : undefined, location_name: event.location_name || '',
+      end_time: event.end_time ? new Date(event.end_time) : undefined,
+      rsvp_opens_mode: event.rsvp_opens_at ? 'scheduled' : 'immediate',
+      rsvp_opens_at: event.rsvp_opens_at ? new Date(event.rsvp_opens_at) : undefined,
+      location_name: event.location_name || '',
       location_address: event.location_address || '', image_url: event.image_url || '',
       capacity: event.capacity?.toString() || '',
       access_type: accessType === 'public_free' || accessType === 'public_ticketed' ? accessType : 'members_only',
@@ -728,6 +757,12 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
     setForm(prev => ({ ...prev, start_time: d, end_time: addHours(d, 2) }));
   };
 
+  // Plain setter on purpose: the opening time must never be dragged around by
+  // the start-time handler's end-time coupling above.
+  const handleRsvpOpensAtChange = (d: Date | undefined) => {
+    setForm(prev => ({ ...prev, rsvp_opens_at: d }));
+  };
+
   const duplicate = (event: Event) => {
     const pub = event.ticket_price ? (event.ticket_price / 100).toString() : '0';
     const soc = event.social_member_price != null ? (event.social_member_price / 100).toString() : '0';
@@ -744,7 +779,10 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
     setForm({
       membership_tier: tier,
       title: event.title, host_id: event.host_id ?? null, description: event.description || '', start_time: getDefaultStartTime(),
-      end_time: getDefaultEndTime(getDefaultStartTime()), location_name: event.location_name || '',
+      end_time: getDefaultEndTime(getDefaultStartTime()),
+      // The date resets to today, so a copied opening time would be meaningless.
+      rsvp_opens_mode: 'immediate', rsvp_opens_at: undefined,
+      location_name: event.location_name || '',
       location_address: event.location_address || '', image_url: event.image_url || '',
       capacity: event.capacity?.toString() || '',
       access_type: accessType,
@@ -770,6 +808,14 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   };
 
   // ── Build data ───────────────────────────────────────────────────────────
+  // The single source of truth for what the opening-time column should become on
+  // this save. Immediate mode is always null, which the doors and the DB gate
+  // both read as "open".
+  const rsvpOpensAtIso = (): string | null =>
+    form.rsvp_opens_mode === 'scheduled' && form.rsvp_opens_at
+      ? form.rsvp_opens_at.toISOString()
+      : null;
+
   const buildEventData = () => {
     const pubCents = Math.round((parseFloat(form.public_ticket_price) || 0) * 100);
     const socCents = Math.round((parseFloat(form.social_member_price) || 0) * 100);
@@ -796,6 +842,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       host_id: form.host_id || null,
       start_time: form.start_time ? form.start_time.toISOString() : new Date().toISOString(),
       end_time: form.end_time ? form.end_time.toISOString() : null,
+      rsvp_opens_at: rsvpOpensAtIso(),
       location_name: form.location_name.trim() || null, location_address: form.location_address.trim() || null,
       image_url: form.image_url.trim() || null,
       capacity: form.capacity ? Math.min(Math.max(parseInt(form.capacity, 10), 0), 10000) : null,
@@ -890,6 +937,14 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const generateRecurringEvents = (baseData: any, startTime: Date, endTime: Date | undefined): any[] => {
     const result: any[] = [];
+    // Carry the OFFSET, never the absolute instant: every occurrence's RSVPs open
+    // the same distance before its own start as the first occurrence's do.
+    // Immediate mode (null) stays null on every occurrence.
+    const opensOffsetMs = baseData?.rsvp_opens_at
+      ? startTime.getTime() - new Date(baseData.rsvp_opens_at).getTime()
+      : null;
+    const opensAtFor = (occStart: Date): string | null =>
+      opensOffsetMs == null ? null : new Date(occStart.getTime() - opensOffsetMs).toISOString();
     const pattern = parseRecurrenceRule(form.recurrence_rule);
     if (!pattern) return [{ ...baseData, start_time: startTime.toISOString(), end_time: endTime?.toISOString() || null, occurrence_index: 0 }];
 
@@ -926,7 +981,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
           if (endType === 'date' && endDate && eventDate > endDate) break outer;
           if (index > 52) break outer;
           const eventEnd = duration > 0 ? new Date(eventDate.getTime() + duration) : null;
-          result.push({ ...baseData, start_time: eventDate.toISOString(), end_time: eventEnd?.toISOString() || null, occurrence_index: index });
+          result.push({ ...baseData, start_time: eventDate.toISOString(), end_time: eventEnd?.toISOString() || null, rsvp_opens_at: opensAtFor(eventDate), occurrence_index: index });
           index++;
         }
         weekStart.setDate(weekStart.getDate() + 7 * interval);
@@ -947,7 +1002,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
         if (endType === 'date' && endDate && eventDate > endDate) break;
         if (index > 52) break;
         const eventEnd = duration > 0 ? new Date(eventDate.getTime() + duration) : null;
-        result.push({ ...baseData, start_time: eventDate.toISOString(), end_time: eventEnd?.toISOString() || null, occurrence_index: index });
+        result.push({ ...baseData, start_time: eventDate.toISOString(), end_time: eventEnd?.toISOString() || null, rsvp_opens_at: opensAtFor(eventDate), occurrence_index: index });
         index++; currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; }
       }
     }
@@ -967,6 +1022,11 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
     if (!form.host_id) { toast.error('Event host is required'); return; }
     if (!form.start_time) { toast.error('Start time is required'); return; }
     if (form.end_time && form.start_time && form.end_time <= form.start_time) { toast.error('End time must be after start time'); return; }
+    if (form.rsvp_opens_mode === 'scheduled' && !form.rsvp_opens_at) { toast.error('Pick a date and time for the RSVP opening, or choose to open when published'); return; }
+    if (form.rsvp_opens_mode === 'scheduled' && form.rsvp_opens_at && form.start_time && form.rsvp_opens_at >= form.start_time) {
+      toast.error('RSVPs must open before the event starts');
+      return;
+    }
     if (form.access_type !== 'public_free') {
       const pp = parseFloat(form.public_ticket_price);
       const sp = parseFloat(form.social_member_price);
@@ -1407,6 +1467,31 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2"><Label>Start Time *</Label><SmartDateTimePicker value={form.start_time} onChange={handleStartTimeChange} /></div>
               <div className="space-y-2"><Label>End Time</Label><SmartDateTimePicker value={form.end_time} onChange={v => setForm(prev => ({ ...prev, end_time: v }))} /></div>
+            </div>
+            <div className="space-y-2">
+              <Label>RSVP opening</Label>
+              <RadioGroup
+                value={form.rsvp_opens_mode}
+                onValueChange={v => setForm(prev => ({ ...prev, rsvp_opens_mode: v as 'immediate' | 'scheduled' }))}
+                className="gap-2"
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="immediate" id="rsvp_opens_immediate" />
+                  <Label htmlFor="rsvp_opens_immediate" className="font-normal">Opens when event is published</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="scheduled" id="rsvp_opens_scheduled" />
+                  <Label htmlFor="rsvp_opens_scheduled" className="font-normal">Scheduled opening</Label>
+                </div>
+              </RadioGroup>
+              {form.rsvp_opens_mode === 'scheduled' && (
+                <div className="space-y-1.5 pt-1">
+                  <SmartDateTimePicker value={form.rsvp_opens_at} onChange={handleRsvpOpensAtChange} />
+                  <p className="text-xs text-muted-foreground">
+                    The event page stays visible before this time, but nobody can RSVP or buy a ticket until it passes.
+                  </p>
+                </div>
+              )}
             </div>
             <div className="space-y-2"><Label htmlFor="location_name">Venue Name</Label><Input id="location_name" value={form.location_name} onChange={e => setForm(prev => ({ ...prev, location_name: e.target.value }))} placeholder="e.g. Tipsy Pickle" /></div>
             <div className="space-y-2"><Label htmlFor="location_address">Address</Label><Input id="location_address" value={form.location_address} onChange={e => setForm(prev => ({ ...prev, location_address: e.target.value }))} placeholder="123 Main St, Charlotte, NC" /></div>

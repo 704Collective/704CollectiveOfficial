@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { rsvpNotOpen, rsvpOpensCopy } from "../_shared/rsvpWindow.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -44,7 +45,7 @@ serve(async (req) => {
     // columns for old events that haven't been migrated yet.
     const { data: eventData, error: eventError } = await supabaseAdmin
       .from("events")
-      .select("capacity, required_tier, price_cents, member_price_cents, ticket_price_deprecated, social_member_price_deprecated, business_member_price_deprecated, access_type_deprecated")
+      .select("capacity, required_tier, price_cents, member_price_cents, ticket_price_deprecated, social_member_price_deprecated, business_member_price_deprecated, access_type_deprecated, rsvp_opens_at")
       .eq("id", eventId)
       .single();
 
@@ -81,6 +82,18 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "This event is not ticketed - please RSVP for free." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // The money gate. Sales have not opened yet, so no Stripe session may exist:
+    // this sits above every stripe.* call on purpose, since a session created
+    // during the lock could be paid afterwards and would have to be refunded.
+    const opensAt = (eventData as any).rsvp_opens_at as string | null;
+    if (rsvpNotOpen(opensAt)) {
+      logStep("Blocked: sales not open yet", { eventId, rsvp_opens_at: opensAt });
+      return new Response(
+        JSON.stringify({ error: rsvpOpensCopy(opensAt as string), rsvp_opens_at: opensAt }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

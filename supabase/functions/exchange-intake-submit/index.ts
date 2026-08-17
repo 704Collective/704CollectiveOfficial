@@ -4,6 +4,7 @@
 // the anon key the client sends.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { rsvpNotOpen, rsvpOpensCopy } from "../_shared/rsvpWindow.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -371,12 +372,20 @@ serve(async (req) => {
     // ── Event must exist, be published, and be configured for intake ──────────
     const { data: event, error: eventErr } = await admin
       .from("events")
-      .select("id, title, start_time, end_time, location_name, location_address, is_published, capacity, intake_form_slug")
+      .select("id, title, start_time, end_time, location_name, location_address, is_published, capacity, intake_form_slug, rsvp_opens_at")
       .eq("id", eventId)
       .maybeSingle();
     if (eventErr || !event) return json({ error: "Event not found" }, 404);
     if (!event.is_published) return json({ error: "Event is not currently available" }, 403);
     if (!event.intake_form_slug) return json({ error: "This event does not use an intake form" }, 403);
+
+    // Registration has not opened yet. Above the pool caps so a locked form
+    // never consumes a seat. The invited path (PATH 1) is deliberately exempt:
+    // those members already hold a credential and are only sending answers.
+    if (rsvpNotOpen(event.rsvp_opens_at)) {
+      log("registration not open yet", { eventId, rsvp_opens_at: event.rsvp_opens_at });
+      return json({ error: rsvpOpensCopy(event.rsvp_opens_at as string), rsvp_opens_at: event.rsvp_opens_at }, 403);
+    }
 
     // ── Who is this? Email match against profiles decides everything ──────────
     const { data: profile } = await admin

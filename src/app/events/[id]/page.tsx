@@ -50,6 +50,8 @@ interface Event {
   price_cents?: number | null;
   member_price_cents?: number | null;
   intake_form_slug?: string | null;
+  // Null means RSVPs are open. A future timestamp locks every door.
+  rsvp_opens_at?: string | null;
 }
 
 export default function EventDetail() {
@@ -262,6 +264,14 @@ export default function EventDetail() {
   // Super admins can RSVP past capacity (server + DB honor an admin override).
   // Only affects CTA rendering; the attendee count display stays honest.
   const ctaAtCapacity = isAtCapacity && !isSuperAdmin;
+
+  // Scheduled RSVP opening. Null (every event that predates this) is open.
+  // Same super-admin escape as capacity: the label still tells the truth, the
+  // controls just stay usable for admins. The doors are the real authority.
+  const rsvpOpensAt = event?.rsvp_opens_at ? new Date(event.rsvp_opens_at) : null;
+  const rsvpNotOpen = rsvpOpensAt ? Date.now() < rsvpOpensAt.getTime() : false;
+  const ctaNotOpen = rsvpNotOpen && !isSuperAdmin;
+  const rsvpOpensLabel = rsvpOpensAt ? format(rsvpOpensAt, "EEEE, MMM d 'at' h:mm a") : '';
 
   const handleMemberRegister = async () => { if (!event) return; const s = await registerMemberTicket(event); if (s) { fetchTicketCount(); fetchTicketId(); } };
   const handleCancelRSVP = async () => {
@@ -697,6 +707,19 @@ export default function EventDetail() {
         <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', marginTop: '12px' }}>We{"'"}ll notify you if a spot opens.</p>
       </div>
     );
+    // RSVPs not open yet. One gate above every actionable branch — signed out,
+    // member, and non-member alike — so no path can hand out a working control.
+    // The event itself stays fully visible; only the card locks.
+    if (ctaNotOpen) return (
+      <div style={{ textAlign: 'center' }}>
+        <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#C6A664', backgroundColor: 'rgba(198,166,100,0.08)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Not Open Yet</span>
+        <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>RSVPs open {rsvpOpensLabel}</h3>
+        <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>Come back then to grab your spot.</p>
+        <Link href="/events" style={{ ...linkBtn, backgroundColor: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><Calendar style={{ width: '13px', height: '13px' }} /> Browse Other Events</span>
+        </Link>
+      </div>
+    );
     if (!user) {
     if (event.access_type === 'public_free' && useIntakeForm) return (
       <div style={{ textAlign: 'center' }}>
@@ -962,6 +985,7 @@ export default function EventDetail() {
   };
 
   const getMobileCTAText = () => {
+    if (ctaNotOpen) return `RSVPs open ${rsvpOpensLabel}`;
     if (event.access_type === 'public_free') {
       if (!user) return 'RSVP - No Account Needed';
       return ctaAtCapacity ? 'Join Waitlist' : 'RSVP';
@@ -971,6 +995,9 @@ export default function EventDetail() {
     return 'Purchase Ticket';
   };
   const handleMobileCTA = () => {
+    // Locked: the bar renders a non-actionable state, but guard the handler too so
+    // a stray tap can never reach a door.
+    if (ctaNotOpen) return;
     if (useIntakeForm) { router.push(intakeHref); return; }
     if (event.access_type === 'public_free') {
       if (!user) {
@@ -1025,6 +1052,7 @@ export default function EventDetail() {
                 {event.category && event.category !== 'other' && <CategoryBadge category={event.category as EventCategory} />}
                 {event.is_members_only && <MembersOnlyEventBadge />}
                 {isAtCapacity && <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#E57373', backgroundColor: 'rgba(229,115,115,0.06)', padding: '4px 12px', borderRadius: '100px' }}>Sold Out</span>}
+                {rsvpNotOpen && <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#C6A664', backgroundColor: 'rgba(198,166,100,0.08)', padding: '4px 12px', borderRadius: '100px' }}>RSVPs open {rsvpOpensLabel}</span>}
               </div>
 
               <h1 style={{ fontSize: 'clamp(1.75rem, 4.5vw, 2.5rem)', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: '20px' }}>{event.title}</h1>
@@ -1107,7 +1135,13 @@ export default function EventDetail() {
         {!hasTicket && !waitlistPosition && (
           <div className="mobile-sticky-cta" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40, backgroundColor: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(12px)', borderTop: '1px solid rgba(255,255,255,0.06)', padding: '14px 24px', display: 'none' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', maxWidth: '500px', margin: '0 auto' }}>
-              {isActiveMember && !canRsvp ? (
+              {ctaNotOpen ? (
+                /* Not open yet — same non-actionable pattern as the eligibility
+                   state below, so the bar stays truthful instead of tappable. */
+                <div style={{ flex: 1, padding: '14px 24px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, backgroundColor: 'rgba(198,166,100,0.08)', color: '#C6A664', border: '1px solid rgba(198,166,100,0.25)', textAlign: 'center', cursor: 'default' }}>
+                  RSVPs open {rsvpOpensLabel}
+                </div>
+              ) : isActiveMember && !canRsvp ? (
                 /* Same eligibility the desktop card enforces — ineligible members
                    get a non-actionable state instead of a working RSVP button. */
                 <div style={{ flex: 1, padding: '14px 24px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, backgroundColor: 'rgba(198,166,100,0.08)', color: '#C6A664', border: '1px solid rgba(198,166,100,0.25)', textAlign: 'center', cursor: 'default' }}>

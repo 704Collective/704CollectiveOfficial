@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { rsvpNotOpen, rsvpOpensCopy } from "../_shared/rsvpWindow.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -82,7 +83,7 @@ serve(async (req) => {
     // Verify event exists and is actually public_free
     const { data: event, error: eventErr } = await supabase
       .from("events")
-      .select("id, title, start_time, end_time, location_name, location_address, required_tier, is_published")
+      .select("id, title, start_time, end_time, location_name, location_address, required_tier, is_published, rsvp_opens_at")
       .eq("id", event_id)
       .maybeSingle();
 
@@ -106,6 +107,16 @@ serve(async (req) => {
       log("Event not published", { event_id });
       return new Response(
         JSON.stringify({ error: "Event is not currently available" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // RSVPs have not opened yet. No caller of this door can be an admin (it is
+    // the anon-key public form), so there is no bypass here.
+    if (rsvpNotOpen(event.rsvp_opens_at)) {
+      log("RSVP not open yet", { event_id, rsvp_opens_at: event.rsvp_opens_at });
+      return new Response(
+        JSON.stringify({ error: rsvpOpensCopy(event.rsvp_opens_at as string), rsvp_opens_at: event.rsvp_opens_at }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

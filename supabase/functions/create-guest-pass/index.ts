@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
+import { rsvpNotOpen, rsvpOpensCopy } from "../_shared/rsvpWindow.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -131,7 +132,7 @@ serve(async (req) => {
     // ── Fetch event details ───────────────────────────────────────────────────
     const { data: event, error: eventError } = await adminClient
       .from("events")
-      .select("id, title, start_time, end_time, location_name, location_address, allows_guest_passes, capacity")
+      .select("id, title, start_time, end_time, location_name, location_address, allows_guest_passes, capacity, rsvp_opens_at")
       .eq("id", event_id)
       .single();
 
@@ -145,6 +146,16 @@ serve(async (req) => {
     if (!isSuperAdmin && event.allows_guest_passes === false) {
       return new Response(
         JSON.stringify({ error: "This event doesn't allow guest passes." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // ── RSVPs have not opened yet ───────────────────────────────────────────
+    // Same super-admin escape as the guest-pass flag, capacity and the monthly cap.
+    if (!isSuperAdmin && rsvpNotOpen(event.rsvp_opens_at)) {
+      log("RSVP not open yet", { event_id, rsvp_opens_at: event.rsvp_opens_at });
+      return new Response(
+        JSON.stringify({ error: rsvpOpensCopy(event.rsvp_opens_at as string), rsvp_opens_at: event.rsvp_opens_at }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }

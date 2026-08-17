@@ -4,6 +4,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
+import { rsvpNotOpen, rsvpOpensCopy } from "../_shared/rsvpWindow.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -108,7 +109,7 @@ serve(async (req) => {
     // -- Fetch event --
     const { data: event, error: eventError } = await adminClient
       .from("events")
-      .select("id, capacity, is_published, required_tier")
+      .select("id, capacity, is_published, required_tier, rsvp_opens_at")
       .eq("id", event_id)
       .maybeSingle();
 
@@ -123,10 +124,22 @@ serve(async (req) => {
       });
     }
 
+    const isAdminOverride = profile.role === "admin" || profile.role === "super_admin";
+
+    // -- Opening-time gate: RSVPs have not opened yet (admins exempt, same as
+    // capacity, and the credential they insert carries the admin_override stamp
+    // the DB backstop honors). Null rsvp_opens_at is always open. --
+    if (!isAdminOverride && rsvpNotOpen(event.rsvp_opens_at)) {
+      log("rsvp not open yet", { event_id, rsvp_opens_at: event.rsvp_opens_at });
+      return new Response(
+        JSON.stringify({ error: rsvpOpensCopy(event.rsvp_opens_at as string), rsvp_opens_at: event.rsvp_opens_at }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // -- Tier gate: business events admit business members only (admins exempt) --
     // Server-side mirror of the client gate in useTicketActions; closes the
     // mobile-CTA / direct-invoke bypass that let social members RSVP.
-    const isAdminOverride = profile.role === "admin" || profile.role === "super_admin";
     if (event.required_tier === "business" && !isAdminOverride && profile.member_type !== "business") {
       log("tier gate blocked", { memberUserId, event_id, member_type: profile.member_type });
       return new Response(JSON.stringify({ error: "This event is for business members only." }), {
