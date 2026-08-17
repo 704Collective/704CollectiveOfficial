@@ -43,6 +43,12 @@ export interface ResolveOpts {
   phoneHint?: string;
   source: string;
   mint: boolean;
+  /**
+   * Extra keys merged into a MINTED row's metadata. For provenance a caller
+   * would otherwise lose, e.g. the ticket flow's acquired_via / acquisition_event_id.
+   * source and profile_id always win. Ignored on resolve and heal.
+   */
+  extraMetadata?: Record<string, unknown>;
 }
 
 export interface ResolveResult {
@@ -238,6 +244,7 @@ async function mint(
       : {}),
     ...(opts.authUserId ? { auth_user_id: opts.authUserId } : {}),
     metadata: {
+      ...(opts.extraMetadata ?? {}),
       source: opts.source,
       ...(opts.profile?.id ? { profile_id: opts.profile.id } : {}),
     },

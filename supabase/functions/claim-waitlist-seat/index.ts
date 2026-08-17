@@ -3,6 +3,7 @@
 // create-member-rsvp. Do NOT apply the cron service-role-bearer pattern here.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { resolvePerson } from "../_shared/resolvePerson.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -93,7 +94,9 @@ serve(async (req) => {
     // -- CHECK 3: active membership (mirrors create-member-rsvp) --
     const { data: profile, error: profileError } = await adminClient
       .from("profiles")
-      .select("id, subscription_status, membership_override, role")
+      // email, full_name and phone are here for the resolver: people.email is
+      // NOT NULL, so a mint needs them. member_type sets the minted tier.
+      .select("id, email, full_name, phone, member_type, subscription_status, membership_override, role")
       .eq("id", memberUserId)
       .is("deleted_at", null)
       .single();
@@ -119,19 +122,23 @@ serve(async (req) => {
 
     // -- Resolve the member's canonical people row (needed for the credential).
     // Listed as check 5 in the spec; performed here because check 4 depends on it.
-    const { data: person, error: personError } = await adminClient
-      .from("people")
-      .select("id")
-      .filter("metadata->>profile_id", "eq", memberUserId)
-      .maybeSingle();
+    // Resolver mints-or-heals: an active member holding an open claim window must
+    // never lose their seat to a missing people row.
+    const { personId, via, healed } = await resolvePerson(adminClient, {
+      authUserId: memberUserId,
+      email: profile.email,
+      profile,
+      source: "claim_waitlist_seat",
+      mint: true,
+    });
 
-    if (personError || !person) {
-      log("person row not found", { memberUserId, error: personError?.message });
+    if (!personId) {
+      log("RESOLVER-NULL: person neither resolved nor minted", { memberUserId });
       return new Response(JSON.stringify({ error: "Member record not found" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const personId = person.id;
+    log("person resolved", { personId, via, healed });
 
     // -- CHECK 4: they must not already hold an active|used member_rsvp credential --
     const { data: existingCred } = await adminClient

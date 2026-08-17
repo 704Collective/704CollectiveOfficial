@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { resolvePerson } from "../_shared/resolvePerson.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -53,7 +54,8 @@ serve(async (req) => {
     // ── Verify active membership ──────────────────────────────────────────────
     const { data: profile, error: profileError } = await adminClient
       .from("profiles")
-      .select("id, full_name, email, subscription_status, membership_override, role")
+      // phone and member_type are here for the resolver's mint path.
+      .select("id, full_name, email, phone, member_type, subscription_status, membership_override, role")
       .eq("id", inviterUserId)
       .is("deleted_at", null)
       .single();
@@ -92,13 +94,18 @@ serve(async (req) => {
 
     // Monthly guest-pass cap: 1 per member per calendar month.
     // Resolve the inviter's person row, then count guest_pass credentials this month.
-    const { data: inviterPerson } = await adminClient
-      .from("people")
-      .select("id")
-      .filter("metadata->>profile_id", "eq", inviterUserId)
-      .maybeSingle();
+    // Resolved once here and reused by the credential block further down.
+    const { personId: inviterPersonId, via: inviterVia, healed: inviterHealed } =
+      await resolvePerson(adminClient, {
+        authUserId: inviterUserId,
+        email: profile.email,
+        profile,
+        source: "create_guest_pass_inviter",
+        mint: true,
+      });
+    log("inviter resolved", { inviterPersonId, via: inviterVia, healed: inviterHealed });
 
-    if (!isSuperAdmin && inviterPerson) {
+    if (!isSuperAdmin && inviterPersonId) {
       const monthStart = new Date();
       monthStart.setUTCDate(1);
       monthStart.setUTCHours(0, 0, 0, 0);
@@ -106,7 +113,7 @@ serve(async (req) => {
       const { count: passesThisMonth } = await adminClient
         .from("attendance_credentials")
         .select("id", { count: "exact", head: true })
-        .eq("issued_by_person_id", inviterPerson.id)
+        .eq("issued_by_person_id", inviterPersonId)
         .eq("credential_type", "guest_pass")
         .in("status", ["active", "used"])
         .gte("created_at", monthStart.toISOString());
@@ -118,8 +125,8 @@ serve(async (req) => {
         );
       }
     }
-    // If inviterPerson is null, the member predates the people backfill - allow the pass
-    // (the additive block below will still create their person row).
+    // The resolver mints when nothing matches, so a rowless member no longer
+    // slips past the cap; a freshly minted row simply has no passes to count.
 
     // ── Fetch event details ───────────────────────────────────────────────────
     const { data: event, error: eventError } = await adminClient
@@ -203,18 +210,11 @@ serve(async (req) => {
     // Additive: mirror this guest pass into people + attendance_credentials.
     // Best-effort - must not break the tickets-based guest pass created above.
     try {
-      // Resolve the inviter's person id (may already be fetched above as inviterPerson).
-      let inviterPersonId: string | null = null;
-      {
-        const { data: ip } = await adminClient
-          .from("people")
-          .select("id")
-          .filter("metadata->>profile_id", "eq", inviterUserId)
-          .maybeSingle();
-        inviterPersonId = ip?.id ?? null;
-      }
+      // The inviter was already resolved above; that result is reused as the
+      // credential's issuer instead of repeating the lookup.
 
-      // Find or create the GUEST's person row by email_lower.
+      // Find or create the GUEST's person row by email_lower. Deliberately left
+      // as-is this wave: the guest side has no auth user to resolve against.
       let guestPersonId: string | null = null;
       const { data: existingGuest } = await adminClient
         .from("people")

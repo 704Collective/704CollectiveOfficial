@@ -5,6 +5,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Loader2 } from 'lucide-react';
 import { isIosDevice, downloadAppleWalletPass } from '@/lib/appleWallet';
 import { supabase } from '@/integrations/supabase/client';
+import { resolvePersonId } from '@/lib/identity/resolvePerson';
 
 interface MembershipCardProps {
   name: string;
@@ -60,14 +61,11 @@ export function MembershipCard({
     (async () => {
       setTokenLoading(true);
       try {
-        // memberId is an auth user id. Find the person row via metadata.profile_id.
-        const { data: person } = await supabase
-          .from('people')
-          .select('id')
-          .filter('metadata->>profile_id', 'eq', memberId)
-          .maybeSingle();
+        // memberId is an auth user id. The shared resolver checks the
+        // auth_user_id column first and falls back to the legacy bridge.
+        const { personId } = await resolvePersonId(memberId);
 
-        if (!person) {
+        if (!personId) {
           if (!cancelled) { setCredentialToken(null); setTokenLoading(false); }
           return;
         }
@@ -76,7 +74,7 @@ export function MembershipCard({
         const { data: cred } = await supabase
           .from('attendance_credentials')
           .select('token')
-          .eq('person_id', person.id)
+          .eq('person_id', personId)
           .eq('credential_type', 'member')
           .eq('status', 'active')
           .is('event_id', null)

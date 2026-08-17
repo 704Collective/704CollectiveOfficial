@@ -4,6 +4,7 @@
 // (name/email/phone) is resolved server-side — never trusted from the client.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { resolvePerson } from "../_shared/resolvePerson.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -75,17 +76,29 @@ serve(async (req) => {
     // ── 3. Verify caller is an RSVP'd member of this event ────────────────────
     // Resolve the caller's people.id (canonical human record) and confirm an
     // active|used member_rsvp attendance credential scoped to the event.
-    const personResult = await adminClient
-      .from("people")
-      .select("id")
-      .filter("metadata->>profile_id", "eq", user.id)
+    //
+    // The caller's profile is fetched here rather than at step 6 so the resolver
+    // can mint or heal with it; it is still read server-side and never trusted
+    // from the client. Sender identity below reads from this same row.
+    const { data: sender } = await adminClient
+      .from("profiles")
+      .select("id, email, full_name, phone, member_type, subscription_status, membership_override")
+      .eq("id", user.id)
       .maybeSingle();
 
-    const personId = personResult.data?.id;
+    const { personId, via, healed } = await resolvePerson(adminClient, {
+      authUserId: user.id,
+      email: sender?.email ?? user.email ?? undefined,
+      profile: sender ?? undefined,
+      source: "message_event_host",
+      mint: true,
+    });
+
     if (!personId) {
       log("caller has no person record", { userId: user.id });
       return json({ error: "You must RSVP to this event before messaging the host" }, 403);
     }
+    log("person resolved", { personId, via, healed });
 
     const credResult = await adminClient
       .from("attendance_credentials")
@@ -154,13 +167,7 @@ serve(async (req) => {
       return json({ error: "The host for this event is unavailable" }, 500);
     }
 
-    // ── 6. Fetch CALLER's profile server-side (never trust client identity) ───
-    const { data: sender } = await adminClient
-      .from("profiles")
-      .select("full_name, email, phone")
-      .eq("id", user.id)
-      .maybeSingle();
-
+    // ── 6. CALLER identity, from the server-side profile read at step 3 ───────
     const memberName = sender?.full_name || "A 704 Collective member";
     const memberEmail = sender?.email || user.email || "";
     const memberPhone = sender?.phone || "";

@@ -3,6 +3,7 @@
 // service-role-bearer pattern here.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { resolvePerson } from "../_shared/resolvePerson.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -59,19 +60,34 @@ serve(async (req) => {
       });
     }
 
-    const personResult = await adminClient
-      .from("people")
-      .select("id")
-      .filter("metadata->>profile_id", "eq", memberUserId)
+    // The resolver takes the profile so an email hit can heal and promote in
+    // passing. A missing profile is not fatal here: the JWT email still resolves,
+    // and this function never mints.
+    const profileResult = await adminClient
+      .from("profiles")
+      .select("id, email, full_name, phone, subscription_status, membership_override, member_type")
+      .eq("id", memberUserId)
+      .is("deleted_at", null)
       .maybeSingle();
+    const profile = profileResult.data;
 
-    if (personResult.error || !personResult.data) {
+    // mint:false on purpose. No person row means no credential to void, which is
+    // the existing not-found response, unchanged.
+    const { personId, via, healed } = await resolvePerson(adminClient, {
+      authUserId: memberUserId,
+      email: profile?.email ?? user.email ?? undefined,
+      profile: profile ?? undefined,
+      source: "void_credential",
+      mint: false,
+    });
+
+    if (!personId) {
       log("person row not found", { memberUserId });
       return new Response(JSON.stringify({ error: "Member record not found" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const personId = personResult.data.id;
+    log("person resolved", { personId, via, healed });
 
     const credResult = await adminClient
       .from("attendance_credentials")

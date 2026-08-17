@@ -6,6 +6,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { resolvePerson } from "../_shared/resolvePerson.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -101,44 +102,40 @@ serve(async (req) => {
     const capturedName = `${capturedFirst} ${capturedLast}`.trim();
     const buyerName = capturedName || session.customer_details?.name || null;
 
-    const { data: personByProfile } = userId
-      ? await supabaseClient.from("people").select("id").filter("metadata->>profile_id", "eq", userId).maybeSingle()
-      : { data: null };
+    // One resolver call covers all three buyer shapes: a logged-in member
+    // (auth column), a returning buyer we only know by email, and a brand-new
+    // anonymous buyer. Without an auth user id the resolver mints a guest with
+    // no member fields, which is exactly what a public ticket buyer is.
+    const buyerProfile = userId
+      ? (await supabaseClient
+          .from("profiles")
+          .select("id, email, full_name, phone, member_type, subscription_status, membership_override")
+          .eq("id", userId)
+          .is("deleted_at", null)
+          .maybeSingle()).data
+      : null;
 
-    let personId = personByProfile?.id ?? null;
-
-    if (!personId && buyerEmail) {
-      const { data: personByEmail } = await supabaseClient
-        .from("people")
-        .select("id")
-        .eq("email_lower", buyerEmail.toLowerCase().trim())
-        .maybeSingle();
-      personId = personByEmail?.id ?? null;
-    }
+    const { personId, via, healed } = await resolvePerson(supabaseClient, {
+      authUserId: userId ?? undefined,
+      email: buyerEmail ?? buyerProfile?.email ?? undefined,
+      profile: buyerProfile ?? undefined,
+      nameHint: buyerName ?? undefined,
+      phoneHint: capturedPhone || undefined,
+      source: "verify_ticket_payment",
+      mint: true,
+      extraMetadata: {
+        acquired_via: "public_ticket",
+        acquisition_event_id: event_id,
+        acquired_at: new Date().toISOString(),
+      },
+    });
 
     if (!personId) {
       if (!buyerEmail) throw new Error("No buyer email available to create person record");
-      const { data: newPerson, error: personErr } = await supabaseClient
-        .from("people")
-        .insert({
-          email: buyerEmail,
-          full_name: buyerName,
-          phone: capturedPhone || null,
-          roles: ["guest"],
-          metadata: {
-            source: "verify_ticket_payment",
-            acquired_via: "public_ticket",
-            acquisition_event_id: event_id,
-            acquired_at: new Date().toISOString(),
-          },
-        })
-        .select("id")
-        .single();
-      if (personErr) throw new Error(`Failed to create person: ${personErr.message}`);
-      personId = newPerson.id;
+      throw new Error("Failed to create person: resolver returned no person id");
     }
 
-    logStep("Person resolved", { personId });
+    logStep("Person resolved", { personId, via, healed });
 
     // Generate a credential token: 'C-' + 10 uppercase hex chars
     const tokenBytes = new Uint8Array(8);
