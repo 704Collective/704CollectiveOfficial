@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { resolvePerson } from "../_shared/resolvePerson.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -135,22 +136,26 @@ async function fetchRsvpEvents(
 ): Promise<Event[] | { error: string }> {
   if (!profileEmail) return [];
 
-  const { data: person, error: personErr } = await supabase
-    .from("people")
-    .select("id")
-    .eq("email_lower", profileEmail.toLowerCase())
-    .maybeSingle();
+  // Resolution goes through the shared resolver so the feed agrees with every
+  // door about who this member is. Email-only and mint:false: a calendar fetch
+  // is a read, and a member with no people row simply has no RSVPs to show.
+  //
+  // One deliberate change: the resolver logs a failed people read and returns
+  // null instead of surfacing it, so a transient error on that one query now
+  // yields an empty RSVP feed rather than a 500. The credentials and events
+  // queries below still return 500, and calendar clients refetch hourly.
+  const { personId } = await resolvePerson(supabase, {
+    email: profileEmail,
+    source: "calendar_feed",
+    mint: false,
+  });
 
-  if (personErr) {
-    console.error("Calendar people query:", personErr);
-    return { error: "Server error" };
-  }
-  if (!person) return [];
+  if (!personId) return [];
 
   const { data: credRows, error: credErr } = await supabase
     .from("attendance_credentials")
     .select("event_id")
-    .eq("person_id", person.id)
+    .eq("person_id", personId)
     .in("status", ["active", "used"]);
 
   if (credErr) {

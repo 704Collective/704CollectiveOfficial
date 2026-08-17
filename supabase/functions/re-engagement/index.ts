@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { resolvePerson } from "../_shared/resolvePerson.ts";
 
 /**
  * re-engagement - Daily cron job
@@ -117,17 +118,19 @@ serve(async (req) => {
       // Quiet check: any attendance credential in last 30 days? Canonical
       // attendance_credentials via the people email bridge, replacing the
       // legacy tickets count.
+      // Resolution goes through the shared resolver: email-only, mint:false, so a
+      // quiet-member sweep never writes an identity row it only meant to read.
       let recentRsvps = 0;
-      const { data: personRow } = await supabase
-        .from("people")
-        .select("id")
-        .eq("email_lower", email.toLowerCase())
-        .maybeSingle();
-      if (personRow) {
+      const { personId } = await resolvePerson(supabase, {
+        email: email.toLowerCase(),
+        source: "re_engagement",
+        mint: false,
+      });
+      if (personId) {
         const { count } = await supabase
           .from("attendance_credentials")
           .select("id", { count: "exact", head: true })
-          .eq("person_id", personRow.id)
+          .eq("person_id", personId)
           .in("status", ["active", "used"])
           .gte("created_at", thirtyDaysAgo);
         recentRsvps = count ?? 0;

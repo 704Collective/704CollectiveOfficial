@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { resolvePerson } from "../_shared/resolvePerson.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -61,12 +62,24 @@ serve(async (req) => {
     // people is the canonical record + a backstop member signal. Biasing
     // toward "treat as member" is the safe failure mode: worst case a real
     // member is told to log in (recoverable), vs. a member being charged.
-    const { data: person } = await supabaseAdmin
-      .from("people")
-      .select("id, member_status, override_paying")
-      .eq("email_lower", emailLower)
-      .limit(1)
-      .maybeSingle();
+    //
+    // Resolution goes through the shared resolver so this door agrees with
+    // every other one about who a person is. Email-only and mint:false: this
+    // is a pre-signup lookup and must never create or touch a row. The member
+    // signal still comes from the row itself, read back by the resolved id.
+    const { personId } = await resolvePerson(supabaseAdmin, {
+      email: emailLower,
+      source: "check_email_status",
+      mint: false,
+    });
+
+    const { data: person } = personId
+      ? await supabaseAdmin
+          .from("people")
+          .select("id, member_status, override_paying")
+          .eq("id", personId)
+          .maybeSingle()
+      : { data: null };
 
     const peopleActiveMember =
       !!person &&

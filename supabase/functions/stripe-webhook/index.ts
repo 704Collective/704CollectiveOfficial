@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { resolvePerson } from "../_shared/resolvePerson.ts";
 
 const log = (step: string, details?: unknown) => {
   const d = details ? ` - ${JSON.stringify(details)}` : "";
@@ -135,77 +136,73 @@ async function syncPersonAndCredential(
     smsConsentAt: string | null;
   }
 ) {
-  const emailLower = args.email.toLowerCase().trim();
-
-  // 1. Find existing person: by profile_id in metadata, else by email_lower.
-  let personId: string | null = null;
-  const { data: byProfile } = await supabase
-    .from("people")
-    .select("id")
-    .filter("metadata->>profile_id", "eq", args.userId)
+  // 1. Who is this? The shared resolver decides, so the heaviest writer in the
+  // system agrees with every door about identity. auth_user_id first, the legacy
+  // metadata.profile_id sticky note second, email third with adoption on the
+  // spot, mint last.
+  //
+  // The profile read is widened to email/full_name/phone because this site can
+  // mint and people.email is NOT NULL, and to member_type so a business member is
+  // never minted with a social tier. subscription_status is forced to active on
+  // purpose: this function only runs on the heels of an activation, and a profile
+  // read that lands early must not mint the new member as a guest.
+  const { data: profileRow } = await supabase
+    .from("profiles")
+    .select("id, email, full_name, phone, member_type, subscription_status, membership_override")
+    .eq("id", args.userId)
     .maybeSingle();
-  personId = byProfile?.id ?? null;
+
+  const { personId, via } = await resolvePerson(supabase, {
+    authUserId: args.userId,
+    email: args.email,
+    profile: {
+      id: args.userId,
+      email: (profileRow?.email as string | null) ?? args.email,
+      full_name: (profileRow?.full_name as string | null) ?? args.fullName,
+      phone: (profileRow?.phone as string | null) ?? args.phone,
+      member_type: (profileRow?.member_type as string | null) ?? null,
+      subscription_status: "active",
+    },
+    nameHint: args.fullName ?? undefined,
+    phoneHint: args.phone ?? undefined,
+    source: "stripe_webhook",
+    mint: true,
+  });
 
   if (!personId) {
-    const { data: byEmail } = await supabase
-      .from("people")
-      .select("id, metadata")
-      .eq("email_lower", emailLower)
-      .maybeSingle();
-    if (byEmail) {
-      personId = byEmail.id;
-      // Backfill profile_id into metadata so future lookups match directly.
-      const mergedMeta = { ...(byEmail.metadata ?? {}), profile_id: args.userId };
-      await supabase.from("people").update({ metadata: mergedMeta }).eq("id", personId);
-    }
+    log("syncPersonAndCredential: person resolution failed", { userId: args.userId });
+    return;
   }
+  log("syncPersonAndCredential: person resolved", { personId, via });
 
-  // 2. If still no person, create one.
-  if (!personId) {
-    const { data: created, error: createErr } = await supabase
-      .from("people")
-      .insert({
-        email: args.email,
-        full_name: args.fullName,
-        phone: args.phone,
-        roles: ["member"],
-        member_tier: "social",
-        member_status: args.memberStatus,
-        stripe_customer_id: args.stripeCustomerId,
-        sms_consent: args.smsConsent,
-        sms_consent_at: args.smsConsentAt,
-        joined_at: new Date().toISOString(),
-        metadata: { source: "stripe_webhook", profile_id: args.userId },
-      })
-      .select("id")
-      .single();
-    if (createErr) {
-      log("syncPersonAndCredential: person insert failed", { error: createErr.message });
-      return;
-    }
-    personId = created.id;
-    log("syncPersonAndCredential: created person", { personId });
+  // 2. The member fields this webhook owns, stamped exactly as before: the
+  // member role merged and never clobbered, status and stripe_customer_id every
+  // time, phone and SMS consent only when this checkout carried them. joined_at
+  // stays a mint-only stamp, as it was when this function did its own insert.
+  const { data: existing } = await supabase
+    .from("people")
+    .select("roles")
+    .eq("id", personId)
+    .single();
+  const roles: string[] = existing?.roles ?? [];
+  if (!roles.includes("member")) roles.push("member");
+
+  const { error: stampErr } = await supabase
+    .from("people")
+    .update({
+      roles,
+      member_status: args.memberStatus,
+      stripe_customer_id: args.stripeCustomerId,
+      ...(args.phone ? { phone: args.phone } : {}),
+      ...(args.smsConsent ? { sms_consent: true, sms_consent_at: args.smsConsentAt } : {}),
+      ...(via === "minted" ? { joined_at: new Date().toISOString() } : {}),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", personId);
+  if (stampErr) {
+    log("syncPersonAndCredential: member field stamp failed", { personId, error: stampErr.message });
   } else {
-    // 3. Person exists - update membership fields, ensure 'member' role present.
-    const { data: existing } = await supabase
-      .from("people")
-      .select("roles")
-      .eq("id", personId)
-      .single();
-    const roles: string[] = existing?.roles ?? [];
-    if (!roles.includes("member")) roles.push("member");
-    await supabase
-      .from("people")
-      .update({
-        roles,
-        member_status: args.memberStatus,
-        stripe_customer_id: args.stripeCustomerId,
-        ...(args.phone ? { phone: args.phone } : {}),
-        ...(args.smsConsent ? { sms_consent: true, sms_consent_at: args.smsConsentAt } : {}),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", personId);
-    log("syncPersonAndCredential: updated person", { personId });
+    log("syncPersonAndCredential: member fields stamped", { personId, minted: via === "minted" });
   }
 
   // 4. Ensure one active lifetime member credential (event_id NULL).
@@ -955,21 +952,25 @@ async function handleInvoicePaymentSucceeded(
     log("Profile updated to active", { userId: profile.id });
 
     // Sweep-aware: also update people.member_status to keep new-schema canonical in sync.
-    // Best-effort - never block the profile update path.
+    // Best-effort - never block the profile update path. Identity is the shared
+    // resolver's call, and mint:true means a renewal for a member who somehow has
+    // no people row now creates one instead of logging a skip forever.
     try {
-      const { data: personRow } = await supabase
-        .from("people")
-        .select("id, member_status")
-        .filter("metadata->>profile_id", "eq", profile.id)
-        .maybeSingle();
-      if (personRow) {
+      const { personId, via } = await resolvePerson(supabase, {
+        authUserId: profile.id,
+        email: profile.email ?? undefined,
+        profile,
+        source: "stripe_webhook",
+        mint: true,
+      });
+      if (personId) {
         await supabase
           .from("people")
           .update({ member_status: "active", updated_at: new Date().toISOString() })
-          .eq("id", personRow.id);
-        log("People row synced to active", { personId: personRow.id, source: "invoice.payment_succeeded" });
+          .eq("id", personId);
+        log("People row synced to active", { personId, via, source: "invoice.payment_succeeded" });
       } else {
-        log("No people row found for profile, skipping sync", { profileId: profile.id, source: "invoice.payment_succeeded" });
+        log("No people row could be resolved for profile, skipping sync", { profileId: profile.id, source: "invoice.payment_succeeded" });
       }
     } catch (syncErr) {
       log("People sync failed (non-blocking)", { error: syncErr instanceof Error ? syncErr.message : String(syncErr), source: "invoice.payment_succeeded" });
@@ -1068,19 +1069,22 @@ async function handleInvoicePaymentFailed(
       .eq("id", profile.id);
     log("Profile marked past_due", { userId: profile.id });
 
-    // Sweep-aware: also update people.member_status to past_due.
+    // Sweep-aware: also update people.member_status to past_due. Identity via the
+    // shared resolver.
     try {
-      const { data: personRow } = await supabase
-        .from("people")
-        .select("id")
-        .filter("metadata->>profile_id", "eq", profile.id)
-        .maybeSingle();
-      if (personRow) {
+      const { personId, via } = await resolvePerson(supabase, {
+        authUserId: profile.id,
+        email: profile.email ?? undefined,
+        profile,
+        source: "stripe_webhook",
+        mint: true,
+      });
+      if (personId) {
         await supabase
           .from("people")
           .update({ member_status: "past_due", updated_at: new Date().toISOString() })
-          .eq("id", personRow.id);
-        log("People row synced to past_due", { personId: personRow.id, source: "invoice.payment_failed" });
+          .eq("id", personId);
+        log("People row synced to past_due", { personId, via, source: "invoice.payment_failed" });
       }
     } catch (syncErr) {
       log("People sync failed (non-blocking)", { error: syncErr instanceof Error ? syncErr.message : String(syncErr), source: "invoice.payment_failed" });
@@ -1131,13 +1135,16 @@ async function handleSubscriptionDeleted(
     log("Subscription canceled", { userId: profile.id });
 
     // Sweep-aware: also update people.member_status to inactive + stamp canceled_at.
+    // Identity via the shared resolver.
     try {
-      const { data: personRow } = await supabase
-        .from("people")
-        .select("id")
-        .filter("metadata->>profile_id", "eq", profile.id)
-        .maybeSingle();
-      if (personRow) {
+      const { personId, via } = await resolvePerson(supabase, {
+        authUserId: profile.id,
+        email: profile.email ?? undefined,
+        profile,
+        source: "stripe_webhook",
+        mint: true,
+      });
+      if (personId) {
         await supabase
           .from("people")
           .update({
@@ -1145,8 +1152,8 @@ async function handleSubscriptionDeleted(
             canceled_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
-          .eq("id", personRow.id);
-        log("People row synced to inactive", { personId: personRow.id, source: "subscription.deleted" });
+          .eq("id", personId);
+        log("People row synced to inactive", { personId, via, source: "subscription.deleted" });
       }
     } catch (syncErr) {
       log("People sync failed (non-blocking)", { error: syncErr instanceof Error ? syncErr.message : String(syncErr), source: "subscription.deleted" });
@@ -1322,17 +1329,20 @@ async function handleSubscriptionUpdated(
       if (mappedStatus === "canceled") {
         peopleUpdates.canceled_at = new Date().toISOString();
       }
-      const { data: personRow } = await supabase
-        .from("people")
-        .select("id")
-        .filter("metadata->>profile_id", "eq", profile.id)
-        .maybeSingle();
-      if (personRow) {
+      // Identity via the shared resolver.
+      const { personId, via } = await resolvePerson(supabase, {
+        authUserId: profile.id,
+        email: profile.email ?? undefined,
+        profile,
+        source: "stripe_webhook",
+        mint: true,
+      });
+      if (personId) {
         await supabase
           .from("people")
           .update(peopleUpdates)
-          .eq("id", personRow.id);
-        log("People row synced", { personId: personRow.id, peopleStatus, source: "subscription.updated" });
+          .eq("id", personId);
+        log("People row synced", { personId, via, peopleStatus, source: "subscription.updated" });
       }
     } catch (syncErr) {
       log("People sync failed (non-blocking)", { error: syncErr instanceof Error ? syncErr.message : String(syncErr), source: "subscription.updated" });

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { rsvpNotOpen, rsvpOpensCopy } from "../_shared/rsvpWindow.ts";
+import { resolvePerson } from "../_shared/resolvePerson.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -245,9 +246,11 @@ serve(async (req) => {
       // Who is this? A member RSVPing while logged out must be recognised, or
       // they get a public_rsvp credential their own dashboard cannot see
       // (the event page looks for credential_type = 'member_rsvp').
+      // email, full_name and phone come along because this door can mint and
+      // people.email is NOT NULL.
       const { data: rsvpProfile } = await supabase
         .from("profiles")
-        .select("id, member_type, subscription_status, membership_override")
+        .select("id, email, full_name, phone, member_type, subscription_status, membership_override")
         .ilike("email", cleanEmail)
         .is("deleted_at", null)
         .maybeSingle();
@@ -259,92 +262,50 @@ serve(async (req) => {
           rsvpProfile.membership_override === true)
       );
 
-      // Find or create the person. Prefer the profile bridge, fall back to email.
-      let personId: string | null = null;
+      // One resolver for everyone. A matched profile means we are holding that
+      // member's auth user id (profiles.id IS the auth user id), so the resolver
+      // adopts a pre-bridge row found by email instead of leaving it invisible -
+      // the backfill this function used to hand-roll. An anonymous RSVP has no
+      // profile and mints a guest exactly as before.
+      const { personId, via } = await resolvePerson(supabase, {
+        ...(rsvpProfile?.id ? { authUserId: rsvpProfile.id as string } : {}),
+        email: cleanEmail,
+        ...(rsvpProfile ? { profile: rsvpProfile as { id: string; email: string } } : {}),
+        nameHint: fullName,
+        ...(cleanPhone ? { phoneHint: cleanPhone } : {}),
+        source: "capture_public_rsvp",
+        mint: true,
+      });
 
-      if (rsvpProfile?.id) {
-        const { data: bridgedPerson } = await supabase
-          .from("people")
-          .select("id, roles")
-          .filter("metadata->>profile_id", "eq", rsvpProfile.id)
-          .maybeSingle();
-        if (bridgedPerson) personId = bridgedPerson.id;
+      if (!personId) {
+        log("person resolution failed (non-fatal)", { email: cleanEmail });
       }
 
-      const { data: existingPerson } = personId
-        ? { data: null as { id: string; roles: string[] | null } | null }
-        : await supabase
-            .from("people")
-            .select("id, roles")
-            .eq("email_lower", cleanEmail)
-            .maybeSingle();
-
-      if (existingPerson) {
-        personId = existingPerson.id;
-
-        // Found by email, not by the profile bridge. If a profile exists, this
-        // row predates the bridge and is invisible to resolvePersonId. Stamp it
-        // so the member's own dashboard can find their RSVP.
-        if (rsvpProfile?.id) {
-          const { data: currentPerson } = await supabase
-            .from("people")
-            .select("metadata, roles")
-            .eq("id", personId)
-            .maybeSingle();
-          const prevMeta =
-            currentPerson?.metadata && typeof currentPerson.metadata === "object"
-              ? (currentPerson.metadata as Record<string, unknown>)
-              : {};
-          if (!prevMeta["profile_id"]) {
-            const prevRoles: string[] = Array.isArray(currentPerson?.roles) ? [...currentPerson.roles] : [];
-            const healedRoles =
-              isActiveMemberRsvp && !prevRoles.includes("member")
-                ? [...prevRoles, "member"]
-                : prevRoles;
-            const { error: bridgeErr } = await supabase
-              .from("people")
-              .update({
-                metadata: { ...prevMeta, profile_id: rsvpProfile.id },
-                ...(healedRoles.length !== prevRoles.length ? { roles: healedRoles } : {}),
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", personId);
-            if (bridgeErr) log("profile bridge backfill failed (non-fatal)", { error: bridgeErr.message });
-            else log("profile bridge backfilled", { personId, profileId: rsvpProfile.id });
-          }
-        }
-
-        // Never stamp an active member as a guest.
-        if (!isActiveMemberRsvp) {
-          const roles: string[] = existingPerson.roles ?? [];
-          if (!roles.includes("guest")) {
-            roles.push("guest");
-            await supabase.from("people").update({ roles, updated_at: new Date().toISOString() }).eq("id", personId);
-          }
-        }
-      } else if (!personId) {
-        const { data: newPerson, error: personErr } = await supabase
+      // SMS consent is captured at RSVP time and, as before, is only stamped on
+      // a row this RSVP created - never overwritten on someone's existing row.
+      if (personId && via === "minted") {
+        const { error: consentErr } = await supabase
           .from("people")
-          .insert({
-            // email_lower is GENERATED ALWAYS from email. Never write it.
-            email: cleanEmail,
-            full_name: fullName,
-            phone: cleanPhone,
-            roles: isActiveMemberRsvp ? ["member"] : ["guest"],
+          .update({
             sms_consent: sms_consent === true,
             sms_consent_at: sms_consent === true ? new Date().toISOString() : null,
-            metadata: {
-              source: "capture_public_rsvp",
-              // Link to the profile when one exists, so this row is never an orphan.
-              ...(rsvpProfile?.id ? { profile_id: rsvpProfile.id } : {}),
-            },
           })
-          .select("id")
-          .single();
-        if (personErr) {
-          log("people insert failed (non-fatal)", { error: personErr.message });
-        } else {
-          personId = newPerson.id;
+          .eq("id", personId);
+        if (consentErr) log("sms consent stamp failed (non-fatal)", { error: consentErr.message });
+      }
+
+      // Never stamp an active member as a guest. A non-member's existing row
+      // still picks up the guest role when it does not already carry one.
+      if (personId && via !== "minted" && !isActiveMemberRsvp) {
+        const { data: current } = await supabase
+          .from("people")
+          .select("roles")
+          .eq("id", personId)
+          .maybeSingle();
+        const roles: string[] = Array.isArray(current?.roles) ? [...current.roles] : [];
+        if (!roles.includes("guest")) {
+          roles.push("guest");
+          await supabase.from("people").update({ roles, updated_at: new Date().toISOString() }).eq("id", personId);
         }
       }
 

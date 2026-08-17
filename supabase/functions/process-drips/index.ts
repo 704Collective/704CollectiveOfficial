@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { resolvePerson } from "../_shared/resolvePerson.ts";
 
 /**
  * process-drips - Hourly cron job
@@ -58,15 +59,21 @@ serve(async (_req) => {
       }
 
       // SAFETY GUARD: never send a win-back/drip to a current active member.
+      // The people side of the guard resolves through the shared resolver, so a
+      // drip agrees with every door about who this email belongs to. Email-only
+      // and mint:false: a cron that emails people must never create identities.
       const emailLower = email.toLowerCase();
-      const [{ data: prof }, { data: per }] = await Promise.all([
+      const [{ data: prof }, { personId }] = await Promise.all([
         supabase.from("profiles")
           .select("subscription_status, membership_override, deleted_at")
           .ilike("email", emailLower).is("deleted_at", null).limit(1).maybeSingle(),
-        supabase.from("people")
-          .select("member_status, override_paying")
-          .eq("email_lower", emailLower).limit(1).maybeSingle(),
+        resolvePerson(supabase, { email: emailLower, source: "process_drips", mint: false }),
       ]);
+      const { data: per } = personId
+        ? await supabase.from("people")
+            .select("member_status, override_paying")
+            .eq("id", personId).maybeSingle()
+        : { data: null };
       const isActiveMember =
         (!!prof && (prof.subscription_status === "active" || prof.subscription_status === "trialing" || prof.membership_override === true)) ||
         (!!per && (per.member_status === "active" || per.override_paying === true));

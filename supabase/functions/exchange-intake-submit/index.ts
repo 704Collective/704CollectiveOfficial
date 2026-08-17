@@ -5,6 +5,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { rsvpNotOpen, rsvpOpensCopy } from "../_shared/rsvpWindow.ts";
+import { resolvePerson } from "../_shared/resolvePerson.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -234,68 +235,38 @@ serve(async (req) => {
           .maybeSingle();
 
         if (fullRow) {
-          // Resolve the person: prefer the stored person_id, then profile link, then email.
+          // Resolve the person: the stored person_id wins, everything else is
+          // the shared resolver's call.
           let healPersonId: string | null = fullRow.person_id ?? null;
 
           // Resolve the profile once and keep it - it is needed later so a
           // healed person row is linked instead of becoming a fresh orphan.
+          // email/full_name/phone come along because this path can mint and
+          // people.email is NOT NULL.
           const { data: healProfile } = await admin
             .from("profiles")
-            .select("id, member_type, subscription_status, membership_override")
+            .select("id, email, full_name, phone, member_type, subscription_status, membership_override")
             .ilike("email", fullRow.email)
             .is("deleted_at", null)
             .maybeSingle();
 
-          if (!healPersonId && healProfile?.id) {
-            const { data: linkedPerson } = await admin
-              .from("people")
-              .select("id")
-              .filter("metadata->>profile_id", "eq", healProfile.id)
-              .maybeSingle();
-            if (linkedPerson) healPersonId = linkedPerson.id;
-          }
-
           if (!healPersonId) {
-            const { data: byEmail } = await admin
-              .from("people")
-              .select("id")
-              .eq("email_lower", String(fullRow.email).toLowerCase())
-              .maybeSingle();
-            if (byEmail) healPersonId = byEmail.id;
-          }
-
-          if (!healPersonId) {
-            // An invited row belongs to an existing member, so link the person to
-            // their profile and mark them as a member, not a guest.
-            const healIsActiveMember = Boolean(
-              healProfile &&
-              (healProfile.subscription_status === "active" ||
-                healProfile.subscription_status === "trialing" ||
-                healProfile.membership_override === true)
-            );
-            const { data: madePerson, error: makePersonErr } = await admin
-              .from("people")
-              .insert({
-                // email_lower is GENERATED ALWAYS from email. Never write it.
-                email: String(fullRow.email).toLowerCase(),
-                full_name: `${fullRow.first_name} ${fullRow.last_name}`,
-                phone: fullRow.phone,
-                roles: healIsActiveMember ? ["member"] : ["guest"],
-                ...(healIsActiveMember
-                  ? {
-                      member_tier: healProfile?.member_type === "business" ? "business" : "social",
-                      member_status: "active",
-                    }
-                  : {}),
-                metadata: {
-                  source: "exchange_intake_heal",
-                  ...(healProfile?.id ? { profile_id: healProfile.id } : {}),
-                },
-              })
-              .select("id")
-              .single();
-            if (makePersonErr) log("heal: people insert failed", { error: makePersonErr.message, code: (makePersonErr as { code?: string }).code });
-            else healPersonId = madePerson.id;
+            // An invited row belongs to an existing member, so the resolver gets
+            // that member's auth user id (profiles.id IS the auth user id): a row
+            // found by email is adopted and promoted instead of staying orphaned,
+            // and a minted row comes out a member rather than a guest.
+            const { personId: resolvedHealId, via: healVia } = await resolvePerson(admin, {
+              ...(healProfile?.id ? { authUserId: healProfile.id as string } : {}),
+              email: String(fullRow.email).toLowerCase(),
+              ...(healProfile ? { profile: healProfile as { id: string; email: string } } : {}),
+              nameHint: `${fullRow.first_name} ${fullRow.last_name}`,
+              ...(fullRow.phone ? { phoneHint: fullRow.phone as string } : {}),
+              source: "exchange_intake_heal",
+              mint: true,
+            });
+            healPersonId = resolvedHealId;
+            if (!healPersonId) log("heal: person resolution failed", { intakeId: row.id });
+            else log("heal: person resolved", { intakeId: row.id, personId: healPersonId, via: healVia });
           }
 
           if (healPersonId) {
@@ -388,9 +359,11 @@ serve(async (req) => {
     }
 
     // ── Who is this? Email match against profiles decides everything ──────────
+    // email/full_name/phone come along because this path can mint and
+    // people.email is NOT NULL.
     const { data: profile } = await admin
       .from("profiles")
-      .select("id, member_type, subscription_status, membership_override, deleted_at")
+      .select("id, email, full_name, phone, member_type, subscription_status, membership_override, deleted_at")
       .ilike("email", email)
       .is("deleted_at", null)
       .maybeSingle();
@@ -443,50 +416,40 @@ serve(async (req) => {
       return json({ error: "This event is full.", full: true }, 409);
     }
 
-    // ── Person: members by profile_id, everyone else by email ─────────────────
-    let personId: string | null = null;
-    if (profile?.id) {
-      const { data: memberPerson } = await admin
-        .from("people")
-        .select("id")
-        .filter("metadata->>profile_id", "eq", profile.id)
-        .maybeSingle();
-      if (memberPerson) personId = memberPerson.id;
-    }
+    // ── Person: one resolver for members and guests alike ─────────────────────
+    // A matched profile means we are holding that member's auth user id
+    // (profiles.id IS the auth user id). That single fact fixes both of the ways
+    // this door used to go wrong: an active member minted here now comes out a
+    // member - roles including member, tier and status stamped - instead of a
+    // plain guest, and a pre-bridge row found by email is adopted (auth_user_id
+    // set, mirror fills metadata.profile_id) instead of being used unlinked.
+    const { personId, via: personVia } = await resolvePerson(admin, {
+      ...(profile?.id ? { authUserId: profile.id as string } : {}),
+      email,
+      ...(profile ? { profile: profile as { id: string; email: string } } : {}),
+      nameHint: `${firstName} ${lastName}`,
+      ...(phone ? { phoneHint: phone } : {}),
+      source: "exchange_intake",
+      mint: true,
+    });
+
     if (!personId) {
-      const { data: existingPerson } = await admin
+      log("person resolution failed", { email });
+      return json({ error: "Could not complete registration" }, 500);
+    }
+
+    // Guests keep the role top-up this door has always done: an existing row
+    // carrying neither role picks up guest. Member roles are the resolver's job.
+    if (personVia !== "minted" && !isActiveMember) {
+      const { data: currentPerson } = await admin
         .from("people")
-        .select("id, roles")
-        .eq("email_lower", email)
+        .select("roles")
+        .eq("id", personId)
         .maybeSingle();
-      if (existingPerson) {
-        personId = existingPerson.id;
-        const roles: string[] = existingPerson.roles ?? [];
-        if (!roles.includes("guest") && !roles.includes("member")) {
-          roles.push("guest");
-          await admin.from("people").update({ roles, updated_at: nowIso }).eq("id", personId);
-        }
-      } else {
-        const { data: newPerson, error: personErr } = await admin
-          .from("people")
-          .insert({
-            // email_lower is GENERATED ALWAYS from email. Never write it.
-            email,
-            full_name: `${firstName} ${lastName}`,
-            phone,
-            roles: ["guest"],
-            metadata: {
-              source: "exchange_intake",
-              ...(profile?.id ? { profile_id: profile.id } : {}),
-            },
-          })
-          .select("id")
-          .single();
-        if (personErr) {
-          log("people insert failed", { error: personErr.message, code: (personErr as { code?: string }).code, details: (personErr as { details?: string }).details });
-          return json({ error: "Could not complete registration" }, 500);
-        }
-        personId = newPerson.id;
+      const roles: string[] = Array.isArray(currentPerson?.roles) ? [...currentPerson.roles] : [];
+      if (!roles.includes("guest") && !roles.includes("member")) {
+        roles.push("guest");
+        await admin.from("people").update({ roles, updated_at: nowIso }).eq("id", personId);
       }
     }
 
