@@ -571,6 +571,7 @@ export function MessagingView({ initialDirectPeerId }: { initialDirectPeerId?: s
           .neq('id', user?.id ?? '')
           .in('role', ['admin', 'super_admin', 'lead'])
           .or('member_type.eq.business,role.eq.admin,role.eq.super_admin')
+          .eq('is_internal', false)
           .limit(8);
         setMemberResults((data ?? []) as MemberSearchResult[]);
       } finally {

@@ -112,6 +112,7 @@ export default function MemberProfilePage() {
           .select('id, full_name, avatar_url, role, member_type, title, company, industry, phone, email, linkedin_url, website_url, member_since, subscription_status, membership_override')
           .eq('id', id)
           .is('deleted_at', null)
+          .eq('is_internal', false)
           .single(),
         supabase
           .from('business_cards')

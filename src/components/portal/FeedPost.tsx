@@ -125,6 +125,7 @@ function MentionTextarea({
       .select('id, full_name, avatar_url')
       .ilike('full_name', `%${query}%`)
       .is('deleted_at', null)
+      .eq('is_internal', false)
       .limit(6);
     setSuggestions((data as MentionSuggestion[]) ?? []);
     setShowSuggestions(true);

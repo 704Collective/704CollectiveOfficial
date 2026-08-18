@@ -167,6 +167,7 @@ export function MemberDirectory() {
         .select('id, full_name, avatar_url, role, member_type, title, company, member_since, is_founding_member')
         .or('member_type.eq.business,role.eq.admin,role.eq.super_admin')
         .is('deleted_at', null)
+        .eq('is_internal', false)
         .order('full_name', { ascending: true });
       const memberIds = (data ?? []).map((m) => m.id);
       let hubMap = new Map<string, string[]>();
