@@ -896,7 +896,6 @@ export default function AdminContactDetailPage() {
                           <SelectContent>
                             <SelectItem value="__none">(unset)</SelectItem>
                             <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="inactive">Inactive</SelectItem>
                             <SelectItem value="canceled">Canceled</SelectItem>
                           </SelectContent>
                         </Select>

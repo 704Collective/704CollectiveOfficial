@@ -77,7 +77,8 @@ Deno.serve(async (req) => {
 
     const normalizedEmail = email.trim().toLowerCase()
     const validTiers = ['social', 'business', 'founder']
-    const validStatuses = ['active', 'inactive', 'canceled']
+    // past_due is deliberately absent: Stripe owns it, an admin never sets it by hand.
+    const validStatuses = ['active', 'canceled']
 
     if (member_tier !== null && member_tier !== undefined && !validTiers.includes(member_tier)) {
       return new Response(JSON.stringify({ error: `Invalid member_tier: ${member_tier}` }), {

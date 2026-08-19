@@ -1134,8 +1134,10 @@ async function handleSubscriptionDeleted(
       .eq("id", profile.id);
     log("Subscription canceled", { userId: profile.id });
 
-    // Sweep-aware: also update people.member_status to inactive + stamp canceled_at.
-    // Identity via the shared resolver.
+    // Sweep-aware: also update people.member_status to canceled + stamp canceled_at.
+    // Identity via the shared resolver. 'canceled' is the word for a membership that
+    // ended; 'inactive' used to be written here and meant the same thing, which left
+    // it indistinguishable from the never-was rows the old backfills produced.
     try {
       const { personId, via } = await resolvePerson(supabase, {
         authUserId: profile.id,
@@ -1148,12 +1150,12 @@ async function handleSubscriptionDeleted(
         await supabase
           .from("people")
           .update({
-            member_status: "inactive",
+            member_status: "canceled",
             canceled_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
           .eq("id", personId);
-        log("People row synced to inactive", { personId, via, source: "subscription.deleted" });
+        log("People row synced to canceled", { personId, via, source: "subscription.deleted" });
       }
     } catch (syncErr) {
       log("People sync failed (non-blocking)", { error: syncErr instanceof Error ? syncErr.message : String(syncErr), source: "subscription.deleted" });
@@ -1318,10 +1320,11 @@ async function handleSubscriptionUpdated(
     await supabase.from("profiles").update(updates).eq("id", profile.id);
     log("Subscription status synced", { userId: profile.id, status: mappedStatus });
 
-    // Sweep-aware: also update people.member_status with the mapped status.
-    // Map past_due/canceled/active to people-side values.
+    // Sweep-aware: also update people.member_status with the mapped status. The two
+    // sides use the same words, so the mapped status passes straight through:
+    // active/past_due/canceled all mean on people exactly what they mean on profiles.
     try {
-      const peopleStatus = mappedStatus === "canceled" ? "inactive" : mappedStatus;
+      const peopleStatus = mappedStatus;
       const peopleUpdates: Record<string, unknown> = {
         member_status: peopleStatus,
         updated_at: new Date().toISOString(),
