@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { X } from 'lucide-react';
-import { loadRounds, currentRound, type MixerRound, type MixerSeat } from '@/lib/admin/exchange-mixer';
+import { loadRounds, currentRound, seatDisplayName, type MixerRound, type MixerSeat } from '@/lib/admin/exchange-mixer';
 
 // The board is what the room looks at. It renders as a full-viewport overlay so
 // it covers the admin chrome without needing a route outside the admin gate.
@@ -90,7 +90,7 @@ function BoardInner() {
               <h2 className="mb-2 text-xl font-bold text-[#C6A664] sm:mb-3 sm:text-3xl">Table {num}</h2>
               <ul className="space-y-1 sm:space-y-2">
                 {list.map((s) => (
-                  <li key={s.id} className="text-lg leading-tight sm:text-2xl">{s.display_name}</li>
+                  <li key={s.id} className="text-lg leading-tight sm:text-2xl">{seatDisplayName(s.display_name)}</li>
                 ))}
               </ul>
             </section>

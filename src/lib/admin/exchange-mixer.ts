@@ -151,6 +151,23 @@ export function eligibleRoster(
     .sort((a, b) => (a.checkedInAt ?? '').localeCompare(b.checkedInAt ?? ''));
 }
 
+/**
+ * A seat label fit for the wall.
+ *
+ * A registrant with no name anywhere falls back to their email address, which
+ * wraps onto two lines on a phone and reads badly across a room. Only the part
+ * before the @ goes up. Anything containing whitespace is a real name and is
+ * left alone.
+ */
+export function seatDisplayName(raw: string | null | undefined): string {
+  const v = (raw ?? '').trim();
+  if (!v) return 'Guest';
+  if (/\s/.test(v)) return v;
+  const at = v.indexOf('@');
+  if (at <= 0) return v;
+  return v.slice(0, at).trim() || 'Guest';
+}
+
 export const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
 /** Who has already sat with whom, counted from COMPLETED rounds only. A mix that

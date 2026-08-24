@@ -13,7 +13,7 @@ import {
   loadMixerConfig, saveMixerConfig, loadOverrides, setOverride, loadRounds,
   eligibleRoster, buildPairHistory, proposeMix, createPendingRound,
   discardRound, startRound, endRound, setRoundDuration,
-  currentRound, nextRoundNumber, DEFAULT_CONFIG,
+  currentRound, nextRoundNumber, seatDisplayName, DEFAULT_CONFIG,
   type MixerConfig, type MixerRound, type MixerSeat, type MixProposal,
 } from '@/lib/admin/exchange-mixer';
 import { Button } from '@/components/ui/button';
@@ -149,6 +149,15 @@ function MixerPageInner() {
     }
     return n;
   }, [live, liveTables, rounds, seats]);
+
+  // Who the table plan left standing. Derived from the seats actually written
+  // rather than from the proposal, so it survives a reload and stays true when
+  // somebody checks in after the mix.
+  const unseated = useMemo(() => {
+    if (!live) return [];
+    const seated = new Set(liveSeats.map((s) => s.credential_id));
+    return seatedRoster.filter((c) => !seated.has(c.credentialId));
+  }, [live, liveSeats, seatedRoster]);
 
   const remaining = active?.started_at
     ? active.duration_seconds - Math.floor((now - new Date(active.started_at).getTime()) / 1000)
@@ -296,6 +305,19 @@ function MixerPageInner() {
           </div>
         )}
 
+        {live && unseated.length > 0 && (
+          <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-300"
+            data-testid="unseated-banner">
+            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+            <div className="min-w-0">
+              <p className="font-medium">Unseated this round ({unseated.length})</p>
+              <p className="mt-0.5 break-words text-amber-300/90" data-testid="unseated-names">
+                {unseated.map((c) => seatDisplayName(c.name)).join(', ')}
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           {!active && !pending && (
             <Button className="gap-2 h-12 text-base" disabled={busy} data-testid="btn-mix" onClick={() => doMix(null)}>
@@ -376,7 +398,7 @@ function MixerPageInner() {
             return (
               <div key={r.credentialId} className="flex items-center justify-between gap-3 p-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{r.name || r.email}</p>
+                  <p className="text-sm font-medium text-foreground truncate">{seatDisplayName(r.name || r.email)}</p>
                   <p className="text-xs text-muted-foreground truncate">
                     {hangOnly ? 'Hang only' : 'Mixer'} - {r.memberStatus}
                   </p>
@@ -408,7 +430,7 @@ function MixerPageInner() {
                 <p className="text-xs uppercase tracking-wider text-muted-foreground/70 mb-1">Table {num}</p>
                 <ul className="space-y-0.5">
                   {list.map((s) => (
-                    <li key={s.id} className="text-sm text-foreground">{s.display_name}</li>
+                    <li key={s.id} className="text-sm text-foreground">{seatDisplayName(s.display_name)}</li>
                   ))}
                 </ul>
               </div>
