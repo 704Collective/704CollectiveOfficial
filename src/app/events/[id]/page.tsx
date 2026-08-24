@@ -24,6 +24,7 @@ import { AddToCalendarButtons } from '@/components/AddToCalendarButtons';
 import { WaitlistBadge } from '@/components/WaitlistBadge';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import { resolvePersonId } from '@/lib/resolvePersonId';
+import { captureExchangeUtm, readExchangeUtm } from '@/lib/exchangeUtm';
 
 interface Event {
   id: string;
@@ -106,6 +107,9 @@ export default function EventDetail() {
       setClaimParam(new URLSearchParams(window.location.search).get('claim') === '1');
     }
   }, []);
+  // Ad attribution: an ad can land on this page rather than straight on a form.
+  // Stored on mount so it survives the trip through signup, login and the form.
+  useEffect(() => { captureExchangeUtm(); }, []);
   useEffect(() => { if (id) fetchEvent(); }, [id]);
   useEffect(() => { if (user && id) { fetchTicketId(); checkWaitlistStatus(); } }, [user, id]);
   useEffect(() => { if (id) fetchTicketCount(); }, [id]);
@@ -308,8 +312,9 @@ export default function EventDetail() {
       // Member RSVP now goes through the create-member-rsvp edge function,
       // which creates a member_rsvp attendance_credential. invoke() attaches
       // the logged-in user's JWT automatically.
+      const utm = readExchangeUtm();
       const { data, error } = await supabase.functions.invoke('create-member-rsvp', {
-        body: { event_id: event.id },
+        body: { event_id: event.id, ...(utm ? { utm } : {}) },
       });
 
       if (error) {

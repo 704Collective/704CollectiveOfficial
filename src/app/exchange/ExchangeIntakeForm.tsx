@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
+import { captureExchangeUtm, readExchangeUtm } from '@/lib/exchangeUtm';
 
 const EVENT_ID = process.env.NEXT_PUBLIC_EXCHANGE_EVENT_ID || '';
 const GOLD = '#C6A664';
@@ -119,6 +120,12 @@ export default function ExchangeIntakeForm({
     Authorization: `Bearer ${anonKey}`,
   }), [anonKey]);
 
+  // Ad attribution. Captured on mount for the direct-to-form ad click, then read
+  // again at submit time. Deliberately not held in state: this component remounts
+  // its inputs on any state-shape change, and a re-render mid-typing is what
+  // dropped the iOS keyboard before.
+  useEffect(() => { captureExchangeUtm(); }, []);
+
   // Invited: prefill from the token
   useEffect(() => {
     if (variant !== 'invited' || !inviteToken) return;
@@ -204,6 +211,11 @@ export default function ExchangeIntakeForm({
       body.q_years_charlotte = yearsCharlotte.trim();
       body.q_seeking = seeking.trim();
     }
+
+    // Whatever ad brought them here, from this page load or an earlier one in
+    // the same tab. Omitted entirely when there is nothing to report.
+    const utm = readExchangeUtm();
+    if (utm) body.utm = utm;
 
     setLoading(true);
     try {

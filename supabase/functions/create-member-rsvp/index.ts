@@ -18,6 +18,22 @@ const log = (step: string, details?: unknown) => {
   console.log(`[CREATE-MEMBER-RSVP] ${step}${d}`);
 };
 
+/** Ad attribution. Strings of 200 chars or fewer only; anything else is dropped
+ *  rather than rejected, so a mangled ad URL never costs a member their RSVP. */
+function sanitizeUtm(raw: unknown): Record<string, string> | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const src = raw as Record<string, unknown>;
+  const out: Record<string, string> = {};
+  for (const field of ["utm_source", "utm_medium", "utm_campaign", "utm_content"]) {
+    const v = src[field];
+    if (typeof v === "string") {
+      const trimmed = v.trim();
+      if (trimmed && trimmed.length <= 200) out[field] = trimmed;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -81,7 +97,7 @@ serve(async (req) => {
     }
 
     // -- Parse body --
-    const { event_id } = await req.json() as { event_id?: string };
+    const { event_id, utm } = await req.json() as { event_id?: string; utm?: unknown };
     if (!event_id) {
       return new Response(JSON.stringify({ error: "event_id is required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -201,6 +217,10 @@ serve(async (req) => {
       credMetadata.admin_override = "true";
       credMetadata.issued_via_admin_override = true;
     }
+    // Ad attribution, additive and optional: no schema needed, and a member RSVP
+    // with nothing to report carries exactly the metadata it always has.
+    const cleanUtm = sanitizeUtm(utm);
+    if (cleanUtm) credMetadata.utm = cleanUtm;
 
     const { data: cred, error: credError } = await adminClient
       .from("attendance_credentials")

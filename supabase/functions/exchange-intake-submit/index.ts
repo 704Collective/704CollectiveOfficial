@@ -70,6 +70,29 @@ function json(body: unknown, status = 200) {
   });
 }
 
+/** Ad attribution. Each field must be a string of 200 chars or fewer; anything
+ *  else is stripped rather than rejected, so a mangled ad URL can never cost us
+ *  a registration. Returns null when there is nothing worth writing. */
+function sanitizeUtm(raw: unknown): Record<string, string | null> | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const src = raw as Record<string, unknown>;
+  const out: Record<string, string | null> = {};
+  let any = false;
+  for (const field of ["utm_source", "utm_medium", "utm_campaign", "utm_content"]) {
+    const v = src[field];
+    if (typeof v === "string") {
+      const trimmed = v.trim();
+      if (trimmed && trimmed.length <= 200) {
+        out[field] = trimmed;
+        any = true;
+        continue;
+      }
+    }
+    out[field] = null;
+  }
+  return any ? out : null;
+}
+
 function makeToken(prefix: string) {
   const bytes = new Uint8Array(8);
   crypto.getRandomValues(bytes);
@@ -167,7 +190,12 @@ serve(async (req) => {
       q_years_charlotte?: string;
       q_seeking?: string;
       origin?: string;
+      utm?: unknown;
     };
+
+    // Absent or unusable = nulls. Present values are only ever added, never used
+    // to blank a set already recorded against an existing row.
+    const utm = sanitizeUtm(body.utm);
 
     const formVariant = (body.form_variant ?? "").trim();
     if (!["commonwealth", "public", "invited"].includes(formVariant)) {
@@ -210,6 +238,7 @@ serve(async (req) => {
         .from("exchange_intake")
         .update({
           ...answers,
+          ...(utm ?? {}),
           participation: "business_and_social",
           status: "submitted",
           submitted_at: nowIso,
@@ -561,6 +590,9 @@ serve(async (req) => {
       ...(participation === "business_and_social" ? answers : {
         q_role_title: null, q_company: null, q_years_charlotte: null, q_seeking: null,
       }),
+      // Spread only when present: on an insert the four columns simply stay null,
+      // and on the re-submit update path an earlier attribution is left intact.
+      ...(utm ?? {}),
       ip_address: ipAddress,
       user_agent: userAgent,
       submitted_at: nowIso,
