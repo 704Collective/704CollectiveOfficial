@@ -414,10 +414,14 @@ serve(async (req) => {
     // Members always count against the house pool, even on the resident link.
     const pool = memberStatus === "non_member" && formVariant === "commonwealth" ? "commonwealth" : "house";
 
-    // social_only is legal only for a NON-MEMBER on the commonwealth form.
-    // Member status wins over the commonwealth fork (locked decision).
+    // social_only is legal in exactly two places: a NON-MEMBER on the commonwealth
+    // form, and an active SOCIAL member on the public form. Business members are
+    // never offered it, and no other variant qualifies. Anything else asking for
+    // social_only is silently resolved to business_and_social, as before.
     const requestedSocialOnly = body.participation === "social_only";
-    const socialOnlyAllowed = formVariant === "commonwealth" && memberStatus === "non_member";
+    const socialOnlyAllowed =
+      (formVariant === "commonwealth" && memberStatus === "non_member") ||
+      (formVariant === "public" && memberStatus === "social_member");
     const participation = requestedSocialOnly && socialOnlyAllowed ? "social_only" : "business_and_social";
 
     // Business members skip the questions entirely. Everyone else doing the

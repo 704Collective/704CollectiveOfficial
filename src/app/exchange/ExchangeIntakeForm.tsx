@@ -108,8 +108,11 @@ export default function ExchangeIntakeForm({
   // `phone` value: a `!phone` guard flips false on the first keystroke, which unmounts
   // the input mid-typing, drops the iOS keyboard, and submits a one-digit phone number.
   const [needsPhone, setNeedsPhone] = useState(false);
+  // Social members on the public form get the same participation choice residents get.
+  // Snapshotted once alongside needsPhone, for the same remount reason.
+  const [canChooseSocialOnly, setCanChooseSocialOnly] = useState(false);
 
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading, isActiveMember, isBusinessMember } = useAuth();
 
   const fnUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/exchange-intake-submit`;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -162,8 +165,12 @@ export default function ExchangeIntakeForm({
     if (user.email) setEmail(user.email);
     if (profile?.phone) setPhone(profile.phone);
     setNeedsPhone(!profile?.phone);
+    // Mirrors the server's own classification: active and not business is what
+    // exchange-intake-submit calls a social_member, and the only status it will
+    // accept social_only from on this form.
+    setCanChooseSocialOnly(variant === 'public' && isActiveMember && !isBusinessMember);
     setPrefilledFromSession(true);
-  }, [variant, authLoading, user, profile, prefilledFromSession]);
+  }, [variant, authLoading, user, profile, prefilledFromSession, isActiveMember, isBusinessMember]);
 
   // Public and commonwealth: check whether the relevant pool is full
   useEffect(() => {
@@ -328,7 +335,7 @@ export default function ExchangeIntakeForm({
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-        {variant === 'commonwealth' && (
+        {(variant === 'commonwealth' || canChooseSocialOnly) && (
           <div>
             <p style={{ ...labelStyle, marginBottom: '10px' }}>How would you like to join us?</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
