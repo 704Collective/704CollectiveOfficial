@@ -425,10 +425,16 @@ function HubMembersTab({ hubId, isAdmin }: { hubId: string; isAdmin: boolean }) 
   const [loading, setLoading] = useState(true);
 
   const fetchMembers = useCallback(async () => {
+    // !inner so the profile filters prune hub_members rows rather than
+    // returning them with a null profile. Member-facing surfaces hide
+    // soft-deleted, banned and internal accounts.
     const { data, error } = await supabase
       .from('hub_members')
-      .select('user_id, joined_at, profile:profiles!hub_members_user_id_fkey(id, full_name, avatar_url, title, company)')
+      .select('user_id, joined_at, profile:profiles!hub_members_user_id_fkey!inner(id, full_name, avatar_url, title, company)')
       .eq('hub_id', hubId)
+      .is('profile.deleted_at', null)
+      .eq('profile.banned', false)
+      .eq('profile.is_internal', false)
       .order('joined_at', { ascending: true });
     if (error) { console.error('[HubMembersTab] fetch error:', error); }
     setMembers((data ?? []) as unknown as HubMember[]);
@@ -647,7 +653,14 @@ export default function HubDetailPage() {
     if (!id) return;
     const [hubRes, countRes] = await Promise.all([
       supabase.from('hubs').select('*').eq('id', id).single(),
-      supabase.from('hub_members').select('user_id', { count: 'exact', head: true }).eq('hub_id', id),
+      // Same filters as the Members tab, so the header count matches the rows.
+      supabase
+        .from('hub_members')
+        .select('user_id, profile:profiles!hub_members_user_id_fkey!inner(id)', { count: 'exact', head: true })
+        .eq('hub_id', id)
+        .is('profile.deleted_at', null)
+        .eq('profile.banned', false)
+        .eq('profile.is_internal', false),
     ]);
     setHub(hubRes.data as HubDetail ?? null);
     setMemberCount(countRes.count ?? 0);

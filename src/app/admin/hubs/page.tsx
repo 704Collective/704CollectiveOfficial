@@ -194,10 +194,13 @@ function ManageMembersModal({
   const [addingId, setAddingId] = useState<string | null>(null);
 
   const fetchMembers = useCallback(async () => {
+    // Admin sight keeps internal accounts visible by policy; only soft-deleted
+    // profiles are hidden. !inner so the filter prunes the row entirely.
     const { data } = await supabase
       .from('hub_members')
-      .select('user_id, joined_at, profile:profiles!hub_members_user_id_fkey(id, full_name, avatar_url, title)')
+      .select('user_id, joined_at, profile:profiles!hub_members_user_id_fkey!inner(id, full_name, avatar_url, title)')
       .eq('hub_id', hub.id)
+      .is('profile.deleted_at', null)
       .order('joined_at', { ascending: true });
     setMembers((data ?? []) as unknown as HubMember[]);
   }, [hub.id]);
@@ -208,13 +211,15 @@ function ManageMembersModal({
     if (!memberSearch.trim()) { setSearchResults([]); return; }
     const t = setTimeout(async () => {
       setSearchLoading(true);
-      // Search ALL active members — any tier should be addable to any hub
-      // Active = subscription_status active/trialing OR membership_override=true
+      // Hubs are a business-tier benefit, so only active business members are
+      // addable. Active = subscription_status active/trialing OR membership_override=true
       const { data } = await supabase
         .from('profiles')
         .select('id, full_name, avatar_url, title, member_type')
         .ilike('full_name', `%${memberSearch}%`)
         .is('deleted_at', null)
+        .eq('member_type', 'business')
+        .eq('is_internal', false)
         .or('subscription_status.in.(active,trialing),membership_override.eq.true')
         .limit(15);
       setSearchResults(((data ?? []) as MemberSearchResult[]).filter(
@@ -355,9 +360,13 @@ export default function AdminHubsPage() {
   }, [loading, user, isAdmin, isSuperAdmin, router]);
 
   const fetchHubs = useCallback(async () => {
+    // The nested !inner prunes soft-deleted members from the embedded array so
+    // the badge counts the same set the Members panel shows. hub_members itself
+    // stays a left join, otherwise hubs with no members would drop off the list.
     const { data } = await supabase
       .from('hubs')
-      .select('*, hub_members(user_id)')
+      .select('*, hub_members(user_id, profile:profiles!hub_members_user_id_fkey!inner(id))')
+      .is('hub_members.profile.deleted_at', null)
       .order('created_at', { ascending: false });
     setHubs(
       ((data ?? []) as (Hub & { hub_members: { user_id: string }[] })[]).map((h) => ({
