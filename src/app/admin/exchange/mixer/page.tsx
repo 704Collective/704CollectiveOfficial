@@ -19,11 +19,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { UpdatedAgo } from '@/components/admin/UpdatedAgo';
 
 const DEFAULT_EVENT_ID =
   process.env.NEXT_PUBLIC_EXCHANGE_EVENT_ID || '02afde72-33c4-4c99-8dba-0ea5a8c0a723';
 
-const ROSTER_POLL_MS = 30000;
+const ROSTER_POLL_MS = 10000;
 
 function fmtClock(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));
@@ -55,6 +56,7 @@ function MixerPageInner() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
 
   const proposalRef = useRef<MixProposal | null>(null);
 
@@ -84,8 +86,11 @@ function MixerPageInner() {
           round_duration_seconds: String(cfg.round_duration_seconds),
         });
       }
+      setLastUpdatedAt(Date.now());
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load the mixer');
+      // A background refresh fails silently; at this cadence a toast per failure
+      // would bury the room in notifications. The stamp going stale is the tell.
+      if (!quiet) toast.error(e instanceof Error ? e.message : 'Failed to load the mixer');
     } finally {
       setLoading(false);
     }
@@ -97,6 +102,15 @@ function MixerPageInner() {
   useEffect(() => {
     const t = setInterval(() => load(true), ROSTER_POLL_MS);
     return () => clearInterval(t);
+  }, [load]);
+
+  // Timers throttle in a backgrounded tab, so catch up the moment it returns.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void load(true);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, [load]);
 
   useEffect(() => {
@@ -254,7 +268,8 @@ function MixerPageInner() {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <UpdatedAgo at={lastUpdatedAt} className="mr-1" />
           <Button variant="outline" size="sm" className="gap-2" onClick={() => load()} disabled={loading}>
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </Button>

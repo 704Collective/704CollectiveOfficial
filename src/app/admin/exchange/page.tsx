@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Sparkles, Search, ChevronLeft, ChevronRight, Download, RefreshCw, ChevronDown, Shuffle } from 'lucide-react';
 import { format } from 'date-fns';
@@ -23,8 +23,12 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { UpdatedAgo } from '@/components/admin/UpdatedAgo';
 
 const PAGE_SIZE = 25;
+
+/** Counts, pools and roster refresh on their own; the room changes all night. */
+const POLL_MS = 10000;
 
 /** The Aug 27 Exchange. The page is event-keyed; this is only the default pick. */
 const DEFAULT_EVENT_ID =
@@ -188,6 +192,7 @@ function ExchangePageInner() {
   const [page, setPage] = useState(0);
 
   const [poolCounts, setPoolCounts] = useState<Record<string, number>>({});
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
 
   useEffect(() => {
     loadExchangeEvents()
@@ -201,22 +206,49 @@ function ExchangePageInner() {
       .catch(() => toast.error('Failed to load events'));
   }, []);
 
-  const load = useCallback(async () => {
+  // quiet = a background refresh: no spinner, no table swapped for "Loading...",
+  // and a failure stays silent rather than throwing a toast every 10 seconds at
+  // someone running a room. The stamp going stale is the signal instead.
+  const load = useCallback(async (quiet = false) => {
     if (!eventId) return;
-    setLoading(true);
+    if (!quiet) setLoading(true);
     try {
       const { registrations, poolCounts: pools } = await loadExchangeRegistrations(eventId, { includeVoided });
       setRows(registrations);
       setPoolCounts(pools);
+      setLastUpdatedAt(Date.now());
     } catch (e) {
       console.error(e);
-      toast.error(e instanceof Error ? e.message : 'Failed to load registrations');
+      if (!quiet) toast.error(e instanceof Error ? e.message : 'Failed to load registrations');
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }, [eventId, includeVoided]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Background refreshes are HELD while the admin is off page 0, because a
+  // refetch that changes the row count re-slices the window and moves rows out
+  // from under whoever is reading them. Returning to page 0 resumes.
+  const holdForPaging = page > 0;
+
+  useEffect(() => {
+    if (holdForPaging) return;
+    const t = setInterval(() => { void load(true); }, POLL_MS);
+    return () => clearInterval(t);
+  }, [load, holdForPaging]);
+
+  // A backgrounded tab throttles its timers, so the numbers can be minutes old
+  // by the time the phone comes back out of a pocket. Catch up on return.
+  const holdRef = useRef(holdForPaging);
+  holdRef.current = holdForPaging;
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && !holdRef.current) void load(true);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [load]);
 
   const sourceOptions = useMemo(
     () => [...new Set(rows.map((r) => r.sourceLabel))].sort(),
@@ -341,8 +373,15 @@ function ExchangePageInner() {
             <p className="text-sm text-muted-foreground">Registrations, read-only.</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2 shrink-0">
-          <Button variant="outline" className="gap-2" onClick={load} disabled={loading}>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <UpdatedAgo
+            at={lastUpdatedAt}
+            paused={holdForPaging ? `paused on page ${page + 1}` : undefined}
+            className="mr-1"
+          />
+          {/* Arrow function, not a bare `load`: onClick would hand the click
+              event in as `quiet` and silently suppress the spinner. */}
+          <Button variant="outline" className="gap-2" onClick={() => load()} disabled={loading}>
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </Button>
           <Button variant="outline" className="gap-2" onClick={handleExportCSV}>
