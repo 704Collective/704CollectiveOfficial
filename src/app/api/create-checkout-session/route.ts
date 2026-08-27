@@ -68,6 +68,50 @@ export async function POST(request: NextRequest) {
 
     const origin = process.env.NEXT_PUBLIC_SITE_URL || 'https://704collective.com';
 
+    // The embedded door sent no body until promo codes arrived; tolerate both.
+    const body = await request.json().catch(() => ({} as Record<string, unknown>));
+    const rawPromoCode = typeof body.promoCode === 'string' ? body.promoCode.trim() : '';
+    const rawReferralCode = typeof body.referral_code === 'string' ? body.referral_code : null;
+    const rawAmbassadorId = typeof body.ambassador_id === 'string' ? body.ambassador_id : null;
+
+    // Server-side ambassador re-validation, mirroring create-checkout: a tampered
+    // body must not be able to claim referral status. This door has no referral
+    // entry point today, so the guard is dormant — but it has to exist before one
+    // is added, or the no-stacking rule would silently not apply here.
+    let validatedAmbassadorId: string | null = null;
+    if (rawAmbassadorId && rawReferralCode) {
+      const { data: amb } = await supabase.rpc('get_ambassador_by_code', {
+        p_code: rawReferralCode.trim(),
+      });
+      const row = Array.isArray(amb) ? (amb[0] as { id?: string } | undefined) : undefined;
+      if (row?.id && row.id === rawAmbassadorId) validatedAmbassadorId = row.id;
+    }
+
+    // Optional server-side promo attach. Native Stripe Checkout promo box is
+    // broken account-wide, so codes are resolved here and attached by id.
+    // No allow_promotion_codes. Referral wins: ambassador + promo → ignore promo.
+    let resolvedPromoId: string | null = null;
+    if (rawPromoCode && validatedAmbassadorId) {
+      console.log('[CREATE-CHECKOUT-SESSION] PROMO_IGNORED_AMBASSADOR', {
+        code: rawPromoCode,
+        ambassador_id: validatedAmbassadorId,
+      });
+    } else if (rawPromoCode) {
+      const promoList = await stripe.promotionCodes.list({
+        code: rawPromoCode,
+        active: true,
+        limit: 1,
+      });
+      const found = promoList.data[0];
+      if (!found) {
+        return NextResponse.json(
+          { error: 'invalid_promo_code', message: 'invalid_promo_code' },
+          { status: 400 }
+        );
+      }
+      resolvedPromoId = found.id;
+    }
+
     const session = await stripe.checkout.sessions.create({
       ui_mode: 'embedded',
       mode: 'subscription',
@@ -76,6 +120,7 @@ export async function POST(request: NextRequest) {
       customer_email: user.email,
       client_reference_id: user.id,
       metadata: { user_id: user.id, source: 'join_checkout' },
+      ...(resolvedPromoId ? { discounts: [{ promotion_code: resolvedPromoId }] } : {}),
     });
 
     return NextResponse.json({ clientSecret: session.client_secret });
