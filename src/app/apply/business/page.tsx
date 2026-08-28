@@ -12,14 +12,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { sendBusinessApplicationSubmittedEmails } from '@/app/actions/transactionalEmails';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Mail } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-type Step = 'apply' | 'payment' | 'done';
+type Step = 'apply' | 'confirm' | 'payment' | 'done';
 
 interface FormData {
   // Account
@@ -77,6 +77,26 @@ function PaymentForm({ onSuccess }: { onSuccess: () => void }) {
 
     if (error) {
       setErrorMessage(error.message || 'Failed to save payment method');
+      setSubmitting(false);
+      return;
+    }
+
+    // Stripe accepted the card in the browser, but the record of it is only
+    // trustworthy once the server has verified the SetupIntent itself.
+    try {
+      const res = await fetch('/api/business-application-payment', { method: 'PATCH' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || (data as { card_saved?: boolean }).card_saved !== true) {
+        setErrorMessage(
+          'Your card was saved with Stripe but we could not record it on your application. Please try again, or email hello@704collective.com.',
+        );
+        setSubmitting(false);
+        return;
+      }
+    } catch {
+      setErrorMessage(
+        'Your card was saved with Stripe but we could not record it on your application. Please try again, or email hello@704collective.com.',
+      );
       setSubmitting(false);
       return;
     }
@@ -195,6 +215,14 @@ function BusinessApplicationInner() {
     prefillFromProfile();
   }, [authLoading, user]);
 
+  // Deep link from the dashboard's "add your card" action. Guarded on a real
+  // session so the payment step is unreachable without one.
+  useEffect(() => {
+    if (authLoading || !user) return;
+    if (searchParams.get('step') !== 'payment') return;
+    setStep('payment');
+  }, [authLoading, user, searchParams]);
+
   // On entering the payment step: check for existing payment method,
   // then create a SetupIntent if needed.
   useEffect(() => {
@@ -298,6 +326,10 @@ function BusinessApplicationInner() {
 
     try {
       let currentUserId = userId;
+      // A signed-up-but-unconfirmed applicant has no session, so every
+      // authenticated call after this point would 401. Tracked so the submit
+      // can end on the confirm-your-email screen instead of a dead payment step.
+      let hasSession = !!user;
 
       // STEP A: Create auth account if user is not logged in
       if (!user) {
@@ -333,6 +365,8 @@ function BusinessApplicationInner() {
           currentUserId = signupData.user.id;
           setUserId(signupData.user.id);
         }
+        // With email confirmation on, signUp returns a user but no session.
+        hasSession = !!signupData.session;
       }
 
       if (!currentUserId) {
@@ -389,8 +423,9 @@ function BusinessApplicationInner() {
         console.error('Application confirmation email failed:', emailErr);
       }
 
-      // STEP E: Transition to payment step
-      setStep('payment');
+      // STEP E: Card capture needs a session. Without one, send the applicant to
+      // confirm their email; they add the card from their dashboard afterwards.
+      setStep(hasSession ? 'payment' : 'confirm');
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -400,6 +435,72 @@ function BusinessApplicationInner() {
       setLoading(false);
     }
   };
+
+  // ── Confirm-your-email step ──────────────────────────────────────
+  // Reached when the applicant signed up during submit and has no session yet.
+  // Their application is already saved; only the card is outstanding.
+  if (step === 'confirm') {
+    return (
+      <div className="min-h-screen bg-background flex flex-col" style={{ backgroundColor: '#1A1A1A', paddingTop: 'calc(64px + var(--banner-height, 0px))' }}>
+        <Nav />
+        <MarketingPageRoot>
+        <div className="flex-1 flex items-center justify-center px-4 py-16">
+          <div className="w-full max-w-md space-y-6 text-center">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+              <Mail className="w-8 h-8 text-primary" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-semibold text-foreground">
+                Confirm your email to finish
+              </h1>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Your application is in. We sent a confirmation link to{' '}
+                <span className="text-foreground font-medium">{form.email.trim().toLowerCase()}</span>.
+                Click it to activate your account.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-border bg-card p-5 text-left space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                What happens next
+              </p>
+              <ol className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex gap-2">
+                  <span className="text-primary shrink-0">1.</span>
+                  Confirm your email using the link we just sent.
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-primary shrink-0">2.</span>
+                  Sign in and open your portal, where you&apos;ll be asked to add a payment method.
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-primary shrink-0">3.</span>
+                  We review your application and get back to you, usually within 48 hours.
+                </li>
+              </ol>
+              <p className="text-sm text-muted-foreground leading-relaxed pt-1">
+                <strong className="text-foreground">You will not be charged</strong> unless your
+                application is approved.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Button className="w-full" onClick={() => router.push('/login')}>
+                Go to sign in
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Can&apos;t find the email? Check your spam folder, or email us at{' '}
+                <a href="mailto:hello@704collective.com" className="text-primary hover:underline">
+                  hello@704collective.com
+                </a>.
+              </p>
+            </div>
+          </div>
+        </div>
+        </MarketingPageRoot>
+      </div>
+    );
+  }
 
   // ── Payment step ─────────────────────────────────────────────────
   if (step === 'payment') {
@@ -600,9 +701,6 @@ function BusinessApplicationInner() {
                 <div className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 space-y-0.5">
                   <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Referred By</p>
                   <p className="text-base font-semibold text-primary">{resolvedAmbassador.full_name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    You&apos;ll receive the founding member rate of $250/month if approved.
-                  </p>
                 </div>
               ) : (
                 <details className="group">

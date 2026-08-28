@@ -10,7 +10,7 @@ import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '
 import { toast } from 'sonner';
 import {
   Crown, Briefcase, Calendar, Settings, FileText,
-  Clock, CheckCircle2, XCircle, ChevronRight, Loader2, Mail,
+  Clock, CheckCircle2, XCircle, ChevronRight, Loader2, Mail, CreditCard,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -47,6 +47,7 @@ interface Application {
   recent_wins: string | null;
   anything_else: string | null;
   billing_plan: string | null;
+  card_saved: boolean | null;
 }
 
 type Tab = 'dashboard' | 'events' | 'settings' | 'application';
@@ -145,6 +146,14 @@ export function NonMemberDashboard({ profile, application }: NonMemberDashboardP
 
   const handleJoinSocial = () => router.push('/join/checkout');
   const handleApplyBusiness = () => router.push('/apply/business');
+  const handleAddCard = () => router.push('/apply/business?step=payment');
+
+  // Applicants who signed up during submit had no session for card capture, so
+  // they finish it here once their email is confirmed and they are signed in.
+  const needsCard =
+    !!application &&
+    !application.card_saved &&
+    (appStatus === 'pending' || appStatus === 'reviewing');
 
   const handleSendEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -379,6 +388,25 @@ export function NonMemberDashboard({ profile, application }: NonMemberDashboardP
                   StatusIcon={StatusIcon}
                   onJoinSocial={handleJoinSocial}
                 />
+
+                {/* Outstanding card capture */}
+                {needsCard && (
+                  <div className="rounded-xl border border-primary/30 bg-primary/5 p-5 space-y-3">
+                    <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-primary" />
+                      One thing left: add a payment method
+                    </p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      We hold a card on file so we can start your membership the moment
+                      you&apos;re approved.{' '}
+                      <strong className="text-foreground">You will not be charged</strong> unless
+                      your application is approved, and if it isn&apos;t you&apos;ll be told why.
+                    </p>
+                    <Button size="sm" onClick={handleAddCard}>
+                      Add your card
+                    </Button>
+                  </div>
+                )}
 
                 {/* Full application read-only */}
                 <div className="rounded-xl border border-border bg-card p-5 space-y-5">

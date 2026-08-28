@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
+import { BUSINESS_TIER } from '@/lib/pricing';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
@@ -30,12 +31,14 @@ interface Application {
   linkedin_url: string | null;
   website: string | null;
   referral_source: string | null;
-  why_join: string | null;
-  what_bring: string | null;
-  goals: string | null;
+  conflict_lesson: string | null;
+  missing_in_charlotte: string | null;
+  one_year_goal: string | null;
+  right_intro: string | null;
+  recent_wins: string | null;
+  anything_else: string | null;
   industry: string | null;
   years_in_charlotte: number | null;
-  billing_plan: string;
   status: 'pending' | 'reviewing' | 'approved' | 'denied' | 'waitlisted';
   admin_notes: string | null;
   card_saved: boolean;
@@ -53,6 +56,16 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 const PAGE_SIZE = 20;
+
+/** The six answer columns the apply form actually writes, in the order asked. */
+const ANSWER_FIELDS: { key: keyof Application; label: string }[] = [
+  { key: 'conflict_lesson',      label: 'A recent conflict, and what they learned solving it' },
+  { key: 'missing_in_charlotte', label: 'What they think is missing in Charlotte' },
+  { key: 'one_year_goal',        label: 'What they expect to have gotten out of joining, one year in' },
+  { key: 'right_intro',          label: 'What the right introduction or solution could fix' },
+  { key: 'recent_wins',          label: 'Recent wins with their business' },
+  { key: 'anything_else',        label: 'Anything else they wanted us to know' },
+];
 
 async function fetchApplications(page: number, status: StatusFilter) {
   const start = (page - 1) * PAGE_SIZE;
@@ -236,7 +249,6 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
                 <TableRow>
                   <TableHead className="text-xs uppercase tracking-wider">Applicant</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider">Company</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider">Plan</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider">Card</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider">Applied</TableHead>
@@ -255,9 +267,6 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
                     <TableCell className="py-3 text-muted-foreground">
                       {app.company ?? '-'}
                       {app.title && <span className="block text-xs">{app.title}</span>}
-                    </TableCell>
-                    <TableCell className="py-3">
-                      <Badge variant="outline" className="text-xs capitalize">{app.billing_plan}</Badge>
                     </TableCell>
                     <TableCell className="py-3">
                       {app.card_saved
@@ -347,29 +356,21 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
                   {selectedApp.industry && <div><span className="text-muted-foreground">Industry: </span>{selectedApp.industry}</div>}
                   {selectedApp.years_in_charlotte && <div><span className="text-muted-foreground">Years in CLT: </span>{selectedApp.years_in_charlotte}</div>}
                   {selectedApp.referral_source && <div className="col-span-2"><span className="text-muted-foreground">How they heard: </span>{selectedApp.referral_source}</div>}
-                  <div><span className="text-muted-foreground">Plan: </span><span className="capitalize">{selectedApp.billing_plan}</span> - {selectedApp.billing_plan === 'annual' ? '$3,600/yr' : '$300/mo'}</div>
+                  <div><span className="text-muted-foreground">Membership: </span>{BUSINESS_TIER.monthlyPriceFull}</div>
                   <div><span className="text-muted-foreground">Card on file: </span>{selectedApp.card_saved ? '✓ Saved' : 'Not yet'}</div>
                 </div>
 
                 {/* Application answers */}
-                {selectedApp.why_join && (
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Why do you want to join?</p>
-                    <p className="text-sm leading-relaxed">{selectedApp.why_join}</p>
-                  </div>
-                )}
-                {selectedApp.what_bring && (
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">What do you bring to the community?</p>
-                    <p className="text-sm leading-relaxed">{selectedApp.what_bring}</p>
-                  </div>
-                )}
-                {selectedApp.goals && (
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Goals for your first 90 days</p>
-                    <p className="text-sm leading-relaxed">{selectedApp.goals}</p>
-                  </div>
-                )}
+                {ANSWER_FIELDS.map(({ key, label }) => {
+                  const value = selectedApp[key] as string | null;
+                  if (!value?.trim()) return null;
+                  return (
+                    <div key={key}>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
+                      <p className="text-sm leading-relaxed whitespace-pre-line">{value}</p>
+                    </div>
+                  );
+                })}
 
                 {/* Admin notes */}
                 <div>
