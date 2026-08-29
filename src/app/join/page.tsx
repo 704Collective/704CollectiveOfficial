@@ -333,6 +333,12 @@ function JoinInner() {
       try {
         const { data: sessionData } = await supabase.auth.getSession();
         const accessToken = sessionData?.session?.access_token;
+        // The card can show the referral rate, so the checkout call has to carry
+        // the claim or the server prices it at the standard rate. create-checkout
+        // re-validates the id and the code as a PAIR, so both must travel
+        // together exactly as the form's submit path sends them.
+        const ambassadorIdToUse = resolvedAmbassador?.id ?? null;
+        const referralCodeToUse = referralCode || null;
         // Same rule as the form: referral pricing wins, so a promo is only sent
         // when no ambassador is resolved.
         const promoCodeToUse =
@@ -342,6 +348,8 @@ function JoinInner() {
         const { data, error } = await supabase.functions.invoke('create-checkout', {
           body: {
             email: user.email,
+            referral_code: referralCodeToUse,
+            ambassador_id: ambassadorIdToUse,
             ...(promoCodeToUse ? { promoCode: promoCodeToUse } : {}),
           },
           headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
