@@ -5,7 +5,7 @@ function innerText(html: string): string {
 }
 
 function slugifyForId(text: string, used: Map<string, number>): string {
-  let base =
+  const base =
     text
       .toLowerCase()
       .replace(/&[a-z]+;/gi, '')

@@ -170,7 +170,7 @@ export function MemberDirectory() {
         .eq('is_internal', false)
         .order('full_name', { ascending: true });
       const memberIds = (data ?? []).map((m) => m.id);
-      let hubMap = new Map<string, string[]>();
+      const hubMap = new Map<string, string[]>();
       if (memberIds.length > 0) {
         const { data: hubRows } = await supabase
           .from('hub_members')

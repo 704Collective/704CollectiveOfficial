@@ -59,6 +59,22 @@ notif_tables.txt
 /fix_*.py
 /patch_*.py
 /write_*.py
+# one-off rehearsal/probe harnesses. Root-anchored on purpose: the keepers live
+# in scripts/ and are never matched by these.
+/amb-*.mjs
+/cleanup-*.mjs
+/drill-*.mjs
+/fri-*.mjs
+/r1b-*.mjs
+/r2b-*.mjs
+/r2v-*.mjs
+/r3b-*.mjs
+/r5b-*.mjs
+/w[0-9]*-*.mjs
+/w[0-9]*-*.py
+/w[0-9]*-*.ps1
+# agent working reports
+/cursor_report*.md
 # data dumps
 /all_uids.json
 /gm_dates.json

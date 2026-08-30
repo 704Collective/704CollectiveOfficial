@@ -12,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -481,7 +480,10 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
           ) : libraryRows.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">No files in the library yet.</p>
           ) : (
-            <ScrollArea className="max-h-[min(60vh,320px)] pr-3">
+            /* Cap and overflow on the same element: ScrollArea put the cap on
+               its Root and the overflow on a viewport whose h-full could not
+               resolve, so a long library clipped instead of scrolling. */
+            <div className="max-h-[min(60vh,320px)] overflow-y-auto overscroll-contain pr-3">
               <ul className="space-y-1">
                 {libraryRows.map((row) => (
                   <li key={row.id}>
@@ -501,7 +503,7 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
                   </li>
                 ))}
               </ul>
-            </ScrollArea>
+            </div>
           )}
         </DialogContent>
       </Dialog>

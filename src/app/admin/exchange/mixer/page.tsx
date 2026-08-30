@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { Shuffle, Play, Square, RefreshCw, Settings, Monitor, AlertTriangle, Users, ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  loadExchangeEvents, loadExchangeRegistrations, MIXER_CAP,
+  loadExchangeEvents, loadExchangeRegistrations,
   type EventOption, type ExchangeRegistration,
 } from '@/lib/admin/exchange';
 import {
@@ -34,7 +34,7 @@ function fmtClock(totalSeconds: number): string {
 
 function MixerPageInner() {
   const params = useSearchParams();
-  const [eventId, setEventId] = useState(params.get('event') || DEFAULT_EVENT_ID);
+  const [eventId] = useState(params.get('event') || DEFAULT_EVENT_ID);
   const [events, setEvents] = useState<EventOption[]>([]);
 
   const [registrations, setRegistrations] = useState<ExchangeRegistration[]>([]);
