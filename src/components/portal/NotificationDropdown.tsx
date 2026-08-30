@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import type { User } from '@supabase/supabase-js';
@@ -167,7 +166,10 @@ export function NotificationDropdown({ user }: NotificationDropdownProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h3 className="text-sm font-semibold">Notifications</h3>
-          {unreadCount > 0 && (
+          {/* Anchored to what the action actually clears (undismissed rows), not
+              to unreadCount, which markVisibleAsSeen zeroes the moment the panel
+              opens - taking the only bulk control with it. */}
+          {activeNotifications.length > 0 && (
             <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5" onClick={markAllRead}>
               <CheckCheck className="w-3.5 h-3.5" />
               Mark all read
@@ -175,7 +177,11 @@ export function NotificationDropdown({ user }: NotificationDropdownProps) {
           )}
         </div>
 
-        <ScrollArea className="max-h-[420px]">
+        {/* The cap and the scroll rule must sit on the SAME element. Radix
+            ScrollArea put max-height on its Root and overflow on an inner
+            viewport whose h-full could not resolve against an auto-height
+            parent, so the list grew and was simply clipped. */}
+        <div className="max-h-[min(60vh,420px)] overflow-y-auto overscroll-contain">
           {notifications.length === 0 ? (
             <div className="py-10 text-center">
               <Bell className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
@@ -212,7 +218,7 @@ export function NotificationDropdown({ user }: NotificationDropdownProps) {
               ))}
             </div>
           )}
-        </ScrollArea>
+        </div>
       </PopoverContent>
     </Popover>
   );
