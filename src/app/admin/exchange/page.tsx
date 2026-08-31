@@ -1,8 +1,8 @@
 'use client';
 
-import { Fragment, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Sparkles, Search, ChevronLeft, ChevronRight, Download, RefreshCw, ChevronDown, Shuffle } from 'lucide-react';
+import { Sparkles, Search, ChevronLeft, ChevronRight, Download, RefreshCw, Shuffle } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import {
@@ -24,6 +24,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { UpdatedAgo } from '@/components/admin/UpdatedAgo';
+import { ExchangePersonSheet } from '@/components/admin/ExchangePersonSheet';
 
 const PAGE_SIZE = 25;
 
@@ -83,29 +84,22 @@ function Pill({
   );
 }
 
-function RegistrationRows({ rows }: { rows: ExchangeRegistration[] }) {
-  const [open, setOpen] = useState<Set<string>>(new Set());
-  const toggle = (id: string) => setOpen((prev) => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
-  });
-
+function RegistrationRows({
+  rows, onSelect,
+}: { rows: ExchangeRegistration[]; onSelect: (r: ExchangeRegistration) => void }) {
   return (
     <>
       {rows.map((r) => {
-        const isOpen = open.has(r.credentialId);
         return (
-          <Fragment key={r.credentialId}>
             <TableRow
               key={r.credentialId}
               className="cursor-pointer border-b border-border hover:bg-muted/50"
-              onClick={() => toggle(r.credentialId)}
+              onClick={() => onSelect(r)}
               data-testid={`reg-row-${r.email}`}
             >
               <TableCell className="px-4 py-3 font-medium text-foreground">
                 <div className="flex items-center gap-2">
-                  <ChevronDown className={`w-3.5 h-3.5 shrink-0 text-muted-foreground transition-transform ${isOpen ? '' : '-rotate-90'}`} />
+                  <ChevronRight className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
                   <span>{orDash(r.name)}</span>
                   {r.isFounder && (
                     <span className="text-[10px] rounded-md bg-amber-500/15 text-amber-400 px-1.5 py-0.5 font-normal">Host</span>
@@ -141,34 +135,6 @@ function RegistrationRows({ rows }: { rows: ExchangeRegistration[] }) {
                 {r.registeredAt ? format(new Date(r.registeredAt), 'MMM d, h:mm a') : '-'}
               </TableCell>
             </TableRow>
-            {isOpen && (
-              <TableRow key={`${r.credentialId}-answers`} className="border-b border-border bg-muted/20">
-                <TableCell colSpan={10} className="px-4 py-4">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {r.answers.length > 0 ? (
-                      r.answers.map((a) => (
-                        <div key={a.label}>
-                          <p className="text-xs uppercase tracking-wider text-muted-foreground/70 font-normal">{a.label}</p>
-                          <p className="text-sm text-foreground mt-0.5 whitespace-pre-wrap">{a.value}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground italic">{r.skipReason}</p>
-                    )}
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
-                    <span>Phone: {orDash(r.phone)}</span>
-                    <span>Pool: {r.pool}</span>
-                    <span>Credential: {orDash(r.credentialToken)}</span>
-                    <span>
-                      UTM: {[r.utm.utm_source, r.utm.utm_medium, r.utm.utm_campaign, r.utm.utm_content]
-                        .map((v) => v ?? '-').join(' / ')}
-                    </span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            )}
-          </Fragment>
         );
       })}
     </>
@@ -193,6 +159,13 @@ function ExchangePageInner() {
 
   const [poolCounts, setPoolCounts] = useState<Record<string, number>>({});
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
+
+  // The sheet is keyed by credential id rather than holding the row object, so
+  // a 10s background refresh re-derives it in place: the sheet stays open and
+  // its contents go live instead of freezing at whatever was on screen when it
+  // opened. Looked up against the full load, not `filtered`, so changing a
+  // filter underneath cannot yank the sheet shut.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     loadExchangeEvents()
@@ -282,6 +255,11 @@ function ExchangePageInner() {
 
   const mixerRows = filtered.filter((r) => r.participation === 'business_and_social');
   const hangRows = filtered.filter((r) => r.participation === 'social_only');
+
+  const selectedPerson = useMemo(
+    () => rows.find((r) => r.credentialId === selectedId) ?? null,
+    [rows, selectedId],
+  );
 
   // Summary is about the night, not the current filter: it reads the full load.
   const summary = useMemo(() => {
@@ -513,8 +491,11 @@ function ExchangePageInner() {
               <h2 className="text-lg font-semibold text-foreground">
                 Mixer <span className="text-muted-foreground font-normal">({mixerRows.length})</span>
               </h2>
-              <div className="rounded-lg border border-border overflow-x-auto">
-                <Table>{header}<TableBody><RegistrationRows rows={pagedMixer} /></TableBody></Table>
+              {/* One scroller, on the element that owns the rounded border, so
+                  the off-edge columns are reachable and the header row is cut
+                  by a real scroll viewport instead of a nested overflow. */}
+              <div className="rounded-lg border border-border overflow-x-auto" data-testid="roster-scroll-mixer">
+                <Table className="min-w-max">{header}<TableBody><RegistrationRows rows={pagedMixer} onSelect={(r) => setSelectedId(r.credentialId)} /></TableBody></Table>
               </div>
             </section>
           )}
@@ -524,8 +505,8 @@ function ExchangePageInner() {
               <h2 className="text-lg font-semibold text-foreground">
                 Hang only <span className="text-muted-foreground font-normal">({hangRows.length})</span>
               </h2>
-              <div className="rounded-lg border border-border overflow-x-auto">
-                <Table>{header}<TableBody><RegistrationRows rows={pagedHang} /></TableBody></Table>
+              <div className="rounded-lg border border-border overflow-x-auto" data-testid="roster-scroll-hang">
+                <Table className="min-w-max">{header}<TableBody><RegistrationRows rows={pagedHang} onSelect={(r) => setSelectedId(r.credentialId)} /></TableBody></Table>
               </div>
             </section>
           )}
@@ -545,6 +526,12 @@ function ExchangePageInner() {
           </div>
         </div>
       )}
+
+      <ExchangePersonSheet
+        person={selectedPerson}
+        open={selectedPerson !== null}
+        onOpenChange={(next) => { if (!next) setSelectedId(null); }}
+      />
     </div>
   );
 }

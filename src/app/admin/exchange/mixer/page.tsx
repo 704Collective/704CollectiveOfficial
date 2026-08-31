@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UpdatedAgo } from '@/components/admin/UpdatedAgo';
+import { ExchangePersonSheet } from '@/components/admin/ExchangePersonSheet';
 
 const DEFAULT_EVENT_ID =
   process.env.NEXT_PUBLIC_EXCHANGE_EVENT_ID || '02afde72-33c4-4c99-8dba-0ea5a8c0a723';
@@ -57,6 +58,14 @@ function MixerPageInner() {
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
+
+  // Keyed by credential id, not the row object, so the 10s roster refresh
+  // re-derives the open sheet in place instead of freezing or closing it.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectedPerson = useMemo(
+    () => registrations.find((r) => r.credentialId === selectedId) ?? null,
+    [registrations, selectedId],
+  );
 
   const proposalRef = useRef<MixProposal | null>(null);
 
@@ -413,7 +422,17 @@ function MixerPageInner() {
             return (
               <div key={r.credentialId} className="flex items-center justify-between gap-3 p-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{seatDisplayName(r.name || r.email)}</p>
+                  {/* The name is CSS-truncated with no title attribute, so on a
+                      phone a long one was unrecoverable by any interaction.
+                      Opening the sheet is now that interaction. */}
+                  <button
+                    type="button"
+                    className="block max-w-full text-left text-sm font-medium text-foreground truncate hover:underline"
+                    onClick={() => setSelectedId(r.credentialId)}
+                    data-testid={`roster-name-${r.email}`}
+                  >
+                    {seatDisplayName(r.name || r.email)}
+                  </button>
                   <p className="text-xs text-muted-foreground truncate">
                     {hangOnly ? 'Hang only' : 'Mixer'} - {r.memberStatus}
                   </p>
@@ -466,6 +485,12 @@ function MixerPageInner() {
           </div>
         </div>
       )}
+
+      <ExchangePersonSheet
+        person={selectedPerson}
+        open={selectedPerson !== null}
+        onOpenChange={(next) => { if (!next) setSelectedId(null); }}
+      />
     </div>
   );
 }
