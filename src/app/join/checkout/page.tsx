@@ -41,6 +41,12 @@ export default function CheckoutPage() {
   const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
 
+  // Referral pricing is decided entirely by the server from the member's own
+  // profile; the page never claims it. Rendering from the same response that
+  // minted the session is what keeps the shown price and the charged price
+  // from drifting apart.
+  const [referralApplied, setReferralApplied] = useState(false);
+
   // Password-first enforcement: the embedded checkout requires an account, so
   // logged-out visitors (e.g. from emailed /join/checkout links) go create one.
   useEffect(() => {
@@ -73,6 +79,7 @@ export default function CheckoutPage() {
           return 'error';
         }
         setClientSecret(data.clientSecret);
+        setReferralApplied(Boolean(data.referral?.applied));
         return 'ok';
       } catch {
         setError('Failed to start checkout');
@@ -195,9 +202,28 @@ export default function CheckoutPage() {
             >
               Join 704 Collective
             </h1>
-            <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.45)' }}>
-              {SOCIAL_TIER.monthlyPriceFull} · Cancel anytime · Instant access
+            <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.45)' }} data-testid="price-line">
+              {referralApplied ? (
+                <>
+                  <span style={{ textDecoration: 'line-through', opacity: 0.5, marginRight: '0.5rem' }}>
+                    {SOCIAL_TIER.monthlyPrice}
+                  </span>
+                  <span style={{ color: '#C6A664', fontWeight: 700 }}>$35</span>
+                  <span>/month</span>
+                </>
+              ) : (
+                SOCIAL_TIER.monthlyPriceFull
+              )}
+              {' · Cancel anytime · Instant access'}
             </p>
+            {referralApplied && (
+              <p
+                style={{ fontSize: '0.875rem', color: '#C6A664', margin: '4px 0 0' }}
+                data-testid="referral-caption"
+              >
+                Referral rate - locked in for life
+              </p>
+            )}
           </div>
 
           {/* Gold divider */}
@@ -243,20 +269,24 @@ export default function CheckoutPage() {
           ) : (
             <>
               {/* Sits above the checkout because the session is minted with the
-                  discount already applied; applying a code re-mints it. */}
-              <div style={{ marginBottom: '20px' }}>
-                <PromoCodeField
-                  value={promoCodeInput}
-                  onValueChange={handlePromoInputChange}
-                  appliedCode={appliedPromoCode}
-                  onApply={handlePromoApply}
-                  onDismiss={handlePromoDismiss}
-                  error={promoCodeError}
-                  inputStyle={promoInputStyle}
-                  applying={applying}
-                  appliedNote="Discount applied below. Collapse this to checkout at full price."
-                />
-              </div>
+                  discount already applied; applying a code re-mints it. Hidden
+                  under referral pricing: referral wins and codes do not stack,
+                  same rule the /join form applies. */}
+              {!referralApplied && (
+                <div style={{ marginBottom: '20px' }} data-testid="promo-field">
+                  <PromoCodeField
+                    value={promoCodeInput}
+                    onValueChange={handlePromoInputChange}
+                    appliedCode={appliedPromoCode}
+                    onApply={handlePromoApply}
+                    onDismiss={handlePromoDismiss}
+                    error={promoCodeError}
+                    inputStyle={promoInputStyle}
+                    applying={applying}
+                    appliedNote="Discount applied below. Collapse this to checkout at full price."
+                  />
+                </div>
+              )}
               <div
                 style={{
                   borderRadius: '16px',

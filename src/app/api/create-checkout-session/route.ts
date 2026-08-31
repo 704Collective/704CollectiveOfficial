@@ -58,8 +58,8 @@ export async function POST(request: NextRequest) {
     // Price IDs are environment-specific. The STRIPE_SOCIAL_PRICE_ID env var
     // must be set to the current public price
     // (e.g. price_1TS9EJRzSIH3EgWLjM6zx5p4 for the $49 monthly tier).
-    const priceId = process.env.STRIPE_SOCIAL_PRICE_ID;
-    if (!priceId) {
+    const standardPriceId = process.env.STRIPE_SOCIAL_PRICE_ID;
+    if (!standardPriceId) {
       return NextResponse.json(
         { error: 'Price not configured', message: 'Price not configured' },
         { status: 500 }
@@ -71,27 +71,60 @@ export async function POST(request: NextRequest) {
     // The embedded door sent no body until promo codes arrived; tolerate both.
     const body = await request.json().catch(() => ({} as Record<string, unknown>));
     const rawPromoCode = typeof body.promoCode === 'string' ? body.promoCode.trim() : '';
-    const rawReferralCode = typeof body.referral_code === 'string' ? body.referral_code : null;
-    const rawAmbassadorId = typeof body.ambassador_id === 'string' ? body.ambassador_id : null;
 
-    // Server-side ambassador re-validation, mirroring create-checkout: a tampered
-    // body must not be able to claim referral status. This door has no referral
-    // entry point today, so the guard is dormant — but it has to exist before one
-    // is added, or the no-stacking rule would silently not apply here.
+    // ── Attribution, read from the member's OWN profile ─────────────────
+    // Deliberately NOT from the request body. This door is reached from the
+    // dashboard, where there is no ref link to carry a claim, so the only
+    // trustworthy source is what was stamped on the profile when they first
+    // arrived. Anything posted in the body is ignored outright.
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('referred_by_code, referred_by_ambassador_id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const storedReferralCode =
+      typeof profile?.referred_by_code === 'string' ? profile.referred_by_code.trim() : '';
+    const storedAmbassadorId =
+      typeof profile?.referred_by_ambassador_id === 'string' ? profile.referred_by_ambassador_id : '';
+
+    // Re-validate live, mirroring create-checkout: the row must still exist,
+    // still be active, and its code must still match what we stored. Stored
+    // attribution is a claim, not a licence.
     let validatedAmbassadorId: string | null = null;
-    if (rawAmbassadorId && rawReferralCode) {
-      const { data: amb } = await supabase.rpc('get_ambassador_by_code', {
-        p_code: rawReferralCode.trim(),
-      });
-      const row = Array.isArray(amb) ? (amb[0] as { id?: string } | undefined) : undefined;
-      if (row?.id && row.id === rawAmbassadorId) validatedAmbassadorId = row.id;
+    let validatedReferralCode: string | null = null;
+    if (storedAmbassadorId && storedReferralCode) {
+      const { data: amb } = await supabase
+        .from('ambassadors')
+        .select('id, referral_code, is_active')
+        .eq('id', storedAmbassadorId)
+        .eq('is_active', true)
+        .maybeSingle();
+      if (amb && typeof amb.referral_code === 'string'
+        && amb.referral_code.toLowerCase() === storedReferralCode.toLowerCase()) {
+        validatedAmbassadorId = amb.id;
+        validatedReferralCode = amb.referral_code;
+      }
     }
+
+    // A validated referral with no price configured must not show $35 and then
+    // charge $49. Falling back keeps the door open at the standard rate, and
+    // referralApplies is what the page renders from, so what is shown and what
+    // is charged come from the same decision.
+    const ambassadorPriceId = process.env.STRIPE_AMBASSADOR_SOCIAL_PRICE_ID;
+    if (validatedAmbassadorId && !ambassadorPriceId) {
+      console.warn('[CREATE-CHECKOUT-SESSION] AMBASSADOR_PRICE_UNCONFIGURED', {
+        ambassador_id: validatedAmbassadorId,
+      });
+    }
+    const referralApplies = Boolean(validatedAmbassadorId && ambassadorPriceId);
+    const priceId = referralApplies ? ambassadorPriceId! : standardPriceId;
 
     // Optional server-side promo attach. Native Stripe Checkout promo box is
     // broken account-wide, so codes are resolved here and attached by id.
     // No allow_promotion_codes. Referral wins: ambassador + promo → ignore promo.
     let resolvedPromoId: string | null = null;
-    if (rawPromoCode && validatedAmbassadorId) {
+    if (rawPromoCode && referralApplies) {
       console.log('[CREATE-CHECKOUT-SESSION] PROMO_IGNORED_AMBASSADOR', {
         code: rawPromoCode,
         ambassador_id: validatedAmbassadorId,
@@ -119,11 +152,27 @@ export async function POST(request: NextRequest) {
       return_url: `${origin}/welcome?session_id={CHECKOUT_SESSION_ID}`,
       customer_email: user.email,
       client_reference_id: user.id,
-      metadata: { user_id: user.id, source: 'join_checkout' },
+      // The webhook keys the ambassador credit off these three, reading
+      // session.metadata.ambassador_id / referral_code / ambassador_tier
+      // (supabase/functions/stripe-webhook/index.ts:644-646).
+      metadata: {
+        user_id: user.id,
+        source: 'join_checkout',
+        ...(referralApplies
+          ? {
+              ambassador_id: validatedAmbassadorId!,
+              referral_code: validatedReferralCode ?? '',
+              ambassador_tier: 'social',
+            }
+          : {}),
+      },
       ...(resolvedPromoId ? { discounts: [{ promotion_code: resolvedPromoId }] } : {}),
     });
 
-    return NextResponse.json({ clientSecret: session.client_secret });
+    return NextResponse.json({
+      clientSecret: session.client_secret,
+      referral: { applied: referralApplies, code: referralApplies ? validatedReferralCode : null },
+    });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('Stripe checkout session error');
