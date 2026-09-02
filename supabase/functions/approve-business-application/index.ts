@@ -1,5 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { resolvePerson } from "../_shared/resolvePerson.ts";
+
+/** Member-to-member business referral reward, in cents. */
+const MEMBER_REFERRAL_AMOUNT_CENTS = 25000;
+/** Ambassador reward for a business signup, in cents. */
+const AMBASSADOR_BUSINESS_REWARD_CENTS = 12500;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -107,6 +113,16 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: `Application is already ${app.status} - cannot approve again` }),
         { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Server-verified card gate. The admin UI hides Approve until card_saved
+    // is true; this refuses the same case if anyone calls the function directly.
+    if (app.card_saved !== true) {
+      console.log("[APPROVE] Refusing - card_saved is not true");
+      return new Response(
+        JSON.stringify({ error: "Card has not been saved on this application - cannot approve" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -290,33 +306,55 @@ serve(async (req) => {
     }
 
     // ── Step 10: Create business subscription ────────────────────────────────
-    console.log("[APPROVE] Creating business subscription - customer:", stripeCustomerId, "price:", businessPriceId);
+    // A prior attempt may already have an active business sub (charge succeeded,
+    // a later DB write failed). Reuse it. Never bill the same card twice.
+    // deno-lint-ignore no-explicit-any
+    let sub: any = null;
+    const existingListRes = await fetch(
+      `https://api.stripe.com/v1/subscriptions?customer=${encodeURIComponent(stripeCustomerId)}&status=active&limit=10`,
+      { headers: { Authorization: `Bearer ${STRIPE_SECRET_KEY}` } }
+    );
+    const existingList = await existingListRes.json();
+    const reusable = (existingList.data ?? []).find((s: { items?: { data?: Array<{ price?: { id?: string } }> } }) =>
+      (s.items?.data ?? []).some((it) => it.price?.id === businessPriceId)
+    );
+    if (reusable) {
+      sub = reusable;
+      console.log("[APPROVE] Reusing existing active business subscription:", reusable.id);
+    } else {
+      console.log("[APPROVE] Creating business subscription - customer:", stripeCustomerId, "price:", businessPriceId);
 
-    const subBody = new URLSearchParams({
-      customer: stripeCustomerId,
-      "items[0][price]": businessPriceId,
-      default_payment_method: paymentMethodId,
-      payment_behavior: "default_incomplete",
-      "payment_settings[save_default_payment_method]": "on_subscription",
-    });
-    // expand latest_invoice.payment_intent so we can inspect the charge result
-    subBody.append("expand[]", "latest_invoice.payment_intent");
-    if (couponId) subBody.set("coupon", couponId);
+      const subBody = new URLSearchParams({
+        customer: stripeCustomerId,
+        "items[0][price]": businessPriceId,
+        default_payment_method: paymentMethodId,
+        payment_behavior: "default_incomplete",
+        "payment_settings[save_default_payment_method]": "on_subscription",
+      });
+      // expand latest_invoice.payment_intent so we can inspect the charge result
+      subBody.append("expand[]", "latest_invoice.payment_intent");
+      if (couponId) subBody.set("coupon", couponId);
 
-    const subRes = await fetch("https://api.stripe.com/v1/subscriptions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${STRIPE_SECRET_KEY}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: subBody.toString(),
-    });
-    const sub = await subRes.json();
+      const subRes = await fetch("https://api.stripe.com/v1/subscriptions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${STRIPE_SECRET_KEY}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: subBody.toString(),
+      });
+      sub = await subRes.json();
+    }
 
-    const piStatus = sub.latest_invoice?.payment_intent?.status ?? "unknown";
+    const invoiceId =
+      typeof sub.latest_invoice === "string"
+        ? sub.latest_invoice
+        : sub.latest_invoice?.id ?? null;
+    let piStatus = sub.latest_invoice?.payment_intent?.status ?? "unknown";
     console.log(
       "[APPROVE] Subscription response - id:", sub.id,
       "status:", sub.status,
+      "invoice:", invoiceId,
       "invoice pi_status:", piStatus
     );
 
@@ -325,6 +363,33 @@ serve(async (req) => {
 
     if (!newSubscriptionId) {
       throw new Error(`Stripe did not return a subscription ID. Response: ${JSON.stringify(sub)}`);
+    }
+
+    // Stripe's 2025+ invoice object no longer hangs payment_intent on the
+    // invoice root. default_incomplete therefore returns status 'incomplete'
+    // with an open $300 invoice that still has to be collected. Pay it with
+    // the card already on the customer — same $300 charge, same proration
+    // coupon if one was attached. Amount and price id are untouched.
+    if (sub.status !== "active" && sub.status !== "trialing" && invoiceId) {
+      console.log("[APPROVE] Collecting first invoice:", invoiceId);
+      const payRes = await fetch(`https://api.stripe.com/v1/invoices/${invoiceId}/pay`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${STRIPE_SECRET_KEY}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({ off_session: "true" }).toString(),
+      });
+      const paid = await payRes.json();
+      console.log("[APPROVE] Invoice pay status:", paid.status, "paid:", paid.amount_paid);
+
+      const subRefresh = await fetch(
+        `https://api.stripe.com/v1/subscriptions/${newSubscriptionId}`,
+        { headers: { Authorization: `Bearer ${STRIPE_SECRET_KEY}` } }
+      );
+      sub = await subRefresh.json();
+      piStatus = paid.status ?? piStatus;
+      console.log("[APPROVE] Subscription after invoice pay:", sub.status);
     }
 
     if (sub.status !== "active" && sub.status !== "trialing") {
@@ -341,13 +406,23 @@ serve(async (req) => {
     console.log("[APPROVE] Subscription is active:", newSubscriptionId);
 
     // ── Step 12: Update profile ──────────────────────────────────────────────
+    // These are the fields the member portal actually gates on: member_type
+    // decides the business experience, subscription_status decides active
+    // access, and application_status must stop being 'pending' or middleware
+    // keeps redirecting to /pending-review.
+    const nowIso = new Date().toISOString();
+
     console.log("[APPROVE] Updating profile:", profile.id);
     const profileUpdates: Record<string, unknown> = {
       member_type: "business",
       subscription_status: "active",
       stripe_customer_id: stripeCustomerId,
       subscription_id: newSubscriptionId,
-      application_status: "approved",
+      // profiles.application_status vocabulary is accepted/denied/waitlist/pending.
+      // business_applications.status uses approved; the sync trigger maps it.
+      application_status: "accepted",
+      // Set once, on the day they actually became a member.
+      ...(profile.member_since ? {} : { member_since: nowIso }),
     };
     const { error: profileUpdateErr } = await supabase
       .from("profiles")
@@ -356,6 +431,68 @@ serve(async (req) => {
     if (profileUpdateErr) {
       console.error("[APPROVE] Profile update error:", profileUpdateErr.message);
       throw new Error(`Failed to update profile: ${profileUpdateErr.message}`);
+    }
+
+    // ── Step 12b: people row ─────────────────────────────────────────────────
+    // Same convention as the shipped paying-member path in stripe-webhook: the
+    // shared resolver owns find-or-create, so an existing person is adopted and
+    // healed rather than duplicated, and auth_user_id is the link (the mirror
+    // trigger fills metadata.profile_id from it). Non-blocking: the member is
+    // already provisioned and paid, and a missing people row is a fixable state.
+    let personId: string | null = null;
+    try {
+      const resolved = await resolvePerson(supabase, {
+        authUserId: profile.id,
+        email: profile.email ?? app.email,
+        profile: {
+          id: profile.id,
+          email: profile.email ?? app.email,
+          full_name: profile.full_name ?? `${app.first_name} ${app.last_name}`.trim(),
+          phone: profile.phone ?? app.phone,
+          member_type: "business",
+          subscription_status: "active",
+        },
+        nameHint: `${app.first_name ?? ""} ${app.last_name ?? ""}`.trim() || undefined,
+        phoneHint: app.phone ?? undefined,
+        source: "approve_business_application",
+        mint: true,
+      });
+
+      personId = resolved.personId;
+      console.log("[APPROVE] people resolve:", { personId, via: resolved.via, healed: resolved.healed });
+
+      if (personId) {
+        const { data: existingPerson } = await supabase
+          .from("people")
+          .select("roles")
+          .eq("id", personId)
+          .maybeSingle();
+
+        const roles: string[] = existingPerson?.roles ?? [];
+        if (!roles.includes("member")) roles.push("member");
+
+        const { error: personStampErr } = await supabase
+          .from("people")
+          .update({
+            roles,
+            member_tier: "business",
+            member_status: "active",
+            stripe_customer_id: stripeCustomerId,
+            ...(resolved.via === "minted" ? { joined_at: nowIso } : {}),
+            updated_at: nowIso,
+          })
+          .eq("id", personId);
+
+        if (personStampErr) {
+          console.error("[APPROVE] people stamp failed (non-blocking):", personStampErr.message);
+        } else {
+          console.log("[APPROVE] people row stamped business/active:", personId);
+        }
+      } else {
+        console.error("[APPROVE] LOUD: could not resolve or mint a people row for", profile.id);
+      }
+    } catch (personErr) {
+      console.error("[APPROVE] people provisioning failed (non-blocking):", String(personErr));
     }
 
     // ── Step 13: Ensure business_card row exists ─────────────────────────────
@@ -392,7 +529,6 @@ serve(async (req) => {
     const firstName = (app.first_name || "").trim() || "there";
     const welcomeContent = `Welcome ${firstName}! Just joined 704 Business - say hi below.`;
     const imageUrls = profile.avatar_url ? [profile.avatar_url] : [];
-    const nowIso = new Date().toISOString();
 
     const { error: postsErr } = await supabase.from("posts").insert([
       { author_id: profile.id, feed_type: "social",   content: welcomeContent, image_urls: imageUrls, created_at: nowIso },
@@ -421,6 +557,99 @@ serve(async (req) => {
     if (appUpdateErr) {
       // Log but don't throw — Stripe + profile are already updated; this is cosmetic
       console.error("[APPROVE] Application status update error (non-blocking):", appUpdateErr.message);
+    }
+
+    // ── Step 15b: Ambassador referral ledger ─────────────────────────────────
+    // Written in exactly the shape the shipped conversion watcher already looks
+    // for: status 'signed_up' plus the subscription id. When the second invoice
+    // succeeds, stripe-webhook flips it to 'converted' / payout_status 'owed'
+    // and the Monday payout run picks it up. No new machinery.
+    if (app.ambassador_id && app.referral_code) {
+      const { data: existingAmbRef } = await supabase
+        .from("ambassador_referrals")
+        .select("id")
+        .eq("stripe_subscription_id", newSubscriptionId)
+        .maybeSingle();
+
+      if (existingAmbRef) {
+        console.log("[APPROVE] ambassador_referrals row already exists, skipping:", existingAmbRef.id);
+      } else {
+        const { data: ambRef, error: ambRefErr } = await supabase
+          .from("ambassador_referrals")
+          .insert({
+            ambassador_id: app.ambassador_id,
+            referred_profile_id: profile.id,
+            referred_email: app.email,
+            referred_full_name: `${app.first_name ?? ""} ${app.last_name ?? ""}`.trim() || null,
+            referred_person_id: personId,
+            tier: "business",
+            reward_cents: AMBASSADOR_BUSINESS_REWARD_CENTS,
+            status: "signed_up",
+            referral_code: app.referral_code,
+            stripe_subscription_id: newSubscriptionId,
+            referred_at: nowIso,
+            payout_status: "pending",
+          })
+          .select("id")
+          .maybeSingle();
+
+        if (ambRefErr) {
+          console.error("[APPROVE] ambassador_referrals insert failed (non-blocking):", ambRefErr.message);
+        } else {
+          console.log("[APPROVE] ambassador_referrals row created:", ambRef?.id, "sub:", newSubscriptionId);
+        }
+      }
+    }
+
+    // ── Step 15c: Member referral ledger ─────────────────────────────────────
+    // Only the reviewer's confirmed choice pays. An unconfirmed auto-match is a
+    // suggestion, so it credits nobody. A referral is a bonus, never a gate:
+    // a failure here must not affect a membership that is already paid for.
+    if (app.confirmed_referrer_profile_id) {
+      if (app.confirmed_referrer_profile_id === profile.id) {
+        console.error("[APPROVE] LOUD: confirmed referrer is the applicant, refusing to write ledger row");
+      } else {
+        const { data: referrer } = await supabase
+          .from("profiles")
+          .select("id, full_name, email")
+          .eq("id", app.confirmed_referrer_profile_id)
+          .maybeSingle();
+
+        const { data: ledgerRow, error: ledgerErr } = await supabase
+          .from("referrals")
+          .insert({
+            referred_profile_id: profile.id,
+            referred_application_id: app.id,
+            referrer_profile_id: app.confirmed_referrer_profile_id,
+            amount_cents: MEMBER_REFERRAL_AMOUNT_CENTS,
+            status: "pending",
+            stripe_subscription_id: newSubscriptionId,
+            // Display snapshot for /admin/referrals, frozen at approval time.
+            referrer_name: referrer?.full_name ?? null,
+            referrer_email: referrer?.email ?? null,
+            referred_name: `${app.first_name ?? ""} ${app.last_name ?? ""}`.trim() || null,
+            referred_email: app.email,
+            payout_status: "pending",
+          })
+          .select("id")
+          .maybeSingle();
+
+        if (ledgerErr) {
+          // 23505 means the unique index on referred_application_id caught a
+          // retry. That is the guard working, not a failure.
+          if ((ledgerErr as { code?: string }).code === "23505") {
+            console.log("[APPROVE] referrals ledger row already exists for this application, skipping");
+          } else {
+            console.error("[APPROVE] referrals ledger insert failed (non-blocking):", ledgerErr.message);
+          }
+        } else {
+          console.log(
+            "[APPROVE] referrals ledger row created:", ledgerRow?.id,
+            "referrer:", app.confirmed_referrer_profile_id,
+            "sub:", newSubscriptionId
+          );
+        }
+      }
     }
 
     // ── Step 16: Send approval email ─────────────────────────────────────────

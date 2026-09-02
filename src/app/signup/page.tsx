@@ -18,6 +18,14 @@ import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '
 
 type Step = 'form' | 'verify' | 'choice';
 
+/** Safe internal redirect from ?redirect=, or null. */
+function signupRedirectTarget(): string | null {
+  if (typeof window === 'undefined') return null;
+  const wanted = new URLSearchParams(window.location.search).get('redirect');
+  if (wanted && wanted.startsWith('/') && !wanted.startsWith('//')) return wanted;
+  return null;
+}
+
 export default function SignupPage() {
   usePageTitle('Sign Up | 704 Collective');
   const router = useRouter();
@@ -68,6 +76,11 @@ export default function SignupPage() {
     const advanceIfConfirmed = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!cancelled && session?.user?.email_confirmed_at) {
+        const dest = signupRedirectTarget();
+        if (dest) {
+          router.push(dest);
+          return;
+        }
         setStep('choice');
       }
     };
@@ -90,7 +103,7 @@ export default function SignupPage() {
       subscription.unsubscribe();
       clearInterval(interval);
     };
-  }, [step]);
+  }, [step, router]);
 
   // --- Step 1: Create account ---
   const handleCreateAccount = async (e: React.FormEvent) => {
@@ -139,7 +152,9 @@ export default function SignupPage() {
             full_name: `${firstName.trim()} ${lastName.trim()}`,
             phone: phone.trim(),
           },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: signupRedirectTarget() === '/apply/business'
+            ? `${window.location.origin}/auth/callback?source=business-apply`
+            : `${window.location.origin}/auth/callback`,
           captchaToken: captchaToken || undefined,
         },
       });
@@ -204,6 +219,11 @@ export default function SignupPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user?.email_confirmed_at) {
+        const dest = signupRedirectTarget();
+        if (dest) {
+          router.push(dest);
+          return;
+        }
         setStep('choice');
       } else {
         toast.error('We haven\'t detected your confirmation yet. Click the link in the email we sent (in this browser), then try again.');

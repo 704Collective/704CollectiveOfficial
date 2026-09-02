@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Nav from '@/components/Nav';
-import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,23 +11,25 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { sendBusinessApplicationSubmittedEmails } from '@/app/actions/transactionalEmails';
 import { toast } from 'sonner';
-import { Loader2, Mail } from 'lucide-react';
+import { Loader2, Mail, Lock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
+import {
+  REFERRAL_QUESTION,
+  checkOneSource,
+  hasReferrerName,
+} from '@/lib/referralRules';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 type Step = 'apply' | 'confirm' | 'payment' | 'done';
 
 interface FormData {
-  // Account
+  // Contact details, prefilled from the account
   firstName: string;
   lastName: string;
-  email: string;
   phone: string;
-  password: string;
-  confirmPassword: string;
   // Application
   company: string;
   title: string;
@@ -37,6 +38,7 @@ interface FormData {
   website: string;
   yearsInCharlotte: string;
   referralSource: string;
+  referrerName: string;
   conflictLesson: string;
   missingInCharlotte: string;
   oneYearGoal: string;
@@ -46,9 +48,9 @@ interface FormData {
 }
 
 const INITIAL_FORM: FormData = {
-  firstName: '', lastName: '', email: '', phone: '', password: '', confirmPassword: '',
+  firstName: '', lastName: '', phone: '',
   company: '', title: '', industry: '', linkedinUrl: '', website: '',
-  yearsInCharlotte: '', referralSource: '', conflictLesson: '',
+  yearsInCharlotte: '', referralSource: '', referrerName: '', conflictLesson: '',
   missingInCharlotte: '', oneYearGoal: '', rightIntro: '',
   recentWins: '', anythingElse: '',
 };
@@ -118,6 +120,20 @@ function PaymentForm({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
+/** Shell used by every non-form state so they share the page chrome. */
+function PageShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-background flex flex-col" style={{ backgroundColor: '#1A1A1A', paddingTop: 'calc(64px + var(--banner-height, 0px))' }}>
+      <Nav />
+      <MarketingPageRoot>
+        <div className="flex-1 flex items-center justify-center px-4 py-16">
+          {children}
+        </div>
+      </MarketingPageRoot>
+    </div>
+  );
+}
+
 function BusinessApplicationInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -125,7 +141,7 @@ function BusinessApplicationInner() {
   const [step, setStep] = useState<Step>('apply');
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<FormData>(INITIAL_FORM);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [accountEmail, setAccountEmail] = useState('');
 
   // Payment step state
   const [paymentCheckLoading, setPaymentCheckLoading] = useState(false);
@@ -139,8 +155,9 @@ function BusinessApplicationInner() {
   const [resolvedAmbassador, setResolvedAmbassador] = useState<{ id: string; full_name: string } | null>(null);
   const [referralCodeError, setReferralCodeError] = useState<string | null>(null);
   const [validatingCode, setValidatingCode] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState('');
-  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
+  const [referralRuleError, setReferralRuleError] = useState<string | null>(null);
+
+  const emailConfirmed = !!user?.email_confirmed_at;
 
   const set = (key: keyof FormData) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -180,11 +197,14 @@ function BusinessApplicationInner() {
     void validateReferralCode(refFromUrl);
   }, [searchParams, validateReferralCode]);
 
-  // Pre-fill form fields when user is already logged in.
+  // Prefill contact details from the account. The application is account-first,
+  // so there is always a profile to read by the time the form renders.
   useEffect(() => {
     if (authLoading || !user) return;
 
     async function prefillFromProfile() {
+      setAccountEmail(user!.email ?? '');
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('full_name, email, phone')
@@ -192,24 +212,15 @@ function BusinessApplicationInner() {
         .maybeSingle();
 
       if (profile) {
-        const nameParts = (profile.full_name ?? '').trim().split(' ');
-        const firstName = nameParts[0] ?? '';
-        const lastName = nameParts.slice(1).join(' ');
+        const nameParts = (profile.full_name ?? '').trim().split(/\s+/).filter(Boolean);
         setForm(prev => ({
           ...prev,
-          firstName,
-          lastName,
-          email: profile.email ?? user!.email ?? '',
+          firstName: nameParts[0] ?? '',
+          lastName: nameParts.slice(1).join(' '),
           phone: profile.phone ?? '',
         }));
-      } else {
-        setForm(prev => ({
-          ...prev,
-          email: user!.email ?? '',
-        }));
+        setAccountEmail(profile.email ?? user!.email ?? '');
       }
-
-      setUserId(user!.id);
     }
 
     prefillFromProfile();
@@ -288,10 +299,9 @@ function BusinessApplicationInner() {
   const handleApply = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate required application fields
     const requiredApplicationFields = [
       'company', 'title', 'industry', 'yearsInCharlotte',
-      'referralSource', 'conflictLesson', 'missingInCharlotte',
+      'referralSource', 'referrerName', 'conflictLesson', 'missingInCharlotte',
       'oneYearGoal', 'rightIntro', 'recentWins',
     ] as (keyof FormData)[];
 
@@ -302,131 +312,71 @@ function BusinessApplicationInner() {
       }
     }
 
-    if (!user) {
-      if (!form.firstName.trim() || !form.lastName.trim() ||
-          !form.email.trim() || !form.phone.trim() || !form.password) {
-        toast.error('Please fill out all required account fields');
-        return;
-      }
-      if (form.password !== form.confirmPassword) {
-        toast.error('Passwords do not match');
-        return;
-      }
-      if (form.password.length < 8) {
-        toast.error('Password must be at least 8 characters');
-        return;
-      }
-      if (form.phone.replace(/\D/g, '').length < 10) {
-        toast.error('Please enter a valid 10-digit phone number');
-        return;
-      }
+    if (!form.firstName.trim() || !form.lastName.trim()) {
+      toast.error('Please provide your first and last name');
+      return;
     }
+
+    // One-source rule, browser side. The route enforces it again server-side.
+    const oneSourceError = checkOneSource(referralCode, form.referrerName);
+    if (oneSourceError) {
+      setReferralRuleError(oneSourceError);
+      toast.error(oneSourceError);
+      return;
+    }
+    setReferralRuleError(null);
 
     setLoading(true);
 
     try {
-      let currentUserId = userId;
-      // A signed-up-but-unconfirmed applicant has no session, so every
-      // authenticated call after this point would 401. Tracked so the submit
-      // can end on the confirm-your-email screen instead of a dead payment step.
-      let hasSession = !!user;
+      const res = await fetch('/api/business-application', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim(),
+          phone: form.phone.trim(),
+          company: form.company.trim(),
+          title: form.title.trim(),
+          industry: form.industry.trim(),
+          linkedinUrl: form.linkedinUrl.trim(),
+          website: form.website.trim(),
+          yearsInCharlotte: form.yearsInCharlotte.trim(),
+          referralSource: form.referralSource.trim(),
+          conflictLesson: form.conflictLesson.trim(),
+          missingInCharlotte: form.missingInCharlotte.trim(),
+          oneYearGoal: form.oneYearGoal.trim(),
+          rightIntro: form.rightIntro.trim(),
+          recentWins: form.recentWins.trim(),
+          anythingElse: form.anythingElse.trim(),
+          referralCode: referralCode || '',
+          referrerName: form.referrerName.trim(),
+        }),
+      });
 
-      // STEP A: Create auth account if user is not logged in
-      if (!user) {
-        const { data: signupData, error: signupError } =
-          await supabase.auth.signUp({
-            email: form.email.trim().toLowerCase(),
-            password: form.password,
-            options: {
-              data: {
-                full_name: `${form.firstName.trim()} ${form.lastName.trim()}`,
-                phone: form.phone.trim(),
-                member_type: 'business_non_member',
-              },
-              emailRedirectTo:
-                `${window.location.origin}/auth/callback?source=business-apply`,
-              captchaToken: captchaToken || undefined,
-            },
-          });
+      const data = await res.json().catch(() => ({}));
 
-        if (signupError) {
-          if (signupError.message.toLowerCase().includes('already registered')) {
-            toast.error('An account with this email already exists. Try logging in.');
-          } else {
-            toast.error(signupError.message);
-          }
-          turnstileRef.current?.reset();
-          setCaptchaToken('');
-          setLoading(false);
-          return;
-        }
-
-        if (signupData.user) {
-          currentUserId = signupData.user.id;
-          setUserId(signupData.user.id);
-        }
-        // With email confirmation on, signUp returns a user but no session.
-        hasSession = !!signupData.session;
+      if (!res.ok) {
+        const message = (data as { error?: string }).error ?? 'Submission failed. Please try again.';
+        setReferralRuleError(message);
+        toast.error(message);
+        setLoading(false);
+        return;
       }
 
-      if (!currentUserId) {
-        throw new Error('Could not establish user account');
-      }
-
-      // STEP B: Insert business_applications row
-      const { error: appError } = await supabase
-        .from('business_applications')
-        .insert({
-          first_name: form.firstName.trim(),
-          last_name: form.lastName.trim(),
-          email: form.email.trim().toLowerCase(),
-          phone: form.phone.trim() || null,
-          company: form.company.trim() || null,
-          title: form.title.trim() || null,
-          industry: form.industry.trim() || null,
-          linkedin_url: form.linkedinUrl.trim() || null,
-          website: form.website.trim() || null,
-          years_in_charlotte: form.yearsInCharlotte
-            ? parseInt(form.yearsInCharlotte)
-            : null,
-          referral_source: form.referralSource.trim() || null,
-          conflict_lesson: form.conflictLesson.trim() || null,
-          missing_in_charlotte: form.missingInCharlotte.trim() || null,
-          one_year_goal: form.oneYearGoal.trim() || null,
-          right_intro: form.rightIntro.trim() || null,
-          recent_wins: form.recentWins.trim() || null,
-          anything_else: form.anythingElse.trim() || null,
-          status: 'pending',
-          profile_id: currentUserId,
-          ambassador_id: resolvedAmbassador?.id || null,
-          referral_code: referralCode || null,
-        });
-
-      if (appError) throw appError;
-
-      // STEP C: Update profile application_status
-      await supabase
-        .from('profiles')
-        .update({ application_status: 'pending' })
-        .eq('id', currentUserId);
-
-      // STEP D: Send confirmation emails (non-blocking)
+      // Confirmation emails (non-blocking)
       try {
         await sendBusinessApplicationSubmittedEmails({
-          applicantEmail: form.email.trim().toLowerCase(),
+          applicantEmail: accountEmail.trim().toLowerCase(),
           applicantFirstName: form.firstName.trim(),
           company: form.company.trim(),
-          adminPanelUrl:
-            `${window.location.origin}/admin?section=applications`,
+          adminPanelUrl: `${window.location.origin}/admin?section=applications`,
         });
       } catch (emailErr) {
         console.error('Application confirmation email failed:', emailErr);
       }
 
-      // STEP E: Card capture needs a session. Without one, send the applicant to
-      // confirm their email; they add the card from their dashboard afterwards.
-      setStep(hasSession ? 'payment' : 'confirm');
-
+      setStep('payment');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       console.error('Application submit failed:', err);
@@ -436,209 +386,279 @@ function BusinessApplicationInner() {
     }
   };
 
-  // ── Confirm-your-email step ──────────────────────────────────────
-  // Reached when the applicant signed up during submit and has no session yet.
-  // Their application is already saved; only the card is outstanding.
-  if (step === 'confirm') {
+  // ── Auth still resolving ─────────────────────────────────────────────────
+  if (authLoading) {
     return (
-      <div className="min-h-screen bg-background flex flex-col" style={{ backgroundColor: '#1A1A1A', paddingTop: 'calc(64px + var(--banner-height, 0px))' }}>
-        <Nav />
-        <MarketingPageRoot>
-        <div className="flex-1 flex items-center justify-center px-4 py-16">
-          <div className="w-full max-w-md space-y-6 text-center">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-              <Mail className="w-8 h-8 text-primary" />
-            </div>
-            <div className="space-y-2">
-              <h1 className="text-2xl font-semibold text-foreground">
-                Confirm your email to finish
-              </h1>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Your application is in. We sent a confirmation link to{' '}
-                <span className="text-foreground font-medium">{form.email.trim().toLowerCase()}</span>.
-                Click it to activate your account.
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-border bg-card p-5 text-left space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                What happens next
-              </p>
-              <ol className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex gap-2">
-                  <span className="text-primary shrink-0">1.</span>
-                  Confirm your email using the link we just sent.
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-primary shrink-0">2.</span>
-                  Sign in and open your portal, where you&apos;ll be asked to add a payment method.
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-primary shrink-0">3.</span>
-                  We review your application and get back to you, usually within 48 hours.
-                </li>
-              </ol>
-              <p className="text-sm text-muted-foreground leading-relaxed pt-1">
-                <strong className="text-foreground">You will not be charged</strong> unless your
-                application is approved.
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              <Button className="w-full" onClick={() => router.push('/login')}>
-                Go to sign in
-              </Button>
-              <p className="text-xs text-muted-foreground">
-                Can&apos;t find the email? Check your spam folder, or email us at{' '}
-                <a href="mailto:hello@704collective.com" className="text-primary hover:underline">
-                  hello@704collective.com
-                </a>.
-              </p>
-            </div>
-          </div>
+      <PageShell>
+        <div className="flex flex-col items-center space-y-4 py-8">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
         </div>
-        </MarketingPageRoot>
-      </div>
+      </PageShell>
     );
   }
 
-  // ── Payment step ─────────────────────────────────────────────────
-  if (step === 'payment') {
+  // ── Account-first lock ───────────────────────────────────────────────────
+  // The application does not exist for a logged-out visitor. No fields, no
+  // captcha, no signup embedded in the form: an account comes first.
+  if (!user) {
     return (
-      <div className="min-h-screen bg-background flex flex-col" style={{ backgroundColor: '#1A1A1A', paddingTop: 'calc(64px + var(--banner-height, 0px))' }}>
-        <Nav />
-        <MarketingPageRoot>
-        <div className="flex-1 flex items-center justify-center px-4 py-16">
-          <div className="w-full max-w-md space-y-6">
-
-            {/* Loading */}
-            {paymentCheckLoading && (
-              <div className="flex flex-col items-center space-y-4 py-8">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Setting up payment...</p>
-              </div>
-            )}
-
-            {/* Error */}
-            {!paymentCheckLoading && paymentInitError && (
-              <div className="space-y-4 text-center">
-                <p className="text-sm text-red-400">{paymentInitError}</p>
-                <Button
-                  className="w-full"
-                  onClick={() => {
-                    setHasExistingPayment(null);
-                    setClientSecret(null);
-                    setPaymentInitError(null);
-                  }}
-                >
-                  Try again
-                </Button>
-              </div>
-            )}
-
-            {/* Existing payment method detected - transitioning */}
-            {!paymentCheckLoading && hasExistingPayment === true && (
-              <div className="flex flex-col items-center space-y-4 py-8 text-center">
-                <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
-                  <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Payment method on file - finalizing your application...
-                </p>
-              </div>
-            )}
-
-            {/* No existing payment method - show Stripe Elements */}
-            {!paymentCheckLoading && hasExistingPayment === false && clientSecret && (
-              <>
-                <div className="text-center space-y-2">
-                  <h1 className="text-2xl font-semibold text-foreground">
-                    Application Pending - Save Payment Method to Submit
-                  </h1>
-                </div>
-                <div className="text-sm text-muted-foreground leading-relaxed space-y-3">
-                  <p>
-                    Your application has been submitted for review. To finalize your spot,
-                    please save a payment method below.
-                  </p>
-                  <p>
-                    <strong className="text-foreground">Important:</strong> You will NOT be
-                    charged unless your application is approved by our team. If your application
-                    is denied, you will be provided a reason and you will NOT be charged.
-                  </p>
-                  <p>
-                    Please continuously check your email or member portal for an update, or email
-                    our team at{' '}
-                    <a href="mailto:hello@704collective.com" className="text-primary hover:underline">
-                      hello@704collective.com
-                    </a>{' '}
-                    if you have any questions.
-                  </p>
-                </div>
-                <Elements
-                  stripe={stripePromise}
-                  options={{
-                    clientSecret,
-                    appearance: {
-                      theme: 'night',
-                      variables: {
-                        colorPrimary: '#C6A664',
-                        colorBackground: '#1A1A1A',
-                        colorText: '#FAF6F0',
-                      },
-                    },
-                  }}
-                >
-                  <PaymentForm onSuccess={() => setStep('done')} />
-                </Elements>
-                <p className="text-center text-xs text-muted-foreground">
-                  📧 Don&apos;t forget to verify your email by clicking the link we sent -
-                  required to access your member portal after approval.
-                </p>
-              </>
-            )}
-
+      <PageShell>
+        <div className="w-full max-w-md space-y-6 text-center">
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+            <Lock className="w-8 h-8 text-primary" />
           </div>
-        </div>
-        </MarketingPageRoot>
-      </div>
-    );
-  }
+          <div className="space-y-2">
+            <h1 className="text-2xl font-semibold text-foreground">
+              Create your account to apply
+            </h1>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              The 704 Business application is only available to signed-in members with a
+              confirmed email address. It takes a minute, and you will not be charged
+              anything to apply.
+            </p>
+          </div>
 
-  // ── Done screen ─────────────────────────────────────────────────
-  if (step === 'done') {
-    return (
-      <div className="min-h-screen bg-background flex flex-col" style={{ backgroundColor: '#1A1A1A', paddingTop: 'calc(64px + var(--banner-height, 0px))' }}>
-        <Nav />
-        <MarketingPageRoot>
-        <div className="flex-1 flex items-center justify-center px-4 py-16">
-          <div className="w-full max-w-md text-center space-y-6">
-            <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
-              <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-2xl font-semibold text-foreground mb-2">You&apos;re All Set!</h1>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Your application has been submitted and your payment method is on file. You&apos;ll
-                receive an email when our team reviews your application - usually within 2-3 business
-                days. If approved, your card will be charged the monthly rate at that time.
-              </p>
-            </div>
-            <Button className="w-full" onClick={() => router.push('/dashboard')}>
-              Go to your portal
+          <div className="space-y-3">
+            <Button
+              className="w-full"
+              onClick={() => router.push('/signup?redirect=/apply/business')}
+            >
+              Create an account
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => router.push('/login?redirect=/apply/business')}
+            >
+              I already have an account
             </Button>
           </div>
+
+          <p className="text-xs text-muted-foreground">
+            Questions? Email us at{' '}
+            <a href="mailto:hello@704collective.com" className="text-primary hover:underline">
+              hello@704collective.com
+            </a>.
+          </p>
         </div>
-        </MarketingPageRoot>
-      </div>
+      </PageShell>
     );
   }
 
-  // ── Apply form (account + application, unified) ─────────────────
+  // ── Unconfirmed email state ──────────────────────────────────────────────
+  // Signed in but the address has never been verified. Same screen the R3 flow
+  // has always used, now reached from the account-first gate.
+  if (!emailConfirmed) {
+    return (
+      <PageShell>
+        <div className="w-full max-w-md space-y-6 text-center">
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+            <Mail className="w-8 h-8 text-primary" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-semibold text-foreground">
+              Confirm your email to continue
+            </h1>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              We sent a confirmation link to{' '}
+              <span className="text-foreground font-medium">{user.email}</span>.
+              Click it to unlock the application.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-5 text-left space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              What happens next
+            </p>
+            <ol className="space-y-2 text-sm text-muted-foreground">
+              <li className="flex gap-2">
+                <span className="text-primary shrink-0">1.</span>
+                Confirm your email using the link we just sent.
+              </li>
+              <li className="flex gap-2">
+                <span className="text-primary shrink-0">2.</span>
+                Come back here and complete your application.
+              </li>
+              <li className="flex gap-2">
+                <span className="text-primary shrink-0">3.</span>
+                Add a payment method, then we review, usually within 48 hours.
+              </li>
+            </ol>
+            <p className="text-sm text-muted-foreground leading-relaxed pt-1">
+              <strong className="text-foreground">You will not be charged</strong> unless your
+              application is approved.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <Button className="w-full" onClick={() => window.location.reload()}>
+              I&apos;ve confirmed my email
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Can&apos;t find the email? Check your spam folder, or email us at{' '}
+              <a href="mailto:hello@704collective.com" className="text-primary hover:underline">
+                hello@704collective.com
+              </a>.
+            </p>
+          </div>
+        </div>
+      </PageShell>
+    );
+  }
+
+  // ── Post-submit confirm screen ───────────────────────────────────────────
+  if (step === 'confirm') {
+    return (
+      <PageShell>
+        <div className="w-full max-w-md space-y-6 text-center">
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+            <Mail className="w-8 h-8 text-primary" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-semibold text-foreground">
+              Confirm your email to finish
+            </h1>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Your application is in. We sent a confirmation link to{' '}
+              <span className="text-foreground font-medium">{accountEmail}</span>.
+              Click it to activate your account.
+            </p>
+          </div>
+          <Button className="w-full" onClick={() => router.push('/login')}>
+            Go to sign in
+          </Button>
+        </div>
+      </PageShell>
+    );
+  }
+
+  // ── Payment step ─────────────────────────────────────────────────────────
+  if (step === 'payment') {
+    return (
+      <PageShell>
+        <div className="w-full max-w-md space-y-6">
+
+          {/* Loading */}
+          {paymentCheckLoading && (
+            <div className="flex flex-col items-center space-y-4 py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Setting up payment...</p>
+            </div>
+          )}
+
+          {/* Error */}
+          {!paymentCheckLoading && paymentInitError && (
+            <div className="space-y-4 text-center">
+              <p className="text-sm text-red-400">{paymentInitError}</p>
+              <Button
+                className="w-full"
+                onClick={() => {
+                  setHasExistingPayment(null);
+                  setClientSecret(null);
+                  setPaymentInitError(null);
+                }}
+              >
+                Try again
+              </Button>
+            </div>
+          )}
+
+          {/* Existing payment method detected - transitioning */}
+          {!paymentCheckLoading && hasExistingPayment === true && (
+            <div className="flex flex-col items-center space-y-4 py-8 text-center">
+              <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
+                <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Payment method on file - finalizing your application...
+              </p>
+            </div>
+          )}
+
+          {/* No existing payment method - show Stripe Elements */}
+          {!paymentCheckLoading && hasExistingPayment === false && clientSecret && (
+            <>
+              <div className="text-center space-y-2">
+                <h1 className="text-2xl font-semibold text-foreground">
+                  Application Pending - Save Payment Method to Submit
+                </h1>
+              </div>
+              <div className="text-sm text-muted-foreground leading-relaxed space-y-3">
+                <p>
+                  Your application has been submitted for review. To finalize your spot,
+                  please save a payment method below.
+                </p>
+                <p>
+                  <strong className="text-foreground">Important:</strong> You will NOT be
+                  charged unless your application is approved by our team. If your application
+                  is denied, you will be provided a reason and you will NOT be charged.
+                </p>
+                <p>
+                  Please continuously check your email or member portal for an update, or email
+                  our team at{' '}
+                  <a href="mailto:hello@704collective.com" className="text-primary hover:underline">
+                    hello@704collective.com
+                  </a>{' '}
+                  if you have any questions.
+                </p>
+              </div>
+              <Elements
+                stripe={stripePromise}
+                options={{
+                  clientSecret,
+                  appearance: {
+                    theme: 'night',
+                    variables: {
+                      colorPrimary: '#C6A664',
+                      colorBackground: '#1A1A1A',
+                      colorText: '#FAF6F0',
+                    },
+                  },
+                }}
+              >
+                <PaymentForm onSuccess={() => setStep('done')} />
+              </Elements>
+            </>
+          )}
+
+        </div>
+      </PageShell>
+    );
+  }
+
+  // ── Done screen ──────────────────────────────────────────────────────────
+  if (step === 'done') {
+    return (
+      <PageShell>
+        <div className="w-full max-w-md text-center space-y-6">
+          <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
+            <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground mb-2">You&apos;re All Set!</h1>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Your application has been submitted and your payment method is on file. You&apos;ll
+              receive an email when our team reviews your application - usually within 2-3 business
+              days. If approved, your card will be charged the monthly rate at that time.
+            </p>
+          </div>
+          <Button className="w-full" onClick={() => router.push('/dashboard')}>
+            Go to your portal
+          </Button>
+        </div>
+      </PageShell>
+    );
+  }
+
+  // ── Apply form (unlocked: signed in and confirmed) ───────────────────────
+  const codeApplied = !!resolvedAmbassador;
+  const nameGiven = hasReferrerName(form.referrerName);
+
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#1A1A1A', paddingTop: 'calc(64px + var(--banner-height, 0px))' }}>
       <Nav />
@@ -653,54 +673,51 @@ function BusinessApplicationInner() {
 
           <form onSubmit={handleApply} className="space-y-8">
 
-            {/* Account section - only shown to new (not logged-in) users */}
-            {!user && (
-              <div className="space-y-4">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Create Your Account</p>
+            {/* Contact details, prefilled from the signed-in account */}
+            <div className="space-y-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Your Details</p>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="firstName">First Name *</Label>
-                    <Input id="firstName" placeholder="First name" value={form.firstName} onChange={set('firstName')} required autoComplete="given-name" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="lastName">Last Name *</Label>
-                    <Input id="lastName" placeholder="Last name" value={form.lastName} onChange={set('lastName')} required autoComplete="family-name" />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="email">Email *</Label>
-                  <Input id="email" type="email" placeholder="you@example.com" value={form.email} onChange={set('email')} required autoComplete="email" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="phone">Phone *</Label>
-                  <Input id="phone" type="tel" placeholder="704-555-0100" value={form.phone} onChange={set('phone')} required autoComplete="tel" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="password">Password *</Label>
-                  <Input id="password" type="password" placeholder="At least 8 characters" value={form.password} onChange={set('password')} required autoComplete="new-password" minLength={8} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                  <Input id="confirmPassword" type="password" placeholder="Repeat your password" value={form.confirmPassword} onChange={set('confirmPassword')} required autoComplete="new-password" />
-                  {form.confirmPassword.length > 0 && form.password !== form.confirmPassword && (
-                    <p className="text-xs text-red-400 mt-1">Passwords do not match</p>
-                  )}
-                </div>
-
-                <p className="text-center text-xs text-muted-foreground">
-                  Already have an account?{' '}
-                  <a href="/login" className="text-primary hover:underline">Sign in</a>
-                </p>
+              <div className="rounded-lg border border-border bg-muted/30 px-4 py-3">
+                <p className="text-xs text-muted-foreground">Applying as</p>
+                <p className="text-sm font-medium text-foreground">{accountEmail}</p>
               </div>
-            )}
 
-            {/* Referral code - optional, subtle, between account and application */}
-            <div className="space-y-3">
-              {resolvedAmbassador ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="firstName">First Name *</Label>
+                  <Input id="firstName" placeholder="First name" value={form.firstName} onChange={set('firstName')} required autoComplete="given-name" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="lastName">Last Name *</Label>
+                  <Input id="lastName" placeholder="Last name" value={form.lastName} onChange={set('lastName')} required autoComplete="family-name" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="phone">Phone</Label>
+                <Input id="phone" type="tel" placeholder="704-555-0100" value={form.phone} onChange={set('phone')} autoComplete="tel" />
+              </div>
+            </div>
+
+            {/* Referral: one source only */}
+            <div className="space-y-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Referral</p>
+
+              {codeApplied ? (
                 <div className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 space-y-0.5">
                   <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Referred By</p>
                   <p className="text-base font-semibold text-primary">{resolvedAmbassador.full_name}</p>
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground underline hover:text-foreground pt-1"
+                    onClick={() => {
+                      setResolvedAmbassador(null);
+                      setReferralCode('');
+                      setReferralCodeInput('');
+                      setReferralRuleError(null);
+                    }}
+                  >
+                    Remove code
+                  </button>
                 </div>
               ) : (
                 <details className="group">
@@ -730,6 +747,35 @@ function BusinessApplicationInner() {
                     <p className="text-xs text-red-400 mt-1.5">{referralCodeError}</p>
                   )}
                 </details>
+              )}
+
+              <div className="space-y-1.5">
+                <Label htmlFor="referrerName">{REFERRAL_QUESTION} *</Label>
+                <Input
+                  id="referrerName"
+                  placeholder="Jane Smith, or N/A"
+                  value={form.referrerName}
+                  onChange={(e) => { set('referrerName')(e); setReferralRuleError(null); }}
+                  required
+                />
+                {codeApplied && (
+                  <p className="text-xs text-muted-foreground">
+                    You applied an ambassador code, so this answer must be N/A. A referral can
+                    only come from one source.
+                  </p>
+                )}
+                {codeApplied && nameGiven && (
+                  <p className="text-xs text-red-400">
+                    A referral can only come from one source. Remove the code, or change this
+                    answer to N/A.
+                  </p>
+                )}
+              </div>
+
+              {referralRuleError && (
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3">
+                  <p className="text-sm text-red-400">{referralRuleError}</p>
+                </div>
               )}
             </div>
 
@@ -820,19 +866,10 @@ function BusinessApplicationInner() {
               ))}
             </div>
 
-            {!user && (
-              <TurnstileWidget
-                ref={turnstileRef}
-                onSuccess={setCaptchaToken}
-                onExpire={() => setCaptchaToken('')}
-                onError={() => setCaptchaToken('')}
-              />
-            )}
-
             <Button
               type="submit"
               className="w-full"
-              disabled={loading || (!user && TURNSTILE_ENABLED && !captchaToken)}
+              disabled={loading || (codeApplied && nameGiven)}
               size="lg"
             >
               {loading

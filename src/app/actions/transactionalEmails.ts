@@ -37,6 +37,13 @@ export async function sendBusinessApplicationSubmittedEmails(payload: {
   company: string;
   adminPanelUrl: string;
 }): Promise<void> {
+  // Local rehearsal blanks RESEND_API_KEY so nothing can leave the machine.
+  // This action otherwise fans out through the develop send-email function,
+  // including a hardcoded notify to hello@704collective.com.
+  if (!process.env.RESEND_API_KEY) {
+    console.log('[email] skipped: RESEND_API_KEY is blank');
+    return;
+  }
   const { applicantEmail, applicantFirstName, company, adminPanelUrl } = payload;
   await Promise.all([
     serviceSendEmail(applicantEmail, 'business-application-member-confirm', {

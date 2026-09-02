@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ApplicationReferralSection } from '@/components/admin/ApplicationReferralSection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +44,11 @@ interface Application {
   admin_notes: string | null;
   card_saved: boolean;
   stripe_customer_id: string | null;
+  referrer_name: string | null;
+  referral_code: string | null;
+  ambassador_id: string | null;
+  matched_referrer_profile_id: string | null;
+  confirmed_referrer_profile_id: string | null;
 }
 
 type StatusFilter = 'all' | 'pending' | 'reviewing' | 'approved' | 'denied' | 'waitlisted';
@@ -109,6 +115,15 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
   const filtered = applications.filter(a =>
     `${a.first_name} ${a.last_name} ${a.email} ${a.company ?? ''}`.toLowerCase().includes(search.toLowerCase())
   );
+
+  // The dialog renders from a snapshot. When the list refetches (after the
+  // reviewer confirms a referrer, say) re-point the snapshot at the fresh row so
+  // the panel shows what was just saved.
+  useEffect(() => {
+    if (!detailOpen || !selectedApp) return;
+    const fresh = applications.find(a => a.id === selectedApp.id);
+    if (fresh && fresh !== selectedApp) setSelectedApp(fresh);
+  }, [applications, detailOpen, selectedApp]);
 
   // ── Open detail ──────────────────────────────────────────────────────────
   const openDetail = (app: Application) => {
@@ -359,6 +374,9 @@ export function AdminApplicationsTab({ onNavigateToDashboard }: AdminApplication
                   <div><span className="text-muted-foreground">Membership: </span>{BUSINESS_TIER.monthlyPriceFull}</div>
                   <div><span className="text-muted-foreground">Card on file: </span>{selectedApp.card_saved ? '✓ Saved' : 'Not yet'}</div>
                 </div>
+
+                {/* Referral: typed answer, auto-match, confirm-or-correct */}
+                <ApplicationReferralSection application={selectedApp} />
 
                 {/* Application answers */}
                 {ANSWER_FIELDS.map(({ key, label }) => {
