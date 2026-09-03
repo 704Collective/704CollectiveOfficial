@@ -1,6 +1,26 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 
+const CANONICAL_ORIGIN = 'https://704collective.com';
+
+/**
+ * Production-only bounce off the raw Vercel deployment host.
+ * Preview (`VERCEL_ENV=preview`) and every non-*.vercel.app host are untouched.
+ * The canonical host never ends in `.vercel.app`, so this cannot loop.
+ */
+function productionVercelAppRedirect(request: NextRequest): NextResponse | null {
+  if (process.env.VERCEL_ENV !== 'production') return null;
+
+  const hostHeader = request.headers.get('host') ?? request.nextUrl.host;
+  const hostname = hostHeader.split(':')[0].toLowerCase();
+  if (!hostname.endsWith('.vercel.app')) return null;
+
+  return NextResponse.redirect(
+    `${CANONICAL_ORIGIN}${request.nextUrl.pathname}${request.nextUrl.search}`,
+    308,
+  );
+}
+
 /**
  * Canonical path for the /exchange intake routes, or null to leave the request alone.
  *
@@ -29,6 +49,9 @@ function canonicalExchangePath(pathname: string): string | null {
 }
 
 export async function proxy(request: NextRequest) {
+  const hostBounce = productionVercelAppRedirect(request);
+  if (hostBounce) return hostBounce;
+
   const { pathname } = request.nextUrl;
   if (
     pathname.startsWith('/_next/') ||
