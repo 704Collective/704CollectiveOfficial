@@ -134,14 +134,21 @@ export default function SettingsPage() {
     };
   }, [user, isActiveMember]);
 
-  // hasStripeSubscription: gates the "Manage Billing" button (Stripe Customer Portal).
-  // Safe to show whenever there's an active Stripe sub — portal lets users
-  // reactivate, update payment, or download invoices regardless of cancel state.
+  // hasStripeSubscription: gates cancel (Danger Zone) — still active-only.
   const hasStripeSubscription =
     !!p?.stripe_customer_id
     && isActiveMember
     && !!p?.subscription_id
     && p?.subscription_status === 'active';
+
+  // Portal: active Stripe subs (unchanged) plus past_due so they can update the card.
+  const canManageBilling =
+    hasStripeSubscription
+    || (
+      !!p?.stripe_customer_id
+      && !!p?.subscription_id
+      && p?.subscription_status === 'past_due'
+    );
 
   // canCancelOrPause: gates the cancel/pause buttons that hit our edge functions.
   // Hidden for already-canceling subs to avoid 500 errors from cancel-subscription.
@@ -431,9 +438,10 @@ export default function SettingsPage() {
             <p className="text-xs text-muted-foreground">Your membership is managed by an administrator.</p>
           )}
 
-          {isActiveMember && hasStripeSubscription && (
+          {canManageBilling && (
             <div>
               <button
+                data-testid="manage-billing"
                 onClick={handleManageBilling}
                 disabled={isPortalLoading}
                 className="flex items-center gap-1.5 text-sm text-foreground hover:text-muted-foreground transition-colors"

@@ -252,10 +252,12 @@ export async function updateSession(request: NextRequest) {
     // Canceled members are allowed into /dashboard (they see NonMemberDashboard there),
     // but blocked from /dashboard/settings and other portals.
     // Never-members (null / 'inactive' subscription, no override) also reach /dashboard.
-    // Users with actively bad states (past_due, unpaid, etc.) → /signup.
+    // past_due members keep dashboard + /settings so they can update billing.
+    // Other bad states (unpaid, etc.) → /signup.
     const isCanceled =
       profile?.subscription_status === 'canceled' ||
       profile?.subscription_status === 'cancelled';
+    const isPastDue = profile?.subscription_status === 'past_due';
 
     // Never had a membership — null or 'inactive' status with no override.
     const isNeverMember =
@@ -268,23 +270,26 @@ export async function updateSession(request: NextRequest) {
       path.startsWith('/business-portal') ||
       path.startsWith('/settings');
 
-    // /dashboard (root and sub-pages) — canceled + never-members allowed through.
+    // /dashboard (root and sub-pages) — canceled + never-members + past_due allowed through.
     const isDashboardOnly = path.startsWith('/dashboard');
 
     if (!isActive && !isAdmin && !isNonMember && !isPartner) {
       if (isHardGatedPath) {
-        // Canceled → membership-ended; never-members and others → signup.
-        const url = request.nextUrl.clone();
-        url.pathname = isCanceled ? '/membership-ended' : '/signup';
-        return NextResponse.redirect(url);
+        // past_due may use legacy /settings to update a card; other hard gates stay closed.
+        if (!(isPastDue && path.startsWith('/settings'))) {
+          // Canceled → membership-ended; never-members and others → signup.
+          const url = request.nextUrl.clone();
+          url.pathname = isCanceled ? '/membership-ended' : '/signup';
+          return NextResponse.redirect(url);
+        }
       }
-      if (isDashboardOnly && !isCanceled && !isNeverMember) {
-        // Users with actively bad states (past_due, unpaid, etc.) → signup.
+      if (isDashboardOnly && !isCanceled && !isNeverMember && !isPastDue) {
+        // Users with actively bad states (unpaid, etc.) → signup.
         const url = request.nextUrl.clone();
         url.pathname = '/signup';
         return NextResponse.redirect(url);
       }
-      // Canceled and never-members hitting /dashboard are let through — page shows NonMemberDashboard.
+      // Canceled, never-members, and past_due hitting /dashboard are let through.
     }
   }
 

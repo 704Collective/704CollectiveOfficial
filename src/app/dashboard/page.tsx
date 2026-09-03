@@ -286,7 +286,11 @@ export default function Dashboard() {
   // Redirect ambassador-only users (no paid subscription) to their dashboard.
   useEffect(() => {
     if (loading || !profile || !isAmbassadorLoaded) return;
-    if (isAmbassador && !isActiveMember) {
+    if (
+      isAmbassador &&
+      !isActiveMember &&
+      (profile as { subscription_status?: string | null }).subscription_status !== 'past_due'
+    ) {
       router.replace('/ambassadors/dashboard');
     }
   }, [loading, profile, isAmbassador, isAmbassadorLoaded, isActiveMember, router]);
@@ -441,19 +445,30 @@ export default function Dashboard() {
           </Link>
         )}
 
-        {/* Past due warning */}
+        {/* Past due warning — sticky so it stays visible while scrolling; not a modal */}
         {isPastDue && (
-          <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:justify-between">
+          <div
+            data-testid="past-due-billing-banner"
+            role="status"
+            className="sticky top-0 z-20 rounded-xl border-2 border-yellow-500/80 bg-yellow-500/15 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:justify-between shadow-lg shadow-yellow-950/30"
+          >
             <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-yellow-500 mt-0.5 shrink-0" />
+              <AlertCircle className="w-6 h-6 text-yellow-400 mt-0.5 shrink-0" />
               <div>
-                <p className="font-medium text-sm">There's an issue with your payment</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="font-semibold text-sm sm:text-base text-yellow-100">There&apos;s an issue with your payment</p>
+                <p className="text-xs sm:text-sm text-yellow-100/80 mt-0.5">
                   Update your billing info to keep your membership active.
                 </p>
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={handleManageSubscription} disabled={isPortalLoading} className="shrink-0">
+            <Button
+              data-testid="past-due-update-billing"
+              variant="outline"
+              size="sm"
+              onClick={handleManageSubscription}
+              disabled={isPortalLoading}
+              className="shrink-0 border-yellow-400/60 bg-yellow-500/20 text-yellow-50 hover:bg-yellow-500/30"
+            >
               {isPortalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CreditCard className="w-3.5 h-3.5 mr-1.5" />}
               Update Billing
             </Button>

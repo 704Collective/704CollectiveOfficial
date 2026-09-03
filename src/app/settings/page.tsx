@@ -57,6 +57,15 @@ export default function Settings() {
     && p?.subscription_status === 'active'
     && !p?.cancel_at_period_end;
 
+  // past_due only: show Manage Billing. Cancel still uses hasStripeSubscription (active + not already canceling).
+  const canManageBilling =
+    hasStripeSubscription
+    || (
+      !!p?.stripe_customer_id
+      && !!p?.subscription_id
+      && p?.subscription_status === 'past_due'
+    );
+
   useEffect(() => {
     if (p) {
       setFullName(p.full_name || '');
@@ -420,9 +429,10 @@ export default function Settings() {
                 />
               </div>
 
-              {hasStripeSubscription ? (
+              {canManageBilling ? (
                 <>
                   <Button 
+                    data-testid="manage-billing"
                     variant="outline" 
                     className="w-full"
                     onClick={handleManageBilling}

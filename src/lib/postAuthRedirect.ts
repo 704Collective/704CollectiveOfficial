@@ -11,8 +11,8 @@ export type PostAuthProfile = {
  * Where to send the user immediately after a successful auth exchange.
  * - Admins → /admin
  * - Partners → /partner-portal
- * - Active members, membership override, or applicant non-members → /dashboard
- * - Canceled / lapsed members → /membership-ended
+ * - Active members, membership override, past_due, or applicant non-members → /dashboard
+ * - Canceled members → /membership-ended
  * - No profile → /signup
  */
 export function postAuthDestination(
@@ -62,6 +62,9 @@ export function postAuthDestination(
 
   if (isNeverMember) return "/dashboard";
 
-  // Any other explicitly bad state (past_due, unpaid, etc.) → membership-ended
+  // Failed renewal — still a member; dashboard has Update Billing.
+  if (profile.subscription_status === "past_due") return "/dashboard";
+
+  // Any other explicitly bad state (unpaid, etc.) → membership-ended
   return options?.fallbackNoAccess ?? "/membership-ended";
 }
