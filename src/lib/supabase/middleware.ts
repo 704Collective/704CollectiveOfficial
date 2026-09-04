@@ -11,6 +11,7 @@ const ALWAYS_PUBLIC = [
   '/favicon.ico',
   '/robots.txt',
   '/sitemap.xml',
+  '/api/promo-quote',
 ];
 
 const HIDE_CRM_AND_PARTNERS = true; // reversible: set false to restore CRM + Partner Portal access

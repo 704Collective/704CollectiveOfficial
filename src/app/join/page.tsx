@@ -10,6 +10,12 @@ import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '
 import { addDays, format } from 'date-fns';
 import { Calendar, MapPin, Users, ArrowRight, Loader2 } from 'lucide-react';
 import { SOCIAL_TIER, BUSINESS_TIER, FLASH_SALE } from '@/lib/pricing';
+import {
+  promoQuoteView,
+  type PromoDuration,
+  type PromoQuotePayload,
+  type PromoQuoteView,
+} from '@/lib/promoQuote';
 import { supabase } from '@/integrations/supabase/client';
 import Nav from '@/components/Nav';
 import { Footer } from '@/components/Footer';
@@ -52,11 +58,102 @@ const GOAL_OPTIONS = [
   { label: 'Growing my network',        value: 'growing_network'       },
 ];
 
+const INVALID_PROMO_MESSAGE = "That code isn't valid or has expired";
+
+type QuoteOutcome =
+  | { status: 'valid'; view: PromoQuoteView }
+  | { status: 'invalid' }
+  | { status: 'degraded' };
+
+type QuoteRead = QuoteOutcome | { status: 'empty' };
+
+async function fetchPromoQuoteOnce(code: string): Promise<QuoteRead> {
+  const res = await fetch('/api/promo-quote', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+    cache: 'no-store',
+  });
+  if (res.status >= 500) return { status: 'degraded' };
+  const text = await res.text();
+  if (!text) return { status: 'empty' };
+  let body: PromoQuotePayload;
+  try {
+    body = JSON.parse(text) as PromoQuotePayload;
+  } catch {
+    return { status: 'empty' };
+  }
+  if (!body?.valid) return { status: 'invalid' };
+  const duration = body.duration as PromoDuration | null | undefined;
+  if (!duration) return { status: 'degraded' };
+  return {
+    status: 'valid',
+    view: promoQuoteView(
+      body.percent_off ?? null,
+      body.amount_off ?? null,
+      duration,
+      body.duration_in_months ?? null,
+    ),
+  };
+}
+
+async function fetchPromoQuote(code: string): Promise<QuoteOutcome> {
+  try {
+    const first = await fetchPromoQuoteOnce(code);
+    if (first.status === 'valid' || first.status === 'invalid' || first.status === 'degraded') {
+      return first;
+    }
+    const second = await fetchPromoQuoteOnce(code);
+    if (second.status === 'valid' || second.status === 'invalid' || second.status === 'degraded') {
+      return second;
+    }
+    return { status: 'invalid' };
+  } catch {
+    return { status: 'degraded' };
+  }
+}
+
 function formatPhone(raw: string): string {
   const digits = raw.replace(/\D/g, '').slice(0, 10);
   if (digits.length < 4) return digits;
   if (digits.length < 7) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
+function PromoDealLines({ quote }: { quote: PromoQuoteView }) {
+  return (
+    <>
+      <p style={{ fontSize: '2rem', fontWeight: 700, color: '#C6A664', margin: 0 }}>
+        <span
+          data-testid="promo-price-was"
+          style={{ textDecoration: 'line-through', opacity: 0.5, fontSize: '1.5rem', marginRight: '0.5rem' }}
+        >
+          {SOCIAL_TIER.monthlyPrice}
+        </span>
+        <span data-testid="promo-price-now">{quote.displayPrice}</span>
+        <span
+          data-testid="promo-price-terms"
+          style={{ fontSize: '0.875rem', fontWeight: 600, color: '#C6A664', marginLeft: '0.5rem' }}
+        >
+          {quote.durationLine}
+        </span>
+      </p>
+      {quote.thenPriceLine ? (
+        <p
+          data-testid="promo-price-then"
+          style={{
+            fontSize: '0.75rem',
+            fontWeight: 400,
+            color: 'rgba(255,255,255,0.45)',
+            margin: '4px 0 0',
+            lineHeight: 1.5,
+          }}
+        >
+          {quote.thenPriceLine}
+        </p>
+      ) : null}
+    </>
+  );
 }
 
 function JoinInner() {
@@ -92,28 +189,55 @@ function JoinInner() {
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [appliedPromoCode, setAppliedPromoCode] = useState('');
   const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
+  const [promoQuote, setPromoQuote] = useState<PromoQuoteView | null>(null);
+  const [promoQuoting, setPromoQuoting] = useState(false);
+  const promoQuoteGen = useRef(0);
 
   const clearPromo = useCallback(() => {
+    promoQuoteGen.current += 1;
     setPromoCodeInput('');
     setAppliedPromoCode('');
     setPromoCodeError(null);
+    setPromoQuote(null);
   }, []);
 
   const handlePromoInputChange = useCallback((next: string) => {
     setPromoCodeInput(next);
     setPromoCodeError(null);
+    setPromoQuote(null);
     setAppliedPromoCode((prev) => (prev ? '' : prev));
   }, []);
 
-  const handlePromoApply = useCallback(() => {
-    const trimmed = promoCodeInput.trim();
+  const applyPromoWithQuote = useCallback(async (raw: string) => {
+    const trimmed = raw.trim();
     if (!trimmed) {
       setPromoCodeError('Enter a code');
       return;
     }
+    const gen = ++promoQuoteGen.current;
+    setPromoQuoting(true);
     setPromoCodeError(null);
-    setAppliedPromoCode(trimmed);
-  }, [promoCodeInput]);
+    try {
+      const outcome = await fetchPromoQuote(trimmed);
+      if (gen !== promoQuoteGen.current) return;
+      if (outcome.status === 'invalid') {
+        setAppliedPromoCode('');
+        setPromoQuote(null);
+        setPromoCodeError(INVALID_PROMO_MESSAGE);
+        setPromoCodeInput(trimmed);
+        return;
+      }
+      setPromoCodeInput(trimmed);
+      setAppliedPromoCode(trimmed);
+      setPromoQuote(outcome.status === 'valid' ? outcome.view : null);
+    } finally {
+      if (gen === promoQuoteGen.current) setPromoQuoting(false);
+    }
+  }, []);
+
+  const handlePromoApply = useCallback((code?: string) => {
+    void applyPromoWithQuote((code ?? promoCodeInput).trim());
+  }, [applyPromoWithQuote, promoCodeInput]);
 
   // Tier picker Social card loading state
   const [socialLoading, setSocialLoading] = useState(false);
@@ -175,6 +299,7 @@ function JoinInner() {
     setPromoCodeInput('');
     setAppliedPromoCode('');
     setPromoCodeError(null);
+    setPromoQuote(null);
   }, []);
 
   // Pre-fill from ?ref= and auto-validate.
@@ -192,11 +317,8 @@ function JoinInner() {
 
   useEffect(() => {
     if (!prefillPromoFromUrl) return;
-    const upper = codeFromUrl.toUpperCase();
-    setPromoCodeInput(upper);
-    setPromoCodeError(null);
-    setAppliedPromoCode(upper);
-  }, [prefillPromoFromUrl, codeFromUrl]);
+    void applyPromoWithQuote(codeFromUrl.toUpperCase());
+  }, [prefillPromoFromUrl, codeFromUrl, applyPromoWithQuote]);
 
   const isFormValid =
     fullName.trim().length > 0 &&
@@ -324,7 +446,7 @@ function JoinInner() {
       }
 
       if (serverError === 'invalid_promo_code') {
-        setPromoCodeError("That code isn't valid or has expired");
+        setPromoCodeError(INVALID_PROMO_MESSAGE);
         setFormError(null);
         setSubmitting(false);
         return;
@@ -389,7 +511,7 @@ function JoinInner() {
         }
 
         if (serverError === 'invalid_promo_code') {
-          setPromoCodeError("That code isn't valid or has expired");
+          setPromoCodeError(INVALID_PROMO_MESSAGE);
           setSocialLoading(false);
           return;
         }
@@ -458,12 +580,24 @@ function JoinInner() {
                 }}>
                   Your people are already here.
                 </h1>
-                <p style={{
-                  fontSize: '1rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6,
-                  marginBottom: '32px', textAlign: 'center',
-                }}>
-                  Join Charlotte{"'"}s most curated social club for {resolvedAmbassador ? '$35/month' : SOCIAL_TIER.monthlyPriceFull}. Cancel anytime.
-                </p>
+                {promoQuote && !resolvedAmbassador ? (
+                  <div data-testid="promo-price-block" style={{ textAlign: 'center', marginBottom: '32px' }}>
+                    <PromoDealLines quote={promoQuote} />
+                    <p style={{
+                      fontSize: '1rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6,
+                      margin: '12px 0 0',
+                    }}>
+                      Join Charlotte{"'"}s most curated social club. Cancel anytime.
+                    </p>
+                  </div>
+                ) : (
+                  <p style={{
+                    fontSize: '1rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6,
+                    marginBottom: '32px', textAlign: 'center',
+                  }}>
+                    Join Charlotte{"'"}s most curated social club for {resolvedAmbassador ? '$35/month' : SOCIAL_TIER.monthlyPriceFull}. Cancel anytime.
+                  </p>
+                )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {/* Full Name */}
@@ -696,6 +830,7 @@ function JoinInner() {
                       error={promoCodeError}
                       inputStyle={inputStyle}
                       defaultOpen={prefillPromoFromUrl}
+                      applying={promoQuoting}
                     />
                   )}
 
@@ -793,6 +928,11 @@ function JoinInner() {
                     <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
                       704 Social
                     </h2>
+                    {promoQuote && !resolvedAmbassador ? (
+                      <div data-testid="promo-price-block" style={{ marginBottom: '8px' }}>
+                        <PromoDealLines quote={promoQuote} />
+                      </div>
+                    ) : (
                     <p style={{ fontSize: '2rem', fontWeight: 700, color: '#C6A664', margin: 0 }}>
                       {resolvedAmbassador ? (
                         <>
@@ -813,25 +953,26 @@ function JoinInner() {
                       )}
                       <span style={{ fontSize: '1rem', fontWeight: 400, color: 'rgba(255,255,255,0.45)' }}>/month</span>
                     </p>
+                    )}
                     {resolvedAmbassador && (
                       <p style={{ fontSize: '0.875rem', color: '#C6A664', marginTop: '0.5rem', margin: '4px 0 0' }}>
                         Referral rate - locked in for life
                       </p>
                     )}
-                    {flashSaleActive && !resolvedAmbassador && (
+                    {flashSaleActive && !resolvedAmbassador && !promoQuote && (
                       <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', margin: '-4px 0 0', fontStyle: 'italic' }}>
                         first month
                       </p>
                     )}
-                    {flashSaleActive && !resolvedAmbassador ? (
+                    {flashSaleActive && !resolvedAmbassador && !promoQuote ? (
                       <p style={{ fontSize: '0.75rem', color: '#C6A664', margin: '0 0 16px', lineHeight: 1.5 }}>
                         Use code <strong style={{ color: '#FFFFFF' }}>{FLASH_SALE.promoCode}</strong> at checkout. Then $49/mo after. Ends May 14.
                       </p>
-                    ) : (
+                    ) : !promoQuote || resolvedAmbassador ? (
                       <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', margin: '0 0 16px' }}>
                         Cancel anytime
                       </p>
-                    )}
+                    ) : null}
                     {/* Logged-in non-members skip the form entirely, so the
                         discount field has to live on the card or they never get
                         one. Logged-out visitors still meet it on ?plan=social. */}
@@ -851,6 +992,7 @@ function JoinInner() {
                             error={promoCodeError}
                             inputStyle={inputStyle}
                             defaultOpen={prefillPromoFromUrl}
+                            applying={promoQuoting}
                           />
                         )}
                       </div>

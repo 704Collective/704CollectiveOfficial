@@ -15,7 +15,7 @@ export interface PromoCodeFieldProps {
   value: string;
   onValueChange: (next: string) => void;
   appliedCode: string;
-  onApply: () => void;
+  onApply: (code?: string) => void;
   /** Fired when the disclosure collapses, so a stale code cannot ride along. */
   onDismiss: () => void;
   error: string | null;
@@ -103,10 +103,12 @@ export function PromoCodeField({
     );
   }
 
+  const detailsOpen = open || Boolean(error);
+
   return (
     <details
       data-testid="promo-details"
-      open={open}
+      open={detailsOpen}
       onToggle={(e) => {
         const nextOpen = (e.currentTarget as HTMLDetailsElement).open;
         setOpen(nextOpen);
@@ -131,7 +133,12 @@ export function PromoCodeField({
         <button
           type="button"
           data-testid="promo-apply"
-          onClick={onApply}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onApply(value);
+          }}
           disabled={applying}
           style={{
             padding: '0 18px',
