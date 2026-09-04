@@ -122,21 +122,50 @@ function formatPhone(raw: string): string {
 
 function PromoDealLines({ quote }: { quote: PromoQuoteView }) {
   return (
-    <>
-      <p style={{ fontSize: '2rem', fontWeight: 700, color: '#C6A664', margin: 0 }}>
+    <div style={{ textAlign: 'center' }}>
+      <div
+        data-testid="promo-price-row"
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'center',
+          flexWrap: 'nowrap',
+          whiteSpace: 'nowrap',
+          gap: '0.5rem',
+        }}
+      >
         <span
           data-testid="promo-price-was"
-          style={{ textDecoration: 'line-through', opacity: 0.5, fontSize: '1.5rem', marginRight: '0.5rem' }}
+          style={{
+            textDecoration: 'line-through',
+            opacity: 0.5,
+            fontSize: '1.5rem',
+            fontWeight: 700,
+            color: '#C6A664',
+            lineHeight: 1,
+          }}
         >
           {SOCIAL_TIER.monthlyPrice}
         </span>
-        <span data-testid="promo-price-now">{quote.displayPrice}</span>
         <span
-          data-testid="promo-price-terms"
-          style={{ fontSize: '0.875rem', fontWeight: 600, color: '#C6A664', marginLeft: '0.5rem' }}
+          data-testid="promo-price-now"
+          style={{ fontSize: '2rem', fontWeight: 700, color: '#C6A664', lineHeight: 1 }}
         >
-          {quote.durationLine}
+          {quote.displayPrice}
         </span>
+      </div>
+      <p
+        data-testid="promo-price-terms"
+        style={{
+          fontSize: '1rem',
+          fontWeight: 600,
+          color: '#C6A664',
+          margin: '8px 0 0',
+          lineHeight: 1.4,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {quote.durationLine}
       </p>
       {quote.thenPriceLine ? (
         <p
@@ -152,7 +181,7 @@ function PromoDealLines({ quote }: { quote: PromoQuoteView }) {
           {quote.thenPriceLine}
         </p>
       ) : null}
-    </>
+    </div>
   );
 }
 
