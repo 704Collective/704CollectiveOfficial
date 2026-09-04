@@ -28,7 +28,7 @@ export interface PromoCodeFieldProps {
 }
 
 const DEFAULT_APPLIED_NOTE =
-  'Code will be applied at checkout. Clear the field to join without it.';
+  'This code will be sent with checkout. Remove it to join at full price.';
 
 export function PromoCodeField({
   value,
@@ -43,6 +43,66 @@ export function PromoCodeField({
   defaultOpen = false,
 }: PromoCodeFieldProps) {
   const [open, setOpen] = useState(defaultOpen);
+  const showApplied = Boolean(appliedCode) && !error;
+
+  if (showApplied) {
+    return (
+      <div data-testid="promo-applied" style={{ textAlign: 'left' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '10px',
+            flexWrap: 'wrap',
+          }}
+        >
+          <span
+            data-testid="promo-applied-chip"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '999px',
+              backgroundColor: 'rgba(198,166,100,0.15)',
+              border: '1px solid rgba(198,166,100,0.45)',
+              color: '#C6A664',
+              fontSize: '0.8125rem',
+              fontWeight: 700,
+              letterSpacing: '0.02em',
+            }}
+          >
+            {appliedCode} applied
+          </span>
+          <button
+            type="button"
+            data-testid="promo-remove"
+            onClick={onDismiss}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              color: 'rgba(255,255,255,0.55)',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              textDecoration: 'underline',
+            }}
+          >
+            Remove
+          </button>
+        </div>
+        <p
+          data-testid="promo-applied-note"
+          style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.75rem', marginTop: '8px', marginBottom: 0 }}
+        >
+          {appliedNote}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <details
       data-testid="promo-details"
@@ -57,14 +117,6 @@ export function PromoCodeField({
     >
       <summary style={{ cursor: 'pointer', fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)' }}>
         Have a discount code?
-        {appliedCode ? (
-          <span
-            data-testid="promo-applied-badge"
-            style={{ color: '#C6A664', marginLeft: '8px', fontWeight: 600 }}
-          >
-            {appliedCode}
-          </span>
-        ) : null}
       </summary>
       <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
         <input
@@ -102,14 +154,6 @@ export function PromoCodeField({
           style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '6px', marginBottom: 0 }}
         >
           {error}
-        </p>
-      )}
-      {appliedCode && !error && (
-        <p
-          data-testid="promo-applied-note"
-          style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.75rem', marginTop: '6px', marginBottom: 0 }}
-        >
-          {appliedNote}
         </p>
       )}
     </details>

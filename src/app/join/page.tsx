@@ -106,8 +106,13 @@ function JoinInner() {
   }, []);
 
   const handlePromoApply = useCallback(() => {
+    const trimmed = promoCodeInput.trim();
+    if (!trimmed) {
+      setPromoCodeError('Enter a code');
+      return;
+    }
     setPromoCodeError(null);
-    setAppliedPromoCode(promoCodeInput.trim());
+    setAppliedPromoCode(trimmed);
   }, [promoCodeInput]);
 
   // Tier picker Social card loading state
