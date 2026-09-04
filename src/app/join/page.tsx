@@ -180,6 +180,19 @@ function JoinInner() {
     void validateReferralCode(refFromUrl);
   }, [searchParams, validateReferralCode]);
 
+  // Marketing ?code= — same as typing + Apply. A ref param wins: do not apply.
+  const codeFromUrl = searchParams.get('code')?.trim() ?? '';
+  const refFromUrl = searchParams.get('ref')?.trim() ?? '';
+  const prefillPromoFromUrl = Boolean(codeFromUrl && !refFromUrl);
+
+  useEffect(() => {
+    if (!prefillPromoFromUrl) return;
+    const upper = codeFromUrl.toUpperCase();
+    setPromoCodeInput(upper);
+    setPromoCodeError(null);
+    setAppliedPromoCode(upper);
+  }, [prefillPromoFromUrl, codeFromUrl]);
+
   const isFormValid =
     fullName.trim().length > 0 &&
     email.trim().length > 0 &&
@@ -388,7 +401,10 @@ function JoinInner() {
         setSocialLoading(false);
       }
     } else {
-      router.push('/join?plan=social');
+      const next = new URLSearchParams();
+      next.set('plan', 'social');
+      if (prefillPromoFromUrl) next.set('code', codeFromUrl);
+      router.push(`/join?${next.toString()}`);
     }
   };
 
@@ -674,6 +690,7 @@ function JoinInner() {
                       onDismiss={clearPromo}
                       error={promoCodeError}
                       inputStyle={inputStyle}
+                      defaultOpen={prefillPromoFromUrl}
                     />
                   )}
 
@@ -813,7 +830,7 @@ function JoinInner() {
                     {/* Logged-in non-members skip the form entirely, so the
                         discount field has to live on the card or they never get
                         one. Logged-out visitors still meet it on ?plan=social. */}
-                    {user && !isActiveMember && (
+                    {(user && !isActiveMember || (!resolvedAmbassador && prefillPromoFromUrl)) && (
                       <div style={{ textAlign: 'left', marginBottom: '12px' }}>
                         {resolvedAmbassador ? (
                           <p style={{ margin: 0, fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.5 }}>
@@ -828,6 +845,7 @@ function JoinInner() {
                             onDismiss={clearPromo}
                             error={promoCodeError}
                             inputStyle={inputStyle}
+                            defaultOpen={prefillPromoFromUrl}
                           />
                         )}
                       </div>

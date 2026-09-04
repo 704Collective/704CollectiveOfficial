@@ -1,6 +1,7 @@
 'use client';
 
 import type React from 'react';
+import { useState } from 'react';
 
 // Shared Stripe discount-code entry. Extracted from the /join social form so the
 // logged-in Join Social button and the embedded /join/checkout door present the
@@ -22,6 +23,8 @@ export interface PromoCodeFieldProps {
   /** Apply is async on the embedded door; it mints a session to prove the code. */
   applying?: boolean;
   appliedNote?: string;
+  /** Open the disclosure on first paint (URL-prefilled codes). */
+  defaultOpen?: boolean;
 }
 
 const DEFAULT_APPLIED_NOTE =
@@ -37,14 +40,19 @@ export function PromoCodeField({
   inputStyle,
   applying = false,
   appliedNote = DEFAULT_APPLIED_NOTE,
+  defaultOpen = false,
 }: PromoCodeFieldProps) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <details
       data-testid="promo-details"
+      open={open}
       onToggle={(e) => {
+        const nextOpen = (e.currentTarget as HTMLDetailsElement).open;
+        setOpen(nextOpen);
         // Collapsing dismisses promo entirely so a hidden invalid/stale
         // code cannot still be sent on Continue.
-        if (!(e.currentTarget as HTMLDetailsElement).open) onDismiss();
+        if (!nextOpen) onDismiss();
       }}
     >
       <summary style={{ cursor: 'pointer', fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)' }}>
