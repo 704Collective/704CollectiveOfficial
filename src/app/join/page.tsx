@@ -363,6 +363,20 @@ function JoinInner() {
   const willSignUp = !user;
   const captchaGateActive = willSignUp && TURNSTILE_ENABLED && !captchaToken;
 
+  // Display only. Names the first unmet requirement, in form order, so a
+  // disabled Continue never reads as broken. Mirrors isFormValid and the
+  // captcha gate exactly; it decides nothing.
+  const continueBlockedReason: string | null = (() => {
+    if (fullName.trim().length === 0) return 'Enter your full name to continue';
+    if (email.trim().length === 0) return 'Enter your email to continue';
+    if (phone.replace(/\D/g, '').length < 10) return 'Enter a 10-digit phone number to continue';
+    if (password.length < 8) return 'Enter a password of at least 8 characters to continue';
+    if (password !== confirmPassword) return 'Passwords must match to continue';
+    if (goal === '') return 'Choose what you\'re most looking for to continue';
+    if (captchaGateActive) return 'Complete the security check above to continue';
+    return null;
+  })();
+
   const handleSubmit = async () => {
     if (!isFormValid || submitting) return;
     // Block if a referral code was typed but didn't resolve to a valid ambassador
@@ -772,7 +786,7 @@ function JoinInner() {
                       fontSize: '0.9375rem',
                       fontWeight: 700,
                       border: 'none',
-                      cursor: submitting || !isFormValid ? 'not-allowed' : 'pointer',
+                      cursor: submitting || !isFormValid || captchaGateActive ? 'not-allowed' : 'pointer',
                       letterSpacing: '0.01em',
                       transition: 'all 200ms ease',
                       marginTop: '4px',
@@ -784,6 +798,21 @@ function JoinInner() {
                       <>Continue to Checkout <ArrowRight style={{ width: '16px', height: '16px' }} /></>
                     )}
                   </button>
+                  {!submitting && continueBlockedReason && (
+                    <p
+                      data-testid="join-continue-reason"
+                      role="status"
+                      style={{
+                        fontSize: '0.8125rem',
+                        color: 'rgba(255,255,255,0.55)',
+                        textAlign: 'center',
+                        margin: '-6px 0 0',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {continueBlockedReason}
+                    </p>
+                  )}
 
                   {/* Ambassador referral - social proof when resolved, collapsed
                       input otherwise. Pre-filled from ?ref= on mount. */}

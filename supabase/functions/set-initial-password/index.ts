@@ -171,8 +171,29 @@ serve(async (req) => {
     log("Stripe session verified", { email: sessionEmail });
 
     // ── Look up user by email ──
+    // supabase-js 2.57 has no auth.admin.getUserByEmail, and admin.listUsers
+    // only paginates (no email filter). profiles.id is the auth user id and
+    // the service role bypasses RLS, so resolve the id there, then load the
+    // auth user by id so the never-signed-in guard below reads auth truth.
     log("Looking up user", { email });
-    const { data: userData, error: lookupErr } = await supabase.auth.admin.getUserByEmail(email);
+    const emailPattern = email.trim().replace(/[\\%_]/g, (ch) => `\\${ch}`);
+    const { data: profileRow, error: profileLookupErr } = await supabase
+      .from("profiles")
+      .select("id")
+      .ilike("email", emailPattern)
+      .is("deleted_at", null)
+      .limit(1)
+      .maybeSingle();
+
+    if (profileLookupErr || !profileRow?.id) {
+      log("User not found", { email, error: profileLookupErr?.message });
+      return new Response(
+        JSON.stringify({ error: "account_not_found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { data: userData, error: lookupErr } = await supabase.auth.admin.getUserById(profileRow.id);
 
     if (lookupErr || !userData?.user) {
       log("User not found", { email, error: lookupErr?.message });
