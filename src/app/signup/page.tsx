@@ -15,6 +15,7 @@ import { sendSocialSignupConfirmationEmail } from '@/app/actions/transactionalEm
 import { toast } from 'sonner';
 import { Loader2, Crown, Ticket, X } from 'lucide-react';
 import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
+import { InAppBrowserBanner } from '@/components/InAppBrowserBanner';
 
 type Step = 'form' | 'verify' | 'choice';
 
@@ -365,6 +366,7 @@ export default function SignupPage() {
   // --- Step 1: Signup form ---
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <InAppBrowserBanner />
       {showPartnerBanner && (
         <div className="relative z-[60] border-b border-amber-200/50 bg-[#F3E9D2] text-[#3d3426] px-4 py-3 pr-12 text-center text-sm leading-snug">
           <p>

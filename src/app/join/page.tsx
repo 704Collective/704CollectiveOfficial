@@ -26,6 +26,7 @@ import {
 } from '@/components/Animations';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import { PromoCodeField } from '@/components/PromoCodeField';
+import { InAppBrowserBanner } from '@/components/InAppBrowserBanner';
 
 interface Event {
   id: string;
@@ -603,6 +604,7 @@ function JoinInner() {
     <>
       <Nav />
       <main id="main-content" style={{ paddingTop: 'calc(64px + var(--banner-height, 0px))', backgroundColor: '#000', minHeight: '100dvh' }}>
+        <InAppBrowserBanner />
         <MarketingPageRoot>
         <div style={{ maxWidth: '960px', margin: '0 auto', padding: '48px 24px 80px' }}>
 
