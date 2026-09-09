@@ -1,15 +1,15 @@
-'use client';
+﻿'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import {
   Heart, MessageCircle, MoreHorizontal, Pencil, Trash2, Download, Send,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LinkifiedText } from '@/components/ui/LinkifiedText';
+import { MentionText } from '@/components/portal/MentionText';
+import { MentionTextarea } from '@/components/portal/MentionTextarea';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -56,10 +56,10 @@ interface CommentData {
   author: PostAuthor | null;
 }
 
-interface MentionSuggestion {
-  id: string;
-  full_name: string;
-  avatar_url: string | null;
+// Saved mention ids for this post: comment_id null = post body, else per comment.
+interface MentionRow {
+  mentioned_user_id: string;
+  comment_id: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -76,129 +76,6 @@ function formatBytes(bytes: number): string {
 function initials(name: string | null | undefined): string {
   if (!name) return '?';
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-}
-
-function extractMentionQuery(text: string, cursorPos: number): string | null {
-  const before = text.slice(0, cursorPos);
-  const match = before.match(/@(\w*)$/);
-  return match ? match[1] : null;
-}
-
-function insertMention(text: string, cursorPos: number, fullName: string): { newText: string; newCursor: number } {
-  const before = text.slice(0, cursorPos);
-  const after = text.slice(cursorPos);
-  const match = before.match(/@(\w*)$/);
-  if (!match) return { newText: text, newCursor: cursorPos };
-  const replaced = before.slice(0, before.length - match[0].length) + `@${fullName} `;
-  return { newText: replaced + after, newCursor: replaced.length };
-}
-
-// ---------------------------------------------------------------------------
-// MentionTextarea — textarea with @mention autocomplete
-// ---------------------------------------------------------------------------
-function MentionTextarea({
-  value,
-  onChange,
-  placeholder,
-  className,
-  onSubmit,
-  minRows = 2,
-  mentionAvatarBusiness = false,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  className?: string;
-  onSubmit?: () => void;
-  minRows?: number;
-  mentionAvatarBusiness?: boolean;
-}) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-  const [suggestions, setSuggestions] = useState<MentionSuggestion[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const fetchSuggestions = useCallback(async (query: string) => {
-    if (query.length < 1) { setSuggestions([]); setShowSuggestions(false); return; }
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, full_name, avatar_url')
-      .ilike('full_name', `%${query}%`)
-      .is('deleted_at', null)
-      .eq('is_internal', false)
-      .limit(6);
-    setSuggestions((data as MentionSuggestion[]) ?? []);
-    setShowSuggestions(true);
-  }, []);
-
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange(e.target.value);
-    const cursor = e.target.selectionStart ?? 0;
-    const q = extractMentionQuery(e.target.value, cursor);
-    if (q !== null) {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => fetchSuggestions(q), 200);
-    } else {
-      setShowSuggestions(false);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && onSubmit) {
-      e.preventDefault();
-      onSubmit();
-    }
-    if (e.key === 'Escape') setShowSuggestions(false);
-  };
-
-  const pickSuggestion = (name: string) => {
-    const cursor = ref.current?.selectionStart ?? value.length;
-    const { newText, newCursor } = insertMention(value, cursor, name);
-    onChange(newText);
-    setShowSuggestions(false);
-    setTimeout(() => {
-      ref.current?.setSelectionRange(newCursor, newCursor);
-      ref.current?.focus();
-    }, 0);
-  };
-
-  return (
-    <div className="relative">
-      <Textarea
-        ref={ref}
-        value={value}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-        placeholder={placeholder}
-        className={cn('resize-none', className)}
-        rows={minRows}
-      />
-      {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute z-50 top-full left-0 mt-1 w-64 bg-card border border-border rounded-lg shadow-lg overflow-hidden">
-          {suggestions.map(s => (
-            <button
-              key={s.id}
-              type="button"
-              onMouseDown={() => pickSuggestion(s.full_name ?? '')}
-              className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted/50 transition-colors text-left"
-            >
-              <Avatar className="w-6 h-6 shrink-0">
-                <AvatarImage src={s.avatar_url ?? undefined} />
-                <AvatarFallback
-                  className="text-[10px] font-semibold"
-                  style={getInitialsAvatarStyle(s.id, { businessPortal: mentionAvatarBusiness })}
-                >
-                  {initials(s.full_name)}
-                </AvatarFallback>
-              </Avatar>
-              <span>{s.full_name}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -221,25 +98,50 @@ export function FeedPost({ post, currentUser, onDelete, onEdit }: FeedPostProps)
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   const commentsLoadedRef = useRef(false);
+  // Display-only: ids the notifier saved for this post, read back so MentionText
+  // can link exact people. Never written from here.
+  const [mentionRows, setMentionRows] = useState<MentionRow[]>([]);
+  const mentionsLoadedRef = useRef(false);
 
   const isAuthor = currentUser?.id === post.author_id;
+
+  const loadMentionRows = useCallback(async () => {
+    if (mentionsLoadedRef.current) return;
+    mentionsLoadedRef.current = true;
+    const { data } = await supabase
+      .from('post_mentions')
+      .select('mentioned_user_id, comment_id')
+      .eq('post_id', post.id);
+    setMentionRows((data ?? []) as MentionRow[]);
+  }, [post.id]);
+
+  useEffect(() => {
+    if (post.content?.includes('@')) void loadMentionRows();
+  }, [post.content, loadMentionRows]);
+
+  const postMentionIds = mentionRows.filter(r => r.comment_id === null).map(r => r.mentioned_user_id);
+  const commentMentionIds = (commentId: string) =>
+    mentionRows.filter(r => r.comment_id === commentId).map(r => r.mentioned_user_id);
 
   const loadComments = useCallback(async () => {
     if (commentsLoadedRef.current) return;
     commentsLoadedRef.current = true;
     setLoadingComments(true);
     try {
-      const { data } = await supabase
-        .from('post_comments')
-        .select('id, post_id, author_id, content, created_at, author:profiles(id, full_name, avatar_url)')
-        .eq('post_id', post.id)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: true });
+      const [{ data }] = await Promise.all([
+        supabase
+          .from('post_comments')
+          .select('id, post_id, author_id, content, created_at, author:profiles(id, full_name, avatar_url)')
+          .eq('post_id', post.id)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: true }),
+        loadMentionRows(),
+      ]);
       setComments((data ?? []) as unknown as CommentData[]);
     } finally {
       setLoadingComments(false);
     }
-  }, [post.id]);
+  }, [post.id, loadMentionRows]);
 
   const toggleComments = () => {
     setShowComments(p => {
@@ -343,7 +245,7 @@ export function FeedPost({ post, currentUser, onDelete, onEdit }: FeedPostProps)
 
       {/* Content */}
       {post.content && (
-        <LinkifiedText text={post.content} className="text-sm leading-relaxed whitespace-pre-wrap break-words" />
+        <MentionText text={post.content} mentionUserIds={postMentionIds} className="text-sm leading-relaxed whitespace-pre-wrap break-words" />
       )}
 
       {/* Images */}
@@ -455,7 +357,7 @@ export function FeedPost({ post, currentUser, onDelete, onEdit }: FeedPostProps)
                   <div className="flex-1 min-w-0">
                     <div className="bg-muted/50 rounded-xl px-3 py-2">
                       <p className="text-xs font-semibold">{comment.author?.full_name ?? 'Member'}</p>
-                      <LinkifiedText text={comment.content} className="text-sm leading-relaxed whitespace-pre-wrap break-words" />
+                      <MentionText text={comment.content} mentionUserIds={commentMentionIds(comment.id)} className="text-sm leading-relaxed whitespace-pre-wrap break-words" />
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 px-1">
                       <span className="text-[11px] text-muted-foreground">
@@ -494,7 +396,7 @@ export function FeedPost({ post, currentUser, onDelete, onEdit }: FeedPostProps)
                   value={newComment}
                   onChange={setNewComment}
                   placeholder="Write a comment… (⌘↵ to post)"
-                  minRows={1}
+                  rows={1}
                   onSubmit={submitComment}
                   className="pr-10 text-sm"
                   mentionAvatarBusiness={post.feed_type === 'business'}

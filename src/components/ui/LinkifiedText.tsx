@@ -12,6 +12,32 @@ function isInternal(url: string): boolean {
   }
 }
 
+/**
+ * Splits text on http(s) URLs and returns React nodes: plain segments as
+ * strings, URLs as anchors. Internal links (704collective.com) open in the
+ * same tab; external links open in a new tab. No HTML injection of any kind.
+ * Shared by LinkifiedText and MentionText so URL behaviour stays identical.
+ */
+export function linkifyNodes(text: string, keyPrefix = ''): React.ReactNode[] {
+  // Splitting on a regex with one capture group interleaves plain text (even
+  // indices) with the captured URLs (odd indices).
+  const parts = text.split(URL_REGEX);
+  return parts.map((part, i) => {
+    if (i % 2 === 0) return part;
+    const internal = isInternal(part);
+    return (
+      <a
+        key={`${keyPrefix}${i}`}
+        href={internal ? new URL(part).pathname + new URL(part).search : part}
+        className="underline text-primary break-all"
+        {...(internal ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
+      >
+        {part}
+      </a>
+    );
+  });
+}
+
 interface LinkifiedTextProps {
   text: string;
   className?: string;
@@ -23,25 +49,5 @@ interface LinkifiedTextProps {
  * Plain text segments stay plain — no HTML injection of any kind.
  */
 export function LinkifiedText({ text, className }: LinkifiedTextProps) {
-  // Splitting on a regex with one capture group interleaves plain text (even
-  // indices) with the captured URLs (odd indices).
-  const parts = text.split(URL_REGEX);
-  return (
-    <p className={className}>
-      {parts.map((part, i) => {
-        if (i % 2 === 0) return part;
-        const internal = isInternal(part);
-        return (
-          <a
-            key={i}
-            href={internal ? new URL(part).pathname + new URL(part).search : part}
-            className="underline text-primary break-all"
-            {...(internal ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
-          >
-            {part}
-          </a>
-        );
-      })}
-    </p>
-  );
+  return <p className={className}>{linkifyNodes(text)}</p>;
 }

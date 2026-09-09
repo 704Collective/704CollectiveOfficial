@@ -5,7 +5,7 @@ import { Send, Loader2, CornerDownRight, MoreHorizontal, Pencil, Trash2 } from '
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LinkifiedText } from '@/components/ui/LinkifiedText';
+import { MentionText } from '@/components/portal/MentionText';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,6 +49,7 @@ export function EventDiscussionComments({
   comments,
   currentUser,
   isAdmin = false,
+  mentionIdsFor,
   onCommentAdded,
   onCommentUpdated,
   onCommentDeleted,
@@ -58,6 +59,8 @@ export function EventDiscussionComments({
   comments: DiscComment[];
   currentUser: { id: string; full_name: string | null; avatar_url: string | null };
   isAdmin?: boolean;
+  /** Saved event_discussion_mentions ids for a comment id (display only). */
+  mentionIdsFor?: (commentId: string) => string[];
   onCommentAdded: (c: DiscComment) => void;
   onCommentUpdated?: (commentId: string, content: string, updatedAt: string) => void;
   onCommentDeleted?: (commentId: string) => void;
@@ -202,7 +205,7 @@ export function EventDiscussionComments({
               {commentMenu(c)}
             </div>
             {editingId === c.id ? editForm(c, false) : (
-              <LinkifiedText text={c.content} className="text-[13.5px] leading-relaxed whitespace-pre-wrap break-words mt-0.5" />
+              <MentionText text={c.content} mentionUserIds={mentionIdsFor?.(c.id)} className="text-[13.5px] leading-relaxed whitespace-pre-wrap break-words mt-0.5" />
             )}
             <button type="button" onClick={() => { setReplyingTo(replyingTo === c.id ? null : c.id); setReplyValue(''); }} className="text-[11px] font-semibold text-muted-foreground hover:text-foreground mt-0.5">Reply</button>
             {repliesFor(c.id).map(r => (
@@ -221,7 +224,7 @@ export function EventDiscussionComments({
                     {commentMenu(r)}
                   </div>
                   {editingId === r.id ? editForm(r, true) : (
-                    <LinkifiedText text={r.content} className="text-[13px] leading-relaxed whitespace-pre-wrap break-words mt-0.5" />
+                    <MentionText text={r.content} mentionUserIds={mentionIdsFor?.(r.id)} className="text-[13px] leading-relaxed whitespace-pre-wrap break-words mt-0.5" />
                   )}
                 </div>
               </div>

@@ -28,7 +28,7 @@ import { EventDiscussionLikeButton } from '@/components/portal/EventDiscussionLi
 import { EventDiscussionComments, type DiscComment } from '@/components/portal/EventDiscussionComments';
 import { EventDiscussionGallery } from '@/components/portal/EventDiscussionGallery';
 import { EventMentionTextarea } from '@/components/portal/EventMentionTextarea';
-import { LinkifiedText } from '@/components/ui/LinkifiedText';
+import { MentionText } from '@/components/portal/MentionText';
 
 const isVideoUrl = (u: string) => /\.(mp4|mov|webm)(\?|$)/i.test(u);
 
@@ -44,6 +44,8 @@ function isPostEdited(p: DPost): boolean {
 }
 interface DComment { id: string; post_id: string; parent_comment_id: string | null; author_id: string; content: string; created_at: string; updated_at: string | null; author: Author | null; }
 interface DLike { post_id: string | null; comment_id: string | null; user_id: string; }
+// Saved mention ids (event_discussion_mentions). comment_id null = post body. Display only.
+interface DMention { post_id: string | null; comment_id: string | null; mentioned_user_id: string; }
 
 type AccessState = 'loading' | 'full' | 'teaser' | 'denied';
 
@@ -71,6 +73,7 @@ export default function EventDiscussionPage() {
   const [posts, setPosts] = useState<DPost[]>([]);
   const [commentsByPost, setCommentsByPost] = useState<Record<string, DComment[]>>({});
   const [likes, setLikes] = useState<DLike[]>([]);
+  const [mentions, setMentions] = useState<DMention[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editPostValue, setEditPostValue] = useState('');
@@ -142,7 +145,7 @@ export default function EventDiscussionPage() {
     let cancelled = false;
     setLoadingData(true);
     (async () => {
-      const [postsRes, commentsRes, likesRes] = await Promise.all([
+      const [postsRes, commentsRes, likesRes, mentionsRes] = await Promise.all([
         supabase.from('event_discussion_posts')
           .select('id, author_id, content, image_urls, created_at, updated_at, author:profiles(id, full_name, avatar_url)')
           .eq('event_id', eventId).is('deleted_at', null).order('created_at', { ascending: true }),
@@ -150,6 +153,7 @@ export default function EventDiscussionPage() {
           .select('id, post_id, parent_comment_id, author_id, content, created_at, updated_at, author:profiles(id, full_name, avatar_url)')
           .eq('event_id', eventId).is('deleted_at', null).order('created_at', { ascending: true }),
         supabase.from('event_discussion_likes').select('post_id, comment_id, user_id').eq('event_id', eventId),
+        supabase.from('event_discussion_mentions').select('post_id, comment_id, mentioned_user_id').eq('event_id', eventId),
       ]);
       if (cancelled) return;
       setPosts(((postsRes.data ?? []) as any[]).map(normalizeAuthor) as DPost[]);
@@ -157,6 +161,7 @@ export default function EventDiscussionPage() {
       ((commentsRes.data ?? []) as any[]).map(normalizeAuthor).forEach((c: DComment) => { (grouped[c.post_id] ??= []).push(c); });
       setCommentsByPost(grouped);
       setLikes((likesRes.data ?? []) as DLike[]);
+      setMentions((mentionsRes.data ?? []) as DMention[]);
       setLoadingData(false);
     })();
     return () => { cancelled = true; };
@@ -165,6 +170,10 @@ export default function EventDiscussionPage() {
   const postLikeCount = (postId: string) => likes.filter(l => l.post_id === postId).length;
   const postLikedByMe = (postId: string) => !!user && likes.some(l => l.post_id === postId && l.user_id === user.id);
   const commentLikeCount = (commentId: string) => likes.filter(l => l.comment_id === commentId).length;
+  const postMentionIds = (postId: string) =>
+    mentions.filter(m => m.post_id === postId && m.comment_id === null).map(m => m.mentioned_user_id);
+  const commentMentionIdsFor = (postId: string) => (commentId: string) =>
+    mentions.filter(m => m.post_id === postId && m.comment_id === commentId).map(m => m.mentioned_user_id);
 
   const handlePosted = (post: NewDiscussionPost) => setPosts(prev => [...prev, post as unknown as typeof prev[number]]);
   const handleCommentAdded = (c: DiscComment) => setCommentsByPost(prev => ({ ...prev, [c.post_id]: [ ...(prev[c.post_id] ?? []), c as unknown as DComment ] }));
@@ -392,7 +401,7 @@ export default function EventDiscussionPage() {
                             </div>
                           </div>
                         ) : (
-                          post.content && <LinkifiedText text={post.content} className="text-sm leading-relaxed whitespace-pre-wrap break-words mt-2 pl-[52px]" />
+                          post.content && <MentionText text={post.content} mentionUserIds={postMentionIds(post.id)} className="text-sm leading-relaxed whitespace-pre-wrap break-words mt-2 pl-[52px]" />
                         )}
                         {imgs.length > 0 && (
                           <div className={`mt-3 ml-[52px] grid gap-2 max-w-[460px] ${imgs.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
@@ -428,6 +437,7 @@ export default function EventDiscussionPage() {
                           comments={comments as unknown as DiscComment[]}
                           currentUser={{ id: user!.id, full_name: profile?.full_name ?? null, avatar_url: profile?.avatar_url ?? null }}
                           isAdmin={isAdmin}
+                          mentionIdsFor={commentMentionIdsFor(post.id)}
                           onCommentAdded={handleCommentAdded}
                           onCommentUpdated={handleCommentUpdated(post.id)}
                           onCommentDeleted={handleCommentDeleted(post.id)}

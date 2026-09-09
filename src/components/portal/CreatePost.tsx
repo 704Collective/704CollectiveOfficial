@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import Image from 'next/image';
 import { Image as ImageIcon, Paperclip, X, Send, Loader2, Library } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { MentionTextarea } from '@/components/portal/MentionTextarea';
 import {
   Dialog,
   DialogContent,
@@ -19,33 +19,9 @@ import { notifyAfterFeedPostCreated } from '@/app/actions/portalFeedNotification
 import type { User } from '@supabase/supabase-js';
 import type { FeedPostData, PostAuthor } from './FeedPost';
 
-// ---------------------------------------------------------------------------
-// Mention autocomplete (shared logic)
-// ---------------------------------------------------------------------------
-interface MentionSuggestion {
-  id: string;
-  full_name: string | null;
-  avatar_url: string | null;
-}
-
 function initials(name: string | null | undefined): string {
   if (!name) return '?';
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-}
-
-function extractMentionQuery(text: string, cursorPos: number): string | null {
-  const before = text.slice(0, cursorPos);
-  const match = before.match(/@(\w*)$/);
-  return match ? match[1] : null;
-}
-
-function insertMention(text: string, cursorPos: number, fullName: string): { newText: string; newCursor: number } {
-  const before = text.slice(0, cursorPos);
-  const after = text.slice(cursorPos);
-  const match = before.match(/@(\w*)$/);
-  if (!match) return { newText: text, newCursor: cursorPos };
-  const replaced = before.slice(0, before.length - match[0].length) + `@${fullName} `;
-  return { newText: replaced + after, newCursor: replaced.length };
 }
 
 // ---------------------------------------------------------------------------
@@ -92,49 +68,8 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [libraryRows, setLibraryRows] = useState<AdminResourceRow[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [suggestions, setSuggestions] = useState<MentionSuggestion[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const fetchSuggestions = useCallback(async (query: string) => {
-    if (query.length < 1) { setSuggestions([]); setShowSuggestions(false); return; }
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, full_name, avatar_url')
-      .ilike('full_name', `%${query}%`)
-      .is('deleted_at', null)
-      .eq('is_internal', false)
-      .limit(6);
-    setSuggestions((data as MentionSuggestion[]) ?? []);
-    setShowSuggestions(true);
-  }, []);
-
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setContent(e.target.value);
-    const cursor = e.target.selectionStart ?? 0;
-    const q = extractMentionQuery(e.target.value, cursor);
-    if (q !== null) {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => fetchSuggestions(q), 200);
-    } else {
-      setShowSuggestions(false);
-    }
-  };
-
-  const pickSuggestion = (name: string | null) => {
-    if (!name) return;
-    const cursor = textareaRef.current?.selectionStart ?? content.length;
-    const { newText, newCursor } = insertMention(content, cursor, name);
-    setContent(newText);
-    setShowSuggestions(false);
-    setTimeout(() => {
-      textareaRef.current?.setSelectionRange(newCursor, newCursor);
-      textareaRef.current?.focus();
-    }, 0);
-  };
 
   const addImages = (files: FileList | null) => {
     if (!files) return;
@@ -309,43 +244,19 @@ export function CreatePost({ feedType, currentUser, currentProfile, onPostCreate
         </Avatar>
 
         <div className="flex-1 min-w-0 relative">
-          <Textarea
-            ref={textareaRef}
+          <MentionTextarea
             value={content}
-            onChange={handleContentChange}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit();
-              if (e.key === 'Escape') setShowSuggestions(false);
-            }}
-            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+            onChange={setContent}
+            onSubmit={handleSubmit}
             placeholder={
               feedType === 'social'
                 ? "Share something with the community…"
                 : "Share a business update, insight, or resource…"
             }
-            className="resize-none min-h-[80px] text-sm w-full min-w-0"
+            className="min-h-[80px] text-sm w-full min-w-0"
             rows={3}
+            mentionAvatarBusiness={feedType === 'business'}
           />
-
-          {/* Mention suggestions */}
-          {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute z-50 top-full left-0 mt-1 w-64 bg-card border border-border rounded-lg shadow-lg overflow-hidden">
-              {suggestions.map(s => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onMouseDown={() => pickSuggestion(s.full_name)}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted/50 transition-colors text-left"
-                >
-                  <Avatar className="w-6 h-6 shrink-0">
-                    <AvatarImage src={s.avatar_url ?? undefined} />
-                    <AvatarFallback className="text-[10px]">{initials(s.full_name)}</AvatarFallback>
-                  </Avatar>
-                  <span>{s.full_name}</span>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
