@@ -23,6 +23,7 @@ import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
 import { OnboardingCard } from '@/components/OnboardingCard';
 import { NonMemberDashboard } from '@/components/NonMemberDashboard';
 import { HubsPreviewWidget } from '@/components/HubsPreviewWidget';
+import { ReferralEarningsCard } from '@/components/dashboard/ReferralEarningsCard';
 import { SuggestEventModal } from '@/components/SuggestEventModal';
 import { Crown, AlertCircle, CreditCard, Loader2, Lightbulb, Heart, ArrowRight, Rss, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -444,6 +445,11 @@ export default function Dashboard() {
             </div>
           </Link>
         )}
+
+        {/* Member referral earnings (referrals ledger); renders nothing for non-referrers */}
+        <SectionErrorBoundary>
+          <ReferralEarningsCard />
+        </SectionErrorBoundary>
 
         {/* Past due warning — sticky so it stays visible while scrolling; not a modal */}
         {isPastDue && (

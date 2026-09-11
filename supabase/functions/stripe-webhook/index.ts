@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
+import { needsPayoutSetup, resolveMemberPayoutDestination } from "../_shared/memberPayoutDestination.ts";
 
 const log = (step: string, details?: unknown) => {
   const d = details ? ` - ${JSON.stringify(details)}` : "";
@@ -1043,6 +1044,124 @@ async function handleInvoicePaymentSucceeded(
       error: msg,
     });
   }
+
+  // Member referral conversion tracking (referrals ledger) — twin of the
+  // ambassador block above, same trigger: the referred member's second monthly
+  // payment is the first billing_reason='subscription_cycle' invoice.
+  // pending -> converted / payout_status owed / converted_at. The .eq('status',
+  // 'pending') on the update is the idempotency guard; the outer
+  // processed_webhook_events marker dedupes the event itself.
+  try {
+    const subscriptionId = typeof invoice.subscription === "string"
+      ? invoice.subscription
+      : null;
+
+    if (billingReason === "subscription_cycle" && subscriptionId) {
+      const { data: memberRef, error: memberRefErr } = await supabase
+        .from("referrals")
+        .select("id, referrer_profile_id, referred_name, amount_cents")
+        .eq("stripe_subscription_id", subscriptionId)
+        .eq("status", "pending")
+        .maybeSingle();
+
+      if (memberRefErr) {
+        log("Member referral lookup failed on conversion", { error: memberRefErr.message });
+      } else if (memberRef) {
+        const convertedAt = new Date().toISOString();
+        const { data: flipped, error: flipErr } = await supabase
+          .from("referrals")
+          .update({
+            status: "converted",
+            converted_at: convertedAt,
+            payout_status: "owed",
+          })
+          .eq("id", memberRef.id)
+          .eq("status", "pending") // idempotency guard
+          .select("id");
+
+        if (flipErr) {
+          log("Member referral conversion update failed", { referralId: memberRef.id, error: flipErr.message });
+        } else if (!flipped || flipped.length === 0) {
+          log("Member referral already converted, nothing to do", { referralId: memberRef.id });
+        } else {
+          log("Member referral converted", { referralId: memberRef.id, subscriptionId });
+          await notifyReferrerEarned(supabase, {
+            referralId: memberRef.id as string,
+            referrerProfileId: memberRef.referrer_profile_id as string | null,
+            referredName: (memberRef.referred_name as string | null) ?? null,
+            amountCents: (memberRef.amount_cents as number) ?? 25000,
+          });
+        }
+      }
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    log("Member referral conversion processing failed (non-blocking)", { error: msg });
+  }
+}
+
+/**
+ * Referrer-facing notice on the owed flip: bell row + email. The dashboard card
+ * reads the referrals row itself, so nothing else is written. Non-blocking.
+ */
+async function notifyReferrerEarned(
+  supabase: ReturnType<typeof createClient>,
+  args: { referralId: string; referrerProfileId: string | null; referredName: string | null; amountCents: number },
+) {
+  if (!args.referrerProfileId) return;
+  try {
+    const { data: referrer } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .eq("id", args.referrerProfileId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!referrer) return;
+
+    const dest = await resolveMemberPayoutDestination(supabase, args.referrerProfileId);
+    const needsSetup = needsPayoutSetup(dest);
+    const amountDollars = (args.amountCents / 100).toFixed(0);
+    const who = args.referredName?.trim() || "a new member";
+    const message = needsSetup
+      ? `You earned $${amountDollars} for referring ${who}. Set up payouts to receive it.`
+      : `You earned $${amountDollars} for referring ${who}. It pays out on the next Monday run.`;
+
+    const { error: bellErr } = await supabase.from("notifications").insert({
+      user_id: referrer.id,
+      type: "referral_earned",
+      notification_type: "referral_earned",
+      title: `You earned $${amountDollars}`,
+      message,
+      action_url: "/dashboard?tab=referrals",
+    });
+    if (bellErr) log("Referral earned bell insert failed (non-blocking)", { error: bellErr.message });
+
+    if (referrer.email) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+      const siteUrl = Deno.env.get("SITE_URL") ?? "https://704collective.com";
+      const res = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
+        body: JSON.stringify({
+          to: referrer.email,
+          template: "member-referral-earned",
+          skipCc: true,
+          data: {
+            name: referrer.full_name ?? "Member",
+            referredName: who,
+            amountDollars,
+            needsSetup,
+            dashboardUrl: `${siteUrl}/dashboard?tab=referrals`,
+          },
+        }),
+      });
+      if (!res.ok) log("Referral earned email failed (non-blocking)", { status: res.status });
+      else log("Referral earned email sent", { referralId: args.referralId });
+    }
+  } catch (e) {
+    log("notifyReferrerEarned failed (non-blocking)", { error: e instanceof Error ? e.message : String(e) });
+  }
 }
 
 async function handleInvoicePaymentFailed(
@@ -1437,6 +1556,42 @@ serve(async (req) => {
       case "account.updated": {
         const account = event.data.object as Stripe.Account;
         const ambassadorId = account.metadata?.ambassador_id;
+        // Member-referrer Connect accounts carry referrer_profile_id instead.
+        // Same status derivation as ambassadors, written to member_payout_accounts.
+        // NOTE: the Stripe endpoint must be subscribed to account.updated (Connect)
+        // for either branch to ever run; today it is not (see cursor_report_phase2build.md).
+        const referrerProfileId = account.metadata?.referrer_profile_id;
+        if (!ambassadorId && referrerProfileId) {
+          let memberStatus = 'onboarding';
+          if (account.details_submitted && account.charges_enabled && account.payouts_enabled) {
+            memberStatus = 'active';
+          } else if (account.requirements?.disabled_reason) {
+            memberStatus = 'restricted';
+          }
+          const memberUpdates: Record<string, unknown> = {
+            stripe_account_id: account.id,
+            stripe_account_status: memberStatus,
+          };
+          if (memberStatus === 'active') {
+            const { data: mpa } = await supabase
+              .from('member_payout_accounts')
+              .select('stripe_onboarding_completed_at')
+              .eq('profile_id', referrerProfileId)
+              .maybeSingle();
+            if (!mpa?.stripe_onboarding_completed_at) {
+              memberUpdates.stripe_onboarding_completed_at = new Date().toISOString();
+            }
+          }
+          const { error: mpaErr } = await supabase
+            .from('member_payout_accounts')
+            .upsert({ profile_id: referrerProfileId, ...memberUpdates }, { onConflict: 'profile_id' });
+          if (mpaErr) {
+            log("Failed to update member payout account from account.updated", { referrerProfileId, error: mpaErr.message });
+          } else {
+            log("Member payout account status updated", { referrerProfileId, status: memberStatus });
+          }
+          break;
+        }
         if (!ambassadorId) {
           log("account.updated event without ambassador_id metadata, ignoring", { account_id: account.id });
           break;

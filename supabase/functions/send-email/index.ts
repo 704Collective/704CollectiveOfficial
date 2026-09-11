@@ -1519,6 +1519,92 @@ function ambassadorWeeklyPayoutTemplate(data: {
   };
 }
 
+// Member referral ledger (referrals table) — siblings of the ambassador templates,
+// worded for members rather than the ambassador program.
+function memberReferralEarnedTemplate(data: {
+  name: string;
+  referredName: string;
+  amountDollars: string;
+  needsSetup: boolean;
+  dashboardUrl: string;
+}): { subject: string; html: string } {
+  const firstName = escapeHtml((data.name || 'Member').split(' ')[0]);
+  const who = escapeHtml(data.referredName || 'a new member');
+  const amount = escapeHtml(String(data.amountDollars || '250'));
+  const url = data.dashboardUrl || 'https://704collective.com/dashboard';
+  const setupBlock = data.needsSetup
+    ? `
+<p style="margin:0 0 24px;font-size:15px;line-height:1.65;color:${BRAND.textSecondary};">
+  To receive it, set up payouts once from your dashboard. It takes about two minutes and
+  your reward goes out on the next Monday run after that.
+</p>
+${ctaButton('Set up payouts', url)}`
+    : `
+<p style="margin:0 0 24px;font-size:15px;line-height:1.65;color:${BRAND.textSecondary};">
+  Your payout account is already set up, so this goes out automatically on the next Monday run.
+</p>
+${ctaButton('View your referrals', url)}`;
+  return {
+    subject: `You earned $${amount} for referring ${who}`,
+    html: baseLayout({
+      title: `You Earned $${amount}`,
+      previewText: `${who} is now a 704 Collective business member. Your $${amount} referral reward is on its way.`,
+      content: `
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${firstName},</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.65;color:${BRAND.textSecondary};">
+  <strong style="color:${BRAND.text};">${who}</strong> just made their second membership payment, which means
+  your referral is official. You earned <strong style="color:${BRAND.text};">$${amount}</strong>.
+</p>
+${setupBlock}
+<p style="margin:0;font-size:14px;color:${BRAND.textMuted};">Thank you for growing 704 Collective. - The 704 Team</p>`,
+    }),
+  };
+}
+
+function memberReferralPayoutTemplate(data: {
+  name: string;
+  totalCents: number;
+  payouts: Array<{ refereeName: string; date: string; amountCents: number }>;
+  transferArrivalEstimate: string;
+}): { subject: string; html: string } {
+  const firstName = escapeHtml((data.name || 'Member').split(' ')[0]);
+  const totalDollars = (Number(data.totalCents || 0) / 100).toFixed(2);
+  const arrival = escapeHtml(data.transferArrivalEstimate || 'within 2 business days');
+  const payouts = Array.isArray(data.payouts) ? data.payouts : [];
+  const rows = payouts.map((p) => `
+    <tr>
+      <td style="padding:10px 12px;font-size:13px;color:${BRAND.textSecondary};border-bottom:1px solid ${BRAND.border};">${escapeHtml(p.date || '')}</td>
+      <td style="padding:10px 12px;font-size:13px;color:${BRAND.text};border-bottom:1px solid ${BRAND.border};">${escapeHtml(p.refereeName || '')}</td>
+      <td style="padding:10px 12px;font-size:13px;color:${BRAND.accent};text-align:right;border-bottom:1px solid ${BRAND.border};font-weight:600;">$${(Number(p.amountCents || 0) / 100).toFixed(2)}</td>
+    </tr>`).join('');
+  return {
+    subject: `Your $${totalDollars} referral payout is on its way`,
+    html: baseLayout({
+      title: `Your $${totalDollars} Payout Is On Its Way`,
+      previewText: `We just sent your $${totalDollars} 704 Collective referral reward.`,
+      content: `
+<p style="margin:0 0 16px;font-size:18px;font-weight:600;color:${BRAND.text};">Hey ${firstName},</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.65;color:${BRAND.textSecondary};">
+  We just sent <strong style="color:${BRAND.text};">$${totalDollars}</strong> to your payout account.
+  It should land in your bank <strong style="color:${BRAND.text};">${arrival}</strong>.
+</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 28px;background:rgba(255,255,255,0.05);border-radius:10px;border:1px solid ${BRAND.border};overflow:hidden;">
+  <thead>
+    <tr style="background:rgba(255,255,255,0.05);">
+      <th style="padding:10px 12px;font-size:11px;font-weight:700;color:${BRAND.textMuted};text-transform:uppercase;letter-spacing:0.06em;text-align:left;border-bottom:1px solid ${BRAND.border};">Referred</th>
+      <th style="padding:10px 12px;font-size:11px;font-weight:700;color:${BRAND.textMuted};text-transform:uppercase;letter-spacing:0.06em;text-align:left;border-bottom:1px solid ${BRAND.border};">Member</th>
+      <th style="padding:10px 12px;font-size:11px;font-weight:700;color:${BRAND.textMuted};text-transform:uppercase;letter-spacing:0.06em;text-align:right;border-bottom:1px solid ${BRAND.border};">Amount</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${rows}
+  </tbody>
+</table>
+<p style="margin:0;font-size:14px;color:${BRAND.textMuted};">Thank you for growing 704 Collective. - The 704 Team</p>`,
+    }),
+  };
+}
+
 function ambassadorWelcomeNewTemplate(data: {
   name: string;
   email: string;
@@ -2304,6 +2390,16 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
       return ambassadorWeeklyPayoutTemplate(data as {
         name: string; totalCents: number; conversionCount: number;
         conversions: Array<{ refereeName: string; refereeEmail: string; date: string; amountCents: number }>;
+        transferArrivalEstimate: string;
+      });
+    case "member-referral-earned":
+      return memberReferralEarnedTemplate(data as {
+        name: string; referredName: string; amountDollars: string; needsSetup: boolean; dashboardUrl: string;
+      });
+    case "member-referral-payout":
+      return memberReferralPayoutTemplate(data as {
+        name: string; totalCents: number;
+        payouts: Array<{ refereeName: string; date: string; amountCents: number }>;
         transferArrivalEstimate: string;
       });
     case "ambassador-welcome-new":

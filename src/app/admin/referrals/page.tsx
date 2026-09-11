@@ -48,7 +48,8 @@ export default function AdminReferralsPage() {
   }, []);
 
   const totalReferrals = referrals.length;
-  const approvedReferrals = referrals.filter(r => r.status === 'approved' || r.status === 'completed').length;
+  // referrals.status vocabulary: pending -> converted -> (owed) -> paid.
+  const approvedReferrals = referrals.filter(r => r.status === 'converted' || r.status === 'owed' || r.status === 'paid').length;
   const totalRewards = referrals.reduce((sum, r) => sum + (r.reward_amount ?? 0), 0);
 
   return (
@@ -97,7 +98,7 @@ export default function AdminReferralsPage() {
             </div>
             <div className="bg-card border border-border rounded-xl p-5">
               <div className="flex justify-between items-start mb-3">
-                <span className="text-xs uppercase tracking-wider text-muted-foreground/70">Approved</span>
+                <span className="text-xs uppercase tracking-wider text-muted-foreground/70">Earned</span>
                 <TrendingUp className="w-4 h-4 text-muted-foreground" />
               </div>
               <p className="text-3xl font-bold text-foreground">{approvedReferrals}</p>
@@ -136,9 +137,11 @@ export default function AdminReferralsPage() {
                         <p className="text-xs text-muted-foreground">{r.referred_email ?? ''}</p>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium
-                          ${r.status === 'approved' || r.status === 'completed'
+                        <span data-testid="referral-status" className={`text-xs px-2 py-0.5 rounded-full border font-medium
+                          ${r.status === 'paid'
                             ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                            : r.status === 'converted' || r.status === 'owed'
+                            ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
                             : r.status === 'pending'
                             ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
                             : 'bg-muted text-muted-foreground border-border'
