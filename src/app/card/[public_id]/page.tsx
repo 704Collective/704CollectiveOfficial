@@ -1,19 +1,57 @@
+import { cache } from 'react';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { CardDisplay, type BusinessCardData } from '@/components/portal/BusinessCard';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
+import {
+  isVisibleMember,
+  MEMBER_VISIBILITY_COLUMNS,
+  type MemberVisibilityFields,
+} from '@/lib/memberVisibility';
 
 interface Props {
   params: Promise<{ public_id: string }>;
 }
 
-async function getCard(publicId: string): Promise<BusinessCardData | null> {
+/**
+ * Read gate for the public card (R5). The card row itself is public via the
+ * SECURITY DEFINER RPC, but `profiles` is not readable by anon, so the owner's
+ * membership state is checked server-side with the service role. A card whose
+ * owner fails the shared member-visibility predicate resolves to not-found;
+ * the card row is never deleted, so a reactivated member's URL works again.
+ */
+async function ownerIsVisibleMember(userId: string): Promise<boolean> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) {
+    console.error('[card] SUPABASE_SERVICE_ROLE_KEY missing; refusing to serve card without owner check');
+    return false;
+  }
+  const admin = createSupabaseClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { data, error } = await admin
+    .from('profiles')
+    .select(MEMBER_VISIBILITY_COLUMNS)
+    .eq('id', userId)
+    .maybeSingle();
+  if (error) {
+    console.error('[card] owner profile lookup failed', error.message);
+    return false;
+  }
+  return isVisibleMember(data as MemberVisibilityFields | null);
+}
+
+// `cache` dedupes the metadata + page calls within one request.
+const getCard = cache(async (publicId: string): Promise<BusinessCardData | null> => {
   const supabase = await createClient();
   const { data } = await supabase.rpc('get_business_card_public', { pid: publicId }).maybeSingle();
   if (!data) return null;
   const row = data as Record<string, unknown>;
+  if (!(await ownerIsVisibleMember(String(row.user_id)))) return null;
   return {
     id: String(row.id),
     user_id: String(row.user_id),
@@ -28,7 +66,7 @@ async function getCard(publicId: string): Promise<BusinessCardData | null> {
     avatar_url: (row.avatar_url as string) ?? null,
     custom_fields: (row.custom_fields as Record<string, string>) ?? null,
   };
-}
+});
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { public_id } = await params;

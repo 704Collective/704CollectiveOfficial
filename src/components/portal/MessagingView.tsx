@@ -24,6 +24,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import NextImage from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { applyMemberVisibility } from '@/lib/memberVisibility';
 import { notifyNewConversation } from '@/app/actions/notifyNewConversation';
 import { toast } from 'sonner';
 import {
@@ -564,15 +565,18 @@ export function MessagingView({ initialDirectPeerId }: { initialDirectPeerId?: s
     const timeout = setTimeout(async () => {
       setMemberSearchLoading(true);
       try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('id, full_name, avatar_url, title, company')
-          .ilike('full_name', `%${memberSearch}%`)
-          .neq('id', user?.id ?? '')
-          .in('role', ['admin', 'super_admin', 'lead'])
-          .or('member_type.eq.business,role.eq.admin,role.eq.super_admin')
-          .eq('is_internal', false)
-          .limit(8);
+        // Shared member-visibility predicate (adds the previously missing
+        // deleted_at / subscription / ban filters) on top of the existing
+        // business-or-admin recipient rule.
+        const { data } = await applyMemberVisibility(
+          supabase
+            .from('profiles')
+            .select('id, full_name, avatar_url, title, company')
+            .ilike('full_name', `%${memberSearch}%`)
+            .neq('id', user?.id ?? '')
+            .in('role', ['admin', 'super_admin', 'lead'])
+            .or('member_type.eq.business,role.eq.admin,role.eq.super_admin'),
+        ).limit(8);
         setMemberResults((data ?? []) as MemberSearchResult[]);
       } finally {
         setMemberSearchLoading(false);

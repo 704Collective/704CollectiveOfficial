@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { notifyNewConversation } from '@/app/actions/notifyNewConversation';
 import { toast } from 'sonner';
 import { DASHBOARD_MAIN } from '@/lib/dashboard-layout';
+import { applyMemberVisibility } from '@/lib/memberVisibility';
 import { cn } from '@/lib/utils';
 import {
   MessageSquare,
@@ -107,13 +108,14 @@ export default function MemberProfilePage() {
     setPageLoading(true);
     try {
       const [profileRes, cardRes] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('id, full_name, avatar_url, role, member_type, title, company, industry, phone, email, linkedin_url, website_url, member_since, subscription_status, membership_override')
-          .eq('id', id)
-          .is('deleted_at', null)
-          .eq('is_internal', false)
-          .single(),
+        // Same predicate as the directory list, so a deep link to a canceled or
+        // soft-deleted person resolves to the not-found state instead of a profile.
+        applyMemberVisibility(
+          supabase
+            .from('profiles')
+            .select('id, full_name, avatar_url, role, member_type, title, company, industry, phone, email, linkedin_url, website_url, member_since, subscription_status, membership_override')
+            .eq('id', id),
+        ).maybeSingle(),
         supabase
           .from('business_cards')
           .select('*')

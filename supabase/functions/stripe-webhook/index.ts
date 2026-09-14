@@ -253,6 +253,28 @@ async function syncPersonAndCredential(
 }
 
 /**
+ * Remove every hub seat a person holds. Called when their membership ends so
+ * hub_members stays truthful (RLS `is_hub_member`, hub notification fan-out and
+ * member counts all key on the seat row). Throws on failure so the caller's
+ * event handling fails and is retried rather than leaving a ghost seat behind.
+ */
+async function removeHubSeats(
+  supabase: ReturnType<typeof createClient>,
+  profileId: string,
+  source: string
+) {
+  const { data: removed, error } = await supabase
+    .from("hub_members")
+    .delete()
+    .eq("user_id", profileId)
+    .select("hub_id");
+  if (error) {
+    throw new Error(`hub seat cascade failed (${source}): ${error.message}`);
+  }
+  log("Hub seats removed", { userId: profileId, count: removed?.length ?? 0, source });
+}
+
+/**
  * Additive: void a cancelled member's active credentials in the new schema.
  * Best-effort - callers wrap in try/catch. A failure here must NOT break
  * the existing profiles-based cancellation that already succeeded.
@@ -1252,6 +1274,13 @@ async function handleSubscriptionDeleted(
       })
       .eq("id", profile.id);
     log("Subscription canceled", { userId: profile.id });
+
+    // Hub seat cascade: a canceled member leaves every hub in the same event
+    // handling as the status write. Not best-effort - a failure here throws so
+    // the processed marker is rolled back and Stripe retries the whole handler
+    // (every step above and below is idempotent). Business cards are NOT
+    // deleted; the public card route gates on membership state at read time.
+    await removeHubSeats(supabase, profile.id, "subscription.deleted");
 
     // Sweep-aware: also update people.member_status to canceled + stamp canceled_at.
     // Identity via the shared resolver. 'canceled' is the word for a membership that

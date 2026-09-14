@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { getInitialsAvatarStyle } from '@/lib/avatarInitialsColor';
+import { applyMemberVisibility, SUGGESTABLE_MEMBER_TYPES } from '@/lib/memberVisibility';
 import { cn } from '@/lib/utils';
 
 /**
@@ -78,13 +79,15 @@ export function MentionTextarea({
       setShowSuggestions(false);
       return;
     }
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, full_name, avatar_url')
-      .ilike('full_name', `%${query}%`)
-      .is('deleted_at', null)
-      .eq('is_internal', false)
-      .limit(6);
+    // Only visible members (shared predicate) who hold a real member tier are
+    // suggestable. Leads, prospects and never-members must not appear here.
+    const { data } = await applyMemberVisibility(
+      supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .ilike('full_name', `%${query}%`)
+        .in('member_type', [...SUGGESTABLE_MEMBER_TYPES]),
+    ).limit(6);
     const rows = (data as MentionSuggestion[]) ?? [];
     setSuggestions(rows);
     setShowSuggestions(rows.length > 0);

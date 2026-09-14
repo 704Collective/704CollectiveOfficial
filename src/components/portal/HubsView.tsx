@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { HubCard, type HubData } from '@/components/portal/HubCard';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { applyMemberVisibility } from '@/lib/memberVisibility';
 import { Search, LayoutGrid } from 'lucide-react';
 
 interface HubRow {
@@ -15,7 +16,7 @@ interface HubRow {
   description: string | null;
   header_image_url: string | null;
   created_at: string;
-  hub_members: { user_id: string }[];
+  hub_members: { user_id: string; profile: { id: string } | null }[];
 }
 
 export function HubsView() {
@@ -29,17 +30,23 @@ export function HubsView() {
     if (!user) return;
     setLoading(true);
     try {
-      const query = supabase
-        .from('hubs')
-        .select('id, title, description, header_image_url, created_at, hub_members(user_id)')
-        .order('title', { ascending: true });
+      // The nested profile join is !inner and carries the shared member-visibility
+      // predicate, so seats held by non-visible people drop out of the card count
+      // and it matches the hub page's Members tab. Hubs with zero visible members
+      // still list (hubs -> hub_members stays a left join).
+      const query = applyMemberVisibility(
+        supabase
+          .from('hubs')
+          .select('id, title, description, header_image_url, created_at, hub_members(user_id, profile:profiles!hub_members_user_id_fkey!inner(id))'),
+        'hub_members.profile',
+      ).order('title', { ascending: true });
 
       // Non-admin users only see hubs they're a member of
       // RLS handles this automatically — members can only read hubs they're in
       const { data } = await query;
 
       setHubs(
-        (data as HubRow[] ?? []).map((h) => ({
+        ((data as unknown as HubRow[]) ?? []).map((h) => ({
           ...h,
           member_count: h.hub_members?.length ?? 0,
         }))

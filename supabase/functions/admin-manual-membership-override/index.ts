@@ -260,6 +260,29 @@ Deno.serve(async (req) => {
           changes.push('profile mirrored')
         }
       }
+
+      // --- Step 5a: Hub seat cascade on demotion away from business ---
+      // Hubs are business-tier spaces, so a tier write that leaves 'business'
+      // removes the person's hub seats right alongside the status/tier write.
+      // Prior tier is read from either ledger (people.member_tier or the
+      // profile mirror) so a stale people row cannot mask the demotion.
+      // Business cards are left in place; the public card route gates at read.
+      const priorWasBusiness = priorTier === 'business' || existingProfile.member_type === 'business'
+      const leavingBusiness =
+        member_tier !== null && member_tier !== undefined && member_tier !== 'business' && priorWasBusiness
+      if (leavingBusiness) {
+        const { data: removedSeats, error: seatErr } = await supabaseAdmin
+          .from('hub_members')
+          .delete()
+          .eq('user_id', authUserId)
+          .select('hub_id')
+        if (seatErr) {
+          console.error('Hub seat cascade failed:', seatErr)
+          changes.push(`WARNING: hub seat removal failed (${seatErr.message}) - remove seats manually in Admin > Hubs`)
+        } else {
+          changes.push(`removed ${removedSeats?.length ?? 0} hub seat(s)`)
+        }
+      }
     }
 
     // --- Step 5b: Resolve or mint the people row through the shared resolver ---

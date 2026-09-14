@@ -13,6 +13,7 @@ import { notifyNewConversation } from '@/app/actions/notifyNewConversation';
 import { toast } from 'sonner';
 import { Search, MessageSquare, User, Loader2 } from 'lucide-react';
 import { getInitialsAvatarStyle } from '@/lib/avatarInitialsColor';
+import { applyMemberVisibility } from '@/lib/memberVisibility';
 
 interface DirectoryMember {
   id: string;
@@ -162,13 +163,14 @@ export function MemberDirectory() {
   const fetchMembers = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, full_name, avatar_url, role, member_type, title, company, member_since, is_founding_member')
-        .or('member_type.eq.business,role.eq.admin,role.eq.super_admin')
-        .is('deleted_at', null)
-        .eq('is_internal', false)
-        .order('full_name', { ascending: true });
+      // Business members and admins, restricted to the shared member-visibility
+      // predicate so canceled / soft-deleted / banned / internal people never list.
+      const { data } = await applyMemberVisibility(
+        supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url, role, member_type, title, company, member_since, is_founding_member')
+          .or('member_type.eq.business,role.eq.admin,role.eq.super_admin'),
+      ).order('full_name', { ascending: true });
       const memberIds = (data ?? []).map((m) => m.id);
       const hubMap = new Map<string, string[]>();
       if (memberIds.length > 0) {
