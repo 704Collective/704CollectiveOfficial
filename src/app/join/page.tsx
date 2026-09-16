@@ -10,6 +10,7 @@ import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '
 import { addDays, format } from 'date-fns';
 import { Calendar, MapPin, Users, ArrowRight, Loader2 } from 'lucide-react';
 import { SOCIAL_TIER, BUSINESS_TIER, FLASH_SALE } from '@/lib/pricing';
+import { readAttributionPayload } from '@/lib/attribution';
 import {
   promoQuoteView,
   type PromoDuration,
@@ -397,6 +398,8 @@ function JoinInner() {
     // STEP ONE - Create a Supabase account for anonymous visitors so we have a
     // user_id for downstream writes. signUp is the only captcha-gated call; a
     // logged-in non-member already has an account, so skip it (and the captcha).
+    // Ad attribution captured on landing (utm_* + fbclid); null when untagged.
+    const attribution = readAttributionPayload();
     let newUserId = user?.id ?? null;
     if (willSignUp) {
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
@@ -443,6 +446,7 @@ function JoinInner() {
         user_id: newUserId,
         primary_goal: goal,
         ambassador_id: ambassadorIdToUse,
+        ...(attribution ? { utm: attribution } : {}),
       },
     });
     if (captureError) {
@@ -474,6 +478,7 @@ function JoinInner() {
           referral_code: referralCodeToUse,
           ambassador_id: ambassadorIdToUse,
           ...(promoCodeToUse ? { promoCode: promoCodeToUse } : {}),
+          ...(attribution ? { utm: attribution } : {}),
         },
       });
 
@@ -515,6 +520,7 @@ function JoinInner() {
       setSocialLoading(true);
       setPromoCodeError(null);
       try {
+        const attribution = readAttributionPayload();
         const { data: sessionData } = await supabase.auth.getSession();
         const accessToken = sessionData?.session?.access_token;
         // The card can show the referral rate, so the checkout call has to carry
@@ -535,6 +541,7 @@ function JoinInner() {
             referral_code: referralCodeToUse,
             ambassador_id: ambassadorIdToUse,
             ...(promoCodeToUse ? { promoCode: promoCodeToUse } : {}),
+            ...(attribution ? { utm: attribution } : {}),
           },
           headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
         });

@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
+import { trackPurchase } from '@/components/MetaPixel';
 
 export default function PaymentSuccessPage() {
   return (
@@ -49,7 +50,19 @@ function PaymentSuccess() {
             console.error('Ticket verification failed:', error || data?.error);
           }
         } else {
-          await new Promise((resolve) => setTimeout(resolve, 2000));
+          // Membership: the page always shows success (the webhook is the
+          // authority). The verify call only supplies the promo-adjusted amount
+          // for the deduped Meta Purchase event; any failure leaves the page as is.
+          const [{ data }] = await Promise.all([
+            supabase.functions
+              .invoke('verify-checkout-session', { body: { session_id: sessionId } })
+              .catch(() => ({ data: null })),
+            new Promise((resolve) => setTimeout(resolve, 2000)),
+          ]);
+          const v = data as { paid?: boolean; amount_total?: number | null; currency?: string } | null;
+          if (v?.paid && typeof v.amount_total === 'number') {
+            trackPurchase({ value: v.amount_total / 100, currency: v.currency ?? 'usd', eventId: sessionId });
+          }
           setVerified(true);
         }
       } catch (err) {

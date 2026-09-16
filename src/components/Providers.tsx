@@ -2,9 +2,11 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { MetaPixel } from '@/components/MetaPixel';
+import { AttributionCapture } from '@/components/AttributionCapture';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -34,6 +36,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         {children}
+        {/* Env-gated Meta pixel (NEXT_PUBLIC_META_PIXEL_ID) + site-wide utm/fbclid capture.
+            useSearchParams needs a Suspense boundary for static prerendering. */}
+        <Suspense fallback={null}>
+          <MetaPixel />
+          <AttributionCapture />
+        </Suspense>
         <Toaster
           position="top-right"
           richColors

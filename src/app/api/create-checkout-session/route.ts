@@ -71,6 +71,19 @@ export async function POST(request: NextRequest) {
     // The embedded door sent no body until promo codes arrived; tolerate both.
     const body = await request.json().catch(() => ({} as Record<string, unknown>));
     const rawPromoCode = typeof body.promoCode === 'string' ? body.promoCode.trim() : '';
+    // Ad attribution (utm_* + fbclid) for Stripe session metadata. Display/report
+    // data only; strings ≤200 chars, anything else dropped. Not the ambassador
+    // claim below, which is deliberately never read from the body.
+    const utmMeta: Record<string, string> = {};
+    if (body.utm && typeof body.utm === 'object' && !Array.isArray(body.utm)) {
+      for (const field of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'fbclid']) {
+        const v = (body.utm as Record<string, unknown>)[field];
+        if (typeof v === 'string') {
+          const t = v.trim();
+          if (t && t.length <= 200) utmMeta[field] = t;
+        }
+      }
+    }
 
     // ── Attribution, read from the member's OWN profile ─────────────────
     // Deliberately NOT from the request body. This door is reached from the
@@ -158,6 +171,7 @@ export async function POST(request: NextRequest) {
       metadata: {
         user_id: user.id,
         source: 'join_checkout',
+        ...utmMeta,
         ...(referralApplies
           ? {
               ambassador_id: validatedAmbassadorId!,

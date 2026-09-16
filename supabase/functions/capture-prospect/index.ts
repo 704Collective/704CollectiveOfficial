@@ -6,6 +6,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+/** Ad attribution (same rules as exchange-intake-submit): strings ≤200 chars,
+ *  anything else stripped rather than rejected. Returns null when empty. */
+function sanitizeUtm(raw: unknown): Record<string, string> | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const src = raw as Record<string, unknown>;
+  const out: Record<string, string> = {};
+  for (const field of ["utm_source", "utm_medium", "utm_campaign", "utm_content"]) {
+    const v = src[field];
+    if (typeof v === "string") {
+      const trimmed = v.trim();
+      if (trimmed && trimmed.length <= 200) out[field] = trimmed;
+    }
+  }
+  return Object.keys(out).length ? out : null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -23,6 +39,7 @@ serve(async (req) => {
       primary_goal,
       sms_consent_at,
       ambassador_id,
+      utm,
     } = body as {
       email?: string;
       full_name?: string;
@@ -33,7 +50,11 @@ serve(async (req) => {
       primary_goal?: string;
       sms_consent_at?: string | null;
       ambassador_id?: string;
+      utm?: unknown;
     };
+    // Only present when the visitor arrived on a tagged URL; never overwrites
+    // existing utm_* columns with nulls.
+    const utmCols = sanitizeUtm(utm);
 
     // 1. Validate email
     if (!email) {
@@ -71,6 +92,7 @@ serve(async (req) => {
           sms_consent: consentTrue,
           sms_consent_at: consentTrue ? new Date().toISOString() : null,
           updated_at: new Date().toISOString(),
+          ...(utmCols ?? {}),
         },
         { onConflict: "email", ignoreDuplicates: false }
       )

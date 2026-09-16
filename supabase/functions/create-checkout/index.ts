@@ -98,6 +98,17 @@ serve(async (req) => {
     const rawAmbassadorId: string | null = typeof body.ambassador_id === "string" ? body.ambassador_id : null;
     const rawPromoCode: string =
       typeof body.promoCode === "string" ? body.promoCode.trim() : "";
+    // Ad attribution for Stripe session metadata (strings ≤200 chars, else dropped).
+    const utmMeta: Record<string, string> = {};
+    if (body.utm && typeof body.utm === "object" && !Array.isArray(body.utm)) {
+      for (const field of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "fbclid"]) {
+        const v = (body.utm as Record<string, unknown>)[field];
+        if (typeof v === "string") {
+          const t = v.trim();
+          if (t && t.length <= 200) utmMeta[field] = t;
+        }
+      }
+    }
 
     // ── Server-side ambassador re-validation ───────────────────────────
     // The /join form already validated, but we re-verify here so a tampered
@@ -200,9 +211,10 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://704collective.com";
 
-    // Route authenticated users to dashboard, guests to setup-password
+    // Route authenticated users to dashboard, guests to setup-password.
+    // Both carry the session id so the landing page can fire a deduped Purchase.
     const successUrl = userId
-      ? `${origin}/dashboard?welcome=true`
+      ? `${origin}/dashboard?welcome=true&session_id={CHECKOUT_SESSION_ID}`
       : `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`;
     logStep("Success URL determined", { authenticated: !!userId, successUrl });
 
@@ -256,6 +268,7 @@ serve(async (req) => {
         ambassador_id: validatedAmbassadorId ?? "",
         referral_code: validatedReferralCode ?? "",
         ambassador_tier: validatedAmbassadorId ? "social" : "",
+        ...utmMeta,
       },
     };
 

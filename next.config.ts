@@ -3,7 +3,8 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://*.stripe.com https://*.stripe.network https://cdn.jsdelivr.net https://challenges.cloudflare.com",
+  // connect.facebook.net: Meta pixel base script (env-gated in src/components/MetaPixel.tsx)
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://*.stripe.com https://*.stripe.network https://cdn.jsdelivr.net https://challenges.cloudflare.com https://connect.facebook.net",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https: https://*.stripe.com https://q.stripe.com",
   "font-src 'self' data:",
@@ -19,6 +20,9 @@ const CSP = [
     "https://*.r2.cloudflarestorage.com",
     "https://pub-0fbe8b8a307445918223e9bf8cfedb8f.r2.dev",
     "https://o4510870703243264.ingest.us.sentry.io",
+    // Meta pixel event beacons (fbevents.js posts to www.facebook.com/tr)
+    "https://www.facebook.com",
+    "https://connect.facebook.net",
   ].join(" "),
   "media-src 'self' blob: https://pub-0fbe8b8a307445918223e9bf8cfedb8f.r2.dev",
   "frame-src https://js.stripe.com https://*.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com",

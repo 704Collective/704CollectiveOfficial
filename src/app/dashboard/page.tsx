@@ -24,6 +24,7 @@ import { OnboardingCard } from '@/components/OnboardingCard';
 import { NonMemberDashboard } from '@/components/NonMemberDashboard';
 import { HubsPreviewWidget } from '@/components/HubsPreviewWidget';
 import { ReferralEarningsCard } from '@/components/dashboard/ReferralEarningsCard';
+import { trackPurchase } from '@/components/MetaPixel';
 import { SuggestEventModal } from '@/components/SuggestEventModal';
 import { Crown, AlertCircle, CreditCard, Loader2, Lightbulb, Heart, ArrowRight, Rss, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -241,8 +242,24 @@ export default function Dashboard() {
     const params = new URLSearchParams(window.location.search);
     if (params.has('welcome')) {
       toast.success('Welcome to 704 Collective!', { description: 'Your membership is now active.' });
+      // Dashboard door: the Join Social success_url carries the Checkout Session
+      // id so the deduped Meta Purchase can fire here too. Cleaned off the URL
+      // together with `welcome`, before the verify round-trip.
+      const sessionId = params.get('session_id');
       params.delete('welcome');
+      if (sessionId) params.delete('session_id');
       window.history.replaceState({}, '', `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`);
+      if (sessionId && sessionId.startsWith('cs_')) {
+        supabase.functions
+          .invoke('verify-checkout-session', { body: { session_id: sessionId } })
+          .then(({ data }) => {
+            const v = data as { paid?: boolean; amount_total?: number | null; currency?: string } | null;
+            if (v?.paid && typeof v.amount_total === 'number') {
+              trackPurchase({ value: v.amount_total / 100, currency: v.currency ?? 'usd', eventId: sessionId });
+            }
+          })
+          .catch(() => { /* attribution only; never surfaces */ });
+      }
     } else if (params.has('ticket_purchased')) {
       toast.success('Ticket purchased!', { description: "You're all set for the event." });
       params.delete('ticket_purchased');

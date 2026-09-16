@@ -12,6 +12,7 @@ import { sendWelcomeOnboardingCompleteEmail } from '@/app/actions/transactionalE
 import { sendRsvpConfirmationEmail } from '@/hooks/useTicketActions';
 import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
+import { trackPurchase } from '@/components/MetaPixel';
 import { format } from 'date-fns';
 
 type Status = 'loading' | 'setup' | 'rsvp_gate' | 'email_confirmation_required' | 'success' | 'error';
@@ -136,6 +137,11 @@ function WelcomeContent() {
         const nameParts = fullName.split(' ');
         const firstName = nameParts[0] || '';
         const lastName = nameParts.slice(1).join(' ') || '';
+
+        // Deduped Meta Purchase for the embedded door (eventID = session id).
+        if (typeof data?.amount_total === 'number') {
+          trackPurchase({ value: data.amount_total / 100, currency: data.currency ?? 'usd', eventId: sessionId });
+        }
 
         setForm(prev => ({
           ...prev,

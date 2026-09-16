@@ -108,6 +108,7 @@ export default function Privacy() {
               <li style={liStyle}>Analyze website traffic and usage</li>
               <li style={liStyle}>Improve our website and services</li>
             </ul>
+            <p style={pStyle}>We also use advertising cookies, including the Meta pixel, to measure ad performance and improve our campaigns.</p>
             <p style={pStyle}>You can control cookies through your browser settings. Note that disabling cookies may affect your ability to use certain features of our website.</p>
           </section>
 

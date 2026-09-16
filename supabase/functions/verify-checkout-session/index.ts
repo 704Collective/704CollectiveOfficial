@@ -116,6 +116,9 @@ serve(async (req) => {
       name: session.customer_details?.name || "",
       email: session.customer_details?.email || "",
       phone: session.customer_details?.phone || "",
+      // For the browser Purchase event: what was actually charged (promo-adjusted), in cents.
+      amount_total: typeof session.amount_total === "number" ? session.amount_total : null,
+      currency: session.currency || "usd",
     };
 
     log("Session verified", { email: result.email });
