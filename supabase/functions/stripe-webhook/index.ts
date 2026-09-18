@@ -1417,6 +1417,11 @@ async function handleSubscriptionDeleted(
   }
 }
 
+// A Stripe pause with no resumes_at is open-ended. The dashboard reads any
+// future subscription_paused_until as "paused"; this far-future stamp says
+// "paused until someone resumes it" without inventing a status word.
+const INDEFINITE_PAUSE_SENTINEL = "2999-01-01T00:00:00.000Z";
+
 async function handleSubscriptionUpdated(
   event: Stripe.Event,
   supabase: ReturnType<typeof createClient>
@@ -1451,7 +1456,10 @@ async function handleSubscriptionUpdated(
   if (profile) {
     const updates: Record<string, unknown> = {
       subscription_status: mappedStatus,
-      subscription_id: subscription.id,
+      // A canceled subscription id is not a live pointer; null it here the way
+      // handleSubscriptionDeleted does, so a missed `deleted` event cannot leave
+      // a stale id on a canceled row (Wave 10 residue class).
+      subscription_id: mappedStatus === "canceled" ? null : subscription.id,
       cancel_at_period_end: subscription.cancel_at_period_end === true,
     };
     // In Basil API, current_period_end moved to item level
@@ -1464,6 +1472,20 @@ async function handleSubscriptionUpdated(
     // Stamp canceled_at when Stripe reports the subscription as canceled.
     if (mappedStatus === "canceled") {
       updates.canceled_at = new Date().toISOString();
+    }
+    // Wave 10 pause mirror. Stripe pauses by setting pause_collection while the
+    // subscription status stays 'active'; the status word 'paused' is never
+    // written. Mirror the pause onto subscription_paused_until in BOTH
+    // directions: set -> resumes_at (or the indefinite sentinel when Stripe has
+    // no resume date), cleared -> null. This is what lets the two hand-paused
+    // members become visible to the database on their next event.
+    const pauseCollection = (subscription as unknown as { pause_collection?: { resumes_at?: number | null } | null }).pause_collection;
+    if (pauseCollection) {
+      updates.subscription_paused_until = pauseCollection.resumes_at
+        ? new Date(pauseCollection.resumes_at * 1000).toISOString()
+        : INDEFINITE_PAUSE_SENTINEL;
+    } else {
+      updates.subscription_paused_until = null;
     }
     await supabase.from("profiles").update(updates).eq("id", profile.id);
     log("Subscription status synced", { userId: profile.id, status: mappedStatus });

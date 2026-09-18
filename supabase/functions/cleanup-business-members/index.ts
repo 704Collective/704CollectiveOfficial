@@ -74,8 +74,24 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${recentProfiles?.length ?? 0} recently created profiles`);
 
-    const removed: Array<{ email: string; name: string | null; customerId: string; productId: string; productName: string }> = [];
+    const removed: Array<{ email: string; name: string | null; customerId: string; productId: string; productName: string; stripe_canceled: string[] }> = [];
     const kept: Array<{ email: string; name: string | null; productId: string }> = [];
+    // Wave 10: a row whose Stripe cancel fails is SKIPPED (profile untouched)
+    // and reported here - never hidden while still billing, never silent.
+    const errors: Array<{ email: string; customerId: string; error: string }> = [];
+
+    // Cancel every live subscription for the customer before hiding the profile.
+    // Throws on the first failure so the caller can skip-and-report the row.
+    const cancelLive = async (custId: string): Promise<string[]> => {
+      const all = await stripe.subscriptions.list({ customer: custId, status: "all", limit: 100 });
+      const canceled: string[] = [];
+      for (const s of all.data) {
+        if (s.status === "canceled" || s.status === "incomplete_expired") continue;
+        await stripe.subscriptions.cancel(s.id);
+        canceled.push(s.id);
+      }
+      return canceled;
+    };
 
     for (const profile of recentProfiles ?? []) {
       const custId = profile.stripe_customer_id;
@@ -94,10 +110,19 @@ Deno.serve(async (req) => {
           if (allSubs.data.length > 0) {
             const productId = allSubs.data[0].items.data[0]?.price?.product as string;
             if (productId !== SOCIAL_PRODUCT_ID) {
-              // Business member — soft delete
+              // Business member — Stripe first, then soft delete
+              let canceledIds: string[];
+              try {
+                canceledIds = await cancelLive(custId);
+              } catch (cancelErr) {
+                const msg = cancelErr instanceof Error ? cancelErr.message : String(cancelErr);
+                console.error(`Stripe cancel FAILED for ${profile.email} - row skipped, profile untouched: ${msg}`);
+                errors.push({ email: profile.email, customerId: custId, error: msg });
+                continue;
+              }
               await softDelete(admin, profile.id, profile.email);
               const product = await stripe.products.retrieve(productId);
-              removed.push({ email: profile.email, name: profile.full_name, customerId: custId, productId, productName: product.name });
+              removed.push({ email: profile.email, name: profile.full_name, customerId: custId, productId, productName: product.name, stripe_canceled: canceledIds });
             } else {
               kept.push({ email: profile.email, name: profile.full_name, productId });
             }
@@ -109,15 +134,26 @@ Deno.serve(async (req) => {
         const productId = sub.items.data[0]?.price?.product as string;
 
         if (productId !== SOCIAL_PRODUCT_ID) {
-          // Business member — soft delete
+          // Business member — Stripe first, then soft delete
+          let canceledIds: string[];
+          try {
+            canceledIds = await cancelLive(custId);
+          } catch (cancelErr) {
+            const msg = cancelErr instanceof Error ? cancelErr.message : String(cancelErr);
+            console.error(`Stripe cancel FAILED for ${profile.email} - row skipped, profile untouched: ${msg}`);
+            errors.push({ email: profile.email, customerId: custId, error: msg });
+            continue;
+          }
           await softDelete(admin, profile.id, profile.email);
           const product = await stripe.products.retrieve(productId);
-          removed.push({ email: profile.email, name: profile.full_name, customerId: custId, productId, productName: product.name });
+          removed.push({ email: profile.email, name: profile.full_name, customerId: custId, productId, productName: product.name, stripe_canceled: canceledIds });
         } else {
           kept.push({ email: profile.email, name: profile.full_name, productId });
         }
       } catch (e) {
-        console.error(`Error checking ${profile.email}:`, e instanceof Error ? e.message : String(e));
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error(`Error checking ${profile.email}:`, msg);
+        errors.push({ email: profile.email, customerId: custId, error: msg });
       }
     }
 
@@ -137,6 +173,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         removed: { count: removed.length, members: removed },
         kept: { count: kept.length, members: kept },
+        errors: { count: errors.length, rows: errors },
         final_status_counts: statusCounts,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
@@ -160,6 +197,7 @@ async function softDelete(admin: ReturnType<typeof createClient>, userId: string
     subscription_status: "inactive",
     membership_override: false,
     cancel_at_period_end: false,
+    subscription_id: null, // Wave 10: Stripe was canceled just above; no live pointer remains
   }).eq("id", userId);
 
   // Ban auth account

@@ -121,9 +121,12 @@ serve(async (req) => {
         .maybeSingle();
 
       let message = "No active subscription to pause.";
+      const pausedUntil = currentProfile?.subscription_paused_until
+        ? new Date(currentProfile.subscription_paused_until as string)
+        : null;
       if (currentProfile?.subscription_status === "canceled") {
         message = "Your subscription is canceled and cannot be paused. Please rejoin to start a new subscription.";
-      } else if (currentProfile?.subscription_status === "paused") {
+      } else if (pausedUntil && pausedUntil.getTime() > Date.now()) {
         message = "Your subscription is already paused.";
       }
 
@@ -164,10 +167,16 @@ serve(async (req) => {
     const pauseUntil = resumesAt.toISOString();
     logStep("Subscription paused", { subscriptionId: subscription.id, pauseUntil });
 
+    // Wave 10: never write the word 'paused' as a status. Stripe itself keeps
+    // the subscription 'active' with pause_collection set, and every login gate
+    // (middleware, AuthContext, postAuthRedirect) rejects 'paused' — writing it
+    // locked a paying-but-paused member out of the portal. The pause lives on
+    // subscription_paused_until; stripe-webhook mirrors pause_collection onto
+    // the same column in both directions, so a resume clears it.
     const { error: updateError } = await supabaseAdmin
       .from("profiles")
       .update({
-        subscription_status: "paused",
+        subscription_status: "active",
         subscription_paused_until: pauseUntil,
       })
       .eq("id", userId);
