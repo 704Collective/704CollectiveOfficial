@@ -64,34 +64,26 @@ serve(async (req) => {
 
     log(unsub ? "unsubscribing" : "resubscribing", { email: resolvedEmail });
 
-    // Write both tables so every send path honors it. Service-role bypasses RLS.
-    // A zero-row update (person not in that table) is not an error.
-    const profileRes = await supabase
-      .from("profiles")
-      .update({ marketing_unsubscribed: unsub })
-      .eq("email", resolvedEmail);
+    // One writer for the one flag (Wave 6C): set_marketing_optout sets
+    // people.marketing_unsubscribed - minting an unknown email as a prospect so
+    // the preference is never lost - and keeps the legacy profiles/contacts
+    // columns in step for readers not yet moved. service_role execute only.
+    const { data: result, error: rpcError } = await supabase.rpc("set_marketing_optout", {
+      p_email: resolvedEmail,
+      p_unsubscribe: unsub,
+      p_source: "unsubscribe_link",
+    });
 
-    const contactRes = await supabase
-      .from("contacts")
-      .update({
-        unsubscribed: unsub,
-        unsubscribed_at: unsub ? new Date().toISOString() : null,
-      })
-      .eq("email", resolvedEmail);
-
-    if (profileRes.error && contactRes.error) {
-      log("both updates failed", {
-        profile: profileRes.error.message,
-        contact: contactRes.error.message,
-      });
+    const outcome = result as { ok?: boolean; error?: string; action?: string; minted?: boolean } | null;
+    if (rpcError || !outcome?.ok) {
+      log("set_marketing_optout failed", { error: rpcError?.message ?? outcome?.error ?? "unknown" });
       return new Response(JSON.stringify({ error: "Failed to update preferences" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (profileRes.error) log("profiles update error (continuing)", profileRes.error.message);
-    if (contactRes.error) log("contacts update error (continuing)", contactRes.error.message);
+    log("preference recorded", { email: resolvedEmail, action: outcome.action, minted: outcome.minted === true });
 
     return new Response(JSON.stringify({ ok: true, action: unsub ? "unsubscribed" : "resubscribed" }), {
       status: 200,

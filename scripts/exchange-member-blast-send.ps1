@@ -183,13 +183,15 @@ function Get-Audience {
     }
     Write-Host ("  credentials on the event (active/used)    : {0}" -f $creds.Count)
 
-    # Contact-level unsubscribes.
-    $unsubRows = Invoke-Rest 'contacts?unsubscribed=is.true&select=email'
+    # Opt-outs: the one flag on the person (Wave 6D). Replaces the old
+    # contacts.unsubscribed read; profiles.marketing_unsubscribed is already
+    # applied in the include set above and stays as belt and braces.
+    $unsubRows = Invoke-Rest 'people?marketing_unsubscribed=is.true&select=email_lower'
     $unsub = New-Object System.Collections.Generic.HashSet[string]
     foreach ($r in $unsubRows) {
-        if ($r.email) { [void]$unsub.Add(([string]$r.email).Trim().ToLower()) }
+        if ($r.email_lower) { [void]$unsub.Add(([string]$r.email_lower).Trim().ToLower()) }
     }
-    Write-Host ("  contacts marked unsubscribed              : {0}" -f $unsub.Count)
+    Write-Host ("  people marked unsubscribed                : {0}" -f $unsub.Count)
 
     $manual = New-Object System.Collections.Generic.HashSet[string]
     foreach ($m in $ManualExclusions) { [void]$manual.Add($m.ToLower()) }
@@ -226,7 +228,7 @@ function Get-Audience {
     }
 
     Write-Host ("  excluded, already registered              : {0}" -f $excludedRegistered)
-    Write-Host ("  excluded, contact unsubscribed            : {0}" -f $excludedUnsub)
+    Write-Host ("  excluded, person unsubscribed             : {0}" -f $excludedUnsub)
     Write-Host ("  excluded, manual list                     : {0}" -f $excludedManual)
     return $out
 }

@@ -167,45 +167,51 @@ export async function POST(req: NextRequest) {
 
     // ── Bounce / complaint: unsubscribe contact ─────────────────────────────
     if (type === 'email.bounced' || type === 'email.complained') {
-      const toEmail = data?.to?.[0];
+      const rawTo = data?.to?.[0];
+      // contacts.email is lowercase-normalised (Wave 6C); match on the same shape.
+      const toEmail = typeof rawTo === 'string' ? rawTo.trim().toLowerCase() : null;
       if (toEmail) {
-        const { error: contactErr } = await supabase
-          .from('contacts')
-          .update({ unsubscribed: true, unsubscribed_at: created_at })
-          .eq('email', toEmail);
+        const isComplaint = type === 'email.complained';
 
-        if (contactErr) {
-          log('contacts UPDATE error', contactErr.message);
+        // One writer for the one flag (Wave 6C): people.marketing_unsubscribed,
+        // plus the legacy profiles/contacts columns. Bounce = opt-out, as before.
+        const { data: optOut, error: optOutErr } = await supabase.rpc('set_marketing_optout', {
+          p_email: toEmail,
+          p_unsubscribe: true,
+          p_source: isComplaint ? 'resend_complaint' : 'resend_bounce',
+        });
+        const outcome = optOut as { ok?: boolean; person_id?: string | null; minted?: boolean } | null;
+
+        if (optOutErr || !outcome?.ok) {
+          log('set_marketing_optout error', optOutErr?.message ?? 'not ok');
         } else {
-          log('contact unsubscribed', { toEmail });
+          log('opt-out recorded', { toEmail, source: type, minted: outcome.minted === true });
         }
 
-        // Log activity record
-        const { data: contact, error: contactLookupErr } = await supabase
+        // Activity record. The table's columns are activity_type + title (both
+        // NOT NULL); the previous payload used `type` and no title, so this
+        // insert had never succeeded.
+        const { data: contact } = await supabase
           .from('contacts')
           .select('id')
           .eq('email', toEmail)
-          .single();
+          .maybeSingle();
 
-        if (contactLookupErr) {
-          log('contacts SELECT error', contactLookupErr.message);
-        }
+        const { error: activityErr } = await supabase.from('contact_activity').insert({
+          contact_id: contact?.id ?? null,
+          person_id: outcome?.person_id ?? null,
+          activity_type: isComplaint ? 'unsubscribed' : 'email_bounced',
+          title: isComplaint ? 'Email complaint' : 'Email bounced',
+          description: isComplaint
+            ? 'Marked email as spam / complained'
+            : 'Email bounced',
+          created_at,
+        });
 
-        if (contact) {
-          const { error: activityErr } = await supabase.from('contact_activity').insert({
-            contact_id: contact.id,
-            type: type === 'email.complained' ? 'unsubscribed' : 'email_bounced',
-            description: type === 'email.complained'
-              ? 'Marked email as spam / complained'
-              : 'Email bounced',
-            created_at,
-          });
-
-          if (activityErr) {
-            log('contact_activity INSERT error', activityErr.message);
-          } else {
-            log('contact_activity recorded', { type, contactId: contact.id });
-          }
+        if (activityErr) {
+          log('contact_activity INSERT error', activityErr.message);
+        } else {
+          log('contact_activity recorded', { type, contactId: contact?.id ?? null, personId: outcome?.person_id ?? null });
         }
       }
     }

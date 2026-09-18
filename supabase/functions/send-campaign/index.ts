@@ -12,6 +12,7 @@ interface SendCampaignPayload {
   count_only?: boolean; // when true, resolve audience and return { count } only — no writes
   audience_type?: string; // used by count_only mode
   audience_event_id?: string | null; // used by count_only mode
+  audience_segment_ids?: string[] | null; // used by count_only mode for segment audiences
 }
 
 interface Recipient {
@@ -19,6 +20,7 @@ interface Recipient {
   name: string | null;
   contact_id?: string;
   profile_id?: string;
+  person_id?: string;
 }
 
 // ===== Block-based email body renderer =====
@@ -248,14 +250,15 @@ interface ResolveOpts {
 }
 
 /**
- * Lowercased emails that have opted out of marketing on either side of the
- * identity split: profiles.marketing_unsubscribed or contacts.unsubscribed.
- * Same union event_non_members builds inline, hoisted so the member audiences
- * can honor it on both their halves.
+ * Lowercased emails that have opted out of marketing. One flag, one read:
+ * people.marketing_unsubscribed (Wave 6B folded contacts.unsubscribed and
+ * profiles.marketing_unsubscribed onto it; the 6C triggers and
+ * set_marketing_optout keep it current). Every audience branch below applies
+ * this set, so an opt-out is honoured no matter which door the person came in.
  *
- * Explicit limits on both reads. PostgREST caps at 1000 rows by default, and a
- * truncated exclusion set fails silently in the worst direction - it mails
- * people who asked us not to. Read failures are returned as errors rather than
+ * Explicit limit. PostgREST caps at 1000 rows by default, and a truncated
+ * exclusion set fails silently in the worst direction - it mails people who
+ * asked us not to. A read failure is returned as an error rather than
  * swallowed, so a resolve aborts instead of sending to an unfiltered list.
  */
 async function loadOptedOutEmails(
@@ -263,31 +266,24 @@ async function loadOptedOutEmails(
 ): Promise<{ optedOut: Set<string>; error?: string }> {
   const optedOut = new Set<string>();
 
-  const { data: unsubProfiles, error: profilesErr } = await supabase
-    .from("profiles")
-    .select("email")
+  const { data: unsubPeople, error: peopleErr } = await supabase
+    .from("people")
+    .select("email_lower")
     .eq("marketing_unsubscribed", true)
     .limit(100000);
-  if (profilesErr) {
-    return { optedOut, error: `opt-out lookup failed (profiles): ${profilesErr.message}` };
+  if (peopleErr) {
+    return { optedOut, error: `opt-out lookup failed (people): ${peopleErr.message}` };
   }
-  for (const p of (unsubProfiles ?? []) as any[]) {
-    if (p.email) optedOut.add(String(p.email).toLowerCase());
-  }
-
-  const { data: unsubContacts, error: contactsErr } = await supabase
-    .from("contacts")
-    .select("email")
-    .eq("unsubscribed", true)
-    .limit(100000);
-  if (contactsErr) {
-    return { optedOut, error: `opt-out lookup failed (contacts): ${contactsErr.message}` };
-  }
-  for (const c of (unsubContacts ?? []) as any[]) {
-    if (c.email) optedOut.add(String(c.email).toLowerCase());
+  for (const p of (unsubPeople ?? []) as any[]) {
+    if (p.email_lower) optedOut.add(String(p.email_lower));
   }
 
   return { optedOut };
+}
+
+/** Drops every recipient whose lowercased email is in the opt-out set. */
+function withoutOptedOut(recipients: Recipient[], optedOut: Set<string>): Recipient[] {
+  return recipients.filter((r) => !!r.email && !optedOut.has(r.email.toLowerCase()));
 }
 
 /**
@@ -405,30 +401,44 @@ async function resolveAudience(
     }
     recipients = recipients.filter((r) => !!r.email && !optedOut.has(r.email.toLowerCase()));
   } else if (audienceType === "non_member") {
+    const { optedOut, error: optOutErr } = await loadOptedOutEmails(supabase);
+    if (optOutErr) return { recipients: [], error: optOutErr };
     const { data: profiles } = await supabase
       .from("profiles")
       .select("id, email, full_name")
       .in("member_type", ["social_non_member", "business_non_member"])
       .is("deleted_at", null)
       .or("marketing_unsubscribed.is.null,marketing_unsubscribed.eq.false");
-    recipients = (profiles ?? [])
-      .filter((p) => !!p.email)
-      .map((p) => ({ email: p.email, name: p.full_name, profile_id: p.id }));
+    recipients = withoutOptedOut(
+      (profiles ?? [])
+        .filter((p) => !!p.email)
+        .map((p) => ({ email: p.email, name: p.full_name, profile_id: p.id })),
+      optedOut,
+    );
   } else if (audienceType === "cancelled") {
+    const { optedOut, error: optOutErr } = await loadOptedOutEmails(supabase);
+    if (optOutErr) return { recipients: [], error: optOutErr };
     const { data: profiles } = await supabase
       .from("profiles")
       .select("id, email, full_name")
       .in("subscription_status", ["canceled", "cancel_at_period_end"])
       .is("deleted_at", null)
       .or("marketing_unsubscribed.is.null,marketing_unsubscribed.eq.false");
-    recipients = (profiles ?? [])
-      .filter((p) => !!p.email)
-      .map((p) => ({ email: p.email, name: p.full_name, profile_id: p.id }));
+    recipients = withoutOptedOut(
+      (profiles ?? [])
+        .filter((p) => !!p.email)
+        .map((p) => ({ email: p.email, name: p.full_name, profile_id: p.id })),
+      optedOut,
+    );
   } else if (audienceType === "event_guests") {
     const eventId = opts.audienceEventId ?? null;
     if (!eventId) {
       return { recipients: [], error: "event_guests audience requires an event_id" };
     }
+    // A campaign audience, so the one opt-out flag applies here too. Event
+    // logistics (reminders, changes) go through event-reminder, not campaigns.
+    const { optedOut, error: optOutErr } = await loadOptedOutEmails(supabase);
+    if (optOutErr) return { recipients: [], error: optOutErr };
     const { data: participants } = await supabase
       .from("event_participants_view")
       .select("email, full_name, guest_name")
@@ -440,6 +450,7 @@ async function resolveAudience(
       seen.add(p.email.toLowerCase());
       recipients.push({ email: p.email, name: p.full_name || p.guest_name || "Guest" });
     }
+    recipients = withoutOptedOut(recipients, optedOut);
   } else if (audienceType === "event_non_members") {
     const eventId = opts.audienceEventId ?? null;
     if (!eventId) {
@@ -516,22 +527,9 @@ async function resolveAudience(
       if (m.email) memberEmails.add(m.email.toLowerCase());
     }
 
-    // EXCLUDE unsubscribed (profiles.marketing_unsubscribed OR contacts.unsubscribed)
-    const unsubEmails = new Set<string>();
-    const { data: unsubProfiles } = await supabase
-      .from("profiles")
-      .select("email")
-      .eq("marketing_unsubscribed", true);
-    for (const p of (unsubProfiles ?? []) as any[]) {
-      if (p.email) unsubEmails.add(p.email.toLowerCase());
-    }
-    const { data: unsubContacts } = await supabase
-      .from("contacts")
-      .select("email")
-      .eq("unsubscribed", true);
-    for (const c of (unsubContacts ?? []) as any[]) {
-      if (c.email) unsubEmails.add(c.email.toLowerCase());
-    }
+    // EXCLUDE opted-out (the one flag: people.marketing_unsubscribed)
+    const { optedOut: unsubEmails, error: optOutErr } = await loadOptedOutEmails(supabase);
+    if (optOutErr) return { recipients: [], error: optOutErr };
 
     recipients = Array.from(byEmail.entries())
       .filter(([k]) => !memberEmails.has(k) && !unsubEmails.has(k))
@@ -540,12 +538,13 @@ async function resolveAudience(
     // contacts has full_name only - it has never had first_name / last_name.
     // Selecting those columns made PostgREST return 400, and because the error
     // was discarded this audience silently resolved to zero recipients.
+    // Still the prospect list until Wave 6E retires the table; the opt-out
+    // source is the person flag (via loadOptedOutEmails), not contacts.unsubscribed.
     const { optedOut, error: optOutErr } = await loadOptedOutEmails(supabase);
     if (optOutErr) return { recipients: [], error: optOutErr };
     const { data: contacts, error: contactsErr } = await supabase
       .from("contacts")
       .select("id, email, full_name")
-      .or("unsubscribed.is.null,unsubscribed.eq.false")
       .limit(100000);
     if (contactsErr) {
       return { recipients: [], error: `all_contacts query failed: ${contactsErr.message}` };
@@ -576,9 +575,6 @@ async function resolveAudience(
         .map((p) => String(p.email).toLowerCase()),
     );
 
-    // The contacts query above only honors contacts.unsubscribed. Someone who
-    // opted out while signed in has the flag on their profile instead, so the
-    // union set is what actually keeps them out of a prospect blast.
     recipients = (contacts ?? [])
       .filter((c) => {
         if (!c.email) return false;
@@ -591,28 +587,34 @@ async function resolveAudience(
         contact_id: c.id,
       }));
   } else if (audienceType === "segment" && opts.audienceSegmentIds?.length) {
-    // Same column mismatch as all_contacts above - the embed resolved to
-    // contacts_1.first_name, which does not exist, so every tagged segment
-    // silently produced an empty audience.
-    const { data: taggedContacts, error: taggedErr } = await supabase
-      .from("contact_tags")
-      .select("contact_id, contacts(id, email, full_name)")
-      .in("tag", opts.audienceSegmentIds);
+    // Tags live on the person now (Wave 6B copied contact_tags to person_tags,
+    // the 6C mirror keeps them current). Segments are explicitly targeted, so
+    // members stay IN by design (2026-08-12 decision) - but the one opt-out flag
+    // applies here like everywhere else; before this, a tagged person who had
+    // unsubscribed still received every segment campaign.
+    const { optedOut, error: optOutErr } = await loadOptedOutEmails(supabase);
+    if (optOutErr) return { recipients: [], error: optOutErr };
+    const { data: tagged, error: taggedErr } = await supabase
+      .from("person_tags")
+      .select("person_id, people(id, email, full_name)")
+      .in("tag", opts.audienceSegmentIds)
+      .limit(100000);
     if (taggedErr) {
       return { recipients: [], error: `segment query failed: ${taggedErr.message}` };
     }
     const seen = new Set<string>();
-    for (const row of taggedContacts ?? []) {
-      const c = row.contacts as { id: string; email: string; full_name: string | null } | null;
-      if (c && c.email && !seen.has(c.id)) {
-        seen.add(c.id);
+    for (const row of tagged ?? []) {
+      const p = row.people as { id: string; email: string; full_name: string | null } | null;
+      if (p && p.email && !seen.has(p.id)) {
+        seen.add(p.id);
         recipients.push({
-          email: c.email,
-          name: c.full_name || null,
-          contact_id: c.id,
+          email: p.email,
+          name: p.full_name || null,
+          person_id: p.id,
         });
       }
     }
+    recipients = withoutOptedOut(recipients, optedOut);
   }
 
   return { recipients };
@@ -666,7 +668,11 @@ serve(async (req) => {
       const { recipients, error: resolveError } = await resolveAudience(
         supabase,
         body.audience_type ?? "all_members",
-        { createdBy: authedUser.id, audienceEventId: body.audience_event_id ?? null, audienceSegmentIds: null },
+        {
+          createdBy: authedUser.id,
+          audienceEventId: body.audience_event_id ?? null,
+          audienceSegmentIds: body.audience_segment_ids ?? null,
+        },
       );
       if (resolveError) {
         return new Response(JSON.stringify({ count: 0, error: resolveError }), {

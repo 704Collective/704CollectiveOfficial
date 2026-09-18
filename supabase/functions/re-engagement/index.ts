@@ -151,15 +151,16 @@ serve(async (req) => {
 
       if ((recentContact ?? 0) > 0) { skipped++; continue; }
 
-      // Unsubscribe check (maybeSingle - no crash on 0/dup rows)
-      const { data: contact } = await supabase
-        .from("contacts")
-        .select("id, unsubscribed")
-        .eq("email", email)
-        .limit(1)
-        .maybeSingle();
+      // Opt-out check on the one flag (people.marketing_unsubscribed), through
+      // the person link when we have it, by email_lower when we do not. This
+      // used to read contacts.unsubscribed only, so a member who opted out from
+      // their profile still received this email.
+      const optOutQuery = supabase.from("people").select("marketing_unsubscribed").limit(1);
+      const { data: optOutRow } = personId
+        ? await optOutQuery.eq("id", personId).maybeSingle()
+        : await optOutQuery.eq("email_lower", email.toLowerCase()).maybeSingle();
 
-      if (contact?.unsubscribed) { skipped++; continue; }
+      if (optOutRow?.marketing_unsubscribed) { skipped++; continue; }
 
       const name = member.full_name ?? "Member";
       const isBusiness = member.member_type === "business";
@@ -180,7 +181,7 @@ serve(async (req) => {
         profile_id: member.id,
         created_at: now.toISOString(),
       };
-      if (contact?.id) activityRow.contact_id = contact.id;
+      if (personId) activityRow.person_id = personId;
       await supabase.from("contact_activity").insert(activityRow);
 
       sent++;
