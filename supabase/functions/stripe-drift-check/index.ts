@@ -64,7 +64,12 @@ serve(async (req) => {
     // ── auth: service role (cron) or admin JWT ──────────────────────────────
     const authHeader = req.headers.get("Authorization") ?? "";
     const token = authHeader.replace(/^Bearer\s+/i, "");
-    let isServiceRole = token.length > 0 && token === serviceKey;
+    // Exact match only. Prefix checks and unverified JWT payload decoding both
+    // accept forged tokens - neither proves the caller holds a real secret.
+    const altSecretKey = Deno.env.get("SB_SECRET_KEY") ?? "";
+    let isServiceRole =
+      (serviceKey.length > 0 && token === serviceKey) ||
+      (altSecretKey.length > 0 && token === altSecretKey);
     if (!isServiceRole) {
       const anon = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? "", { auth: { persistSession: false } });
       const { data: claims } = await anon.auth.getClaims(token);
