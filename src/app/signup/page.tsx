@@ -172,15 +172,15 @@ export default function SignupPage() {
         return;
       }
 
-      // Update profile with member info
+      // Update profile with member info. Only the member-editable scalars are
+      // written here; email / member_type / subscription_status are set by the
+      // handle_new_user trigger and are blocked for member sessions by
+      // profiles_guard_columns.
       if (data.user) {
         await supabase.from('profiles').upsert({
           id: data.user.id,
-          email: email.trim().toLowerCase(),
           full_name: `${firstName.trim()} ${lastName.trim()}`,
           phone: phone.trim(),
-          member_type: 'social_non_member',
-          subscription_status: 'inactive',
         });
         void sendSocialSignupConfirmationEmail();
       }

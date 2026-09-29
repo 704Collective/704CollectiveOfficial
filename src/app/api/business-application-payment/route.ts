@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 import { createRateLimiter } from '@/lib/upstash';
 import { getRequestIp } from '@/lib/getRequestIp';
@@ -148,8 +149,15 @@ export async function POST(request: NextRequest) {
 
       stripeCustomerId = customer.id;
 
-      // Persist the new customer ID back to the profile
-      const { error: profileUpdateError } = await supabase
+      // Persist the new customer ID back to the profile. stripe_customer_id is
+      // not a member-editable column (profiles_guard_columns blocks it for the
+      // caller's own session), so this one write runs under the service role.
+      const admin = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        { auth: { persistSession: false } }
+      );
+      const { error: profileUpdateError } = await admin
         .from('profiles')
         .update({ stripe_customer_id: stripeCustomerId })
         .eq('id', user.id);
