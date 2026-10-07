@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { isListingSubscription } from "../_shared/stripeProducts.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -154,11 +155,15 @@ serve(async (req) => {
 
     logStep("Stripe customer resolved", { customerId });
 
-    const subscriptions = await stripe.subscriptions.list({
+    const subscriptionsRaw = await stripe.subscriptions.list({
       customer: customerId,
       status: "active",
-      limit: 1,
+      limit: 10,
     });
+    // Wave H2 wall: a listing subscription is never the membership. With
+    // STRIPE_LISTING_PRODUCT_ID unset nothing is filtered and the first row is
+    // the same row limit:1 returned before.
+    const subscriptions = { data: subscriptionsRaw.data.filter((s: Stripe.Subscription) => !isListingSubscription(s)) };
 
     const hasActiveSub = subscriptions.data.length > 0;
     let productId: string | null = null;

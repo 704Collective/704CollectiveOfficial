@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { isListingSubscription } from "../_shared/stripeProducts.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -105,11 +106,14 @@ serve(async (req) => {
     }
 
     // Find the active subscription
-    const subscriptions = await stripe.subscriptions.list({
+    const subscriptionsRaw = await stripe.subscriptions.list({
       customer: customerId,
       status: "active",
-      limit: 1,
+      limit: 10,
     });
+    // Wave H2 wall: pause is a MEMBERSHIP action; listing subscriptions are
+    // skipped. Unset env => no filtering, first row identical to before.
+    const subscriptions = { data: subscriptionsRaw.data.filter((s: Stripe.Subscription) => !isListingSubscription(s)) };
 
     if (subscriptions.data.length === 0) {
       logStep("No active subscription in Stripe - cannot pause");

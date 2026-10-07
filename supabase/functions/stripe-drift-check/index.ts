@@ -13,6 +13,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { isListingSubscription } from "../_shared/stripeProducts.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -90,6 +91,7 @@ serve(async (req) => {
     // ── Stripe: list every subscription (read-only) ─────────────────────────
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const subs: SubRow[] = [];
+    let listingSubsExcluded = 0;
     let startingAfter: string | undefined;
     for (;;) {
       const page = await stripe.subscriptions.list({
@@ -99,6 +101,10 @@ serve(async (req) => {
         ...(startingAfter ? { starting_after: startingAfter } : {}),
       });
       for (const s of page.data) {
+        // Wave H2 wall: listing subscriptions are not memberships and never
+        // enter the shape table, so a canceled member with a live listing is
+        // not read as "still billed". Unset env => nothing excluded.
+        if (isListingSubscription(s)) { listingSubsExcluded++; continue; }
         const cust = s.customer as string | Stripe.Customer | Stripe.DeletedCustomer;
         const custId = typeof cust === "string" ? cust : cust?.id ?? null;
         const email = typeof cust === "object" && cust && !("deleted" in cust && cust.deleted) ? ((cust as Stripe.Customer).email ?? null) : null;
@@ -194,6 +200,7 @@ serve(async (req) => {
         alert_count: alertCount,
         alert_sent: false,
         duration_ms: Date.now() - started,
+        ...(listingSubsExcluded > 0 ? { notes: `listing subscriptions excluded from shape table: ${listingSubsExcluded}` } : {}),
       })
       .select("id")
       .single();
@@ -256,6 +263,7 @@ serve(async (req) => {
       receipt_id: receipt.id,
       source,
       stripe_subscriptions_total: subs.length,
+      listing_subscriptions_excluded: listingSubsExcluded,
       shape_counts: counts,
       alert_count: alertCount,
       alert_sent: alertSent,

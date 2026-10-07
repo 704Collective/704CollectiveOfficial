@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { isListingSubscription } from "../_shared/stripeProducts.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -124,8 +125,14 @@ serve(async (req) => {
     });
     const LIVE_END_AT_PERIOD = ["active", "trialing"];
     const LIVE_CANCEL_NOW = ["past_due", "unpaid", "paused", "incomplete"];
-    const liveAtPeriodEnd = allSubs.data.filter((s) => LIVE_END_AT_PERIOD.includes(s.status));
-    const liveCancelNow = allSubs.data.filter((s) => LIVE_CANCEL_NOW.includes(s.status));
+    // Wave H2 wall: this is the MEMBERSHIP cancel. Listing subscriptions on the
+    // same customer are excluded from the cancel-all; a future listing-only
+    // cancel lives in its own route (owner-facing, keyed by network_listings.id).
+    const membershipSubs = allSubs.data.filter((s: Stripe.Subscription) => !isListingSubscription(s));
+    const listingSubsSkipped = allSubs.data.length - membershipSubs.length;
+    if (listingSubsSkipped > 0) logStep("Listing subscriptions excluded from membership cancel", { count: listingSubsSkipped });
+    const liveAtPeriodEnd = membershipSubs.filter((s) => LIVE_END_AT_PERIOD.includes(s.status));
+    const liveCancelNow = membershipSubs.filter((s) => LIVE_CANCEL_NOW.includes(s.status));
     const liveCount = liveAtPeriodEnd.length + liveCancelNow.length;
     logStep("Subscription inventory", {
       total: allSubs.data.length,

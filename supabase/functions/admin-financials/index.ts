@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+// Wave H2: product identity from the one shared definition. The listing
+// product gets its own revenue bucket and is never counted as membership.
+import { SOCIAL_PRODUCT_ID, LISTING_PRODUCT_ID, isListingProduct } from "../_shared/stripeProducts.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,23 +19,24 @@ const log = (step: string, details?: unknown) =>
 
 // Known product labels for display. Tier is determined by product ID at runtime.
 const KNOWN_PRODUCT_LABELS: Record<string, string> = {
-  prod_TZI8im1xRNUMuy: "Social",
+  [SOCIAL_PRODUCT_ID]: "Social",
   prod_Tp1hxIreJ2Uepz: "Business (Founding)",
   prod_U4X7hj2PX84LW5: "Business",
+  ...(LISTING_PRODUCT_ID ? { [LISTING_PRODUCT_ID]: "Listing" } : {}),
 };
 
-// Social product ID — all others are treated as business.
-const SOCIAL_PRODUCT_ID = "prod_TZI8im1xRNUMuy";
+type Tier = "social" | "business" | "listing";
 
-function classifySub(sub: Stripe.Subscription): { tier: "social" | "business"; label: string; monthlyAmountCents: number; productId: string } {
+// Social product => social; the listing product => listing (own bucket); all others => business.
+function classifySub(sub: Stripe.Subscription): { tier: Tier; label: string; monthlyAmountCents: number; productId: string } {
   const item = sub.items?.data?.[0];
   if (!item) return { tier: "social", label: "Social", monthlyAmountCents: 0, productId: "" };
   const productId = typeof item.price.product === "string" ? item.price.product : (item.price.product as any)?.id || "";
   const amount = item.price.unit_amount || 0;
   const interval = item.price.recurring?.interval;
   const monthlyAmountCents = interval === "year" ? Math.round(amount / 12) : amount;
-  const tier: "social" | "business" = productId === SOCIAL_PRODUCT_ID ? "social" : "business";
-  const label = KNOWN_PRODUCT_LABELS[productId] ?? (tier === "social" ? "Social" : "Business");
+  const tier: Tier = productId === SOCIAL_PRODUCT_ID ? "social" : isListingProduct(productId) ? "listing" : "business";
+  const label = KNOWN_PRODUCT_LABELS[productId] ?? (tier === "social" ? "Social" : tier === "listing" ? "Listing" : "Business");
   return { tier, label, monthlyAmountCents, productId };
 }
 
@@ -116,7 +120,7 @@ serve(async (req) => {
     const daysAgo = (d: number) => nowTs - d * 86400;
 
     // Parallel Stripe calls
-    const [activeSubs, canceledSubs, pastDueSubs, invoices90, dbProfiles] = await Promise.all([
+    const [activeSubsAll, canceledSubsAll, pastDueSubsAll, invoices90, dbProfiles] = await Promise.all([
       fetchAllSubs(stripe, "active"),
       fetchAllSubs(stripe, "canceled", 200),
       fetchAllSubs(stripe, "past_due"),
@@ -124,13 +128,24 @@ serve(async (req) => {
       supabase.from("profiles").select("subscription_status, member_since, cancel_at_period_end, deleted_at, stripe_customer_id, subscription_ends_at").is("deleted_at", null),
     ]);
 
-    const revenue30 = { social: 0, business: 0 };
-    const revenue60 = { social: 0, business: 0 };
-    const revenue90rev = { social: 0, business: 0 };
+    // Wave H2 wall: listing subscriptions get their own revenue/MRR bucket and
+    // are removed from every MEMBERSHIP figure below (counts, churn, member
+    // lists). With STRIPE_LISTING_PRODUCT_ID unset the three arrays are the
+    // originals and every number is unchanged.
+    const isListingSub = (s: Stripe.Subscription) => classifySub(s).tier === "listing";
+    const listingActiveSubs = activeSubsAll.filter(isListingSub);
+    const activeSubs = activeSubsAll.filter((s) => !isListingSub(s));
+    const canceledSubs = canceledSubsAll.filter((s) => !isListingSub(s));
+    const pastDueSubs = pastDueSubsAll.filter((s) => !isListingSub(s));
 
-    // Build subscription ID → tier map from already-fetched subs
-    const subTierMap: Record<string, "social" | "business"> = {};
-    for (const sub of [...activeSubs, ...canceledSubs]) {
+    const revenue30 = { social: 0, business: 0, listing: 0 };
+    const revenue60 = { social: 0, business: 0, listing: 0 };
+    const revenue90rev = { social: 0, business: 0, listing: 0 };
+
+    // Build subscription ID → tier map from already-fetched subs (listing subs included so
+    // their invoices land in the listing bucket instead of defaulting to social).
+    const subTierMap: Record<string, Tier> = {};
+    for (const sub of [...activeSubsAll, ...canceledSubsAll]) {
       const { tier } = classifySub(sub);
       subTierMap[sub.id] = tier;
     }
@@ -146,7 +161,7 @@ serve(async (req) => {
       if (amountPaid <= 0) continue;
       const created = inv.created;
       const subIdStr = getInvSubId(inv);
-      const bucket: "social" | "business" = subIdStr && subTierMap[subIdStr] ? subTierMap[subIdStr] : "social";
+      const bucket: Tier = subIdStr && subTierMap[subIdStr] ? subTierMap[subIdStr] : "social";
 
       if (created >= daysAgo(30)) revenue30[bucket] += amountPaid;
       if (created >= daysAgo(60)) revenue60[bucket] += amountPaid;
@@ -154,11 +169,11 @@ serve(async (req) => {
     }
 
     // Monthly revenue trend (last 6 months, by tier)
-    const monthlyRevenue: Record<string, { social: number; business: number }> = {};
+    const monthlyRevenue: Record<string, { social: number; business: number; listing: number }> = {};
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      monthlyRevenue[key] = { social: 0, business: 0 };
+      monthlyRevenue[key] = { social: 0, business: 0, listing: 0 };
     }
 
     for (const inv of invoices90) {
@@ -168,23 +183,26 @@ serve(async (req) => {
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       if (key in monthlyRevenue) {
         const subIdStr = getInvSubId(inv);
-        const bucket: "social" | "business" = subIdStr && subTierMap[subIdStr] ? subTierMap[subIdStr] : "social";
+        const bucket: Tier = subIdStr && subTierMap[subIdStr] ? subTierMap[subIdStr] : "social";
         monthlyRevenue[key][bucket] += amountPaid;
       }
     }
 
+    // total = membership (social + business); listing reported alongside, never folded in.
     const revenueTrend = Object.entries(monthlyRevenue).map(([month, vals]) => ({
       month,
       social: Math.round(vals.social),
       business: Math.round(vals.business),
+      listing: Math.round(vals.listing),
       total: Math.round(vals.social + vals.business),
     }));
 
     // ===== MRR =====
     let mrrSocial = 0;
     let mrrBusiness = 0;
+    let mrrListing = 0;
     const tierBreakdown: Record<string, { count: number; mrr: number }> = {};
-    const activeByTier = { social: 0, business: 0 };
+    const activeByTier = { social: 0, business: 0, listing: 0 };
 
     for (const sub of activeSubs) {
       const { tier, label, monthlyAmountCents } = classifySub(sub);
@@ -199,7 +217,16 @@ serve(async (req) => {
       tierBreakdown[label].count++;
       tierBreakdown[label].mrr += monthlyAmountCents / 100;
     }
+    for (const sub of listingActiveSubs) {
+      const { label, monthlyAmountCents } = classifySub(sub);
+      mrrListing += monthlyAmountCents;
+      activeByTier.listing++;
+      if (!tierBreakdown[label]) tierBreakdown[label] = { count: 0, mrr: 0 };
+      tierBreakdown[label].count++;
+      tierBreakdown[label].mrr += monthlyAmountCents / 100;
+    }
 
+    // Membership MRR only; listing MRR is reported separately.
     const totalMRR = (mrrSocial + mrrBusiness) / 100;
     const totalActiveSubs = activeSubs.length;
     const arpm = totalActiveSubs > 0 ? Math.round((totalMRR / totalActiveSubs) * 100) / 100 : 0;
@@ -412,11 +439,11 @@ serve(async (req) => {
 
     const payload = {
       revenue: {
-        last30: { social: Math.round(revenue30.social), business: Math.round(revenue30.business), total: Math.round(revenue30.social + revenue30.business) },
-        last60: { social: Math.round(revenue60.social), business: Math.round(revenue60.business), total: Math.round(revenue60.social + revenue60.business) },
-        last90: { social: Math.round(revenue90rev.social), business: Math.round(revenue90rev.business), total: Math.round(revenue90rev.social + revenue90rev.business) },
+        last30: { social: Math.round(revenue30.social), business: Math.round(revenue30.business), listing: Math.round(revenue30.listing), total: Math.round(revenue30.social + revenue30.business) },
+        last60: { social: Math.round(revenue60.social), business: Math.round(revenue60.business), listing: Math.round(revenue60.listing), total: Math.round(revenue60.social + revenue60.business) },
+        last90: { social: Math.round(revenue90rev.social), business: Math.round(revenue90rev.business), listing: Math.round(revenue90rev.listing), total: Math.round(revenue90rev.social + revenue90rev.business) },
       },
-      mrr: { total: totalMRR, social: mrrSocial / 100, business: mrrBusiness / 100 },
+      mrr: { total: totalMRR, social: mrrSocial / 100, business: mrrBusiness / 100, listing: mrrListing / 100 },
       arpm,
       tierBreakdown,
       activeByTier,

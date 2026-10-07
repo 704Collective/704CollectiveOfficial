@@ -3,6 +3,13 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
 import { needsPayoutSetup, resolveMemberPayoutDestination } from "../_shared/memberPayoutDestination.ts";
+import {
+  LISTING_PAYMENT_TYPE,
+  invoiceProductId,
+  invoiceSubscriptionId,
+  isListingProduct,
+  subscriptionProductId,
+} from "../_shared/stripeProducts.ts";
 
 const log = (step: string, details?: unknown) => {
   const d = details ? ` - ${JSON.stringify(details)}` : "";
@@ -118,6 +125,100 @@ async function insertPayment(
     log("Payment insert error (non-blocking)", { error: error.message });
   }
 }
+// ── Wave H2: the listing path ─────────────────────────────────────────────
+// A subscription whose product is STRIPE_LISTING_PRODUCT_ID is a paid hub
+// listing, not a membership. These handlers touch ONLY network_listings
+// (billing_status) and payments (payment_type='listing'). They never read or
+// write profiles, people, hub seats, or referral ledgers. A missing listing row
+// is logged and skipped - never thrown - so Stripe never retries a listing
+// event into the membership machinery.
+
+type ListingBillingStatus = "active" | "past_due" | "canceled";
+
+async function findListingBySubscription(
+  supabase: ReturnType<typeof createClient>,
+  stripeSubscriptionId: string | null,
+): Promise<{ id: string; owner_profile_id: string | null; billing_status: string | null } | null> {
+  if (!stripeSubscriptionId) return null;
+  const { data, error } = await supabase
+    .from("network_listings")
+    .select("id, owner_profile_id, billing_status")
+    .eq("stripe_subscription_id", stripeSubscriptionId)
+    .maybeSingle();
+  if (error) {
+    log("[listing] lookup failed (skipping)", { stripeSubscriptionId, error: error.message });
+    return null;
+  }
+  return (data as { id: string; owner_profile_id: string | null; billing_status: string | null } | null) ?? null;
+}
+
+async function setListingBillingStatus(
+  supabase: ReturnType<typeof createClient>,
+  listingId: string,
+  status: ListingBillingStatus,
+  source: string,
+) {
+  const { error } = await supabase
+    .from("network_listings")
+    .update({ billing_status: status })
+    .eq("id", listingId);
+  if (error) log("[listing] billing_status update failed (non-blocking)", { listingId, status, source, error: error.message });
+  else log("[listing] billing_status set", { listingId, status, source });
+}
+
+async function handleListingInvoice(
+  event: Stripe.Event,
+  invoice: Stripe.Invoice,
+  supabase: ReturnType<typeof createClient>,
+  outcome: "succeeded" | "failed",
+) {
+  const subscriptionId = invoiceSubscriptionId(invoice);
+  const listing = await findListingBySubscription(supabase, subscriptionId);
+  if (!listing) {
+    log("[listing] no network_listings row for subscription - skipping", { event: event.type, subscriptionId });
+    return;
+  }
+  await setListingBillingStatus(supabase, listing.id, outcome === "succeeded" ? "active" : "past_due", event.type);
+  const stripeCustomerId = typeof invoice.customer === "string" ? invoice.customer : (invoice.customer as Stripe.Customer)?.id || null;
+  await insertPayment(supabase, {
+    user_id: listing.owner_profile_id,
+    stripe_customer_id: stripeCustomerId,
+    stripe_event_id: event.id,
+    amount: outcome === "succeeded" ? (invoice.amount_paid || 0) : (invoice.amount_due || 0),
+    currency: invoice.currency || "usd",
+    status: outcome,
+    payment_type: LISTING_PAYMENT_TYPE,
+    description: outcome === "succeeded" ? "Listing subscription payment" : "Failed listing payment",
+    metadata: { listing_id: listing.id, stripe_subscription_id: subscriptionId },
+  });
+}
+
+async function handleListingSubscriptionChange(
+  event: Stripe.Event,
+  subscription: Stripe.Subscription,
+  supabase: ReturnType<typeof createClient>,
+) {
+  const listing = await findListingBySubscription(supabase, subscription.id);
+  if (!listing) {
+    log("[listing] no network_listings row for subscription - skipping", { event: event.type, subscriptionId: subscription.id });
+    return;
+  }
+  const map: Record<string, ListingBillingStatus> = {
+    active: "active",
+    trialing: "active",
+    past_due: "past_due",
+    unpaid: "past_due",
+    canceled: "canceled",
+  };
+  const status: ListingBillingStatus | undefined =
+    event.type === "customer.subscription.deleted" ? "canceled" : map[subscription.status];
+  if (!status) {
+    log("[listing] unmapped subscription status - skipping", { status: subscription.status });
+    return;
+  }
+  await setListingBillingStatus(supabase, listing.id, status, event.type);
+}
+
 /**
  * Additive new-schema sync. Upserts the member's row in the `people` table
  * and ensures they hold one active lifetime `member` credential.
@@ -954,6 +1055,12 @@ async function handleInvoicePaymentSucceeded(
     return;
   }
 
+  // Wave H2 wall: listing product -> listing path, nothing below runs.
+  if (isListingProduct(invoiceProductId(invoice))) {
+    await handleListingInvoice(event, invoice, supabase, "succeeded");
+    return;
+  }
+
   // Skip the first invoice for a new subscription — checkout.session.completed already logged it
   const billingReason = (invoice as any).billing_reason;
   if (billingReason === "subscription_create") {
@@ -1201,6 +1308,12 @@ async function handleInvoicePaymentFailed(
     return;
   }
 
+  // Wave H2 wall: listing product -> listing path, nothing below runs.
+  if (isListingProduct(invoiceProductId(invoice))) {
+    await handleListingInvoice(event, invoice, supabase, "failed");
+    return;
+  }
+
   const profile = await findProfileByCustomerId(supabase, stripeCustomerId);
 
   if (profile) {
@@ -1258,6 +1371,12 @@ async function handleSubscriptionDeleted(
 
   if (!stripeCustomerId) {
     log("No customer ID on deleted subscription, skipping");
+    return;
+  }
+
+  // Wave H2 wall: listing product -> listing path, nothing below runs.
+  if (isListingProduct(subscriptionProductId(subscription))) {
+    await handleListingSubscriptionChange(event, subscription, supabase);
     return;
   }
 
@@ -1434,6 +1553,12 @@ async function handleSubscriptionUpdated(
 
   if (!stripeCustomerId) {
     log("No customer ID on updated subscription, skipping");
+    return;
+  }
+
+  // Wave H2 wall: listing product -> listing path, nothing below runs.
+  if (isListingProduct(subscriptionProductId(subscription))) {
+    await handleListingSubscriptionChange(event, subscription, supabase);
     return;
   }
 

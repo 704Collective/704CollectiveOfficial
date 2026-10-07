@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@/lib/supabase/server';
+import { isListingSubscription } from '@/lib/stripeProducts';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -198,6 +199,29 @@ export async function GET() {
         { ok: false, error: 'No subscription items' } as SubscriptionTierResponse,
         { status: 500 },
       );
+    }
+
+    // Wave H2 wall: if the stored subscription_id points at a LISTING
+    // subscription it is not the membership; answer exactly as if the profile
+    // had no Stripe membership sub (same shape as the !subscription_id branch).
+    if (isListingSubscription(subscription)) {
+      return NextResponse.json({
+        ok: true,
+        tier: 'unknown',
+        tierLabel:
+          profile.member_type === 'business'
+            ? 'Business Membership'
+            : 'Social Membership',
+        priceCents: 0,
+        priceDisplay: '-',
+        interval: 'month',
+        status: profile.subscription_status ?? 'inactive',
+        cancelAtPeriodEnd: !!profile.cancel_at_period_end,
+        trialEnd: null,
+        currentPeriodEnd: profile.subscription_ends_at,
+        isAmbassadorPrice: false,
+        discount: null,
+      } as SubscriptionTierResponse);
     }
 
     const price = item.price;

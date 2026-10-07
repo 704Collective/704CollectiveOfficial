@@ -1,6 +1,9 @@
 // Pricing constants - single source of truth for all membership pricing.
 // Price IDs are referenced via env vars at runtime (server-side only).
-// UI uses display strings from this file.
+// UI uses display strings from this file. Product identity lives in
+// src/lib/stripeProducts.ts (Wave H2) — one definition, env-driven.
+
+import { SOCIAL_PRODUCT_ID } from '@/lib/stripeProducts';
 
 export const SOCIAL_TIER = {
   monthlyCents: 4900,
@@ -11,7 +14,7 @@ export const SOCIAL_TIER = {
   ctaLabel: 'Join Now - $49/mo',
   ctaLabelLong: 'Become a Member - $49/mo',
   productName: '704 Social Membership',
-  productId: 'prod_TZI8im1xRNUMuy',
+  productId: SOCIAL_PRODUCT_ID,
 } as const;
 
 export const BUSINESS_TIER = {

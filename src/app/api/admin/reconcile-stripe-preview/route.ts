@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@/lib/supabase/server';
+import { withoutListingSubs } from '@/lib/stripeProducts';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -104,7 +105,8 @@ function buildStripeState(sub: Stripe.Subscription | null): StripeState | null {
 function pickActiveSub(subs: Stripe.Subscription[]): Stripe.Subscription | null {
   // Prefer trialing/active/past_due over canceled/incomplete; among the
   // preferred set, return the most recently created.
-  const candidates = subs.filter((s) => ACTIVE_STRIPE_STATUSES.has(s.status));
+  // Wave H2 wall: a listing subscription never makes a profile active.
+  const candidates = withoutListingSubs(subs).filter((s) => ACTIVE_STRIPE_STATUSES.has(s.status));
   const pool = candidates.length > 0 ? candidates : [];
   if (pool.length === 0) return null;
   return pool.slice().sort((a, b) => b.created - a.created)[0]!;

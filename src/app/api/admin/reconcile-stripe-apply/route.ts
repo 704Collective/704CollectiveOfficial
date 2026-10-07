@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@/lib/supabase/server';
+import { withoutListingSubs } from '@/lib/stripeProducts';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -54,7 +55,8 @@ function periodEndSeconds(
 }
 
 function pickActiveSub(subs: Stripe.Subscription[]): Stripe.Subscription | null {
-  const candidates = subs.filter((s) => ACTIVE_STRIPE_STATUSES.has(s.status));
+  // Wave H2 wall: a listing subscription never makes a profile active.
+  const candidates = withoutListingSubs(subs).filter((s) => ACTIVE_STRIPE_STATUSES.has(s.status));
   if (candidates.length === 0) return null;
   return candidates.slice().sort((a, b) => b.created - a.created)[0]!;
 }

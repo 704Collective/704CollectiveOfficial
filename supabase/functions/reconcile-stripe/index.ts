@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { isListingSubscription } from "../_shared/stripeProducts.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -96,11 +97,13 @@ serve(async (req) => {
 
       try {
         // Get active subscriptions for this customer
-        const activeSubs = await stripe.subscriptions.list({
+        const activeSubsRaw = await stripe.subscriptions.list({
           customer: custId,
           status: "active",
-          limit: 1,
+          limit: 10,
         });
+        // Wave H2 wall: a listing subscription never makes a profile active.
+        const activeSubs = { data: activeSubsRaw.data.filter((s: Stripe.Subscription) => !isListingSubscription(s)) };
 
         const hasActive = activeSubs.data.length > 0;
 
@@ -226,18 +229,21 @@ serve(async (req) => {
         }
 
         // Check if this customer has any subscription history
-        const subs = await stripe.subscriptions.list({
+        const subsRaw = await stripe.subscriptions.list({
           customer: cust.id,
-          limit: 1,
+          limit: 10,
         });
         // Also check active
-        const activeSubs = await stripe.subscriptions.list({
+        const activeSubsRaw = await stripe.subscriptions.list({
           customer: cust.id,
           status: "active",
-          limit: 1,
+          limit: 10,
         });
+        // Wave H2 wall: listing-only customers are not members and are never imported.
+        const subs = { data: subsRaw.data.filter((s: Stripe.Subscription) => !isListingSubscription(s)) };
+        const activeSubs = { data: activeSubsRaw.data.filter((s: Stripe.Subscription) => !isListingSubscription(s)) };
 
-        if (subs.data.length === 0) continue; // No subscription history, skip
+        if (subs.data.length === 0) continue; // No membership subscription history, skip
 
         const isActive = activeSubs.data.length > 0;
         const status = isActive ? "active" : "canceled";

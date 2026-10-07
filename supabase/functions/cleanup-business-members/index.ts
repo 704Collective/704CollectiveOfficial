@@ -1,13 +1,15 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import Stripe from "https://esm.sh/stripe@18.5.0";
+// Wave H2: product identity comes from the one shared definition (env-driven,
+// same prod id as fallback). Listing subscriptions are neither social nor
+// business and are skipped by this sweep.
+import { SOCIAL_PRODUCT_ID, isListingSubscription } from "../_shared/stripeProducts.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
-
-const SOCIAL_PRODUCT_ID = "prod_TZI8im1xRNUMuy";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -79,14 +81,19 @@ Deno.serve(async (req) => {
     // Wave 10: a row whose Stripe cancel fails is SKIPPED (profile untouched)
     // and reported here - never hidden while still billing, never silent.
     const errors: Array<{ email: string; customerId: string; error: string }> = [];
+    // Wave H2: rows whose only subscriptions are listings are reported here, untouched.
+    const skipped: Array<{ email: string; customerId: string; reason: string }> = [];
 
-    // Cancel every live subscription for the customer before hiding the profile.
-    // Throws on the first failure so the caller can skip-and-report the row.
+    // Cancel every live MEMBERSHIP subscription for the customer before hiding
+    // the profile. Listing subscriptions are left alone (hiding a business
+    // member must not kill their hub listing). Throws on the first failure so
+    // the caller can skip-and-report the row.
     const cancelLive = async (custId: string): Promise<string[]> => {
       const all = await stripe.subscriptions.list({ customer: custId, status: "all", limit: 100 });
       const canceled: string[] = [];
       for (const s of all.data) {
         if (s.status === "canceled" || s.status === "incomplete_expired") continue;
+        if (isListingSubscription(s)) continue;
         await stripe.subscriptions.cancel(s.id);
         canceled.push(s.id);
       }
@@ -98,15 +105,26 @@ Deno.serve(async (req) => {
       if (!custId) continue;
 
       try {
-        const subs = await stripe.subscriptions.list({
+        const subsRaw = await stripe.subscriptions.list({
           customer: custId,
           status: "active",
-          limit: 1,
+          limit: 10,
         });
+        // Wave H2 wall: classify by the first non-listing subscription. Unset env => identical to limit:1.
+        const subs = { data: subsRaw.data.filter((s: Stripe.Subscription) => !isListingSubscription(s)) };
+        if (subs.data.length === 0 && subsRaw.data.length > 0) {
+          skipped.push({ email: profile.email, customerId: custId, reason: "only listing subscriptions on customer" });
+          continue;
+        }
 
         if (subs.data.length === 0) {
           // No active sub — check any sub
-          const allSubs = await stripe.subscriptions.list({ customer: custId, limit: 1 });
+          const allSubsRaw = await stripe.subscriptions.list({ customer: custId, limit: 10 });
+          const allSubs = { data: allSubsRaw.data.filter((s: Stripe.Subscription) => !isListingSubscription(s)) };
+          if (allSubs.data.length === 0 && allSubsRaw.data.length > 0) {
+            skipped.push({ email: profile.email, customerId: custId, reason: "only listing subscriptions on customer" });
+            continue;
+          }
           if (allSubs.data.length > 0) {
             const productId = allSubs.data[0].items.data[0]?.price?.product as string;
             if (productId !== SOCIAL_PRODUCT_ID) {
@@ -174,6 +192,7 @@ Deno.serve(async (req) => {
         removed: { count: removed.length, members: removed },
         kept: { count: kept.length, members: kept },
         errors: { count: errors.length, rows: errors },
+        skipped: { count: skipped.length, rows: skipped },
         final_status_counts: statusCounts,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
