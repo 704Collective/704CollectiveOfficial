@@ -47,6 +47,11 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-explicit-any": "warn",
       "react/no-unescaped-entities": "warn",
       "@next/next/no-img-element": "warn",
+      // Wave H3 added a root dynamic segment (src/app/[hub]/[slug]) for the public
+      // hub pages. This rule resolves <a href> against the route tree, so it now
+      // matches EVERY one- and two-segment path and flags 20 long-standing <a>
+      // tags across the app. Keep it visible as a warning, not a blocker.
+      "@next/next/no-html-link-for-pages": "warn",
       "@typescript-eslint/no-unused-expressions": "warn",
       "react-hooks/exhaustive-deps": "warn",
       "react-hooks/set-state-in-effect": "warn",

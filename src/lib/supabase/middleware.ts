@@ -12,6 +12,15 @@ const ALWAYS_PUBLIC = [
   '/robots.txt',
   '/sitemap.xml',
   '/api/promo-quote',
+  // Wave H3 — public Network pages (behind HUB_PAGES_LIVE in the pages themselves).
+  // Exact-or-child match only: '/reset' does NOT cover '/reset-password'.
+  '/reset',
+  '/nest',
+  '/foundry',
+  '/experience',
+  '/get-listed',
+  '/how-we-vet',
+  '/out',
 ];
 
 const HIDE_CRM_AND_PARTNERS = true; // reversible: set false to restore CRM + Partner Portal access

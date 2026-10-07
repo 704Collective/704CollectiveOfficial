@@ -1,5 +1,8 @@
 import type { MetadataRoute } from "next";
 import { createClient } from "@supabase/supabase-js";
+import { hubPagesLive } from "@/lib/network/flags";
+import { VISIBLE_HUBS } from "@/lib/network/hubs";
+import { getLiveListingSlugs } from "@/lib/network/queries";
 
 const BASE_URL = "https://704collective.com";
 
@@ -95,5 +98,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticPages, ...blogEntries];
+  // Wave H3 — Network pages appear ONLY when the launch flag is on. /out and
+  // /intro are deliberately never listed.
+  let networkEntries: MetadataRoute.Sitemap = [];
+  if (hubPagesLive()) {
+    const hubEntries: MetadataRoute.Sitemap = VISIBLE_HUBS.map((h) => ({
+      url: `${BASE_URL}/${h}`, lastModified: now, changeFrequency: "daily" as const, priority: 0.9,
+    }));
+    const staticNetwork: MetadataRoute.Sitemap = [
+      { url: `${BASE_URL}/get-listed`, lastModified: now, changeFrequency: "weekly" as const, priority: 0.8 },
+      { url: `${BASE_URL}/how-we-vet`, lastModified: now, changeFrequency: "monthly" as const, priority: 0.7 },
+    ];
+    let profiles: MetadataRoute.Sitemap = [];
+    try {
+      profiles = (await getLiveListingSlugs(VISIBLE_HUBS)).map((l) => ({
+        url: `${BASE_URL}/${l.hub}/${l.slug}`,
+        lastModified: l.updated_at ? new Date(l.updated_at) : now,
+        changeFrequency: "weekly" as const,
+        priority: 0.7,
+      }));
+    } catch { profiles = []; }
+    networkEntries = [...hubEntries, ...staticNetwork, ...profiles];
+  }
+
+  return [...staticPages, ...blogEntries, ...networkEntries];
 }
