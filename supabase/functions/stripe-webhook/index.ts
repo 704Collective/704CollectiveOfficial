@@ -180,6 +180,21 @@ async function handleListingInvoice(
   }
   await setListingBillingStatus(supabase, listing.id, outcome === "succeeded" ? "active" : "past_due", event.type);
   const stripeCustomerId = typeof invoice.customer === "string" ? invoice.customer : (invoice.customer as Stripe.Customer)?.id || null;
+  // Wave H4: idempotent per invoice, not just per event id — a redelivery under
+  // a fresh event id must not double-log the payment.
+  if (invoice.id) {
+    const { data: priorRows } = await supabase
+      .from("payments")
+      .select("id")
+      .eq("payment_type", LISTING_PAYMENT_TYPE)
+      .eq("status", outcome)
+      .contains("metadata", { stripe_invoice_id: invoice.id })
+      .limit(1);
+    if (priorRows && priorRows.length > 0) {
+      log("[listing] payment already recorded for invoice - replay, skipping", { invoiceId: invoice.id, paymentId: priorRows[0].id });
+      return;
+    }
+  }
   await insertPayment(supabase, {
     user_id: listing.owner_profile_id,
     stripe_customer_id: stripeCustomerId,
@@ -189,7 +204,7 @@ async function handleListingInvoice(
     status: outcome,
     payment_type: LISTING_PAYMENT_TYPE,
     description: outcome === "succeeded" ? "Listing subscription payment" : "Failed listing payment",
-    metadata: { listing_id: listing.id, stripe_subscription_id: subscriptionId },
+    metadata: { listing_id: listing.id, stripe_subscription_id: subscriptionId, stripe_invoice_id: invoice.id ?? null },
   });
 }
 
@@ -217,6 +232,158 @@ async function handleListingSubscriptionChange(
     return;
   }
   await setListingBillingStatus(supabase, listing.id, status, event.type);
+}
+
+// ── Wave H4: first listing payment -> account + draft listing ─────────────
+const HUB_NAMES: Record<string, string> = { reset: "The Reset", nest: "The Nest", foundry: "The Foundry", experience: "The Experience", enterprise: "The Enterprise", hall: "The Hall", lab: "The Lab" };
+
+function slugify(s: string): string {
+  return s.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "listing";
+}
+
+/**
+ * checkout.session.completed for the listing product. Creates (or attaches
+ * to) the owner account, creates the draft network_listings row with the rate
+ * lock, stamps the application. Never touches subscription_status,
+ * member_type of an existing profile, people, hub seats or referrals.
+ * Idempotent on application.converted_listing_id and on
+ * network_listings.stripe_subscription_id.
+ */
+async function handleListingCheckout(
+  event: Stripe.Event,
+  session: Stripe.Checkout.Session,
+  supabase: ReturnType<typeof createClient>,
+) {
+  const applicationId = session.metadata?.application_id ?? null;
+  const stripeCustomerId = typeof session.customer === "string" ? session.customer : (session.customer as Stripe.Customer)?.id ?? null;
+  const subscriptionId = typeof session.subscription === "string" ? session.subscription : (session.subscription as Stripe.Subscription)?.id ?? null;
+  if (!applicationId) { log("[listing-checkout] no application_id in session metadata - skipping", { sessionId: session.id }); return; }
+  if (!subscriptionId || !stripeCustomerId) { log("[listing-checkout] missing subscription/customer - skipping", { sessionId: session.id }); return; }
+
+  // Idempotency 1: a listing already exists for this subscription.
+  const { data: existingListing } = await supabase.from("network_listings").select("id").eq("stripe_subscription_id", subscriptionId).maybeSingle();
+  if (existingListing) { log("[listing-checkout] listing already exists for subscription - replay, skipping", { listingId: existingListing.id }); return; }
+
+  const { data: app, error: appErr } = await supabase
+    .from("network_listing_applications")
+    .select("id, business_name, hub, category_text, contact_name, contact_email, contact_phone, website_url, instagram, converted_listing_id")
+    .eq("id", applicationId)
+    .maybeSingle();
+  if (appErr || !app) { log("[listing-checkout] application not found - skipping", { applicationId }); return; }
+  // Idempotency 2: application already converted.
+  if (app.converted_listing_id) { log("[listing-checkout] application already converted - replay, skipping", { applicationId, listingId: app.converted_listing_id }); return; }
+
+  const email = (session.customer_details?.email || app.contact_email || "").trim().toLowerCase();
+  if (!email) { log("[listing-checkout] no email - skipping", { applicationId }); return; }
+
+  // ── owner account: attach to an existing profile (member_type untouched) or create a listing account ──
+  let ownerId: string | null = null;
+  let ownerMode: "attached" | "created" = "attached";
+  const { data: existingProfile } = await supabase.from("profiles").select("id, member_type").eq("email", email).is("deleted_at", null).maybeSingle();
+  if (existingProfile) {
+    ownerId = existingProfile.id;
+    log("[listing-checkout] attaching listing to existing profile (member_type untouched)", { ownerId, member_type: existingProfile.member_type });
+  } else {
+    ownerMode = "created";
+    const created = await supabase.auth.admin.createUser({
+      email,
+      email_confirm: true,
+      user_metadata: { full_name: app.contact_name ?? app.business_name, member_type: "listing" },
+    });
+    if (created.error || !created.data.user) {
+      // Race: the auth user exists but has no live profile row (e.g. soft-deleted). Resolve by email.
+      const { data: byEmail } = await supabase.from("profiles").select("id").eq("email", email).maybeSingle();
+      if (!byEmail) { log("[listing-checkout] account creation failed - skipping", { error: created.error?.message }); return; }
+      ownerId = byEmail.id;
+    } else {
+      ownerId = created.data.user.id;
+    }
+    // handle_new_user inserts the profile row; make sure the listing shape is on it.
+    const { error: profErr } = await supabase.from("profiles").upsert({
+      id: ownerId, email, full_name: app.contact_name ?? app.business_name, phone: app.contact_phone ?? null,
+      member_type: "listing", company: app.business_name,
+    }, { onConflict: "id" });
+    if (profErr) log("[listing-checkout] profile stamp failed (non-blocking)", { error: profErr.message });
+    log("[listing-checkout] listing account created", { ownerId });
+  }
+
+  // ── category: match by hub + label (ilike), else create ──
+  const label = (app.category_text ?? "").trim() || "Uncategorized";
+  let categoryId: string | null = null;
+  const { data: catMatch } = await supabase.from("network_categories").select("id").eq("hub", app.hub).ilike("label", label).limit(1).maybeSingle();
+  if (catMatch) categoryId = catMatch.id;
+  else {
+    const catSlug = slugify(label);
+    const { data: catIns, error: catErr } = await supabase.from("network_categories").insert({ hub: app.hub, slug: catSlug, label, is_active: true, sort_order: 100 }).select("id").single();
+    if (catIns) categoryId = catIns.id;
+    else {
+      const { data: catBySlug } = await supabase.from("network_categories").select("id").eq("hub", app.hub).eq("slug", catSlug).maybeSingle();
+      categoryId = catBySlug?.id ?? null;
+      if (!categoryId) { log("[listing-checkout] category create failed - skipping", { error: catErr?.message }); return; }
+    }
+  }
+
+  // ── listing slug: unique ──
+  const base = slugify(app.business_name);
+  let slug = base;
+  for (let i = 2; i < 50; i++) {
+    const { data: taken } = await supabase.from("network_listings").select("id").eq("slug", slug).maybeSingle();
+    if (!taken) break;
+    slug = `${base}-${i}`;
+  }
+
+  const rateLockedUntil = new Date(); rateLockedUntil.setMonth(rateLockedUntil.getMonth() + 12);
+  const { data: listing, error: listErr } = await supabase.from("network_listings").insert({
+    kind: "spotlight",
+    hub: app.hub,
+    category_id: categoryId,
+    owner_profile_id: ownerId,
+    company_name: app.business_name,
+    slug,
+    website_url: app.website_url ? (/^https?:\/\//i.test(app.website_url) ? app.website_url : `https://${app.website_url}`) : null,
+    instagram_url: app.instagram ? (app.instagram.startsWith("http") ? app.instagram : `https://instagram.com/${app.instagram.replace(/^@/, "")}`) : null,
+    phone: app.contact_phone ?? null,
+    status: "draft",
+    stripe_customer_id: stripeCustomerId,
+    stripe_subscription_id: subscriptionId,
+    billing_status: "active",
+    rate_cents: 15000,
+    rate_locked_until: rateLockedUntil.toISOString(),
+  }).select("id, slug").single();
+  if (listErr || !listing) {
+    // Unique violation on stripe_subscription_id-less duplicate slug or concurrent replay: treat as handled.
+    log("[listing-checkout] listing insert failed", { error: listErr?.message });
+    return;
+  }
+
+  const { error: stampErr } = await supabase.from("network_listing_applications").update({ status: "approved", converted_listing_id: listing.id }).eq("id", app.id);
+  if (stampErr) log("[listing-checkout] application stamp failed (non-blocking)", { error: stampErr.message });
+
+  // ── welcome email ──
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const first = (app.contact_name ?? "").trim().split(/\s+/)[0] || "there";
+    const res = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
+      body: JSON.stringify({
+        to: email, template: "admin-custom", skipCc: true,
+        data: {
+          recipientName: first,
+          subject: "You're in — your listing is in draft",
+          bodyText: [
+            `${app.business_name} now holds a spotlight on ${HUB_NAMES[app.hub] ?? app.hub}. Your rate is $150/month, locked until ${rateLockedUntil.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}.`,
+            "", "Your listing is created in draft. We'll finish the copy and photos with you, then flip it live.",
+            "", "Login details for your listing portal are coming; nothing is needed from you yet.",
+          ].join("\n"),
+        },
+      }),
+    });
+    if (!res.ok) log("[listing-checkout] welcome email failed (non-blocking)", { status: res.status });
+  } catch (e) { log("[listing-checkout] welcome email threw (non-blocking)", { error: String(e) }); }
+
+  log("[listing-checkout] done", { applicationId: app.id, listingId: listing.id, slug: listing.slug, ownerId, ownerMode, event: event.id });
 }
 
 /**
@@ -535,6 +702,7 @@ async function handleCheckoutCompleted(
 
   let isSocialMembership = false;
   let lineItemName = "Checkout purchase";
+  let checkoutProductId: string | null = null;
 
   try {
     const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
@@ -546,6 +714,7 @@ async function handleCheckoutCompleted(
       lineItemName = firstItem.description || lineItemName;
       const product = firstItem.price?.product;
       const productId = typeof product === "string" ? product : (product as Stripe.Product)?.id;
+      checkoutProductId = productId ?? null;
 
       if (socialProductId && productId === socialProductId) {
         isSocialMembership = true;
@@ -558,6 +727,16 @@ async function handleCheckoutCompleted(
   } catch (lineItemErr) {
     const msg = lineItemErr instanceof Error ? lineItemErr.message : String(lineItemErr);
     log("WARNING: Failed to retrieve line items (fail-safe, skipping onboarding)", { error: msg });
+  }
+
+  // ── Wave H4 wall: listing product -> listing checkout, nothing below runs ──
+  // Same routing rule as H2 (isListingProduct is false whenever the env is
+  // unset or the product is anything else), so the Social branch is untouched.
+  // The payments row for this purchase arrives via the invoice.payment_succeeded
+  // listing path (payment_type='listing'); it is deliberately NOT inserted here.
+  if (isListingProduct(checkoutProductId)) {
+    await handleListingCheckout(event, session, supabase);
+    return;
   }
 
   // ── Phase B: Conditional Routing ─────────────────────────────────────

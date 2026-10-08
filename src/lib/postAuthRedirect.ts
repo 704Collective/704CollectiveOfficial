@@ -34,6 +34,9 @@ export function postAuthDestination(
 
   if (profile.member_type === "partner") return "/partner-portal";
 
+  // Wave H4: listing-only accounts have no portal yet; they land on the holding page.
+  if (profile.member_type === "listing") return "/listing-account";
+
   const isActive =
     profile.subscription_status === "active" ||
     profile.subscription_status === "trialing" ||

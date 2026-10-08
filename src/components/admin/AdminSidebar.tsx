@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Calendar, Users, FileText, DollarSign, Mail,
-  MessageSquare, QrCode, Layers, GitPullRequest, Handshake, Receipt,
+  MessageSquare, QrCode, Layers, GitPullRequest, Handshake, Receipt, Store,
   Newspaper, Shield, Lightbulb, BookOpen, Inbox, Upload, Lock, Database,
   AlertTriangle, ClipboardList, Settings, BarChart2, Sparkles,
 } from 'lucide-react';
@@ -159,6 +159,7 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
           {groupHeading('Business')}
           <div className="space-y-0.5">
             {linkBtn('/admin/hubs',       Layers,        'Hubs')}
+            {isAdminOrSuper && linkBtn('/admin/network', Store, 'Network')}
             {linkBtn('/admin/referrals',  GitPullRequest, 'Referrals')}
             {isAdminOrSuper && linkBtn('/admin/ambassadors', Sparkles, 'Ambassadors')}
             {/* HIDDEN 2026-06 — CRM/Partner hide-pass, restore later: {isAdminOrSuper && linkBtn('/admin/partners', Handshake, 'Partners')} */}

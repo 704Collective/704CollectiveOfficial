@@ -42,6 +42,9 @@ export const MEMBER_VISIBILITY_FILTER =
   'deleted_at.is.null,' +
   'banned.eq.false,' +
   'is_internal.eq.false,' +
+  // Wave H4: listing-only accounts (paid hub listing, no membership) are never
+  // visible members, whatever their billing columns say.
+  'or(member_type.is.null,member_type.neq.listing),' +
   'or(is_banned.is.null,is_banned.eq.false))';
 
 /**
@@ -53,10 +56,11 @@ export const MEMBER_VISIBILITY_SQL =
   ' AND p.deleted_at IS NULL' +
   ' AND p.banned = false' +
   ' AND COALESCE(p.is_banned, false) = false' +
-  ' AND p.is_internal = false';
+  ' AND p.is_internal = false' +
+  " AND p.member_type IS DISTINCT FROM 'listing'";
 
 /** The profile columns the predicate reads. Select these when using `isVisibleMember`. */
-export const MEMBER_VISIBILITY_COLUMNS = 'subscription_status, deleted_at, banned, is_banned, is_internal';
+export const MEMBER_VISIBILITY_COLUMNS = 'subscription_status, deleted_at, banned, is_banned, is_internal, member_type';
 
 export interface MemberVisibilityFields {
   subscription_status: string | null;
@@ -64,6 +68,7 @@ export interface MemberVisibilityFields {
   banned?: boolean | null;
   is_banned?: boolean | null;
   is_internal?: boolean | null;
+  member_type?: string | null;
 }
 
 /** In-memory form of the approved definition (for rows already fetched, e.g. RPC results). */
@@ -74,6 +79,7 @@ export function isVisibleMember(p: MemberVisibilityFields | null | undefined): b
   if (p.banned === true) return false;
   if (p.is_banned === true) return false;
   if (p.is_internal !== false) return false;
+  if (p.member_type === 'listing') return false;
   return true;
 }
 

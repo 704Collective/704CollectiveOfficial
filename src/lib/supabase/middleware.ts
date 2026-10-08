@@ -86,6 +86,7 @@ export async function updateSession(request: NextRequest) {
     '/partners/admin',
     '/settings',
     '/pending-review',
+    '/listing-account',
   ];
   /** Public partner marketing + auth flows only (not /partners/dashboard). */
   const isPartnerPublicPath = (p: string) =>
@@ -207,10 +208,12 @@ export async function updateSession(request: NextRequest) {
     const isNonMember =
       profile?.member_type === 'social_non_member' ||
       profile?.member_type === 'business_non_member' ||
-      profile?.member_type === 'non_member';
+      profile?.member_type === 'non_member' ||
+      profile?.member_type === 'listing';
     const isBanned = profile?.is_banned === true;
     const isPending       = profile?.application_status === 'pending';
     const isPartner       = profile?.member_type === 'partner';
+    const isListing       = profile?.member_type === 'listing';
 
     // ── Banned users → login with error (fallback check) ─────────────────────
     if (isBanned) {
@@ -233,6 +236,21 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url);
       }
       return supabaseResponse;
+    }
+
+    // ── Wave H4: listing-only accounts live on the holding page ──────────────
+    // They are never members: every protected route other than /listing-account
+    // (and admin, if they somehow hold the role) sends them there instead of
+    // into the portal or to /signup.
+    if (isListing && !isAdmin && !path.startsWith('/listing-account')) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/listing-account';
+      return NextResponse.redirect(url);
+    }
+    if (path.startsWith('/listing-account') && !isListing && !isAdmin) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/dashboard';
+      return NextResponse.redirect(url);
     }
 
     // ── Admin-only routes (/admin includes /admin/crm/*) ─────────────────────

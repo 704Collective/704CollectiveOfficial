@@ -5,6 +5,7 @@ import { NetworkShell } from '@/components/network/NetworkShell';
 import { HubNav } from '@/components/network/HubNav';
 import { HubFooter } from '@/components/network/HubSections';
 import { ApplyForm } from '@/components/network/ApplyForm';
+import { CheckoutNotice } from '@/components/network/CheckoutNotice';
 import { hubPagesLive } from '@/lib/network/flags';
 
 export const revalidate = 60;
@@ -31,6 +32,7 @@ export default function GetListedPage() {
     <NetworkShell>
       <HubNav current="get-listed" />
       <main id="main-content">
+        <CheckoutNotice />
         <section className="nw-hero" style={{ background: 'var(--nw-band)' }}>
           <div className="nw-wrap nw-hero-in">
             <span className="nw-pill ink">Get listed</span>

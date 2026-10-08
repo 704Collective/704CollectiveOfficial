@@ -43,6 +43,8 @@ interface AuthState {
   isBanned: boolean;
   isPendingApplication: boolean;
   isApprovedPartner: boolean;
+  /** Wave H4: paid hub listing with no membership (member_type='listing'). */
+  isListingAccount: boolean;
 }
 
 interface AuthContextValue extends AuthState {
@@ -60,24 +62,28 @@ const LOGGED_OUT_STATE: AuthState = {
   user: null, profile: null, session: null, loading: false,
   isAdmin: false, isSuperAdmin: false, isActiveMember: false,
   isBusinessMember: false, isBanned: false, isPendingApplication: false,
-  isApprovedPartner: false,
+  isApprovedPartner: false, isListingAccount: false,
 };
 
 function deriveFlags(profile: any) {
   const role = profile?.role ?? 'lead';
   const isSuperAdmin = role === 'super_admin';
   const isAdmin = role === 'admin' || isSuperAdmin;
+  // Wave H4: a listing-only account (paid hub listing, no membership) is never
+  // an active member, whatever its billing columns say.
+  const isListingAccount = profile?.member_type === 'listing';
   const isActiveMember =
-    profile?.subscription_status === 'active' ||
-    profile?.subscription_status === 'trialing' ||
-    profile?.membership_override === true;
+    !isListingAccount &&
+    (profile?.subscription_status === 'active' ||
+      profile?.subscription_status === 'trialing' ||
+      profile?.membership_override === true);
   const isBusinessMember = profile?.member_type === 'business';
   const isBanned = profile?.banned === true;
   const isPendingApplication = profile?.application_status === 'pending';
   const isApprovedPartner =
     profile?.member_type === 'partner' &&
     (profile as any)?.partner_status === 'approved';
-  return { isAdmin, isSuperAdmin, isActiveMember, isBusinessMember, isBanned, isPendingApplication, isApprovedPartner };
+  return { isAdmin, isSuperAdmin, isActiveMember, isBusinessMember, isBanned, isPendingApplication, isApprovedPartner, isListingAccount };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

@@ -5277,6 +5277,126 @@ export type Database = {
           },
         ]
       }
+      network_listing_applications: {
+        Row: {
+          approved_payment_link_sent_at: string | null
+          business_name: string
+          category_text: string
+          contact_email: string
+          contact_name: string | null
+          contact_phone: string | null
+          converted_listing_id: string | null
+          created_at: string
+          decline_reason: string | null
+          google_profile_url: string | null
+          heard_about: string | null
+          hub: string
+          id: string
+          instagram: string | null
+          landing_path: string | null
+          payment_link_expires_at: string | null
+          payment_link_url: string | null
+          review_checklist: Json | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          stripe_checkout_session_id: string | null
+          updated_at: string
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+          website_url: string | null
+          why_704: string | null
+          years_in_business: string | null
+        }
+        Insert: {
+          approved_payment_link_sent_at?: string | null
+          business_name: string
+          category_text: string
+          contact_email: string
+          contact_name?: string | null
+          contact_phone?: string | null
+          converted_listing_id?: string | null
+          created_at?: string
+          decline_reason?: string | null
+          google_profile_url?: string | null
+          heard_about?: string | null
+          hub: string
+          id?: string
+          instagram?: string | null
+          landing_path?: string | null
+          payment_link_expires_at?: string | null
+          payment_link_url?: string | null
+          review_checklist?: Json | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          stripe_checkout_session_id?: string | null
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          website_url?: string | null
+          why_704?: string | null
+          years_in_business?: string | null
+        }
+        Update: {
+          approved_payment_link_sent_at?: string | null
+          business_name?: string
+          category_text?: string
+          contact_email?: string
+          contact_name?: string | null
+          contact_phone?: string | null
+          converted_listing_id?: string | null
+          created_at?: string
+          decline_reason?: string | null
+          google_profile_url?: string | null
+          heard_about?: string | null
+          hub?: string
+          id?: string
+          instagram?: string | null
+          landing_path?: string | null
+          payment_link_expires_at?: string | null
+          payment_link_url?: string | null
+          review_checklist?: Json | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          stripe_checkout_session_id?: string | null
+          updated_at?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          website_url?: string | null
+          why_704?: string | null
+          years_in_business?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_listing_applications_converted_listing_id_fkey"
+            columns: ["converted_listing_id"]
+            isOneToOne: false
+            referencedRelation: "network_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_listing_applications_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       network_listings: {
         Row: {
           billing_status: string | null
