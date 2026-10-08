@@ -359,11 +359,31 @@ async function handleListingCheckout(
   const { error: stampErr } = await supabase.from("network_listing_applications").update({ status: "approved", converted_listing_id: listing.id }).eq("id", app.id);
   if (stampErr) log("[listing-checkout] application stamp failed (non-blocking)", { error: stampErr.message });
 
-  // ── welcome email ──
+  // ── welcome email (Wave H5: carries a real set-password / sign-in link) ──
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const siteUrl = (Deno.env.get("SITE_URL") ?? "https://704collective.com").replace(/\/$/, "");
     const first = (app.contact_name ?? "").trim().split(/\s+/)[0] || "there";
+    // New listing account → service-role recovery token delivered through our own
+    // /auth/callback (server-side verifyOtp, sets cookies, lands on /reset-password).
+    // The browser client runs PKCE, so GoTrue's implicit-flow action_link cannot be
+    // consumed client-side; the token_hash route is the one the app already trusts.
+    // Existing member (attached) → they already sign in; point them at their portal.
+    let accessLines: string[];
+    if (ownerMode === "created") {
+      const { data: link, error: linkErr } = await supabase.auth.admin.generateLink({ type: "recovery", email, options: { redirectTo: `${siteUrl}/auth/callback` } });
+      const hashed = link?.properties?.hashed_token;
+      if (linkErr || !hashed) {
+        log("[listing-checkout] invite link failed (non-blocking)", { error: linkErr?.message });
+        accessLines = [`Your listing account is ready at ${siteUrl}/listing-account. Use "Forgot password" with this email address to set your password.`];
+      } else {
+        const inviteUrl = `${siteUrl}/auth/callback?token_hash=${encodeURIComponent(hashed)}&type=recovery`;
+        accessLines = [`Set your password and sign in to your listing account: ${inviteUrl}`, "", "The link is single-use. From your listing account you can edit your listing, see every intro 704 sends you, and manage billing."];
+      }
+    } else {
+      accessLines = [`Your listing is attached to your existing 704 account. Sign in at ${siteUrl}/dashboard/leads to see the intros it brings in.`];
+    }
     const res = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
@@ -375,7 +395,7 @@ async function handleListingCheckout(
           bodyText: [
             `${app.business_name} now holds a spotlight on ${HUB_NAMES[app.hub] ?? app.hub}. Your rate is $150/month, locked until ${rateLockedUntil.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}.`,
             "", "Your listing is created in draft. We'll finish the copy and photos with you, then flip it live.",
-            "", "Login details for your listing portal are coming; nothing is needed from you yet.",
+            "", ...accessLines,
           ].join("\n"),
         },
       }),

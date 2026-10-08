@@ -14,6 +14,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { approveAndSendPaymentLink, declineApplication, reopenApplication, waitlistApplication } from '@/app/actions/networkAdminActions';
 import { HUB_COPY, isHub } from '@/lib/network/hubs';
+import { NetworkListingsPanel } from '@/components/admin/NetworkListingsPanel';
 
 type AppStatus = 'pending' | 'reviewing' | 'waitlisted' | 'approved' | 'declined';
 type ApplicationRow = {
@@ -53,6 +54,7 @@ export default function AdminNetworkPage() {
   const { isAdmin, isSuperAdmin, loading: authLoading } = useAuth();
   const [rows, setRows] = useState<ApplicationRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [section, setSection] = useState<'applications' | 'listings'>('applications');
   const [filter, setFilter] = useState<'open' | 'waitlisted' | 'approved' | 'declined'>('open');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [conflict, setConflict] = useState<Conflict | null>(null);
@@ -129,12 +131,22 @@ export default function AdminNetworkPage() {
       <div className="p-4 sm:p-6 space-y-5" data-testid="admin-network">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-2xl font-semibold flex items-center gap-2"><Store className="w-6 h-6" /> Network applications</h1>
-            <p className="text-sm text-muted-foreground">Get Listed applications. Run the 704 Review, flag category conflicts, then approve, waitlist or decline.</p>
+            <h1 className="text-2xl font-semibold flex items-center gap-2"><Store className="w-6 h-6" /> {section === 'applications' ? 'Network applications' : 'Network listings'}</h1>
+            <p className="text-sm text-muted-foreground">{section === 'applications' ? 'Get Listed applications. Run the 704 Review, flag category conflicts, then approve, waitlist or decline.' : 'Live and draft listings. Review owner-submitted edits side by side, apply or discard, re-send invites.'}</p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}><RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />Refresh</Button>
+          <div className="flex items-center gap-2">
+            <div className="inline-flex rounded-lg border border-border p-0.5" role="tablist" aria-label="Section">
+              {([['applications', 'Applications'], ['listings', 'Listings']] as const).map(([k, label]) => (
+                <button key={k} type="button" role="tab" aria-selected={section === k} onClick={() => setSection(k)} className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${section === k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`} data-testid={`section-${k}`}>{label}</button>
+              ))}
+            </div>
+            {section === 'applications' && <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}><RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />Refresh</Button>}
+          </div>
         </div>
 
+        {section === 'listings' && <NetworkListingsPanel />}
+
+        {section === 'applications' && <>
         <div className="flex gap-2 flex-wrap" role="tablist" aria-label="Filter">
           {([['open', 'Pending & reviewing'], ['waitlisted', 'Waitlisted'], ['approved', 'Approved'], ['declined', 'Declined']] as const).map(([k, label]) => (
             <Button key={k} role="tab" aria-selected={filter === k} variant={filter === k ? 'default' : 'outline'} size="sm" onClick={() => { setFilter(k); setSelectedId(null); }}>
@@ -261,6 +273,7 @@ export default function AdminNetworkPage() {
             )}
           </CardContent></Card>
         </div>
+        </>}
       </div>
     </AdminLayout>
   );

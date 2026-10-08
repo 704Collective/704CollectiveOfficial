@@ -18,6 +18,8 @@ import {
   Handshake,
   LayoutGrid,
   Lightbulb,
+  Inbox,
+  Store,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DASHBOARD_NAV_DESKTOP, DASHBOARD_NAV_SHELL } from '@/lib/dashboard-layout';
@@ -166,6 +168,8 @@ function buildNavEntries(opts: {
   canSeePartnerDirectory: boolean;
   canSeeSuggest: boolean;
   canSeeSettings: boolean;
+  canSeeLeads: boolean;
+  canSeeNetwork: boolean;
   unreadMessages: number;
   unreadNotifications: number;
 }): NavEntry[] {
@@ -220,6 +224,30 @@ function buildNavEntries(opts: {
       href: '/dashboard/hubs',
       label: 'Hubs',
       icon: Network,
+    });
+  }
+
+  // Wave H5: intros 704 sent to a business member's listings.
+  if (opts.canSeeLeads) {
+    items.push({
+      kind: 'link',
+      key: 'leads',
+      href: '/dashboard/leads',
+      label: 'My Leads',
+      shortLabel: 'Leads',
+      icon: Inbox,
+    });
+  }
+
+  // Wave H5: The Network inside the portal (active members only).
+  if (opts.canSeeNetwork) {
+    items.push({
+      kind: 'link',
+      key: 'network',
+      href: '/dashboard/network',
+      label: 'The Network',
+      shortLabel: 'Network',
+      icon: Store,
     });
   }
 
@@ -362,6 +390,8 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
     (isBusinessMember && isActiveMember) || isAdmin || isSuperAdmin;
   const canSeeSettings = isAdmin || isSuperAdmin;
   const canSeeSuggest = isActiveMember || isAdmin;
+  const canSeeLeads = isBusinessMember || isAdmin;
+  const canSeeNetwork = isActiveMember || isAdmin;
 
   const navEntries = buildNavEntries({
     canSeeSocialFeed,
@@ -372,6 +402,8 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
     canSeePartnerDirectory,
     canSeeSuggest,
     canSeeSettings,
+    canSeeLeads,
+    canSeeNetwork,
     unreadMessages,
     unreadNotifications,
   });
