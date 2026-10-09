@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { buildInviteLink } from "../_shared/inviteLink.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -77,22 +78,22 @@ serve(async (req) => {
       });
     }
 
-    // Generate a fresh recovery link
+    // Generate a fresh recovery token; the emailed link goes through /auth/callback
+    // (token_hash, server-side verify) — GoTrue's action_link cannot be consumed by the PKCE client.
     if (!bodyOrigin) throw new Error("origin is required in the request body");
     const { data: linkData, error: linkErr } = await adminClient.auth.admin.generateLink({
       type: "recovery",
       email: profile.email,
-      options: { redirectTo: `${bodyOrigin}/setup-password` },
+      options: { redirectTo: `${bodyOrigin}/auth/callback` },
     });
 
-    if (linkErr || !linkData?.properties?.action_link) {
+    const setupLink = linkErr ? null : buildInviteLink(bodyOrigin, linkData, "recovery");
+    if (!setupLink) {
       return new Response(JSON.stringify({ error: "Failed to generate setup link" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const setupLink = linkData.properties.action_link;
     const emailTemplate = template === "admin-invite" ? "admin-invite" : template === "welcome-setup" ? "welcome-setup" : "password-setup";
     const firstName = profile.full_name?.split(" ")[0] || profile.full_name || "";
 

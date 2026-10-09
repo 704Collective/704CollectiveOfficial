@@ -10,6 +10,11 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get('type');
   const code = searchParams.get('code');
   const source = searchParams.get('source');
+  // Invite-links wave: admin-generated token_hash links may name a same-origin
+  // landing page (e.g. /ambassadors/welcome). Only a plain relative path is
+  // honoured — anything with a scheme, host or protocol-relative prefix is dropped.
+  const nextParam = searchParams.get('next');
+  const safeNext = nextParam && /^\/(?!\/)[A-Za-z0-9\-._~/?&=%]*$/.test(nextParam) ? nextParam : null;
 
   const cookieStore = await cookies();
 
@@ -75,6 +80,15 @@ export async function GET(request: NextRequest) {
         recoveryRedirect.cookies.set(name, value, options as Parameters<typeof recoveryRedirect.cookies.set>[2]);
       });
       return recoveryRedirect;
+    }
+
+    // Explicit landing page from an admin-generated link (token_hash flows only).
+    if (safeNext) {
+      const nextRedirect = NextResponse.redirect(new URL(safeNext, origin));
+      pendingCookies.forEach(({ name, value, options }) => {
+        nextRedirect.cookies.set(name, value, options as Parameters<typeof nextRedirect.cookies.set>[2]);
+      });
+      return nextRedirect;
     }
 
     // Business apply flow: email confirmed, redirect back to the application form.

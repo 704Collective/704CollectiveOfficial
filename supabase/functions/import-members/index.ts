@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
+import { buildInviteLink } from "../_shared/inviteLink.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -236,10 +237,12 @@ serve(async (req) => {
               const { data: linkData, error: linkErr } = await adminClient.auth.admin.generateLink({
                 type: "recovery",
                 email,
-                options: { redirectTo: `${redirectBase}/setup-password` },
+                options: { redirectTo: `${redirectBase}/auth/callback` },
               });
 
-              if (!linkErr && linkData?.properties?.action_link) {
+              // token_hash through /auth/callback (server-side verify); GoTrue's implicit action_link is unusable with the PKCE client.
+              const setupLink = linkErr ? null : buildInviteLink(redirectBase, linkData, "recovery");
+              if (setupLink) {
                 await fetch(`${supabaseUrl}/functions/v1/send-email`, {
                   method: "POST",
                   headers: {
@@ -251,10 +254,12 @@ serve(async (req) => {
                     template: "password-setup",
                     data: {
                       name: member.first_name || fullName,
-                      setupLink: linkData.properties.action_link,
+                      setupLink,
                     },
                   }),
                 });
+              } else {
+                log("Setup link unavailable - email skipped", { email, error: linkErr?.message ?? "no usable hashed_token" });
               }
             } catch (emailErr) {
               log("Email send failed (non-blocking)", { email, error: String(emailErr) });

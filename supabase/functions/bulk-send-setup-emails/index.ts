@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { buildInviteLink } from "../_shared/inviteLink.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -191,7 +192,7 @@ serve(async (req) => {
           const { data: linkData, error: linkErr } = await adminClient.auth.admin.generateLink({
             type: "recovery",
             email: profile.email,
-            options: { redirectTo: `${origin}/setup-password` },
+            options: { redirectTo: `${origin}/auth/callback` },
           });
 
           if (linkErr || !linkData) {
@@ -200,10 +201,11 @@ serve(async (req) => {
             continue;
           }
 
-          const setupLink = linkData.properties?.action_link;
+          // token_hash through /auth/callback (server-side verify); GoTrue's implicit action_link is unusable with the PKCE client.
+          const setupLink = buildInviteLink(origin, linkData, "recovery");
           if (!setupLink) {
             errors++;
-            results.push({ email: profile.email, status: "error", error: "No action_link returned" });
+            results.push({ email: profile.email, status: "error", error: "No usable hashed_token returned" });
             continue;
           }
 

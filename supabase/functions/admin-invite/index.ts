@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { buildInviteLink } from "../_shared/inviteLink.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -85,20 +86,20 @@ serve(async (req) => {
 
       log("Admin role assigned to existing user", { userId });
     } else {
-      // New user - create auth account and send setup link
+      // New user - create the auth account (no GoTrue email: its implicit-flow
+      // invite link cannot be consumed by the PKCE client) and send our branded
+      // email with a token_hash link through /auth/callback.
       isNewUser = true;
       const displayName = full_name?.trim() || cleanEmail;
 
-      const { data: inviteData, error: inviteErr } = await adminClient.auth.admin.inviteUserByEmail(
-        cleanEmail,
-        {
-          data: { full_name: displayName },
-          redirectTo: `${resolvedOrigin}/setup-password`,
-        },
-      );
+      const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
+        email: cleanEmail,
+        email_confirm: true,
+        user_metadata: { full_name: displayName },
+      });
 
-      if (inviteErr) throw new Error(inviteErr.message);
-      userId = inviteData.user.id;
+      if (createErr || !created?.user) throw new Error(createErr?.message ?? "createUser failed");
+      userId = created.user.id;
 
       // Upsert profile
       await adminClient.from("profiles").upsert(
@@ -112,17 +113,16 @@ serve(async (req) => {
         { onConflict: "id" },
       );
 
-      // Generate a recovery link to include in the branded email
+      // Generate a recovery token for the branded email (token_hash → /auth/callback → /reset-password)
       const { data: linkData } = await adminClient.auth.admin.generateLink({
         type: "recovery",
         email: cleanEmail,
-        options: { redirectTo: `${resolvedOrigin}/setup-password` },
+        options: { redirectTo: `${resolvedOrigin}/auth/callback` },
       });
-      if (linkData?.properties?.action_link) {
-        setupLink = linkData.properties.action_link;
-      }
+      setupLink = buildInviteLink(resolvedOrigin, linkData, "recovery");
+      if (!setupLink) log("No usable hashed_token returned - email will go out without a setup link");
 
-      log("New admin user created via inviteUserByEmail", { userId });
+      log("New admin user created via createUser", { userId });
     }
 
     // Send branded invite email (non-blocking)

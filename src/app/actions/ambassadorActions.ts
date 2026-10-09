@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
+import { buildInviteLink } from '@/lib/auth/inviteLink';
 
 function serviceClient() {
   return createServiceClient(
@@ -167,13 +168,16 @@ export async function createAmbassador(input: {
   let inviteUrl: string | null = null;
   let isNewUser = false;
 
-  // generateLink creates the auth user and returns the invite URL without sending
+  // generateLink creates the auth user and returns the invite token without sending
   // Supabase's default invitation email, so we can send our own branded email.
+  // Invite-links wave: the emailed URL is a token_hash link through /auth/callback
+  // (server-side verify, cookies set) landing on /ambassadors/welcome — not GoTrue's
+  // implicit action_link.
   const { data: linkData, error: linkError } = await gate.admin.auth.admin.generateLink({
     type: 'invite',
     email,
     options: {
-      redirectTo: `${siteUrl}/ambassadors/welcome`,
+      redirectTo: `${siteUrl}/auth/callback`,
       data: {
         full_name: fullName,
         member_type: 'non_member',
@@ -210,7 +214,8 @@ export async function createAmbassador(input: {
     isNewUser = false;
   } else {
     profileId = linkData.user.id;
-    inviteUrl = linkData.properties.action_link;
+    inviteUrl = buildInviteLink(siteUrl, linkData, 'invite', '/ambassadors/welcome');
+    if (!inviteUrl) console.error('[createAmbassador] generateLink returned no usable hashed_token; invite email will be skipped', { email });
     isNewUser = true;
   }
 

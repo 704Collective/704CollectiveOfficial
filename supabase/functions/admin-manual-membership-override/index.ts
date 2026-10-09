@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { resolvePerson } from '../_shared/resolvePerson.ts'
+import { buildInviteLink } from '../_shared/inviteLink.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -397,16 +398,19 @@ Deno.serve(async (req) => {
     // --- Step 7: Send password setup email if requested and we created auth ---
     if (send_setup_email && createdAuth && authUserId) {
       try {
+        const siteUrl = (Deno.env.get('SITE_URL') ?? 'https://704collective.com').replace(/\/$/, '')
         const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
           type: 'recovery',
           email: normalizedEmail,
+          options: { redirectTo: `${siteUrl}/auth/callback` },
         })
 
-        if (linkErr || !linkData) {
-          console.error('Generate recovery link failed:', linkErr)
+        // token_hash through /auth/callback (server-side verify); GoTrue's implicit action_link is unusable with the PKCE client.
+        const setupLink = linkErr ? null : buildInviteLink(siteUrl, linkData, 'recovery')
+        if (!setupLink) {
+          console.error('Generate recovery link failed:', linkErr ?? 'no usable hashed_token')
           changes.push('WARNING: account created but setup email failed')
         } else {
-          const setupLink = linkData.properties?.action_link
           // Fire the send-email function using the existing 'welcome-setup' template
           const { error: emailErr } = await supabaseAdmin.functions.invoke('send-email', {
             body: {

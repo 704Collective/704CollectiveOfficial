@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
+import { buildInviteLink } from '@/lib/auth/inviteLink';
 
 /** Call the centralised send-email render endpoint to get subject + HTML. */
 async function renderTemplate(
@@ -100,7 +101,11 @@ export async function POST(req: NextRequest) {
     || 'https://704collective.com'
   ).replace(/\/$/, '');
 
-  const redirectTo = `${siteBase}/setup-password`;
+  // Invite-links wave: the emailed URL is a token_hash link through /auth/callback
+  // (server-side verify → /reset-password). GoTrue's own invite email carried an
+  // implicit action_link the PKCE client refuses, so the user is created without
+  // GoTrue mail and only our branded email goes out.
+  const redirectTo = `${siteBase}/auth/callback`;
   const displayName = resolvedName || email.trim();
 
   const adminSupabase = createClient(supabaseUrl, serviceRoleKey, {
@@ -109,16 +114,24 @@ export async function POST(req: NextRequest) {
 
   const cleanEmail = email.trim().toLowerCase();
 
-  const { data: inviteResult, error: inviteError } = await adminSupabase.auth.admin.inviteUserByEmail(
-    cleanEmail,
-    {
-      redirectTo,
-      data: {
-        full_name: displayName,
-        role: 'admin',
-      },
+  const setupLinkFor = async (): Promise<string | null> => {
+    const { data: linkData, error: linkErr } = await adminSupabase.auth.admin.generateLink({
+      type: 'recovery',
+      email: cleanEmail,
+      options: { redirectTo },
+    });
+    if (linkErr) { console.error('[admin/invite] generateLink failed', linkErr.message); return null; }
+    return buildInviteLink(siteBase, linkData, 'recovery');
+  };
+
+  const { data: inviteResult, error: inviteError } = await adminSupabase.auth.admin.createUser({
+    email: cleanEmail,
+    email_confirm: true,
+    user_metadata: {
+      full_name: displayName,
+      role: 'admin',
     },
-  );
+  });
 
   if (inviteError) {
     const errMsg = inviteError.message?.toLowerCase() ?? '';
@@ -157,7 +170,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: upErr.message }, { status: 400 });
     }
 
-    await sendAdminInviteEmail(cleanEmail, displayName, redirectTo);
+    const existingLink = await setupLinkFor();
+    if (existingLink) await sendAdminInviteEmail(cleanEmail, displayName, existingLink);
+    else console.error('[admin/invite] no usable setup link for existing user; email skipped');
 
     return NextResponse.json({ success: true, isNewUser: false, user: { id: existing.id } });
   }
@@ -181,7 +196,9 @@ export async function POST(req: NextRequest) {
     console.error('[admin/invite] profile upsert', profileErr.message);
   }
 
-  await sendAdminInviteEmail(cleanEmail, displayName, redirectTo);
+  const newLink = await setupLinkFor();
+  if (newLink) await sendAdminInviteEmail(cleanEmail, displayName, newLink);
+  else console.error('[admin/invite] no usable setup link for new user; email skipped');
 
   return NextResponse.json({ success: true, isNewUser: true, user: invitedUser });
 }
