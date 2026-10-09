@@ -20,6 +20,8 @@ interface ThankYouModalProps {
   onOpenChange: (open: boolean) => void;
   type: ThankYouType;
   event?: ThankYouEvent;
+  /** Optional slot rendered under the calendar buttons for `member` confirmations (business +1). */
+  extra?: React.ReactNode;
 }
 
 // new Date() safely parses both the space-separated and T-separated forms; emit UTC with trailing Z.
@@ -51,7 +53,7 @@ function downloadIcs(title: string, startTime: string, endTime: string, location
   URL.revokeObjectURL(url);
 }
 
-export function ThankYouModal({ open, onOpenChange, type, event }: ThankYouModalProps) {
+export function ThankYouModal({ open, onOpenChange, type, event, extra }: ThankYouModalProps) {
   const router = useRouter();
 
   useEffect(() => {
@@ -146,6 +148,7 @@ export function ThankYouModal({ open, onOpenChange, type, event }: ThankYouModal
                 </div>
               </div>
             )}
+            {extra ? <div style={{ marginBottom: '4px' }}>{extra}</div> : null}
             <button onClick={() => nav('/events')} style={btn(true)}>Browse Other Events</button>
             <button onClick={() => nav('/dashboard')} style={btn(false)}>Go to Member Portal</button>
             <button onClick={() => onOpenChange(false)} style={{ ...btn(false), border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: '0.8125rem' }}>Close</button>

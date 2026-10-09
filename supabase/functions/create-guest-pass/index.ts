@@ -111,13 +111,16 @@ serve(async (req) => {
       monthStart.setUTCDate(1);
       monthStart.setUTCHours(0, 0, 0, 0);
 
+      // A business member's standing +1 (metadata.source='business_plus_one', issued by
+      // add-business-plus-one) is a membership right, not a guest pass: it never counts here.
       const { count: passesThisMonth } = await adminClient
         .from("attendance_credentials")
         .select("id", { count: "exact", head: true })
         .eq("issued_by_person_id", inviterPersonId)
         .eq("credential_type", "guest_pass")
         .in("status", ["active", "used"])
-        .gte("created_at", monthStart.toISOString());
+        .gte("created_at", monthStart.toISOString())
+        .or("metadata->>source.is.null,metadata->>source.neq.business_plus_one");
 
       if ((passesThisMonth ?? 0) >= 1) {
         return new Response(

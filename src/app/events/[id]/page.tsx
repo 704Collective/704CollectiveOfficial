@@ -17,6 +17,7 @@ import { SEOJsonLd } from '@/components/SEOJsonLd';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ThankYouModal } from '@/components/ThankYouModal';
+import { BringPlusOne } from '@/components/events/BringPlusOne';
 import { QRCodeSVG } from 'qrcode.react';
 import { WhosGoing } from '@/components/WhosGoing';
 import { CategoryBadge, EventCategory, MembersOnlyEventBadge } from '@/components/CategoryBadge';
@@ -48,6 +49,7 @@ interface Event {
   access_level: string | null;
   ticket_mode: 'none' | 'public_only' | 'all' | null;
   required_tier?: string | null;
+  event_type?: string | null;
   price_cents?: number | null;
   member_price_cents?: number | null;
   intake_form_slug?: string | null;
@@ -663,6 +665,8 @@ export default function EventDetail() {
         <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>You{"'"}re RSVP{"'"}d!</h3>
         <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', marginBottom: '18px' }}>See you on {format(eventDate, 'MMMM d')}.</p>
         <div style={{ marginBottom: '10px' }}><AddToCalendarButtons event={{ id: event.id, title: event.title, description: event.description || '', startTime: event.start_time, endTime: event.end_time, location: event.location_name || '' }} /></div>
+        {/* Business member +1: renders only for business members on eligible events while they hold this RSVP. */}
+        <div style={{ marginBottom: '10px' }}><BringPlusOne eventId={event.id} event={event} hasRsvp /></div>
         {event.host_id && hostName && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '12px', marginBottom: '10px', padding: '16px', borderRadius: '12px', background: 'rgba(198,166,100,0.08)', border: '1px solid rgba(198,166,100,0.35)', textAlign: 'left' }}>
             <div>
@@ -1168,7 +1172,8 @@ export default function EventDetail() {
         )}
         {!hasTicket && !waitlistPosition && <div className="mobile-spacer" style={{ height: '80px', display: 'none' }} />}
 
-        <ThankYouModal open={showThankYou} onOpenChange={setShowThankYou} type={thankYouType} event={thankYouEvent ?? undefined} />
+        <ThankYouModal open={showThankYou} onOpenChange={setShowThankYou} type={thankYouType} event={thankYouEvent ?? undefined}
+          extra={thankYouType === 'member' && event ? <BringPlusOne eventId={event.id} event={event} hasRsvp compact /> : undefined} />
 
         <Dialog open={hostDialogOpen} onOpenChange={(o) => { if (!hostSending) setHostDialogOpen(o); }}>
           <DialogContent className="sm:max-w-[480px]">

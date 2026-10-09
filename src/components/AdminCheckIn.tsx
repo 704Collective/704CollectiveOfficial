@@ -15,6 +15,7 @@ import { CheckInFullScreen } from '@/components/CheckInFullScreen';
 import { supabase } from '@/integrations/supabase/client';
 import { resolvePersonId } from '@/lib/identity/resolvePerson';
 import { toast } from 'sonner';
+import { plusOneLabel } from '@/lib/events/plusOne';
 
 type AttendeeRow = {
   id: string; // attendance_credentials id
@@ -24,6 +25,8 @@ type AttendeeRow = {
   email: string;
   avatar_url: string | null;
   checked_in_at: string | null;
+  /** Business member +1: "+1 of <member>" from credential metadata; null otherwise. */
+  sublabel?: string | null;
 };
 
 interface Event {
@@ -79,7 +82,7 @@ export function AdminCheckIn({ adminId }: AdminCheckInProps) {
     // Canonical roster: attendance_credentials + people, mirroring CheckInFullScreen.
     const { data: creds, error: credErr } = await supabase
       .from('attendance_credentials')
-      .select('id, person_id, credential_type, checked_in_at')
+      .select('id, person_id, credential_type, checked_in_at, metadata')
       .eq('event_id', selectedEventId)
       .in('credential_type', ['member_rsvp', 'guest_pass', 'public_rsvp'])
       .in('status', ['active', 'used']);
@@ -111,6 +114,7 @@ export function AdminCheckIn({ adminId }: AdminCheckInProps) {
         email: p?.email || '',
         avatar_url: null,
         checked_in_at: c.checked_in_at,
+        sublabel: c.credential_type === 'guest_pass' ? plusOneLabel((c as { metadata?: Record<string, unknown> | null }).metadata, 'Guest') : null,
       };
     }).sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
 
@@ -244,6 +248,15 @@ export function AdminCheckIn({ adminId }: AdminCheckInProps) {
                             fontSize: '0.6875rem', fontWeight: 600,
                           }}>
                             Public RSVP
+                          </span>
+                        )}
+                        {a.credential_type === 'guest_pass' && a.sublabel && (
+                          <span data-testid="roster-sublabel" style={{
+                            marginLeft: '8px', padding: '2px 8px', borderRadius: '4px',
+                            backgroundColor: 'rgba(198,166,100,0.1)', color: '#C6A664',
+                            fontSize: '0.6875rem', fontWeight: 600,
+                          }}>
+                            {a.sublabel}
                           </span>
                         )}
                       </div>

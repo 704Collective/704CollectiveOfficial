@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { resolvePersonId } from '@/lib/identity/resolvePerson';
 import { toast } from 'sonner';
 import { canAttendEvent } from '@/lib/eventEligibility';
+import { plusOneLabel } from '@/lib/events/plusOne';
 
 type AttendeeRow = {
   id: string;                 // attendance_credentials.id
@@ -22,6 +23,8 @@ type AttendeeRow = {
   email: string;
   avatar_url: string | null;  // always null now; people has no avatar
   checked_in_at: string | null;
+  /** Business member +1: "+1 of <member>" (from credential metadata); null otherwise. */
+  sublabel?: string | null;
 };
 
 interface RecentCheckIn {
@@ -85,7 +88,7 @@ export function CheckInFullScreen({
     // Event-scoped passes: member_rsvp, guest_pass, public_rsvp, active|used.
     const { data: creds, error: credErr } = await supabase
       .from('attendance_credentials')
-      .select('id, person_id, credential_type, checked_in_at')
+      .select('id, person_id, credential_type, checked_in_at, metadata')
       .eq('event_id', eventId)
       .in('credential_type', ['member_rsvp', 'guest_pass', 'public_rsvp'])
       .in('status', ['active', 'used']);
@@ -119,6 +122,7 @@ export function CheckInFullScreen({
         email: p?.email || '',
         avatar_url: null,
         checked_in_at: c.checked_in_at,
+        sublabel: c.credential_type === 'guest_pass' ? plusOneLabel((c as { metadata?: Record<string, unknown> | null }).metadata, 'Guest') : null,
       };
     }).sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
 
@@ -282,7 +286,7 @@ export function CheckInFullScreen({
     // One lookup: find the credential by its token.
     const { data: credential, error: credErr } = await supabase
       .from('attendance_credentials')
-      .select('id, person_id, event_id, credential_type, status, checked_in_at')
+      .select('id, person_id, event_id, credential_type, status, checked_in_at, metadata')
       .eq('token', token)
       .maybeSingle();
 
@@ -376,7 +380,7 @@ export function CheckInFullScreen({
     }
 
     const label =
-      credential.credential_type === 'guest_pass' ? `${personName} (Guest)`
+      credential.credential_type === 'guest_pass' ? `${personName} (${plusOneLabel((credential as { metadata?: Record<string, unknown> | null }).metadata, 'Guest')})`
       : credential.credential_type === 'public_rsvp' ? `${personName} (Public RSVP)`
       : personName;
 
@@ -574,6 +578,9 @@ export function CheckInFullScreen({
                       <p className="text-sm text-muted-foreground">{attendee.email}</p>
                       {attendee.credential_type === 'public_rsvp' && (
                         <span className="text-xs text-muted-foreground/60">Public RSVP</span>
+                      )}
+                      {attendee.credential_type === 'guest_pass' && attendee.sublabel && (
+                        <span className="text-xs text-muted-foreground/60" data-testid="roster-sublabel">{attendee.sublabel}</span>
                       )}
                     </div>
                   </div>

@@ -126,6 +126,26 @@ serve(async (req) => {
 
     log("credential voided", { credId: credResult.data.id, personId: personId, event_id: event_id });
 
+    // ── Business +1 cascade ───────────────────────────────────────────────────
+    // A standing +1 (add-business-plus-one) hangs off this RSVP via
+    // metadata.member_credential_id. The member leaving means the guest leaves
+    // too; removing the +1 alone never touches the member's RSVP (that path
+    // lives in add-business-plus-one action='remove'). Non-fatal.
+    try {
+      const { data: linked, error: linkedErr } = await adminClient
+        .from("attendance_credentials")
+        .update({ status: "voided" })
+        .eq("event_id", event_id)
+        .eq("credential_type", "guest_pass")
+        .eq("status", "active")
+        .contains("metadata", { source: "business_plus_one", member_credential_id: credResult.data.id })
+        .select("id");
+      if (linkedErr) log("plus-one cascade failed (non-fatal)", { error: linkedErr.message });
+      else if ((linked ?? []).length > 0) log("plus-one credential voided with the member RSVP", { ids: (linked ?? []).map((r: { id: string }) => r.id) });
+    } catch (cascadeErr) {
+      log("plus-one cascade error (non-fatal)", String(cascadeErr));
+    }
+
     // ── Cancellation confirmation email to the cancelling member ──────────────
     // Fires on every successful self-void, independent of capacity/waitlist.
     // Non-fatal: the void has already succeeded above; a send failure must

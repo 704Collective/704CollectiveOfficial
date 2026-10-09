@@ -246,12 +246,12 @@ export function useTicketActions(): UseTicketActionsReturn {
         // Credential token, used below in place of the old tickets row id.
         const credentialToken: string | null = rsvpData?.credential_token ?? null;
 
-        // -- Business member +1 -- DEFERRED to sub-step 3.4d.
-        // The old flow inserted a second 'business_plus_one' tickets row here.
-        // In the credential model the +1 becomes a guest_pass attendance_credential
-        // (issued_by_person_id = this member). That is its own scoped sub-step;
-        // it is intentionally NOT issued here. Business members do not get an
-        // auto +1 until 3.4d ships.
+        // -- Business member +1 --
+        // Not issued here. A business member names their +1 themselves via
+        // <BringPlusOne> (thank-you modal below + event page), which calls the
+        // add-business-plus-one function and writes ONE guest_pass credential
+        // (issued_by_person_id = this member, metadata.source='business_plus_one').
+        // The plain member RSVP write above is unchanged.
 
         // Optimistic update
         setUserTicketIds(prev => new Set([...prev, event.id]));

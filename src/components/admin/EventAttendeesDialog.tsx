@@ -15,6 +15,7 @@ import { resolvePersonId } from '@/lib/identity/resolvePerson';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Loader2, CheckCircle2, Clock, UserCheck, Check, Trash2 } from 'lucide-react';
+import { plusOneLabel } from '@/lib/events/plusOne';
 
 interface AttendeeRow {
   id: string; // attendance_credentials id
@@ -27,6 +28,8 @@ interface AttendeeRow {
   rsvp_date: string | null;
   contact_route_id: string | null;
   has_payment: boolean;
+  /** Business member +1: "+1 of <member>" from credential metadata; null for ordinary guest passes. */
+  guest_label?: string | null;
 }
 
 interface EventAttendeesDialogProps {
@@ -135,6 +138,7 @@ export function EventAttendeesDialog({
             ? encodeURIComponent('contacts:' + contact.id)
             : null,
         has_payment: !!(c.metadata as Record<string, unknown> | null)?.stripe_payment_id,
+        guest_label: kind === 'guest' ? plusOneLabel(c.metadata as Record<string, unknown> | null, 'Guest') : null,
       };
     }).sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
 
@@ -386,8 +390,8 @@ export function EventAttendeesDialog({
                             Member
                           </span>
                         ) : attendee.kind === 'guest' ? (
-                          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
-                            Guest
+                          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border" data-testid="attendee-guest-label">
+                            {attendee.guest_label ?? 'Guest'}
                           </span>
                         ) : (
                           <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-400 text-black">

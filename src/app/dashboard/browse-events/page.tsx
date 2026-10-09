@@ -22,6 +22,7 @@ import { EventCategory, CATEGORY_CONFIG } from '@/components/CategoryBadge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { deriveEventShape } from '@/lib/events/deriveEventShape';
+import { BringPlusOne } from '@/components/events/BringPlusOne';
 
 interface Event {
   id: string;
@@ -40,6 +41,8 @@ interface Event {
   tags: string[] | null;
   access_level: string | null;
   ticket_mode: string | null;
+  event_type?: string | null;
+  required_tier?: string | null;
 }
 
 const supabase = createClient();
@@ -438,7 +441,12 @@ export default function BrowseEventsPage() {
         )}
       </main>
 
-      <ThankYouModal open={showThankYou} onOpenChange={setShowThankYou} type={thankYouType} event={thankYouEvent ?? undefined} />
+      <ThankYouModal open={showThankYou} onOpenChange={setShowThankYou} type={thankYouType} event={thankYouEvent ?? undefined}
+        extra={(() => {
+          // Business members: offer the standing +1 right in the RSVP success modal.
+          const ev = thankYouType === 'member' && thankYouEvent ? events.find(e => e.id === thankYouEvent.id) : undefined;
+          return ev ? <BringPlusOne eventId={ev.id} event={ev} hasRsvp compact /> : undefined;
+        })()} />
     </div>
   );
 }
