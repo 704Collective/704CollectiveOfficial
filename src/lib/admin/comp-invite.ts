@@ -442,7 +442,12 @@ export async function runCompInvite(
 
   const fullName = `${firstName} ${lastName}`.trim();
   const warnings: string[] = [];
-  const redirectTo = `${siteBase.replace(/\/$/, '')}/setup-password`;
+  const siteRoot = siteBase.replace(/\/$/, '');
+  // The emailed link goes through our own /auth/callback (server-side verifyOtp
+  // on the hashed token → cookies → /reset-password). GoTrue's action_link lands
+  // with implicit-flow hash tokens that the PKCE browser client refuses
+  // ("Not a valid PKCE flow url"), so /setup-password never saw a session.
+  const redirectTo = `${siteRoot}/auth/callback`;
 
   // (a) auth user: reuse or create (no password)
   let userId: string;
@@ -582,27 +587,26 @@ export async function runCompInvite(
   });
   if (peopleWarn) warnings.push(peopleWarn);
 
-  // (e) tokenized recovery link — never bare /setup-password
+  // (e) tokenized recovery link — token_hash through /auth/callback, never a bare URL
   const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
     type: 'recovery',
     email,
     options: { redirectTo },
   });
-  if (linkErr || !linkData?.properties?.action_link) {
+  const hashedToken = linkData?.properties?.hashed_token;
+  if (linkErr || !hashedToken) {
     return {
       ok: false,
-      error: `generateLink failed: ${linkErr?.message ?? 'no action_link'}`,
+      error: `generateLink failed: ${linkErr?.message ?? 'no hashed_token'}`,
       status: 500,
     };
   }
-  const actionLink = linkData.properties.action_link;
-  if (!actionLink.includes('token') && !actionLink.includes('type=recovery') && !actionLink.includes('type=magiclink')) {
-    // Soft check — Supabase action_links are hashed URLs; still require non-bare path
-    const bare = actionLink.replace(/\/$/, '') === redirectTo.replace(/\/$/, '');
-    if (bare) {
-      return { ok: false, error: 'Refusing to send bare /setup-password URL', status: 500 };
-    }
+  // GoTrue hashed tokens are hex strings; refuse anything that does not look like one
+  // so a malformed value can never ship as a "bare" callback URL.
+  if (!/^[a-f0-9]{20,}$/i.test(hashedToken)) {
+    return { ok: false, error: 'Refusing to send a malformed token_hash link', status: 500 };
   }
+  const actionLink = `${siteRoot}/auth/callback?token_hash=${encodeURIComponent(hashedToken)}&type=recovery`;
 
   // (f) Resend directly from hello@ (not send-email no-reply path)
   const { subject, html } = buildCompInviteWelcomeEmail({
