@@ -15,6 +15,9 @@ import { readingTimeMinutesFromContent } from "@/lib/blog/readingTime";
 import { fetchInstagramOembedHtml, fetchTikTokOembedHtml } from "@/lib/blog/fetchSocialOembed";
 import type { BlogPostRow } from "@/lib/blog/types";
 import type { BlogSchemaType } from "@/lib/blog/schemaTypes";
+import { getMentionedListings, postCanonical } from "@/lib/network/guides";
+import { hubPagesLive } from "@/lib/network/flags";
+import { MentionedListings } from "@/components/network/MentionedListings";
 
 const CANONICAL = "https://704collective.com";
 
@@ -65,11 +68,9 @@ function absoluteOgImage(url: string | null | undefined): string[] {
   return [url];
 }
 
-function resolveCanonical(post: BlogPostRow): string {
-  const c = post.canonical_url?.trim();
-  if (c && (c.startsWith("http://") || c.startsWith("https://"))) return c;
-  return `${CANONICAL}/blog/${post.slug}`;
-}
+// Wave H7: manual canonical_url still wins; a hub-tagged post points at its hub
+// guide path while HUB_PAGES_LIVE is on; everything else is /blog/[slug] as before.
+const resolveCanonical = (post: BlogPostRow): string => postCanonical(post);
 
 function buildKeywordMeta(post: BlogPostRow): string[] {
   const out: string[] = [];
@@ -170,7 +171,7 @@ export default async function BlogPostPage({ params }: Props) {
     },
   };
 
-  const [instagramHtml, tiktokHtml, relatedPosts] = await Promise.all([
+  const [instagramHtml, tiktokHtml, relatedPosts, mentioned] = await Promise.all([
     post.instagram_embed_url?.trim()
       ? fetchInstagramOembedHtml(post.instagram_embed_url)
       : Promise.resolve(null),
@@ -178,6 +179,9 @@ export default async function BlogPostPage({ params }: Props) {
       ? fetchTikTokOembedHtml(post.tiktok_embed_url)
       : Promise.resolve(null),
     getRelatedPublishedPosts(post.related_post_ids ?? []),
+    // Wave H7: only hub-tagged posts carry listings, and only while the hub routes the cards
+    // point at exist (HUB_PAGES_LIVE). Null-hub posts resolve to [] and render nothing extra.
+    post.hub && hubPagesLive() ? getMentionedListings(post.network_listing_ids) : Promise.resolve({ listings: [], cats: [] }),
   ]);
 
   return (
@@ -307,6 +311,8 @@ export default async function BlogPostPage({ params }: Props) {
               />
 
               <BlogSocialEmbeds instagramHtml={instagramHtml} tiktokHtml={tiktokHtml} />
+
+              <MentionedListings listings={mentioned.listings} cats={mentioned.cats} variant="dark" />
 
               {relatedPosts.length > 0 ? (
                 <section className="mt-14 pt-10 border-t border-white/10">

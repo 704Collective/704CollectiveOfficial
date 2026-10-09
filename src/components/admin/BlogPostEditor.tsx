@@ -32,6 +32,7 @@ import type { BlogPostRow } from '@/lib/blog/types';
 import type { BlogSchemaType } from '@/lib/blog/schemaTypes';
 import { BLOG_SCHEMA_OPTIONS } from '@/lib/blog/schemaTypes';
 import { readingTimeMinutesFromContent } from '@/lib/blog/readingTime';
+import { HUBS, HUB_COPY, type HubSlug } from '@/lib/network/hubs';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -85,6 +86,16 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
   );
   const [publishedPickList, setPublishedPickList] = useState<PublishedPostPick[]>([]);
   const [relatedPopoverOpen, setRelatedPopoverOpen] = useState(false);
+  // Wave H7 — hub + mentioned listings. '' / [] here ⇒ null in the row (legacy shape).
+  const [hub, setHub] = useState<string>(initialPost?.hub ?? '');
+  const [listingIds, setListingIds] = useState<string[]>(Array.isArray(initialPost?.network_listing_ids) ? initialPost!.network_listing_ids! : []);
+  const [listingPickList, setListingPickList] = useState<{ id: string; company_name: string; hub: string }[]>([]);
+  const [listingPopoverOpen, setListingPopoverOpen] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    supabase.from('network_listings').select('id, company_name, hub').eq('status', 'live').order('company_name').then(({ data }) => { if (!cancelled) setListingPickList((data ?? []) as never); });
+    return () => { cancelled = true; };
+  }, []);
 
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -178,9 +189,14 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
         meta_title: metaTitle.trim() || null,
         meta_description: metaDescription.trim() || null,
         published_at: publishedAt,
+        // Wave H7 — both null unless set, so untagged posts keep the legacy row shape.
+        hub: hub || null,
+        network_listing_ids: listingIds.length ? listingIds : null,
       };
     },
     [
+      hub,
+      listingIds,
       slugPart,
       tagsInput,
       title,
@@ -225,12 +241,9 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
       const payload = buildPayload(nextStatus);
 
       if (mode === 'new') {
-        const { error } = await supabase.from('blog_posts').insert(
-          {
-            ...payload,
-            created_by: user.id,
-          } as never
-        );
+        // blog_posts has no created_by column (develop and prod alike); sending it made every
+        // "new post" insert fail with "Could not find the 'created_by' column". Fixed in Wave H7.
+        const { error } = await supabase.from('blog_posts').insert(payload as never);
         if (error) {
           if (error.code === '23505') toast.error('That slug is already in use. Change the slug.');
           else toast.error(error.message);
@@ -617,6 +630,63 @@ export function BlogPostEditor({ mode, initialPost }: BlogPostEditorProps) {
                           )}
                         />
                         <span className="truncate">{p.title}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+
+      {/* Wave H7 — Network hub + mentioned listings. "None" leaves legacy behavior untouched. */}
+      <div className="space-y-4 rounded-lg border border-border p-4" data-testid="editor-network">
+        <div>
+          <h3 className="text-sm font-semibold">The Network</h3>
+          <p className="text-xs text-muted-foreground">Tag a hub to also publish this post as a guide at /[hub]/guides/[slug] (when hub pages are live) and feature it in that hub&apos;s &ldquo;From the hub&rdquo;. Link the live listings it mentions.</p>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="network-hub">Hub</Label>
+          <select
+            id="network-hub"
+            value={hub}
+            onChange={(e) => setHub(e.target.value)}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            data-testid="network-hub"
+          >
+            <option value="">None (plain blog post)</option>
+            {HUBS.map((h) => <option key={h} value={h}>{HUB_COPY[h].name}</option>)}
+          </select>
+        </div>
+        <div className="space-y-2">
+          <Label>Mentioned listings</Label>
+          <div className="flex flex-wrap gap-2" data-testid="network-listing-chips">
+            {listingIds.map((id) => {
+              const l = listingPickList.find((x) => x.id === id);
+              return (
+                <span key={id} className="inline-flex items-center gap-1 rounded-full border border-[#C6A664]/40 bg-[#C6A664]/10 px-3 py-1 text-sm">
+                  <span className="max-w-[220px] truncate">{l ? `${l.company_name} · ${HUB_COPY[l.hub as HubSlug]?.name ?? l.hub}` : id}</span>
+                  <button type="button" className="rounded-full p-0.5 hover:bg-black/10" aria-label="Remove listing" onClick={() => setListingIds((prev) => prev.filter((x) => x !== id))}><X className="w-3.5 h-3.5" /></button>
+                </span>
+              );
+            })}
+          </div>
+          <Popover open={listingPopoverOpen} onOpenChange={setListingPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button type="button" variant="outline" className="w-full sm:w-auto border-[#C6A664]/50" data-testid="network-listing-search">Search live listings…</Button>
+            </PopoverTrigger>
+            <PopoverContent className="p-0 w-[min(100vw-2rem,380px)]" align="start">
+              <Command>
+                <CommandInput placeholder="Search by business…" data-testid="network-listing-input" />
+                <CommandList>
+                  <CommandEmpty>No live listings found.</CommandEmpty>
+                  <CommandGroup>
+                    {listingPickList.map((l) => (
+                      <CommandItem key={l.id} value={`${l.company_name} ${l.hub} ${l.id}`} onSelect={() => setListingIds((prev) => (prev.includes(l.id) ? prev.filter((x) => x !== l.id) : [...prev, l.id]))} data-testid="network-listing-option">
+                        <Check className={cn('mr-2 h-4 w-4', listingIds.includes(l.id) ? 'opacity-100' : 'opacity-0')} />
+                        <span className="truncate">{l.company_name}</span>
+                        <span className="ml-auto text-xs text-muted-foreground">{HUB_COPY[l.hub as HubSlug]?.name ?? l.hub}</span>
                       </CommandItem>
                     ))}
                   </CommandGroup>

@@ -212,3 +212,14 @@
 .nw-note { border-left: 3px solid var(--nw-ink); background: var(--nw-band); padding: 14px 16px; border-radius: 0 10px 10px 0; font-size: 14px; }
 .nw-two { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 40px; align-items: start; }
 @media (max-width: 860px) { .nw-two { grid-template-columns: 1fr; } }
+
+/* Wave H7 - guide article body under hub chrome (light theme). */
+.nw-article { font-size: 17px; line-height: 1.7; color: var(--nw-ink); }
+.nw-article p { margin: 0 0 18px; }
+.nw-article a { color: var(--nw-accent); text-decoration: underline; text-underline-offset: 2px; }
+.nw-article h2 { font-family: var(--nw-serif), Georgia, serif; font-weight: 500; font-size: clamp(24px, 3vw, 32px); line-height: 1.15; margin: 36px 0 12px; scroll-margin-top: 96px; }
+.nw-article h3 { font-family: var(--nw-serif), Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; margin: 28px 0 10px; scroll-margin-top: 96px; }
+.nw-article ul, .nw-article ol { margin: 0 0 18px; padding-left: 26px; }
+.nw-article li { margin-bottom: 6px; }
+.nw-article img { max-width: 100%; height: auto; border-radius: 12px; }
+.nw-article blockquote { border-left: 3px solid var(--nw-accent); margin: 24px 0; padding: 4px 0 4px 18px; font-style: italic; color: var(--nw-muted); }

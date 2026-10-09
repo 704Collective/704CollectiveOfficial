@@ -27,7 +27,7 @@ export type NetworkListing = {
   review_score: number | null;
   created_at: string;
 };
-export type HubBlogPost = { slug: string; title: string; excerpt: string | null; cover_image_url: string | null; published_at: string | null; reading_time_minutes: number | null };
+export type HubBlogPost = { slug: string; hub: string | null; title: string; excerpt: string | null; cover_image_url: string | null; published_at: string | null; reading_time_minutes: number | null };
 export type HubEvent = { id: string; title: string; start_time: string; location_name: string | null; image_url: string | null };
 
 function anon() {
@@ -56,9 +56,9 @@ export async function getLiveListingSlugs(hubs: readonly HubSlug[]): Promise<{ h
   return (data ?? []) as { hub: HubSlug; slug: string; updated_at: string | null }[];
 }
 
-/** Latest 3 published posts tagged with the hub slug; [] hides the section. */
+/** Latest 3 published posts on this hub (Wave H7: by the `hub` column, not tags); [] hides the section. */
 export async function getHubPosts(hub: HubSlug): Promise<HubBlogPost[]> {
-  const { data, error } = await anon().from('blog_posts').select('slug, title, excerpt, cover_image_url, published_at, reading_time_minutes').eq('status', 'published').not('published_at', 'is', null).contains('tags', [hub]).order('published_at', { ascending: false }).limit(3);
+  const { data, error } = await anon().from('blog_posts').select('slug, hub, title, excerpt, cover_image_url, published_at, reading_time_minutes').eq('status', 'published').not('published_at', 'is', null).eq('hub', hub).order('published_at', { ascending: false }).limit(3);
   if (error) return [];
   return (data ?? []) as HubBlogPost[];
 }

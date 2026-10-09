@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import { DISCLOSURE_LINE, LISTING_PRICE_LINE, type HubCopy, type SignatureSection } from '@/lib/network/hubs';
 import type { HubBlogPost, HubEvent, NetworkCategory, NetworkListing } from '@/lib/network/queries';
+import { postPath } from '@/lib/network/guides';
 
 /* ── hero ─────────────────────────────────────────────────────────────────── */
 export function HubHero({ copy }: { copy: HubCopy }) {
@@ -234,7 +235,7 @@ export function FromTheHub({ posts, hubName }: { posts: HubBlogPost[]; hubName: 
         <h2 className="nw-serif nw-h2">Latest from {hubName}</h2>
         <div className="nw-posts" style={{ marginTop: 24 }}>
           {posts.map((p) => (
-            <Link key={p.slug} href={`/blog/${p.slug}`} className="nw-post">
+            <Link key={p.slug} href={postPath(p)} className="nw-post">
               {p.cover_image_url ? <img src={p.cover_image_url} alt="" /> : null}
               <div className="nw-post-body">
                 <h3 className="nw-serif nw-post-title">{p.title}</h3>

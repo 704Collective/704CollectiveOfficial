@@ -27,4 +27,8 @@ export interface BlogPostRow {
   created_at: string;
   updated_at: string;
   created_by: string | null;
+  /** Wave H7. Network hub slug or null (= legacy plain post). */
+  hub?: string | null;
+  /** Wave H7. network_listings.id values mentioned in the post. */
+  network_listing_ids?: string[] | null;
 }
