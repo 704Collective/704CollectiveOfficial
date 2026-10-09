@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { networkServiceClient, sendNetworkEmail } from '@/lib/network/server';
 import { HUB_COPY, isHub } from '@/lib/network/hubs';
+import { rangeSince, type LeadsRange } from '@/lib/network/portal';
+import { rollUp, LISTING_STATUSES, MAX_SCORE, PASS_SCORE, type AdminHubFilter, type AdminListing, type Attribution, type AttrLead, type AttrListing, type ListingStatus, type VettingAlerts } from '@/lib/network/admin';
 
 type Gate = { ok: true; admin: ReturnType<typeof networkServiceClient>; userId: string } | { ok: false; error: string };
 
@@ -165,6 +167,128 @@ export async function resendListingInvite(listingId: string): Promise<{ ok: true
     'The link is single-use. From your listing account you can edit your listing, see your intros and manage billing.',
   ].join('\n'), owner.first);
   return { ok: true, email: owner.email, email_status };
+}
+
+// ── Wave H6: attribution roll-up, listings management, vetting alerts ────────
+
+const sinceFor = (range: LeadsRange): Date => rangeSince(range);
+
+export async function getAttribution(range: LeadsRange = '90', hub: AdminHubFilter = 'all'): Promise<{ ok: true; data: Attribution } | { ok: false; error: string }> {
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate;
+  const since = sinceFor(range);
+  let lq = gate.admin.from('network_listings').select('id, company_name, slug, hub, kind, status, owner_profile_id').neq('status', 'removed').order('company_name');
+  if (hub !== 'all') lq = lq.eq('hub', hub);
+  const { data: listings, error } = await lq;
+  if (error) return { ok: false, error: error.message };
+  const L = (listings ?? []) as AttrListing[];
+  const ids = L.map((l) => l.id);
+  const empty = rollUp([], L, {});
+  if (ids.length === 0) return { ok: true, data: { range, hub, since: since.toISOString(), ...empty } };
+  const [{ data: leads }, { data: clicks }] = await Promise.all([
+    gate.admin.from('network_leads').select('id, listing_id, status, source, utm_source, utm_medium, landing_path, created_at, first_replied_at, nudge_sent_at').in('listing_id', ids).gte('created_at', since.toISOString()),
+    gate.admin.from('network_click_events').select('listing_id').in('listing_id', ids).gte('created_at', since.toISOString()),
+  ]);
+  const clicksByListing: Record<string, number> = {};
+  for (const c of clicks ?? []) clicksByListing[c.listing_id] = (clicksByListing[c.listing_id] ?? 0) + 1;
+  return { ok: true, data: { range, hub, since: since.toISOString(), ...rollUp((leads ?? []) as AttrLead[], L, clicksByListing) } };
+}
+
+const ADMIN_LISTING_SELECT = 'id, kind, hub, slug, status, company_name, billing_status, verified_at, next_review_at, review_score, hard_fail, category_id, pending_content, pending_submitted_at, updated_at, created_at, hook, description, neighborhood, website_url, instagram_url, phone, logo_url, photo_urls, category:network_categories(id, label, slug), owner:profiles!network_listings_owner_profile_id_fkey(email, full_name, member_type)';
+const normalizeListing = (r: Record<string, unknown>): AdminListing => ({ ...(r as unknown as AdminListing), category: Array.isArray(r.category) ? (r.category[0] as AdminListing['category']) ?? null : (r.category as AdminListing['category']), owner: Array.isArray(r.owner) ? (r.owner[0] as AdminListing['owner']) ?? null : (r.owner as AdminListing['owner']) });
+
+export async function getAdminListings(): Promise<{ ok: true; listings: AdminListing[]; categories: { id: string; hub: string; label: string; slug: string }[] } | { ok: false; error: string }> {
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate;
+  const [{ data, error }, { data: cats }] = await Promise.all([
+    gate.admin.from('network_listings').select(ADMIN_LISTING_SELECT).order('pending_submitted_at', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false }),
+    gate.admin.from('network_categories').select('id, hub, label, slug').eq('is_active', true).order('hub').order('label'),
+  ]);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, listings: ((data ?? []) as unknown as Record<string, unknown>[]).map(normalizeListing), categories: (cats ?? []) as never };
+}
+
+/** Another non-removed seat already holding this category (the one-seat index). */
+async function seatHolder(admin: ReturnType<typeof networkServiceClient>, categoryId: string, exceptListingId: string) {
+  const { data } = await admin.from('network_listings').select('id, company_name, status').eq('category_id', categoryId).eq('kind', 'seat').neq('status', 'removed').neq('id', exceptListingId).limit(1).maybeSingle();
+  return data ?? null;
+}
+
+/** Set status. Reviving a removed seat into a category another seat now holds is refused with the holder named. */
+export async function setListingStatus(listingId: string, status: ListingStatus): Promise<{ ok: true; listing: AdminListing } | { ok: false; error: string; conflict?: { holder: string; holderStatus: string } }> {
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate;
+  if (!LISTING_STATUSES.includes(status)) return { ok: false, error: 'Invalid status' };
+  const { data: l } = await gate.admin.from('network_listings').select('id, kind, status, category_id, hub, slug').eq('id', listingId).maybeSingle();
+  if (!l) return { ok: false, error: 'Not found' };
+  if (l.kind === 'seat' && l.status === 'removed' && status !== 'removed') {
+    const holder = await seatHolder(gate.admin, l.category_id, l.id);
+    if (holder) return { ok: false, error: `Seat conflict: ${holder.company_name} now holds this category (${holder.status}). Remove or reassign that seat first, or make this listing a spotlight.`, conflict: { holder: holder.company_name, holderStatus: holder.status } };
+  }
+  const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
+  const { data, error } = await gate.admin.from('network_listings').update(patch).eq('id', listingId).select(ADMIN_LISTING_SELECT).single();
+  if (error || !data) return { ok: false, error: error?.message ?? 'Update failed' };
+  try { revalidatePath(`/${l.hub}`); revalidatePath(`/${l.hub}/${l.slug}`); } catch { /* outside request scope */ }
+  return { ok: true, listing: normalizeListing(data as unknown as Record<string, unknown>) };
+}
+
+/** Re-verified: verified_at=now, next_review_at=+3 months, optional review_score 0–50 (40 passes). */
+export async function markListingReverified(listingId: string, reviewScore?: number | null): Promise<{ ok: true; listing: AdminListing; passes: boolean | null } | { ok: false; error: string }> {
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate;
+  let score: number | null = null;
+  if (reviewScore !== undefined && reviewScore !== null && reviewScore !== ('' as unknown)) {
+    score = Number(reviewScore);
+    if (!Number.isInteger(score) || score < 0 || score > MAX_SCORE) return { ok: false, error: `Score must be a whole number 0–${MAX_SCORE}.` };
+  }
+  const now = new Date();
+  const next = new Date(now); next.setUTCMonth(next.getUTCMonth() + 3);
+  const patch: Record<string, unknown> = { verified_at: now.toISOString(), next_review_at: next.toISOString(), updated_at: now.toISOString() };
+  if (score !== null) { patch.review_score = score; patch.hard_fail = false; }
+  const { data, error } = await gate.admin.from('network_listings').update(patch).eq('id', listingId).select(ADMIN_LISTING_SELECT).single();
+  if (error || !data) return { ok: false, error: error?.message ?? 'Update failed' };
+  const listing = normalizeListing(data as unknown as Record<string, unknown>);
+  try { revalidatePath(`/${listing.hub}/${listing.slug}`); } catch { /* outside request scope */ }
+  return { ok: true, listing, passes: score === null ? null : score >= PASS_SCORE };
+}
+
+/** Move a listing to another hub and/or category. Category must belong to the hub; seats are checked against the one-seat index. */
+export async function updateListingAssignment(listingId: string, input: { hub: string; category_id: string }): Promise<{ ok: true; listing: AdminListing } | { ok: false; error: string; conflict?: { holder: string; holderStatus: string } }> {
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate;
+  if (!isHub(input.hub)) return { ok: false, error: 'Unknown hub' };
+  const [{ data: l }, { data: cat }] = await Promise.all([
+    gate.admin.from('network_listings').select('id, kind, status, hub, slug, category_id').eq('id', listingId).maybeSingle(),
+    gate.admin.from('network_categories').select('id, hub, label').eq('id', input.category_id).maybeSingle(),
+  ]);
+  if (!l) return { ok: false, error: 'Not found' };
+  if (!cat) return { ok: false, error: 'Category not found' };
+  if (cat.hub !== input.hub) return { ok: false, error: `"${cat.label}" belongs to ${hubName(cat.hub)}, not ${hubName(input.hub)}.` };
+  if (l.kind === 'seat' && l.status !== 'removed' && cat.id !== l.category_id) {
+    const holder = await seatHolder(gate.admin, cat.id, l.id);
+    if (holder) return { ok: false, error: `Seat conflict: ${holder.company_name} already holds "${cat.label}" on ${hubName(cat.hub)} (${holder.status}).`, conflict: { holder: holder.company_name, holderStatus: holder.status } };
+  }
+  const { data, error } = await gate.admin.from('network_listings').update({ hub: input.hub, category_id: cat.id, updated_at: new Date().toISOString() }).eq('id', listingId).select(ADMIN_LISTING_SELECT).single();
+  if (error || !data) return { ok: false, error: error?.message ?? 'Update failed' };
+  try { revalidatePath(`/${l.hub}`); revalidatePath(`/${input.hub}`); revalidatePath(`/${l.hub}/${l.slug}`); revalidatePath(`/${input.hub}/${l.slug}`); } catch { /* outside request scope */ }
+  return { ok: true, listing: normalizeListing(data as unknown as Record<string, unknown>) };
+}
+
+/** Vetting alerts: overdue re-reviews (next_review_at < now, not removed) + reply-pledge laggards (open flags, all time). */
+export async function getVettingAlerts(): Promise<{ ok: true; data: VettingAlerts } | { ok: false; error: string }> {
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate;
+  const now = new Date();
+  const [{ data: overdueRows }, { data: listings }] = await Promise.all([
+    gate.admin.from('network_listings').select(ADMIN_LISTING_SELECT).neq('status', 'removed').lt('next_review_at', now.toISOString()).order('next_review_at'),
+    gate.admin.from('network_listings').select('id, company_name, slug, hub, kind, status, owner_profile_id').neq('status', 'removed'),
+  ]);
+  const L = (listings ?? []) as AttrListing[];
+  const ids = L.map((l) => l.id);
+  const { data: openLeads } = ids.length ? await gate.admin.from('network_leads').select('id, listing_id, status, source, utm_source, utm_medium, landing_path, created_at, first_replied_at, nudge_sent_at').in('listing_id', ids).is('first_replied_at', null) : { data: [] };
+  const roll = rollUp((openLeads ?? []) as AttrLead[], L, {}, now);
+  const overdue = ((overdueRows ?? []) as unknown as Record<string, unknown>[]).map(normalizeListing).map((listing) => ({ listing, daysOverdue: Math.floor((now.getTime() - new Date(listing.next_review_at!).getTime()) / 86_400_000) }));
+  return { ok: true, data: { overdue, laggards: roll.flags, counts: { overdue: overdue.length, laggards: roll.flags.length, total: overdue.length + roll.flags.length } } };
 }
 
 /** Reopen a declined/waitlisted application for review (no email). */

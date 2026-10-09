@@ -12,9 +12,20 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { approveAndSendPaymentLink, declineApplication, reopenApplication, waitlistApplication } from '@/app/actions/networkAdminActions';
+import { approveAndSendPaymentLink, declineApplication, getVettingAlerts, reopenApplication, waitlistApplication } from '@/app/actions/networkAdminActions';
 import { HUB_COPY, isHub } from '@/lib/network/hubs';
 import { NetworkListingsPanel } from '@/components/admin/NetworkListingsPanel';
+import { NetworkAttributionPanel } from '@/components/admin/NetworkAttributionPanel';
+import { NetworkVettingPanel } from '@/components/admin/NetworkVettingPanel';
+import type { VettingAlerts } from '@/lib/network/admin';
+
+type Section = 'applications' | 'listings' | 'attribution' | 'vetting';
+const SECTION_META: Record<Section, { label: string; title: string; blurb: string }> = {
+  applications: { label: 'Applications', title: 'Network applications', blurb: 'Get Listed applications. Run the 704 Review, flag category conflicts, then approve, waitlist or decline.' },
+  listings: { label: 'Listings', title: 'Network listings', blurb: 'Every listing: status, 704 Review, hub and category. Review owner-submitted edits side by side; re-send invites.' },
+  attribution: { label: 'Attribution', title: 'Attribution', blurb: 'What The Network delivered: leads, wins, clicks and who is answering inside the 2-business-day pledge.' },
+  vetting: { label: 'Vetting', title: 'Vetting alerts', blurb: 'Listings past their quarterly re-review and businesses sitting on unanswered intros.' },
+};
 
 type AppStatus = 'pending' | 'reviewing' | 'waitlisted' | 'approved' | 'declined';
 type ApplicationRow = {
@@ -26,12 +37,14 @@ type ApplicationRow = {
 };
 type Conflict = { seats: { company_name: string; slug: string }[]; spotlights: { company_name: string; slug: string }[]; matchedCategories: string[] };
 
+// Wave H6: labels trued to the published 704 Review pillars. The jsonb keys in
+// review_checklist are unchanged so existing applications keep their ticks.
 const PILLARS: { key: string; label: string; hint: string }[] = [
-  { key: 'legitimacy', label: 'Legitimacy', hint: 'Licensed/insured where it matters, real place, real person' },
+  { key: 'legitimacy', label: 'Legitimacy and standing', hint: 'Licensed/insured where it matters, real place, real person, years in business' },
   { key: 'reputation', label: 'Reputation', hint: 'Reviews read in full, patterns weighed, complaints traced' },
-  { key: 'member_signal', label: 'Member signal', hint: 'Two 704 members who paid them, contacted' },
-  { key: 'transparency', label: 'Transparency', hint: 'Pricing findable, terms readable, no bait' },
-  { key: 'responsiveness', label: 'Responsiveness', hint: 'Replies to an intro inside 48h (tested)' },
+  { key: 'transparency', label: 'Digital trust', hint: 'Website, profiles and pricing are findable, current and consistent' },
+  { key: 'member_signal', label: 'Community proof', hint: 'Two 704 members who paid them, contacted' },
+  { key: 'responsiveness', label: 'Service standards', hint: 'Replies to an intro inside 2 business days (tested)' },
 ];
 
 const STATUS_STYLE: Record<AppStatus, string> = {
@@ -54,7 +67,11 @@ export default function AdminNetworkPage() {
   const { isAdmin, isSuperAdmin, loading: authLoading } = useAuth();
   const [rows, setRows] = useState<ApplicationRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [section, setSection] = useState<'applications' | 'listings'>('applications');
+  const [section, setSection] = useState<Section>('applications');
+  const [vetting, setVetting] = useState<VettingAlerts | null>(null);
+  const [focusListing, setFocusListing] = useState<string | null>(null);
+  // Vetting counts feed the tab badge, so they load with the page and refresh when the tab is opened.
+  useEffect(() => { if (!authLoading && (isAdmin || isSuperAdmin)) getVettingAlerts().then((r) => { if (r.ok) setVetting(r.data); }); }, [authLoading, isAdmin, isSuperAdmin, section]);
   const [filter, setFilter] = useState<'open' | 'waitlisted' | 'approved' | 'declined'>('open');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [conflict, setConflict] = useState<Conflict | null>(null);
@@ -131,20 +148,27 @@ export default function AdminNetworkPage() {
       <div className="p-4 sm:p-6 space-y-5" data-testid="admin-network">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-2xl font-semibold flex items-center gap-2"><Store className="w-6 h-6" /> {section === 'applications' ? 'Network applications' : 'Network listings'}</h1>
-            <p className="text-sm text-muted-foreground">{section === 'applications' ? 'Get Listed applications. Run the 704 Review, flag category conflicts, then approve, waitlist or decline.' : 'Live and draft listings. Review owner-submitted edits side by side, apply or discard, re-send invites.'}</p>
+            <h1 className="text-2xl font-semibold flex items-center gap-2"><Store className="w-6 h-6" /> {SECTION_META[section].title}</h1>
+            <p className="text-sm text-muted-foreground">{SECTION_META[section].blurb}</p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="inline-flex rounded-lg border border-border p-0.5" role="tablist" aria-label="Section">
-              {([['applications', 'Applications'], ['listings', 'Listings']] as const).map(([k, label]) => (
-                <button key={k} type="button" role="tab" aria-selected={section === k} onClick={() => setSection(k)} className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${section === k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`} data-testid={`section-${k}`}>{label}</button>
-              ))}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="inline-flex flex-wrap rounded-lg border border-border p-0.5" role="tablist" aria-label="Section">
+              {(Object.keys(SECTION_META) as Section[]).map((k) => {
+                const badge = k === 'vetting' ? vetting?.counts.total ?? null : k === 'applications' ? rows.filter((r) => r.status === 'pending' || r.status === 'reviewing').length || null : null;
+                return (
+                  <button key={k} type="button" role="tab" aria-selected={section === k} onClick={() => setSection(k)} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${section === k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`} data-testid={`section-${k}`}>
+                    {SECTION_META[k].label}{badge ? <span className={`rounded-full px-1.5 text-[10px] tabular-nums ${section === k ? 'bg-black/20' : k === 'vetting' ? 'bg-amber-500/25 text-amber-300' : 'bg-muted'}`} data-testid={`badge-${k}`}>{badge}</span> : null}
+                  </button>
+                );
+              })}
             </div>
             {section === 'applications' && <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}><RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />Refresh</Button>}
           </div>
         </div>
 
-        {section === 'listings' && <NetworkListingsPanel />}
+        {section === 'listings' && <NetworkListingsPanel focusListingId={focusListing} onFocused={() => setFocusListing(null)} />}
+        {section === 'attribution' && <NetworkAttributionPanel />}
+        {section === 'vetting' && <NetworkVettingPanel data={vetting} onOpenListing={(id) => { setFocusListing(id); setSection('listings'); }} />}
 
         {section === 'applications' && <>
         <div className="flex gap-2 flex-wrap" role="tablist" aria-label="Filter">
