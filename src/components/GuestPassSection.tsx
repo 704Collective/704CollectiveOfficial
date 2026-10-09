@@ -79,6 +79,13 @@ export function GuestPassSection({ userId }: GuestPassSectionProps) {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
+      // Kind refusal (200 + success:false), e.g. MEMBERSHIP_ENDS_BEFORE_EVENT: the
+      // inviter's membership ends before the event. Informational, not an error.
+      if (!error && data && data.success === false) {
+        toast.info(data.error || 'That guest pass did not go through.');
+        return;
+      }
+
       if (error || data?.error) {
         // Non-2xx responses land in error.context (a Response); surface the server message.
         let serverMessage: string | undefined = data?.error;

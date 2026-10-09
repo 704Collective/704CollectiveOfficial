@@ -279,6 +279,29 @@ export default function EventDetail() {
   const ctaNotOpen = rsvpNotOpen && !isSuperAdmin;
   const rsvpOpensLabel = rsvpOpensAt ? format(rsvpOpensAt, "EEEE, MMM d 'at' h:mm a") : '';
 
+  // Paid-window gate for pending-cancel members: a member who cancelled at
+  // period end keeps access until subscription_ends_at but cannot take a seat
+  // at an event that starts after that date. Members with
+  // cancel_at_period_end=false are completely unaffected. Mirrors the server
+  // guard (MEMBERSHIP_ENDS_BEFORE_EVENT) in create-member-rsvp / claim-waitlist-seat.
+  const membershipEndsAt = (profile as { cancel_at_period_end?: boolean | null; subscription_ends_at?: string | null } | null)?.cancel_at_period_end === true
+    ? ((profile as { subscription_ends_at?: string | null }).subscription_ends_at ?? null)
+    : null;
+  const membershipEndsBeforeEvent =
+    !!membershipEndsAt && !!event?.start_time && !isSuperAdmin &&
+    new Date(event.start_time).getTime() > new Date(membershipEndsAt).getTime();
+  const membershipEndsLabel = membershipEndsAt ? format(new Date(membershipEndsAt), 'MMMM d') : '';
+  const membershipEndsCopy = `Your membership ends ${membershipEndsLabel}, before this event`;
+  /** Kind refusal from the RSVP functions (200 + success:false). Returns true when handled. */
+  const handleKindRefusal = (data: unknown): boolean => {
+    const d = data as { success?: boolean; code?: string; error?: string } | null;
+    if (d && d.success === false) {
+      toast.info(d.error || (d.code === 'MEMBERSHIP_ENDS_BEFORE_EVENT' ? membershipEndsCopy : 'That did not go through.'));
+      return true;
+    }
+    return false;
+  };
+
   const handleMemberRegister = async () => { if (!event) return; const s = await registerMemberTicket(event); if (s) { fetchTicketCount(); fetchTicketId(); } };
   const handleCancelRSVP = async () => {
     if (!event) return;
@@ -352,6 +375,8 @@ export default function EventDetail() {
         return;
       }
 
+      if (handleKindRefusal(data)) { setIsRegistering(false); return; }
+
       if (data?.already_rsvped) {
         toast.error('You already have an RSVP for this event.');
       } else {
@@ -413,6 +438,7 @@ export default function EventDetail() {
         setIsRegistering(false);
         return;
       }
+      if (handleKindRefusal(data)) { setIsRegistering(false); return; }
 
       // Success: seat claimed, waitlist row removed server-side.
       setWaitlistPosition(null);
@@ -919,6 +945,17 @@ export default function EventDetail() {
         </div>
       );
 
+      // Pending-cancel member whose paid window ends before this event: a
+      // non-actionable state (the server refuses kindly too).
+      if (membershipEndsBeforeEvent) return (
+        <div style={{ borderRadius: '12px', backgroundColor: 'rgba(255,255,255,0.04)', padding: '20px', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }} data-testid="membership-ends-before-event">
+          <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#C6A664', backgroundColor: 'rgba(198,166,100,0.08)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Membership ending</span>
+          <p style={{ fontSize: '0.9375rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, margin: '0 0 14px' }}>{membershipEndsCopy}.</p>
+          <button disabled aria-disabled="true" style={{ ...primaryBtn, opacity: 0.4, cursor: 'not-allowed' }}>RSVP</button>
+          <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)', marginTop: '12px' }}>Reactivate from <Link href="/dashboard/settings" style={{ color: '#C6A664', textDecoration: 'underline', textUnderlineOffset: '3px' }}>settings</Link> to keep going.</p>
+        </div>
+      );
+
       if (ctaAtCapacity) return (
         <div style={{ textAlign: 'center' }}>
           <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: '#E57373', backgroundColor: 'rgba(229,115,115,0.06)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>Event Full</span>
@@ -1000,6 +1037,7 @@ export default function EventDetail() {
       return ctaAtCapacity ? 'Join Waitlist' : 'RSVP';
     }
     if (!user) return event.is_members_only ? 'Sign In to RSVP' : 'Purchase Ticket';
+    if (isActiveMember && membershipEndsBeforeEvent) return membershipEndsCopy;
     if (isActiveMember) return ctaAtCapacity ? 'Join Waitlist' : 'RSVP';
     return 'Purchase Ticket';
   };
@@ -1007,6 +1045,7 @@ export default function EventDetail() {
     // Locked: the bar renders a non-actionable state, but guard the handler too so
     // a stray tap can never reach a door.
     if (ctaNotOpen) return;
+    if (isActiveMember && membershipEndsBeforeEvent) return;
     if (useIntakeForm) { router.push(intakeHref); return; }
     if (event.access_type === 'public_free') {
       if (!user) {
@@ -1155,6 +1194,12 @@ export default function EventDetail() {
                    get a non-actionable state instead of a working RSVP button. */
                 <div style={{ flex: 1, padding: '14px 24px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, backgroundColor: 'rgba(198,166,100,0.08)', color: '#C6A664', border: '1px solid rgba(198,166,100,0.25)', textAlign: 'center', cursor: 'default' }}>
                   {isBusinessOnly ? 'Business Members Only' : 'Members Only'}
+                </div>
+              ) : isActiveMember && membershipEndsBeforeEvent ? (
+                /* Pending-cancel member, event after their paid window: same
+                   non-actionable state as the desktop card. */
+                <div style={{ flex: 1, padding: '14px 24px', borderRadius: '10px', fontSize: '0.8125rem', fontWeight: 600, backgroundColor: 'rgba(198,166,100,0.08)', color: '#C6A664', border: '1px solid rgba(198,166,100,0.25)', textAlign: 'center', cursor: 'default' }} data-testid="membership-ends-before-event-mobile">
+                  {membershipEndsCopy}
                 </div>
               ) : (
                 <>

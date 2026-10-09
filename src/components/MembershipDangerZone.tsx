@@ -16,8 +16,10 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import * as Sentry from '@sentry/nextjs';
+import { format } from 'date-fns';
 
 interface MembershipDangerZoneProps {
   userId: string;
@@ -28,8 +30,17 @@ interface MembershipDangerZoneProps {
   membershipOverride?: boolean;
 }
 
-type SurveyStep = 'confirm' | 'survey';
+type SurveyStep = 'confirm' | 'survey' | 'done';
 type WouldRejoin = 'yes' | 'no' | 'maybe' | null;
+
+/** cancel-subscription's structured result (every success path carries immediate + ends_at). */
+type CancelResult = {
+  success?: boolean;
+  error?: string;
+  immediate?: boolean;
+  ends_at?: string | null;
+  removed_rsvps?: Array<{ event_id: string; title: string | null; start_time: string | null }>;
+};
 
 const CANCEL_REASONS = [
   'Too expensive',
@@ -44,12 +55,15 @@ const CANCEL_FAILED_MESSAGE =
 
 export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscription, hasStripeCustomer, membershipOverride = false }: MembershipDangerZoneProps) {
   const router = useRouter();
+  const { refreshProfile } = useAuth();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [step, setStep] = useState<SurveyStep>('confirm');
   const [cancelConfirmation, setCancelConfirmation] = useState('');
   const [loading, setLoading] = useState(false);
   const [cancelFailed, setCancelFailed] = useState(false);
   const [lastWithSurvey, setLastWithSurvey] = useState(false);
+  // Period-end success state (shown in-dialog; the member stays on settings).
+  const [doneResult, setDoneResult] = useState<CancelResult | null>(null);
 
   // Survey state
   const [surveyReason, setSurveyReason] = useState<string | null>(null);
@@ -62,6 +76,7 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
     setSurveyReason(null);
     setSurveyFeedback('');
     setSurveyWouldRejoin(null);
+    setDoneResult(null);
   };
 
   const openDialog = () => {
@@ -71,8 +86,10 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
   };
 
   const closeDialog = () => {
+    const wasDone = step === 'done';
     setCancelDialogOpen(false);
     resetDialog();
+    if (wasDone) void refreshProfile();
   };
 
   /** Persist survey after a confirmed cancel (best-effort, non-blocking). */
@@ -101,11 +118,24 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
       // All cancels go through the edge function (Stripe or profile-only).
       const { data, error } = await supabase.functions.invoke('cancel-subscription');
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      const result = (data ?? {}) as CancelResult;
+      if (result.error) throw new Error(result.error);
 
       // Survey only after confirmed success — never evidence of a failed cancel.
       void saveSurvey(withSurvey);
-      router.push('/membership-ended');
+
+      if (result.immediate !== false) {
+        // Access ended now (no Stripe customer / nothing live in Stripe): the
+        // membership-ended page is the truth for these members.
+        router.push('/membership-ended');
+        return;
+      }
+      // Period-end cancel: access continues until ends_at. Stay here and say so.
+      // The profile refresh (which makes the parent hide this Danger Zone and
+      // flips status to "Ends <date>") runs when the member closes the dialog,
+      // so the success state is readable first.
+      setDoneResult(result);
+      setStep('done');
     } catch (err: unknown) {
       Sentry.captureException(err, {
         tags: { feature: 'membership-cancel' },
@@ -129,8 +159,14 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
   const handleSkipSurvey = () => executeCancellation(false);
   const handleRetryCancel = () => executeCancellation(lastWithSurvey);
 
-  // Show for active Stripe subscribers OR admin-override members
-  if (!isActiveMember || (!hasStripeSubscription && !membershipOverride)) return null;
+  // Show for active Stripe subscribers OR admin-override members. Once a
+  // period-end cancel has succeeded the parent hides this component on the next
+  // profile refresh; keep rendering while the success dialog is open so the
+  // member can read it.
+  if ((!isActiveMember || (!hasStripeSubscription && !membershipOverride)) && !(cancelDialogOpen && step === 'done')) return null;
+
+  const endsLabel = doneResult?.ends_at ? format(new Date(doneResult.ends_at), 'MMMM d, yyyy') : null;
+  const removed = (doneResult?.removed_rsvps ?? []).filter((r) => r && r.title);
 
   return (
     <div className="space-y-4">
@@ -175,20 +211,28 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
               <DialogHeader>
                 <DialogTitle className="text-destructive">Cancel Membership</DialogTitle>
                 <DialogDescription>
-                  This action cannot be undone. You will lose access to all member benefits
-                  including free event tickets and exclusive experiences.
+                  {membershipOverride && !hasStripeSubscription
+                    ? 'Your membership ends as soon as you confirm. You will not be charged anything further.'
+                    : "Your membership stays active until the end of the period you've already paid for. You will not be charged again."}
                 </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4 py-4">
-                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm">
-                  <p className="font-medium text-destructive mb-2">You will lose:</p>
+                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm" data-testid="cancel-what-ends">
+                  <p className="font-medium text-destructive mb-2">
+                    {membershipOverride && !hasStripeSubscription ? 'When you confirm, you lose:' : 'When your paid period ends, you lose:'}
+                  </p>
                   <ul className="list-disc list-inside space-y-1 text-muted-foreground">
                     <li>Free access to all events</li>
                     <li>Member-only experiences</li>
                     <li>Your digital membership card</li>
                     <li>Calendar subscription</li>
                   </ul>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {membershipOverride && !hasStripeSubscription
+                      ? 'Any RSVPs you hold for upcoming events will be released.'
+                      : 'RSVPs for events after that date will be released; everything before it stays yours.'}
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -317,6 +361,44 @@ export function MembershipDangerZone({ userId, isActiveMember, hasStripeSubscrip
                     'Submit & Cancel'
                   )}
                 </Button>
+              </DialogFooter>
+            </>
+          )}
+
+          {/* ── Step 3: Period-end success (member stays on settings) ── */}
+          {step === 'done' && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Your membership is cancelled</DialogTitle>
+                <DialogDescription data-testid="cancel-done-copy">
+                  {endsLabel
+                    ? <>You keep full access until <strong>{endsLabel}</strong>. No further charges.</>
+                    : <>You keep full access until the end of your paid period. No further charges.</>}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-3 py-2 text-sm text-muted-foreground">
+                <p>A confirmation is on its way to your inbox. Until then nothing changes - events, the directory and your digital card all keep working.</p>
+                {removed.length > 0 && (
+                  <div className="rounded-lg border border-border bg-muted/40 p-3" data-testid="cancel-removed-rsvps">
+                    <p className="font-medium text-foreground mb-1">
+                      {removed.length === 1 ? 'One RSVP was for an event after that date, so we released it:' : `${removed.length} RSVPs were for events after that date, so we released them:`}
+                    </p>
+                    <ul className="list-disc list-inside space-y-0.5">
+                      {removed.map((r) => (
+                        <li key={r.event_id}>
+                          {r.title}
+                          {r.start_time ? <span className="text-muted-foreground/70"> - {format(new Date(r.start_time), 'MMM d')}</span> : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <p className="text-xs">Change your mind before then? Reactivate from Manage Billing and nothing is lost.</p>
+              </div>
+
+              <DialogFooter>
+                <Button onClick={closeDialog} className="w-full sm:w-auto" data-testid="cancel-done-close">Done</Button>
               </DialogFooter>
             </>
           )}

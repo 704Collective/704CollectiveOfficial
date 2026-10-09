@@ -4,6 +4,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
+import { cascadeEnvFromDeno, releaseWaitlistSeat, voidLinkedPlusOnes } from "../_shared/credentialCascade.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -127,24 +128,11 @@ serve(async (req) => {
     log("credential voided", { credId: credResult.data.id, personId: personId, event_id: event_id });
 
     // ── Business +1 cascade ───────────────────────────────────────────────────
-    // A standing +1 (add-business-plus-one) hangs off this RSVP via
-    // metadata.member_credential_id. The member leaving means the guest leaves
-    // too; removing the +1 alone never touches the member's RSVP (that path
-    // lives in add-business-plus-one action='remove'). Non-fatal.
-    try {
-      const { data: linked, error: linkedErr } = await adminClient
-        .from("attendance_credentials")
-        .update({ status: "voided" })
-        .eq("event_id", event_id)
-        .eq("credential_type", "guest_pass")
-        .eq("status", "active")
-        .contains("metadata", { source: "business_plus_one", member_credential_id: credResult.data.id })
-        .select("id");
-      if (linkedErr) log("plus-one cascade failed (non-fatal)", { error: linkedErr.message });
-      else if ((linked ?? []).length > 0) log("plus-one credential voided with the member RSVP", { ids: (linked ?? []).map((r: { id: string }) => r.id) });
-    } catch (cascadeErr) {
-      log("plus-one cascade error (non-fatal)", String(cascadeErr));
-    }
+    // Shared with cancel-subscription / stripe-webhook (_shared/credentialCascade.ts):
+    // a standing +1 hangs off this RSVP via metadata.member_credential_id; the
+    // member leaving means the guest leaves too. Removing the +1 alone never
+    // touches the member's RSVP (add-business-plus-one action='remove'). Non-fatal.
+    await voidLinkedPlusOnes(adminClient, { eventId: event_id, memberCredentialId: credResult.data.id });
 
     // ── Cancellation confirmation email to the cancelling member ──────────────
     // Fires on every successful self-void, independent of capacity/waitlist.
@@ -199,102 +187,10 @@ serve(async (req) => {
     }
 
     // ── Waitlist auto-notify (additive; NEVER breaks the void) ────────────────
-    // A seat may have just freed up. If the event has finite capacity and now
-    // has an open seat, offer it to the next eligible waitlister with a timed
-    // claim window. Any failure here is swallowed - the RSVP is already voided.
-    const CLAIM_WINDOW_HOURS = 24;
-    try {
-      // 1) Event capacity + display fields. Null capacity => unlimited => no-op.
-      const { data: evt } = await adminClient
-        .from("events")
-        .select("id, title, start_time, capacity")
-        .eq("id", event_id)
-        .maybeSingle();
-
-      if (evt && evt.capacity != null) {
-        // 2) Is a seat truly free? Count active|used credentials.
-        const { count: seated } = await adminClient
-          .from("attendance_credentials")
-          .select("id", { count: "exact", head: true })
-          .eq("event_id", event_id)
-          .in("status", ["active", "used"]);
-        const seatedCount = typeof seated === "number" ? seated : 0;
-
-        if (seatedCount < evt.capacity) {
-          // 3) Release stale holds so those seats become claimable by others.
-          await adminClient
-            .from("event_waitlist")
-            .update({ notified_at: null, expires_at: null })
-            .eq("event_id", event_id)
-            .lt("expires_at", new Date().toISOString());
-
-          // 4) Pick the next un-notified claimant (lowest waitlist position).
-          const { data: nextUp } = await adminClient
-            .from("event_waitlist")
-            .select("id, user_id")
-            .eq("event_id", event_id)
-            .is("notified_at", null)
-            .order("position", { ascending: true })
-            .limit(1)
-            .maybeSingle();
-
-          if (nextUp) {
-            // 5) Stamp the claim window on their row.
-            const nowIso = new Date().toISOString();
-            const expiresIso = new Date(Date.now() + CLAIM_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
-            await adminClient
-              .from("event_waitlist")
-              .update({ notified_at: nowIso, expires_at: expiresIso })
-              .eq("id", nextUp.id);
-
-            // 6) Email the claimant via send-email (non-critical, like guest-pass).
-            try {
-              const { data: claimant } = await adminClient
-                .from("profiles")
-                .select("email, full_name")
-                .eq("id", nextUp.user_id)
-                .maybeSingle();
-
-              if (claimant?.email) {
-                const origin = Deno.env.get("NEXT_PUBLIC_SITE_URL") || "https://704collective.com";
-                const start = evt.start_time ? new Date(evt.start_time) : null;
-                const eventDate = start
-                  ? start.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/New_York" })
-                  : "";
-                const eventTime = start
-                  ? start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" })
-                  : "";
-                await fetch(`${supabaseUrl}/functions/v1/send-email`, {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${serviceRoleKey}`,
-                  },
-                  body: JSON.stringify({
-                    to: claimant.email,
-                    template: "waitlist-spot-open",
-                    data: {
-                      memberName: claimant.full_name || "there",
-                      eventTitle: evt.title || "an event",
-                      eventDate,
-                      eventTime,
-                      claimUrl: `${origin}/events/${event_id}?claim=1`,
-                      expiresHours: CLAIM_WINDOW_HOURS,
-                      origin,
-                    },
-                  }),
-                });
-                log("waitlist claimant notified", { waitlistId: nextUp.id, event_id });
-              }
-            } catch (emailErr) {
-              log("waitlist notify email error (non-critical)", String(emailErr));
-            }
-          }
-        }
-      }
-    } catch (waitlistErr) {
-      log("waitlist auto-notify error (non-critical)", String(waitlistErr));
-    }
+    // A seat may have just freed up. Shared implementation (same steps, same
+    // 24h claim window, same waitlist-spot-open email) in _shared/credentialCascade.ts;
+    // it swallows every failure - the RSVP is already voided.
+    await releaseWaitlistSeat(adminClient, cascadeEnvFromDeno(), event_id);
     return new Response(JSON.stringify({ success: true, voided: true }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

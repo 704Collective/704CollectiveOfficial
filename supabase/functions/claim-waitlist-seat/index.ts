@@ -4,6 +4,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
+import { membershipEndsBeforeEvent, membershipEndsBeforeEventResponse } from "../_shared/membershipWindow.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -96,7 +97,8 @@ serve(async (req) => {
       .from("profiles")
       // email, full_name and phone are here for the resolver: people.email is
       // NOT NULL, so a mint needs them. member_type sets the minted tier.
-      .select("id, email, full_name, phone, member_type, subscription_status, membership_override, role")
+      // cancel_at_period_end + subscription_ends_at: paid-window guard for pending-cancel members.
+      .select("id, email, full_name, phone, member_type, subscription_status, membership_override, role, cancel_at_period_end, subscription_ends_at")
       .eq("id", memberUserId)
       .is("deleted_at", null)
       .single();
@@ -118,6 +120,21 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Active membership required" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // -- CHECK 3b: paid-window gate. A pending-cancel member may not claim a
+    // seat at an event that starts after their membership ends (kind refusal,
+    // 200 + success:false). Their waitlist row is left as-is. --
+    if (!isAdmin && profile.cancel_at_period_end === true) {
+      const { data: evForWindow } = await adminClient
+        .from("events")
+        .select("start_time")
+        .eq("id", event_id)
+        .maybeSingle();
+      if (membershipEndsBeforeEvent(profile, evForWindow?.start_time)) {
+        log("membership ends before event", { memberUserId, event_id, ends_at: profile.subscription_ends_at });
+        return membershipEndsBeforeEventResponse(corsHeaders, profile.subscription_ends_at as string);
+      }
     }
 
     // -- Resolve the member's canonical people row (needed for the credential).

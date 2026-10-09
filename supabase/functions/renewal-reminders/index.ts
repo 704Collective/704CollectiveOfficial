@@ -119,12 +119,18 @@ serve(async (req) => {
     sent++;
   }
 
+  // Pending-cancel members (cancel_at_period_end=true) are NOT renewing: their
+  // subscription_ends_at is the day access ends, so a "renews on" reminder would
+  // be false. Null is read as false (column default) so legacy rows still get it.
+  const NOT_PENDING_CANCEL = "cancel_at_period_end.is.null,cancel_at_period_end.eq.false";
+
   // --- 7-day reminder ---
   const range7 = formatDateRange(in7Days);
   const { data: members7 } = await supabase
     .from("profiles")
     .select("id, email, full_name, member_type, subscription_ends_at")
     .in("subscription_status", ["active", "trialing"])
+    .or(NOT_PENDING_CANCEL)
     .gte("subscription_ends_at", range7.start)
     .lte("subscription_ends_at", range7.end)
     .is("deleted_at", null);
@@ -140,6 +146,7 @@ serve(async (req) => {
     .from("profiles")
     .select("id, email, full_name, member_type, subscription_ends_at")
     .in("subscription_status", ["active", "trialing"])
+    .or(NOT_PENDING_CANCEL)
     .gte("subscription_ends_at", range1.start)
     .lte("subscription_ends_at", range1.end)
     .is("deleted_at", null);
@@ -150,6 +157,12 @@ serve(async (req) => {
   }
 
   // --- Lapse notification (subscription expired in last 24h) ---
+  // INTENTIONALLY LEFT AS-IS (never fires): it matches status 'inactive', which
+  // the Stripe webhook never writes ('canceled' is the word). Flipping the word
+  // would email every period-end cancel the same day the member_canceled win-back
+  // drip (stripe-webhook handleSubscriptionDeleted) sends its step 1, and the
+  // new membership-cancelled "ended" email already covers removed RSVPs. See
+  // cursor_report_cancel_fix.md for the retire-vs-fix recommendation.
   const lapsedStart = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
   const { data: lapsed } = await supabase
     .from("profiles")

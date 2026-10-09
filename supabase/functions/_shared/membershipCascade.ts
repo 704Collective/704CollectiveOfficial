@@ -10,6 +10,7 @@
 // is regression-locked); the bodies here are the same statements.
 
 import { resolvePerson } from "./resolvePerson.ts";
+import { cascadeEnvFromDeno, voidAllCredentialsForPerson } from "./credentialCascade.ts";
 
 // Callers import supabase-js from different esm.sh pins (the webhook and the
 // admin functions are on different versions), so the client is typed loosely
@@ -73,20 +74,17 @@ export async function markPersonCanceled(
 
 /**
  * Void every active attendance credential for a person and dispatch the
- * wallet refreshes. Best-effort on the wallet pushes; the void itself throws.
+ * wallet refreshes. Each member_rsvp goes through the shared credential
+ * cascade (business +1 guest voided via metadata.member_credential_id, waitlist
+ * seat released) so this behaves exactly like the member cancelling each RSVP
+ * themselves. Best-effort on the wallet pushes; the void itself throws.
  */
 export async function voidPersonCredentials(
   supabase: AnySupabase,
   args: { personId: string; profileId: string; source: string },
 ): Promise<number> {
-  const { data: voided, error } = await supabase
-    .from("attendance_credentials")
-    .update({ status: "voided", updated_at: new Date().toISOString() })
-    .eq("person_id", args.personId)
-    .eq("status", "active")
-    .select("id");
-  if (error) throw new Error(`credential void failed (${args.source}): ${error.message}`);
-  log("Credentials voided", { personId: args.personId, count: voided?.length ?? 0, source: args.source });
+  const { total, rsvps } = await voidAllCredentialsForPerson(supabase, cascadeEnvFromDeno(), { personId: args.personId, source: args.source });
+  log("Credentials voided", { personId: args.personId, count: total, rsvps: rsvps.length, source: args.source });
 
   // Wallet passes: same two dispatches the webhook makes, fire-and-forget.
   try {
@@ -102,5 +100,5 @@ export async function voidPersonCredentials(
   } catch (e) {
     log("wallet push block threw (non-blocking)", { error: e instanceof Error ? e.message : String(e) });
   }
-  return voided?.length ?? 0;
+  return total;
 }

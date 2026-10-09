@@ -2129,6 +2129,82 @@ function renewalLapseTemplate(data: { name?: string; isBusiness?: boolean; origi
   };
 }
 
+/**
+ * membership-cancelled — one template, three flavors (data.mode):
+ *   period_end  cancelled today, access continues until endsDate, no further charges
+ *   immediate   cancelled today, access ended now
+ *   ended       the paid period ended; sent only when future RSVPs were removed
+ * removedEvents lists RSVPs the cancel removed (events after the paid window).
+ */
+function membershipCancelledTemplate(data: {
+  name?: string;
+  isBusiness?: boolean;
+  mode?: "period_end" | "immediate" | "ended";
+  endsDate?: string | null;
+  removedEvents?: Array<{ title: string; dateLabel?: string }>;
+  origin?: string;
+}): { subject: string; html: string } {
+  const firstName = escapeHtml((data.name || "there").split(" ")[0]);
+  const base = data.origin || "https://704collective.com";
+  const tier = data.isBusiness ? "Business" : "Social";
+  const mode = data.mode ?? "period_end";
+  const when = data.endsDate ? escapeHtml(data.endsDate) : null;
+  const removed = (data.removedEvents ?? []).filter((e) => e && e.title);
+
+  const removedBlock = removed.length
+    ? `<p style="margin:20px 0 8px;font-size:15px;line-height:1.6;color:#2E2E2E;">${
+        mode === "ended"
+          ? "These RSVPs were for events after your membership ended, so we've removed them:"
+          : "These RSVPs were for events after your access ends, so we've removed them and freed the seats:"
+      }</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 8px;background-color:#FAF6F0;border-radius:8px;border:1px solid rgba(0,0,0,0.08);"><tr><td style="padding:16px 20px;">
+${removed.map((e) => `<p style="margin:0 0 6px;font-size:14px;line-height:1.5;color:#1A1A1A;"><strong>${escapeHtml(e.title)}</strong>${e.dateLabel ? `<br/><span style="color:#6b7280;">${escapeHtml(e.dateLabel)}</span>` : ""}</p>`).join("")}
+</td></tr></table>`
+    : "";
+
+  let subject: string;
+  let title: string;
+  let preview: string;
+  let lead: string;
+  let detail: string;
+  if (mode === "period_end") {
+    subject = "Your 704 Collective membership is cancelled";
+    title = "Your membership is cancelled";
+    preview = when ? `You keep full access until ${data.endsDate}. No further charges.` : "No further charges.";
+    lead = `We've cancelled your 704 Collective ${tier} membership.${when ? ` You keep <strong>full access until ${when}</strong> - events, the member directory, your digital card, everything.` : ""}`;
+    detail = `<strong>No further charges.</strong> You've already paid for this period; nothing else will be billed. Change your mind before then? Just reactivate from your settings and nothing is lost.`;
+  } else if (mode === "immediate") {
+    subject = "Your 704 Collective membership has been cancelled";
+    title = "Your membership has been cancelled";
+    preview = "Your membership ended today. No further charges.";
+    lead = `We've cancelled your 704 Collective ${tier} membership, effective today.`;
+    detail = `<strong>No further charges.</strong> Whenever Charlotte calls you back, rejoining takes a minute.`;
+  } else {
+    subject = "Your 704 Collective membership has ended";
+    title = "Your membership has ended";
+    preview = "Your paid period has ended. We'd love to have you back.";
+    lead = `Your 704 Collective ${tier} membership has reached the end of its paid period and is now closed.`;
+    detail = `We'd love to have you back - rejoining takes a minute and you'll be right back to events, the directory, and the community.`;
+  }
+
+  return {
+    subject,
+    html: baseLayout({
+      theme: "light",
+      title,
+      previewText: preview,
+      content: `
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#1A1A1A;">Hey ${firstName},</p>
+<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#2E2E2E;">${lead}</p>
+<p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:#2E2E2E;">${detail}</p>
+${removedBlock}
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;"><tr><td align="center" style="background-color:#C6A664;border-radius:8px;"><a href="${mode === "period_end" ? `${base}/dashboard/settings` : `${base}/join`}" style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:600;color:#1A1A1A;text-decoration:none;">${mode === "period_end" ? "Manage My Membership" : "Rejoin 704 Collective"}</a></td></tr></table>
+<p style="margin:16px 0 0;font-size:14px;line-height:1.6;color:#2E2E2E;">Questions? Email us at <a href="mailto:hello@704collective.com" style="color:#C6A664;">hello@704collective.com</a> - we read everything.</p>
+<p style="margin:16px 0 0;font-size:14px;color:#6b7280;">- The 704 Collective Team</p>`,
+    }),
+  };
+}
+
 function discussionOpenTemplate(data: {
   name: string; eventTitle: string; eventStartTime: string;
   locationName?: string | null; discussionUrl: string;
@@ -2458,6 +2534,11 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
       return renewalReminder1Template(data as { name?: string; isBusiness?: boolean; renewDate?: string; origin?: string });
     case "renewal-lapse":
       return renewalLapseTemplate(data as { name?: string; isBusiness?: boolean; origin?: string });
+    case "membership-cancelled":
+      return membershipCancelledTemplate(data as {
+        name?: string; isBusiness?: boolean; mode?: "period_end" | "immediate" | "ended";
+        endsDate?: string | null; removedEvents?: Array<{ title: string; dateLabel?: string }>; origin?: string;
+      });
 
     case "discussion-open":
       return discussionOpenTemplate(data as {
@@ -2504,7 +2585,7 @@ serve(async (req) => {
       "partner-team-reply-partner", "partner-account-deletion-request", "social-signup-confirmation",
       "business-application-member-confirm", "business-application-admin-notify", "business-membership-approved",
       "business-application-decision", "welcome-onboarding-complete",
-      "admin-custom",
+      "admin-custom", "membership-cancelled",
     ];
 
     // ── Parse body first so we can branch on mode ──

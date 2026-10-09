@@ -23,6 +23,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
+import { membershipEndsBeforeEvent, membershipEndsBeforeEventBody } from "../_shared/membershipWindow.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -61,7 +62,7 @@ serve(async (req) => {
     if (!["add", "remove", "status"].includes(action)) return json({ error: "Unknown action" }, 400);
 
     // ── member + right ──
-    const { data: profile } = await admin.from("profiles").select("id, email, full_name, phone, member_type, subscription_status, membership_override, role").eq("id", user.id).is("deleted_at", null).maybeSingle();
+    const { data: profile } = await admin.from("profiles").select("id, email, full_name, phone, member_type, subscription_status, membership_override, role, cancel_at_period_end, subscription_ends_at").eq("id", user.id).is("deleted_at", null).maybeSingle();
     if (!profile) return json({ error: "Profile not found" }, 404);
     const isAdmin = profile.role === "admin" || profile.role === "super_admin";
     if (profile.member_type !== "business" && !isAdmin) return json({ error: "The +1 is a business-membership right.", code: "NOT_BUSINESS_MEMBER" }, 403);
@@ -100,6 +101,8 @@ serve(async (req) => {
 
     // ── add ──
     if (!eligible(event)) return json({ error: "This event doesn't include a +1 for business members.", code: "EVENT_NOT_ELIGIBLE" }, 403);
+    // Paid-window gate: a pending-cancel member cannot seat a +1 at an event after their membership ends (kind refusal).
+    if (!isAdmin && membershipEndsBeforeEvent(profile, event.start_time)) return json(membershipEndsBeforeEventBody(profile.subscription_ends_at as string), 200);
     if (!memberCred) return json({ error: "RSVP yourself first, then add your +1.", code: "NO_RSVP" }, 409);
     if (started) return json({ error: "This event has already started.", code: "EVENT_STARTED" }, 409);
     if (existing) return soft("PLUS_ONE_EXISTS", "You've already brought your +1 to this event.", { plus_one: summarize(existing) });

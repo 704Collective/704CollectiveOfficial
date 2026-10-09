@@ -5,6 +5,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
 import { rsvpNotOpen, rsvpOpensCopy } from "../_shared/rsvpWindow.ts";
+import { membershipEndsBeforeEvent, membershipEndsBeforeEventResponse } from "../_shared/membershipWindow.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -74,7 +75,8 @@ serve(async (req) => {
       .from("profiles")
       // email, full_name and phone are here for the resolver: people.email is
       // NOT NULL, so a mint needs them.
-      .select("id, email, full_name, phone, subscription_status, membership_override, member_type, role")
+      // cancel_at_period_end + subscription_ends_at: paid-window guard for pending-cancel members.
+      .select("id, email, full_name, phone, subscription_status, membership_override, member_type, role, cancel_at_period_end, subscription_ends_at")
       .eq("id", memberUserId)
       .is("deleted_at", null)
       .single();
@@ -125,7 +127,7 @@ serve(async (req) => {
     // -- Fetch event --
     const { data: event, error: eventError } = await adminClient
       .from("events")
-      .select("id, capacity, is_published, required_tier, rsvp_opens_at")
+      .select("id, capacity, is_published, required_tier, rsvp_opens_at, start_time")
       .eq("id", event_id)
       .maybeSingle();
 
@@ -141,6 +143,14 @@ serve(async (req) => {
     }
 
     const isAdminOverride = profile.role === "admin" || profile.role === "super_admin";
+
+    // -- Paid-window gate: a pending-cancel member may not take a seat at an
+    // event that starts after their membership ends. Kind refusal (200 +
+    // success:false). Members with cancel_at_period_end=false are unaffected. --
+    if (!isAdminOverride && membershipEndsBeforeEvent(profile, event.start_time)) {
+      log("membership ends before event", { memberUserId, event_id, ends_at: profile.subscription_ends_at, start_time: event.start_time });
+      return membershipEndsBeforeEventResponse(corsHeaders, profile.subscription_ends_at as string);
+    }
 
     // -- Opening-time gate: RSVPs have not opened yet (admins exempt, same as
     // capacity, and the credential they insert carries the admin_override stamp

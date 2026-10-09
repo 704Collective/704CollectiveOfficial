@@ -3,6 +3,7 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
 import { needsPayoutSetup, resolveMemberPayoutDestination } from "../_shared/memberPayoutDestination.ts";
+import { cascadeEnvFromDeno, futureOnly, sendMembershipCancelledEmail, voidAllCredentialsForPerson, type VoidedRsvp } from "../_shared/credentialCascade.ts";
 import {
   LISTING_PAYMENT_TYPE,
   invoiceProductId,
@@ -568,36 +569,62 @@ async function removeHubSeats(
  * the existing profiles-based cancellation that already succeeded.
  * Voids ALL active credentials for the person (the lifetime member pass and
  * any active future RSVPs). Past credentials are status='used' and untouched.
+ *
+ * Person resolution: the profile the deleted event already resolved
+ * (auth_user_id, then email - the same resolver every member function uses)
+ * comes first; people.stripe_customer_id is only the fallback for a customer
+ * with no live profile. Each member_rsvp goes through the shared credential
+ * cascade (business +1 guest voided via metadata.member_credential_id,
+ * waitlist seat released). Future-dated RSVPs that were removed are emailed to
+ * the member in one message; the member-pass void itself stays silent.
  */
 async function voidPersonCredentials(
   supabase: ReturnType<typeof createClient>,
-  stripeCustomerId: string
+  stripeCustomerId: string,
+  profile: { id: string; email?: string | null; full_name?: string | null; member_type?: string | null } | null = null,
 ) {
-  // Resolve the person by their stripe_customer_id on the people row.
-  const { data: person, error: personErr } = await supabase
-    .from("people")
-    .select("id")
-    .eq("stripe_customer_id", stripeCustomerId)
-    .maybeSingle();
-
-  if (personErr) {
-    log("voidPersonCredentials: person lookup failed", { error: personErr.message });
-    return;
+  let personId: string | null = null;
+  if (profile?.id) {
+    try {
+      const resolved = await resolvePerson(supabase, {
+        authUserId: profile.id,
+        email: profile.email ?? undefined,
+        profile,
+        source: "stripe_webhook_void",
+        mint: false,
+      });
+      personId = resolved.personId;
+      if (personId) log("voidPersonCredentials: person resolved via profile", { personId, via: resolved.via });
+    } catch (e) {
+      log("voidPersonCredentials: profile resolver threw, falling back to stripe_customer_id", { error: String(e) });
+    }
   }
-  if (!person) {
-    log("voidPersonCredentials: no person matched stripe_customer_id - nothing to void", { stripeCustomerId });
-    return;
+  if (!personId) {
+    // Fallback: the person by their stripe_customer_id on the people row.
+    const { data: person, error: personErr } = await supabase
+      .from("people")
+      .select("id")
+      .eq("stripe_customer_id", stripeCustomerId)
+      .maybeSingle();
+    if (personErr) {
+      log("voidPersonCredentials: person lookup failed", { error: personErr.message });
+      return;
+    }
+    if (!person) {
+      log("voidPersonCredentials: no person matched profile or stripe_customer_id - nothing to void", { stripeCustomerId });
+      return;
+    }
+    personId = person.id;
   }
 
-  const { data: voided, error: voidErr } = await supabase
-    .from("attendance_credentials")
-    .update({ status: "voided", updated_at: new Date().toISOString() })
-    .eq("person_id", person.id)
-    .eq("status", "active")
-    .select("id");
-
-  if (voidErr) {
-    log("voidPersonCredentials: void update failed", { error: voidErr.message, personId: person.id });
+  let voidedTotal = 0;
+  let voidedRsvps: VoidedRsvp[] = [];
+  try {
+    const res = await voidAllCredentialsForPerson(supabase, cascadeEnvFromDeno(), { personId, source: "subscription.deleted" });
+    voidedTotal = res.total;
+    voidedRsvps = res.rsvps;
+  } catch (voidErr) {
+    log("voidPersonCredentials: void update failed", { error: voidErr instanceof Error ? voidErr.message : String(voidErr), personId });
     return;
   }
 
@@ -609,23 +636,40 @@ async function voidPersonCredentials(
       canceled_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
-    .eq("id", person.id);
+    .eq("id", personId);
 
   log("voidPersonCredentials: voided credentials", {
-    personId: person.id,
-    count: voided?.length ?? 0,
+    personId,
+    count: voidedTotal,
+    rsvps: voidedRsvps.length,
   });
+
+  // Future-dated RSVPs removed at period end -> one email listing them.
+  // The member pass void stays silent. Non-fatal.
+  const removedFuture = futureOnly(voidedRsvps);
+  if (removedFuture.length > 0 && profile?.email) {
+    await sendMembershipCancelledEmail(cascadeEnvFromDeno(), {
+      to: profile.email,
+      name: profile.full_name ?? null,
+      isBusiness: profile.member_type === "business",
+      mode: "ended",
+      endsAt: null,
+      removedRsvps: removedFuture,
+    });
+  }
 
   // Apple Wallet push: tell the member's installed pass to refresh so it
   // visibly flips to "Membership Inactive". Best-effort - a push failure
   // must never affect the cancellation. The pass serialNumber is the
-  // profiles.id, so resolve it from the same stripe_customer_id.
+  // profiles.id; use the resolved profile, else look it up by stripe_customer_id.
   try {
-    const { data: profileForPush } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("stripe_customer_id", stripeCustomerId)
-      .maybeSingle();
+    const profileForPush = profile?.id
+      ? { id: profile.id }
+      : (await supabase
+          .from("profiles")
+          .select("id")
+          .eq("stripe_customer_id", stripeCustomerId)
+          .maybeSingle()).data;
     if (profileForPush?.id) {
       const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
       const serviceKey = Deno.env.get("WALLET_PUSH_SECRET") ?? "";
@@ -1686,7 +1730,7 @@ async function handleSubscriptionDeleted(
     // Additive: void this person's credentials in the new schema.
     // Best-effort - must not break the profiles cancellation above.
     try {
-      await voidPersonCredentials(supabase, stripeCustomerId);
+      await voidPersonCredentials(supabase, stripeCustomerId, profile);
     } catch (voidErr) {
       log("voidPersonCredentials threw (non-blocking)", {
         error: voidErr instanceof Error ? voidErr.message : String(voidErr),

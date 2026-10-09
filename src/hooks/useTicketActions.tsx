@@ -238,6 +238,13 @@ export function useTicketActions(): UseTicketActionsReturn {
           throw rsvpError;
         }
 
+        // Kind refusal (200 + success:false), e.g. MEMBERSHIP_ENDS_BEFORE_EVENT for a
+        // pending-cancel member whose paid window ends before this event.
+        if (rsvpData && rsvpData.success === false) {
+          toast.info(rsvpData.error || 'That RSVP did not go through.');
+          return false;
+        }
+
         if (rsvpData?.already_rsvped) {
           toast.info('You already have a ticket for this event');
           return false;

@@ -66,6 +66,8 @@ export function BringPlusOne({ eventId, event, hasRsvp, compact = false, onChang
     if (!r.ok) {
       const code = (r as { code?: string }).code;
       if (code === 'PLUS_ONE_NO_ROOM') { setNoRoom(true); return; }
+      // Pending-cancel member, event after their paid window: informational, not an error.
+      if (code === 'MEMBERSHIP_ENDS_BEFORE_EVENT') { toast.info((r as { error?: string }).error ?? 'Your membership ends before this event.'); setOpen(false); return; }
       toast.error((r as { error?: string }).error ?? 'Could not add your +1');
       if (code === 'PLUS_ONE_EXISTS') void refresh();
       return;

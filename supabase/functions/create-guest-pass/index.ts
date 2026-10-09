@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
 import { rsvpNotOpen, rsvpOpensCopy } from "../_shared/rsvpWindow.ts";
+import { membershipEndsBeforeEvent, membershipEndsBeforeEventResponse } from "../_shared/membershipWindow.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -56,7 +57,8 @@ serve(async (req) => {
     const { data: profile, error: profileError } = await adminClient
       .from("profiles")
       // phone and member_type are here for the resolver's mint path.
-      .select("id, full_name, email, phone, member_type, subscription_status, membership_override, role")
+      // cancel_at_period_end + subscription_ends_at: paid-window guard for pending-cancel members.
+      .select("id, full_name, email, phone, member_type, subscription_status, membership_override, role, cancel_at_period_end, subscription_ends_at")
       .eq("id", inviterUserId)
       .is("deleted_at", null)
       .single();
@@ -143,6 +145,13 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Event not found" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // ── Paid-window gate: a pending-cancel member cannot seat a guest at an
+    // event that starts after their own membership ends (kind refusal). ──
+    if (!isSuperAdmin && membershipEndsBeforeEvent(profile, event.start_time)) {
+      log("membership ends before event", { inviterUserId, event_id, ends_at: profile.subscription_ends_at });
+      return membershipEndsBeforeEventResponse(corsHeaders, profile.subscription_ends_at as string);
     }
 
     // ── Guest passes must be enabled for this event ─────────────────────────

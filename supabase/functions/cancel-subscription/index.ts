@@ -2,6 +2,58 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { isListingSubscription } from "../_shared/stripeProducts.ts";
+import { resolvePerson } from "../_shared/resolvePerson.ts";
+import { cascadeEnvFromDeno, sendMembershipCancelledEmail, voidFutureRsvpsForPerson, type VoidedRsvp } from "../_shared/credentialCascade.ts";
+
+// RESPONSE SHAPE (every success path): { success:true, immediate:boolean, ends_at:iso|null, removed_rsvps:[...] , ... }
+//   immediate=false -> access continues until ends_at (Stripe cancel_at_period_end); the client stays in place.
+//   immediate=true  -> access ended now (profile-only / sync paths, or only non-active subs); the client may redirect.
+type MemberProfile = { id: string; email: string | null; full_name: string | null; phone?: string | null; member_type: string | null; stripe_customer_id: string | null };
+
+/**
+ * Cancel-time RSVP removal: every active member_rsvp for an event starting
+ * after `afterIso` is voided through the shared cascade (capacity frees, the
+ * business +1 guest goes with it, the waitlist seat is released). Events before
+ * the cutoff are untouched. Non-fatal: the cancel has already succeeded.
+ */
+async function removePostExpiryRsvps(
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  profile: MemberProfile | null,
+  userId: string,
+  userEmail: string,
+  afterIso: string,
+  source: string,
+): Promise<VoidedRsvp[]> {
+  try {
+    const { personId } = await resolvePerson(admin, {
+      authUserId: userId,
+      email: profile?.email ?? userEmail,
+      profile: profile ? { ...profile, email: profile.email ?? userEmail } : undefined,
+      source,
+      mint: false,
+    });
+    if (!personId) { logStep("No person row - nothing to void", { userId, source }); return []; }
+    return await voidFutureRsvpsForPerson(admin, cascadeEnvFromDeno(), { personId, afterIso, source });
+  } catch (e) {
+    logStep("RSVP removal threw (non-fatal)", { error: e instanceof Error ? e.message : String(e), source });
+    return [];
+  }
+}
+
+/** One confirmation email per cancel; lists removed RSVPs when there are any. Non-fatal. */
+async function notifyMember(profile: MemberProfile | null, userEmail: string, immediate: boolean, endsAt: string | null, removed: VoidedRsvp[]) {
+  const to = profile?.email ?? userEmail;
+  if (!to) return 0;
+  return await sendMembershipCancelledEmail(cascadeEnvFromDeno(), {
+    to,
+    name: profile?.full_name ?? null,
+    isBusiness: profile?.member_type === "business",
+    mode: immediate ? "immediate" : "period_end",
+    endsAt,
+    removedRsvps: removed,
+  });
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -69,12 +121,14 @@ serve(async (req) => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
     // --- Stripe customer: profile-first lookup ---
-    const { data: profile } = await supabaseAdmin
+    const { data: profileRow } = await supabaseAdmin
       .from("profiles")
-      .select("stripe_customer_id")
+      // email/full_name/phone/member_type feed the person resolver + the confirmation email.
+      .select("id, email, full_name, phone, member_type, stripe_customer_id")
       .eq("id", userId)
       .is("deleted_at", null)
       .maybeSingle();
+    const profile = (profileRow ?? null) as MemberProfile | null;
 
     let customerId: string | null = profile?.stripe_customer_id ?? null;
 
@@ -107,10 +161,18 @@ serve(async (req) => {
       if (profileOnlyError) {
         throw new Error(`Profile-only cancel failed: ${profileOnlyError.message}`);
       }
+      // Access ends now -> every future RSVP goes, through the shared cascade.
+      const nowIso = new Date().toISOString();
+      const removed = await removePostExpiryRsvps(supabaseAdmin, profile, userId, userEmail, nowIso, "cancel_profile_only");
+      const emailStatus = await notifyMember(profile, userEmail, true, null, removed);
       return new Response(
         JSON.stringify({
           success: true,
           mode: "profile_only",
+          immediate: true,
+          ends_at: null,
+          removed_rsvps: removed,
+          email_status: emailStatus,
           message: "Your membership has been canceled.",
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
@@ -156,12 +218,16 @@ serve(async (req) => {
 
       // Idempotent: profile already marked canceled -> just confirm.
       if (currentProfile?.subscription_status === "canceled" || currentProfile?.cancel_at_period_end) {
+        const endsIso = currentProfile?.subscription_ends_at ?? null;
         return new Response(
           JSON.stringify({
             success: true,
             mode: "stripe",
             already_canceled: true,
-            ends_at: currentProfile?.subscription_ends_at ?? null,
+            // Already-canceled: immediate iff the status is canceled or the end date has passed.
+            immediate: currentProfile?.subscription_status === "canceled" || !endsIso || new Date(endsIso).getTime() <= Date.now(),
+            ends_at: endsIso,
+            removed_rsvps: [],
             message: currentProfile?.subscription_ends_at
               ? `Your membership is already canceled. You retain access until ${new Date(currentProfile.subscription_ends_at).toLocaleDateString()}.`
               : "Your membership is already canceled.",
@@ -174,22 +240,30 @@ serve(async (req) => {
       console.error(
         `[CANCEL-SUBSCRIPTION] SYNC-PATH: zero live Stripe subscriptions for customer ${customerId} (user ${userId}); stamping profile canceled WITHOUT touching Stripe.`
       );
+      const syncNowIso = new Date().toISOString();
       await supabaseAdmin
         .from("profiles")
         .update({
           subscription_status: "canceled",
           subscription_id: null,
           cancel_at_period_end: false,
-          canceled_at: new Date().toISOString(),
-          subscription_ends_at: new Date().toISOString(),
+          canceled_at: syncNowIso,
+          subscription_ends_at: syncNowIso,
           membership_override: false,
         })
         .eq("id", userId);
+      // Access ends now -> every future RSVP goes, through the shared cascade.
+      const removedSync = await removePostExpiryRsvps(supabaseAdmin, profile, userId, userEmail, syncNowIso, "cancel_sync_path");
+      const syncEmailStatus = await notifyMember(profile, userEmail, true, syncNowIso, removedSync);
       return new Response(
         JSON.stringify({
           success: true,
           mode: "stripe",
           synced: true,
+          immediate: true,
+          ends_at: syncNowIso,
+          removed_rsvps: removedSync,
+          email_status: syncEmailStatus,
           message: "Your subscription has been canceled.",
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
@@ -230,12 +304,26 @@ serve(async (req) => {
       logStep("Profile updated successfully");
     }
 
+    // immediate only when nothing was active/trialing (every live sub was cancelled now).
+    const immediate = latestPeriodEnd == null;
+
+    // RSVPs for events after the paid window end are removed now (through the
+    // shared cascade); everything before cancelAt is untouched.
+    const removedC = await removePostExpiryRsvps(supabaseAdmin, profile, userId, userEmail, cancelAt, "cancel_period_end");
+    const emailStatusC = await notifyMember(profile, userEmail, immediate, cancelAt, removedC);
+
     return new Response(
       JSON.stringify({
         success: true,
         mode: "stripe",
+        immediate,
+        ends_at: cancelAt,
         cancel_at: cancelAt,
-        message: `Membership will be cancelled at end of billing period (${cancelAt})`,
+        removed_rsvps: removedC,
+        email_status: emailStatusC,
+        message: immediate
+          ? "Your membership has been cancelled."
+          : `Membership will be cancelled at end of billing period (${cancelAt})`,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
