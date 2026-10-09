@@ -24,6 +24,7 @@ import {
 import { cn } from '@/lib/utils';
 import { DASHBOARD_NAV_DESKTOP, DASHBOARD_NAV_SHELL } from '@/lib/dashboard-layout';
 import { useAuth } from '@/hooks/useAuth';
+import { useHubPagesLive } from '@/hooks/useHubPagesLive';
 import { supabase } from '@/integrations/supabase/client';
 
 const GOLD = '#C6A664';
@@ -365,6 +366,7 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, profile, isAdmin, isSuperAdmin, isActiveMember, isBusinessMember } = useAuth();
+  const hubLive = useHubPagesLive();
   const unreadMessages = useUnreadMessageCount(user?.id);
   const unreadNotifications = useUnreadNotificationCount(user?.id);
 
@@ -390,8 +392,10 @@ function DashboardNavInner({ suggestOpen = false, onSuggestClick }: DashboardNav
     (isBusinessMember && isActiveMember) || isAdmin || isSuperAdmin;
   const canSeeSettings = isAdmin || isSuperAdmin;
   const canSeeSuggest = isActiveMember || isAdmin;
-  const canSeeLeads = isBusinessMember || isAdmin;
-  const canSeeNetwork = isActiveMember || isAdmin;
+  // H5 close-out: member-facing Network surfaces stay hidden until HUB_PAGES_LIVE;
+  // admins always see them (null = flag not resolved yet → hidden for members).
+  const canSeeLeads = isAdmin || (isBusinessMember && hubLive === true);
+  const canSeeNetwork = isAdmin || (isActiveMember && hubLive === true);
 
   const navEntries = buildNavEntries({
     canSeeSocialFeed,
