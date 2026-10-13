@@ -116,7 +116,20 @@ type ChangeOcc = {
   newStartTime: string;
   oldEndTime: string | null;
   newEndTime: string | null;
+  /** Pre-edit "name, address" string so notify-event-change can tell a real location change from a no-op. */
+  oldLocation: string;
 };
+
+// Change detection helpers. Timestamps are compared as instants, never as strings:
+// PostgREST returns "…+00:00" while Date.toISOString() returns "….000Z", so a string
+// compare flags every save as a time change (and emailed attendees on title-only edits).
+const sameInstant = (a: string | Date | null | undefined, b: string | Date | null | undefined): boolean => {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return new Date(a).getTime() === new Date(b).getTime();
+};
+const normLoc = (s: string | null | undefined): string | null => (s ?? '').trim() || null;
+const joinLoc = (name: string | null | undefined, addr: string | null | undefined): string => [normLoc(name), normLoc(addr)].filter(Boolean).join(', ');
 
 interface EventForm {
   membership_tier: 'social' | 'business';
@@ -501,13 +514,14 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       const snap = editSnapshot;
       const newStart = form.start_time ? form.start_time.toISOString() : (snap?.start_time ?? new Date().toISOString());
       const newEnd = form.end_time ? form.end_time.toISOString() : null;
-      const newLocName = form.location_name.trim() || null;
-      const newLocAddr = form.location_address.trim() || null;
+      const newLocName = normLoc(form.location_name);
+      const newLocAddr = normLoc(form.location_address);
+      // Only a REAL time or location change notifies attendees (instants + normalized strings).
       const changed = !!snap && (
-        snap.start_time !== newStart ||
-        (snap.end_time ?? null) !== newEnd ||
-        (snap.location_name ?? null) !== newLocName ||
-        (snap.location_address ?? null) !== newLocAddr
+        !sameInstant(snap.start_time, newStart) ||
+        !sameInstant(snap.end_time, newEnd) ||
+        normLoc(snap.location_name) !== newLocName ||
+        normLoc(snap.location_address) !== newLocAddr
       );
       const occ: ChangeOcc = {
         id: editingEvent?.id ?? '',
@@ -517,6 +531,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
         newStartTime: newStart,
         oldEndTime: snap?.end_time ?? null,
         newEndTime: newEnd,
+        oldLocation: joinLoc(snap?.location_name, snap?.location_address),
       };
       await handlePostSaveNotify([occ], 'Event updated');
     },
@@ -533,9 +548,10 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       const snap = editSnapshot;
       const newStartIso = form.start_time ? form.start_time.toISOString() : (snap?.start_time ?? new Date().toISOString());
       const newEndIso = form.end_time ? form.end_time.toISOString() : null;
-      const newLocName = form.location_name.trim() || null;
-      const newLocAddr = form.location_address.trim() || null;
-      const locationChanged = !!snap && ((snap.location_name ?? null) !== newLocName || (snap.location_address ?? null) !== newLocAddr);
+      const newLocName = normLoc(form.location_name);
+      const newLocAddr = normLoc(form.location_address);
+      const locationChanged = !!snap && (normLoc(snap.location_name) !== newLocName || normLoc(snap.location_address) !== newLocAddr);
+      const oldLocation = joinLoc(snap?.location_name, snap?.location_address);
       // Opening time is absent from bulkFields on purpose: copying one absolute
       // instant onto every week would open the whole series at once. It is only
       // written to siblings when this save actually changed it, and then it is
@@ -550,12 +566,13 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
         id: ev.id,
         is_published: snap?.is_published ?? ev.is_published ?? false,
         changed: locationChanged
-          || (snap?.start_time ?? '') !== newStartIso
-          || (snap?.end_time ?? null) !== newEndIso,
+          || !sameInstant(snap?.start_time ?? ev.start_time, newStartIso)
+          || !sameInstant(snap?.end_time ?? ev.end_time ?? null, newEndIso),
         oldStartTime: snap?.start_time ?? ev.start_time,
         newStartTime: newStartIso,
         oldEndTime: snap?.end_time ?? null,
         newEndTime: newEndIso,
+        oldLocation,
       }];
 
       if (scope === 'this') return { count: 1, occurrences };
@@ -603,6 +620,9 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
             newStartTime: sibNewStart,
             oldEndTime: sib.end_time ?? null,
             newEndTime: sibNewEnd,
+            // Siblings share the series' location (bulkFields copies it); the edited
+            // event's pre-edit location is the best "before" value we hold for them.
+            oldLocation,
           });
           return supabase.from('events').update(updateData).eq('id', sib.id);
         });
@@ -722,7 +742,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   // own session authorizes it (function's admin path). Returns total attendees notified.
   const fireChangeNotifications = async (occurrences: ChangeOcc[]) => {
     const newTitle = form.title.trim();
-    const newLocation = [form.location_name.trim(), form.location_address.trim()].filter(Boolean).join(', ');
+    const newLocation = joinLoc(form.location_name, form.location_address);
     let notified = 0;
     for (const occ of occurrences) {
       const res = await supabase.functions.invoke('notify-event-change', {
@@ -733,11 +753,13 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
           newStartTime: occ.newStartTime,
           oldEndTime: occ.oldEndTime,
           newEndTime: occ.newEndTime,
+          oldLocation: occ.oldLocation,
           newLocation,
           origin: window.location.origin,
         },
       });
       if (res.error) throw res.error;
+      // skipped:true = the server found no real change (belt and suspenders); counts as 0 notified.
       notified += (res.data as { sent?: number } | null)?.sent ?? 0;
     }
     return notified;

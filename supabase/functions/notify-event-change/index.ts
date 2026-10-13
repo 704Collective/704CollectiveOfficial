@@ -136,7 +136,7 @@ serve(async (req) => {
 
     // Parse body first to check for dry_run
     const body = await req.json();
-    const { eventId, eventName, oldStartTime, oldEndTime, newStartTime, newEndTime, newLocation, origin, dry_run } = body;
+    const { eventId, eventName, oldStartTime, oldEndTime, newStartTime, newEndTime, oldLocation, newLocation, origin, dry_run } = body;
     const dryRun = dry_run === true;
 
     // Auth check: skip entirely for dry_run, required for real sends
@@ -179,10 +179,21 @@ serve(async (req) => {
       });
     }
 
-    const timesChanged = new Date(oldStartTime).getTime() !== new Date(newStartTime).getTime();
-    if (!timesChanged && !newLocation) {
-      return new Response(JSON.stringify({ error: "newLocation is required for a location-only change (start/end times are unchanged)" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // ── Real-change guard (belt and suspenders for the admin editor) ──
+    // Times are compared as instants. The location compares normalized strings when
+    // the caller supplies the pre-edit value (oldLocation); a caller that omits it
+    // keeps today's contract (a non-blank newLocation counts as a change). A
+    // location-only notice is never sent with a blank location. When nothing really
+    // changed we return 200 { skipped:true } without emailing or bumping ics_sequence.
+    const normLoc = (s: unknown) => (typeof s === "string" ? s.trim() : "");
+    const endChanged = !!oldEndTime && !!newEndTime && new Date(oldEndTime).getTime() !== new Date(newEndTime).getTime();
+    const timesChanged = new Date(oldStartTime).getTime() !== new Date(newStartTime).getTime() || endChanged;
+    const newLoc = normLoc(newLocation);
+    const locationChanged = oldLocation !== undefined ? normLoc(oldLocation) !== newLoc && newLoc.length > 0 : newLoc.length > 0;
+    if (!timesChanged && !locationChanged) {
+      log("No real change (time and location unchanged, or blank location) - nothing sent", { eventId, newLoc, hasOldLocation: oldLocation !== undefined });
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "no_change", sent: 0, failed: 0 }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -305,8 +316,8 @@ serve(async (req) => {
     const eventUrl = `${baseUrl}/events/${eventId}`;
 
     const changeMessage = timesChanged
-      ? `This event has been rescheduled from ${oldDate} at ${oldTime} to ${newDate} at ${newTime}.${newLocation ? ` New location: ${newLocation}.` :""}`
-      : `The location for this event has changed. New location: ${newLocation}. The date and time are unchanged: ${newDate} at ${newTime}.`;
+      ? `This event has been rescheduled from ${oldDate} at ${oldTime} to ${newDate} at ${newTime}.${locationChanged ? ` New location: ${newLoc}.` :""}`
+      : `The location for this event has changed. New location: ${newLoc}. The date and time are unchanged: ${newDate} at ${newTime}.`;
 
     log(`Building batch for ${recipients.length} recipients`, { dryRun });
 
@@ -398,7 +409,9 @@ serve(async (req) => {
         eventUrl,
         changeMessage,
         newStartTime,
-        newLocation: newLocation || undefined,
+        // The details card shows where the event is (unchanged from today); only the
+        // changeMessage above claims a *new* location, and only when it really changed.
+        newLocation: newLoc || undefined,
       },
     );
 
