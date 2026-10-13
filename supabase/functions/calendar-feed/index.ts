@@ -17,6 +17,8 @@ interface Event {
   location_address: string | null;
   updated_at: string | null;
   tags: string[] | null;
+  /** 'scheduled' | 'cancelled' | 'rescheduled' — closed events are emitted as STATUS:CANCELLED so subscribed calendars drop them. */
+  status?: string | null;
 }
 
 type Scope = "social" | "business" | "all" | "rsvp_only";
@@ -108,15 +110,22 @@ function generateICS(events: Event[], calendarName: string): string {
     const endDate = event.end_time ? new Date(event.end_time) : null;
     const location = [event.location_name, event.location_address].filter(Boolean).join(", ");
 
+    // Cancelled/rescheduled: keep the VEVENT in the feed with STATUS:CANCELLED and a
+    // SEQUENCE strictly above anything previously published for this UID (updated_at
+    // moves on cancel, and +1 guarantees the bump even inside the same second), so
+    // subscribed calendars remove it instead of silently keeping a stale entry.
+    const closed = event.status === "cancelled" || event.status === "rescheduled";
+    const baseSeq = event.updated_at ? Math.floor(new Date(event.updated_at).getTime() / 1000) : 0;
     ics.push(
       "BEGIN:VEVENT",
       `UID:${event.id}@704collective.com`,
       `DTSTAMP:${formatDate(new Date())}`,
       event.updated_at ? `LAST-MODIFIED:${formatDate(new Date(event.updated_at))}` : "",
-      event.updated_at ? `SEQUENCE:${Math.floor(new Date(event.updated_at).getTime() / 1000)}` : "",
+      event.updated_at || closed ? `SEQUENCE:${closed ? baseSeq + 1 : baseSeq}` : "",
       `DTSTART:${formatDate(startDate)}`,
       endDate ? `DTEND:${formatDate(endDate)}` : "",
-      `SUMMARY:${escapeText(event.title)}`,
+      `SUMMARY:${closed ? "CANCELLED: " : ""}${escapeText(event.title)}`,
+      closed ? "STATUS:CANCELLED" : "",
       event.description ? `DESCRIPTION:${escapeText(event.description)}` : "",
       location ? `LOCATION:${escapeText(location)}` : "",
       "END:VEVENT",
@@ -152,30 +161,33 @@ async function fetchRsvpEvents(
 
   if (!personId) return [];
 
+  // Voided rows are included so an event the member HELD that was then
+  // cancelled/rescheduled still appears once as STATUS:CANCELLED (and drops from
+  // their calendar); voided rows on still-scheduled events are filtered out below.
   const { data: credRows, error: credErr } = await supabase
     .from("attendance_credentials")
-    .select("event_id")
+    .select("event_id, status")
     .eq("person_id", personId)
-    .in("status", ["active", "used"]);
+    .in("status", ["active", "used", "voided"]);
 
   if (credErr) {
     console.error("Calendar credentials query:", credErr);
     return { error: "Server error" };
   }
 
-  const eventIds = [
-    ...new Set(
-      (credRows ?? [])
-        .map((c: { event_id: string | null }) => c.event_id)
-        .filter((id): id is string => typeof id === "string" && id.length > 0),
-    ),
-  ];
+  const heldLive = new Set<string>();
+  const heldVoided = new Set<string>();
+  for (const c of (credRows ?? []) as Array<{ event_id: string | null; status: string }>) {
+    if (!c.event_id) continue;
+    if (c.status === "voided") heldVoided.add(c.event_id); else heldLive.add(c.event_id);
+  }
+  const eventIds = [...new Set([...heldLive, ...heldVoided])];
 
   if (eventIds.length === 0) return [];
 
   const { data: evs, error: evErr } = await supabase
     .from("events")
-    .select("id, title, description, start_time, end_time, location_name, location_address, updated_at")
+    .select("id, title, description, start_time, end_time, location_name, location_address, updated_at, status")
     .in("id", eventIds)
     .gte("start_time", new Date().toISOString())
     .order("start_time", { ascending: true });
@@ -185,7 +197,9 @@ async function fetchRsvpEvents(
     return { error: "Server error" };
   }
 
-  return (evs ?? []) as Event[];
+  const closed = (s: string | null | undefined) => s === "cancelled" || s === "rescheduled";
+  // Live RSVP -> always listed. Voided-only -> listed only when the event itself is closed.
+  return ((evs ?? []) as Event[]).filter((e) => heldLive.has(e.id) || closed(e.status));
 }
 
 // social / business / all: filter by event_type, 30-day backwindow.
@@ -197,7 +211,7 @@ async function fetchScopeEvents(
 
   let query = supabase
     .from("events")
-    .select("id, title, description, start_time, end_time, location_name, location_address, updated_at, tags")
+    .select("id, title, description, start_time, end_time, location_name, location_address, updated_at, tags, status")
     .gte("start_time", thirtyDaysAgo)
     .order("start_time", { ascending: true });
 

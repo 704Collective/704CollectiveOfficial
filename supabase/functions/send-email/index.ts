@@ -2205,6 +2205,76 @@ ${removedBlock}
   };
 }
 
+/**
+ * event-cancelled — admin cancelled or rescheduled an event (or several dates of
+ * a series). mode 'cancelled' | 'rescheduled'. Lists every affected date the
+ * recipient held; the rescheduled flavor adds the new date/time/location and an
+ * "RSVP for the new date" button. Sent from no-reply@ with the do-not-reply line.
+ */
+function eventCancelledTemplate(data: {
+  name?: string;
+  mode?: "cancelled" | "rescheduled";
+  reason?: string;
+  note?: string;
+  events?: Array<{ title: string; dateLabel: string; timeLabel?: string; location?: string }>;
+  newEvent?: { title: string; dateLabel: string; timeLabel?: string; location?: string; url: string } | null;
+  origin?: string;
+}): { subject: string; html: string } {
+  const name = escapeHtml((data.name || "there").split(" ")[0]);
+  const mode = data.mode === "rescheduled" ? "rescheduled" : "cancelled";
+  const events = (data.events ?? []).filter((e) => e && e.title);
+  const first = events[0];
+  const title = first ? escapeHtml(first.title) : "your event";
+  const many = events.length > 1;
+  const reason = data.reason ? escapeHtml(data.reason) : "";
+  const note = data.note ? escapeHtml(data.note).replace(/\n/g, "<br/>") : "";
+  const ne = data.newEvent;
+
+  const datesBlock = `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 20px;background-color:#FAF6F0;border-radius:8px;border:1px solid rgba(0,0,0,0.08);"><tr><td style="padding:16px 20px;">
+<p style="margin:0 0 6px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#6b7280;">${many ? "Affected dates" : "Original date"}</p>
+${events.map((e) => `<p style="margin:0 0 8px;font-size:15px;line-height:1.5;color:#1A1A1A;"><strong>${escapeHtml(e.title)}</strong><br/><span style="color:#2E2E2E;">${escapeHtml(e.dateLabel)}${e.timeLabel ? ` &middot; ${escapeHtml(e.timeLabel)}` : ""}</span>${e.location ? `<br/><span style="color:#6b7280;">${escapeHtml(e.location)}</span>` : ""}</p>`).join("")}
+</td></tr></table>`;
+
+  const reasonBlock = `<p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:#2E2E2E;"><strong>Reason:</strong> ${reason || "Not specified"}</p>${note ? `<p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#2E2E2E;border-left:3px solid #C6A664;padding-left:12px;">${note}</p>` : `<div style="height:12px;"></div>`}`;
+
+  const newBlock = mode === "rescheduled" && ne
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 8px;background-color:#FFFFFF;border-radius:8px;border:2px solid #C6A664;"><tr><td style="padding:18px 20px;">
+<p style="margin:0 0 6px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#C6A664;">New date</p>
+<p style="margin:0 0 4px;font-size:17px;font-weight:700;color:#1A1A1A;">${escapeHtml(ne.title)}</p>
+<p style="margin:0;font-size:15px;line-height:1.5;color:#2E2E2E;">${escapeHtml(ne.dateLabel)}${ne.timeLabel ? ` &middot; ${escapeHtml(ne.timeLabel)}` : ""}</p>
+${ne.location ? `<p style="margin:4px 0 0;font-size:14px;color:#6b7280;">${escapeHtml(ne.location)}</p>` : ""}
+</td></tr></table>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0 8px;width:100%;"><tr><td align="center" style="background-color:#C6A664;border-radius:8px;"><a href="${ne.url}" style="display:block;padding:16px 32px;font-size:17px;font-weight:700;color:#1A1A1A;text-decoration:none;">RSVP for the new date</a></td></tr></table>
+<p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:#6b7280;text-align:center;">Your previous RSVP does not carry over - please RSVP again to lock your spot.</p>`
+    : "";
+
+  const lead = mode === "rescheduled"
+    ? `We've had to move <strong>${title}</strong>${many ? " (and the dates below)" : ""} to a new date.`
+    : `We're sorry - <strong>${title}</strong>${many ? " and the dates below have" : " has"} been cancelled.`;
+  const subject = mode === "rescheduled"
+    ? `${first?.title ?? "Your event"} has moved to a new date`
+    : `${first?.title ?? "Your event"} has been cancelled`;
+
+  return {
+    subject,
+    html: baseLayout({
+      theme: "light",
+      title: subject,
+      previewText: mode === "rescheduled" ? `New date inside - please RSVP again to keep your spot.` : `${reason ? reason + ". " : ""}Sorry for the change of plans.`,
+      footerNote: "Need to reach out? Please don't reply to this email - contact us at hello@704collective.com.",
+      content: `
+<p style="margin:0 0 16px;font-size:20px;font-weight:700;color:#1A1A1A;">Hey ${name},</p>
+<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#2E2E2E;">${lead}</p>
+${datesBlock}
+${reasonBlock}
+${newBlock}
+<p style="margin:16px 0 0;font-size:15px;line-height:1.6;color:#2E2E2E;">${mode === "rescheduled" ? "Sorry for the shuffle - we'd love to see you on the new date." : "Your RSVP has been released and your calendar entry should update on its own. We'd love to see you at the next one."}</p>
+<p style="margin:20px 0 0;font-size:14px;line-height:1.6;color:#2E2E2E;"><strong>Need to reach out?</strong> Please don't reply to this email - contact us at <a href="mailto:hello@704collective.com" style="color:#C6A664;">hello@704collective.com</a>.</p>
+<p style="margin:16px 0 0;font-size:14px;color:#6b7280;">- The 704 Collective Team</p>`,
+    }),
+  };
+}
+
 function discussionOpenTemplate(data: {
   name: string; eventTitle: string; eventStartTime: string;
   locationName?: string | null; discussionUrl: string;
@@ -2534,6 +2604,12 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
       return renewalReminder1Template(data as { name?: string; isBusiness?: boolean; renewDate?: string; origin?: string });
     case "renewal-lapse":
       return renewalLapseTemplate(data as { name?: string; isBusiness?: boolean; origin?: string });
+    case "event-cancelled":
+      return eventCancelledTemplate(data as {
+        name?: string; mode?: "cancelled" | "rescheduled"; reason?: string; note?: string;
+        events?: Array<{ title: string; dateLabel: string; timeLabel?: string; location?: string }>;
+        newEvent?: { title: string; dateLabel: string; timeLabel?: string; location?: string; url: string } | null; origin?: string;
+      });
     case "membership-cancelled":
       return membershipCancelledTemplate(data as {
         name?: string; isBusiness?: boolean; mode?: "period_end" | "immediate" | "ended";
@@ -2585,7 +2661,7 @@ serve(async (req) => {
       "partner-team-reply-partner", "partner-account-deletion-request", "social-signup-confirmation",
       "business-application-member-confirm", "business-application-admin-notify", "business-membership-approved",
       "business-application-decision", "welcome-onboarding-complete",
-      "admin-custom", "membership-cancelled",
+      "admin-custom", "membership-cancelled", "event-cancelled",
     ];
 
     // ── Parse body first so we can branch on mode ──

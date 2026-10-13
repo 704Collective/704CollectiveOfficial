@@ -292,6 +292,7 @@ function JoinInner() {
       const { data, error } = await supabase
         .from('events')
         .select('*')
+        .eq('status', 'scheduled') // cancelled/rescheduled events are hidden
         .gte('start_time', now.toISOString())
         .lte('start_time', fifteenDaysAhead.toISOString())
         .order('start_time', { ascending: true })

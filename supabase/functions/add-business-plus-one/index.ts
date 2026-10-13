@@ -24,6 +24,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
 import { membershipEndsBeforeEvent, membershipEndsBeforeEventBody } from "../_shared/membershipWindow.ts";
+import { eventClosedBody, isEventClosed } from "../_shared/eventStatus.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -73,8 +74,10 @@ serve(async (req) => {
     if (!personId) return json({ error: "Member record not found" }, 404);
 
     // ── event eligibility ──
-    const { data: event } = await admin.from("events").select("id, title, start_time, end_time, location_name, location_address, capacity, event_type, required_tier, allows_guest_passes, is_published").eq("id", body.event_id).maybeSingle();
+    const { data: event } = await admin.from("events").select("id, title, start_time, end_time, location_name, location_address, capacity, event_type, required_tier, allows_guest_passes, is_published, status, rescheduled_to_event_id").eq("id", body.event_id).maybeSingle();
     if (!event) return json({ error: "Event not found" }, 404);
+    // Cancelled/rescheduled event: status still answers (so the UI can hide), add/remove refuse kindly.
+    if (isEventClosed(event) && action !== "status") return json(eventClosedBody(event), 200);
 
     // ── the member's own active RSVP (the anchor) ──
     const { data: memberCred } = await admin.from("attendance_credentials").select("id").eq("person_id", personId).eq("event_id", event.id).eq("credential_type", "member_rsvp").in("status", ["active", "used"]).limit(1).maybeSingle();

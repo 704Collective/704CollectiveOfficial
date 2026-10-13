@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { rsvpNotOpen, rsvpOpensCopy } from "../_shared/rsvpWindow.ts";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
+import { eventClosedResponse, isEventClosed } from "../_shared/eventStatus.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -84,7 +85,7 @@ serve(async (req) => {
     // Verify event exists and is actually public_free
     const { data: event, error: eventErr } = await supabase
       .from("events")
-      .select("id, title, start_time, end_time, location_name, location_address, required_tier, is_published, rsvp_opens_at")
+      .select("id, title, start_time, end_time, location_name, location_address, required_tier, is_published, rsvp_opens_at, status, rescheduled_to_event_id")
       .eq("id", event_id)
       .maybeSingle();
 
@@ -103,6 +104,9 @@ serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Cancelled/rescheduled event: kind refusal (200 + success:false).
+    if (isEventClosed(event)) { log("Event closed", { event_id, status: event.status }); return eventClosedResponse(corsHeaders, event); }
 
     if (!event.is_published) {
       log("Event not published", { event_id });

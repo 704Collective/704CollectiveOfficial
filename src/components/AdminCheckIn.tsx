@@ -60,6 +60,7 @@ export function AdminCheckIn({ adminId }: AdminCheckInProps) {
     const { data } = await supabase
       .from('events')
       .select('id, title, start_time')
+      .eq('status', 'scheduled') // cancelled/rescheduled events are hidden
       .gte('start_time', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
       .order('start_time', { ascending: false });
 

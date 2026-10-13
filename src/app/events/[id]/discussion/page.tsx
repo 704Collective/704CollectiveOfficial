@@ -23,6 +23,7 @@ import { resolvePersonId } from '@/lib/resolvePersonId';
 import { getInitialsAvatarStyle } from '@/lib/avatarInitialsColor';
 import { DASHBOARD_MAIN } from '@/lib/dashboard-layout';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 import { EventDiscussionComposer, type NewDiscussionPost } from '@/components/portal/EventDiscussionComposer';
 import { EventDiscussionLikeButton } from '@/components/portal/EventDiscussionLikeButton';
 import { EventDiscussionComments, type DiscComment } from '@/components/portal/EventDiscussionComments';
@@ -32,7 +33,7 @@ import { MentionText } from '@/components/portal/MentionText';
 
 const isVideoUrl = (u: string) => /\.(mp4|mov|webm)(\?|$)/i.test(u);
 
-interface DiscussionEvent { id: string; title: string | null; image_url: string | null; start_time: string | null; category: string | null; host_id?: string | null; }
+interface DiscussionEvent { id: string; title: string | null; image_url: string | null; start_time: string | null; category: string | null; host_id?: string | null; status?: string | null; rescheduled_to_event_id?: string | null; }
 interface Author { id: string; full_name: string | null; avatar_url: string | null; }
 interface DPost { id: string; author_id: string; content: string | null; image_urls: string[] | null; created_at: string; updated_at?: string | null; author: Author | null; }
 
@@ -100,13 +101,17 @@ export default function EventDiscussionPage() {
       if (admin) { if (!cancelled) setAccess('full'); return; }
       const personId = await resolvePersonId(user.id);
       if (!personId) { if (!cancelled) setAccess('teaser'); return; }
+      // A cancelled/rescheduled event voids its RSVPs; the thread stays readable for
+      // everyone who held one (voided counts), composer is hidden below.
+      const { data: evStatus } = await supabase.from('events').select('status').eq('id', eventId).maybeSingle();
+      const closedEvent = evStatus?.status === 'cancelled' || evStatus?.status === 'rescheduled';
       const { data } = await supabase
         .from('attendance_credentials')
         .select('id')
         .eq('person_id', personId)
         .eq('event_id', eventId)
         .in('credential_type', ['member', 'member_rsvp'])
-        .in('status', ['active', 'used'])
+        .in('status', closedEvent ? ['active', 'used', 'voided'] : ['active', 'used'])
         .limit(1);
       if (!cancelled) setAccess(data && data.length > 0 ? 'full' : 'teaser');
     })();
@@ -124,7 +129,7 @@ export default function EventDiscussionPage() {
     let cancelled = false;
     (async () => {
       const { data: evData } = await supabase
-        .from('events').select('id, title, image_url, start_time, category, host_id').eq('id', eventId).single();
+        .from('events').select('id, title, image_url, start_time, category, host_id, status, rescheduled_to_event_id').eq('id', eventId).single();
       if (!cancelled && evData) setEv(evData as DiscussionEvent);
       if (!cancelled && evData?.host_id) {
         const { data: hostRow } = await supabase
@@ -328,11 +333,20 @@ export default function EventDiscussionPage() {
                 </div>
               )}
 
-              <EventDiscussionComposer
-                eventId={eventId}
-                author={{ id: user!.id, full_name: profile?.full_name ?? null, avatar_url: profile?.avatar_url ?? null }}
-                onPosted={handlePosted}
-              />
+              {(ev?.status === 'cancelled' || ev?.status === 'rescheduled') ? (
+                <div role="status" data-testid="discussion-closed" className="rounded-xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+                  {ev.status === 'rescheduled' ? 'This event moved to a new date, so this thread is closed for new posts.' : 'This event was cancelled, so this thread is closed for new posts.'}
+                  {ev.status === 'rescheduled' && ev.rescheduled_to_event_id && (
+                    <> <Link href={`/events/${ev.rescheduled_to_event_id}`} className="underline underline-offset-2 text-primary">See the new date</Link></>
+                  )}
+                </div>
+              ) : (
+                <EventDiscussionComposer
+                  eventId={eventId}
+                  author={{ id: user!.id, full_name: profile?.full_name ?? null, avatar_url: profile?.avatar_url ?? null }}
+                  onPosted={handlePosted}
+                />
+              )}
 
               <EventDiscussionGallery eventId={eventId} userId={user!.id} isAdmin={isAdmin} />
 

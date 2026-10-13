@@ -175,6 +175,7 @@ function WelcomeContent() {
       const { data: evs, error } = await supabase
         .from('events')
         .select('id, title, start_time, end_time, location_name, location_address')
+        .eq('status', 'scheduled') // cancelled/rescheduled events are hidden
         .eq('is_published', true)
         .gte('start_time', now.toISOString())
         .lte('start_time', end.toISOString())

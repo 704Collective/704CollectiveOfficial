@@ -6,6 +6,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { rsvpNotOpen, rsvpOpensCopy } from "../_shared/rsvpWindow.ts";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
+import { eventClosedBody, isEventClosed } from "../_shared/eventStatus.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -372,10 +373,12 @@ serve(async (req) => {
     // ── Event must exist, be published, and be configured for intake ──────────
     const { data: event, error: eventErr } = await admin
       .from("events")
-      .select("id, title, start_time, end_time, location_name, location_address, is_published, capacity, intake_form_slug, rsvp_opens_at")
+      .select("id, title, start_time, end_time, location_name, location_address, is_published, capacity, intake_form_slug, rsvp_opens_at, status, rescheduled_to_event_id")
       .eq("id", eventId)
       .maybeSingle();
     if (eventErr || !event) return json({ error: "Event not found" }, 404);
+    // Cancelled/rescheduled event: kind refusal (200 + success:false).
+    if (isEventClosed(event)) return json(eventClosedBody(event), 200);
     if (!event.is_published) return json({ error: "Event is not currently available" }, 403);
     if (!event.intake_form_slug) return json({ error: "This event does not use an intake form" }, 403);
 

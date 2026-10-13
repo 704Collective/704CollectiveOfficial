@@ -116,9 +116,11 @@ async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
     guestPassesUsedQ,
   ] = await Promise.all([
     supabase.from('events').select('*', { count: 'exact', head: true })
+      .eq('status', 'scheduled') // cancelled/rescheduled events are hidden
       .gte('start_time', sod.toISOString())
       .lte('start_time', eod.toISOString()),
     supabase.from('events').select('*', { count: 'exact', head: true })
+      .eq('status', 'scheduled') // cancelled/rescheduled events are hidden
       .gte('start_time', ws.toISOString())
       .lte('start_time', we.toISOString()),
     // Canonical: active/trialing OR membership_override = true
@@ -145,11 +147,13 @@ async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
       .limit(5),
     supabase.from('events')
       .select('id, title, start_time')
+      .eq('status', 'scheduled') // cancelled/rescheduled events are hidden
       .gte('start_time', nowIso)
       .order('start_time', { ascending: true })
       .limit(3),
     supabase.from('events')
       .select('id, capacity, start_time')
+      .eq('status', 'scheduled') // cancelled/rescheduled events are hidden
       .gte('start_time', nowIso)
       .lte('start_time', we.toISOString())
       .limit(200),

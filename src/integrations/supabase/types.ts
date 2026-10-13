@@ -3607,6 +3607,12 @@ export type Database = {
           recurrence_rule: string | null
           required_tier: string
           rsvp_opens_at: string | null
+          cancel_note: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          rescheduled_to_event_id: string | null
+          status: string
           social_member_price_deprecated: number | null
           sponsor_slot_price: number | null
           sponsor_slots_count: number
@@ -3662,6 +3668,12 @@ export type Database = {
           recurrence_rule?: string | null
           required_tier?: string
           rsvp_opens_at?: string | null
+          cancel_note?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          rescheduled_to_event_id?: string | null
+          status?: string
           social_member_price_deprecated?: number | null
           sponsor_slot_price?: number | null
           sponsor_slots_count?: number
@@ -3717,6 +3729,12 @@ export type Database = {
           recurrence_rule?: string | null
           required_tier?: string
           rsvp_opens_at?: string | null
+          cancel_note?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          rescheduled_to_event_id?: string | null
+          status?: string
           social_member_price_deprecated?: number | null
           sponsor_slot_price?: number | null
           sponsor_slots_count?: number

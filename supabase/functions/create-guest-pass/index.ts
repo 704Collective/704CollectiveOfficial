@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
 import { rsvpNotOpen, rsvpOpensCopy } from "../_shared/rsvpWindow.ts";
 import { membershipEndsBeforeEvent, membershipEndsBeforeEventResponse } from "../_shared/membershipWindow.ts";
+import { eventClosedResponse, isEventClosed } from "../_shared/eventStatus.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -137,7 +138,7 @@ serve(async (req) => {
     // ── Fetch event details ───────────────────────────────────────────────────
     const { data: event, error: eventError } = await adminClient
       .from("events")
-      .select("id, title, start_time, end_time, location_name, location_address, allows_guest_passes, capacity, rsvp_opens_at")
+      .select("id, title, start_time, end_time, location_name, location_address, allows_guest_passes, capacity, rsvp_opens_at, status, rescheduled_to_event_id")
       .eq("id", event_id)
       .single();
 
@@ -146,6 +147,8 @@ serve(async (req) => {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // Cancelled/rescheduled event: kind refusal (200 + success:false), super-admins included.
+    if (isEventClosed(event)) return eventClosedResponse(corsHeaders, event);
 
     // ── Paid-window gate: a pending-cancel member cannot seat a guest at an
     // event that starts after their own membership ends (kind refusal). ──

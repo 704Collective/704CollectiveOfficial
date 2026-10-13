@@ -228,6 +228,12 @@ export default function ExchangeIntakeForm({
     try {
       const res = await fetch(fnUrl, { method: 'POST', headers: headers(), body: JSON.stringify(body) });
       const data = await res.json();
+      // Kind refusal (200 + success:false): the event was cancelled/moved.
+      if (res.ok && data && data.success === false) {
+        setError(data.error || 'This event is no longer taking RSVPs.');
+        setLoading(false);
+        return;
+      }
       if (!res.ok) {
         if (data?.full) setFull(true);
         setError(data?.error || 'Something went wrong. Please try again.');

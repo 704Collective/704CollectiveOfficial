@@ -26,6 +26,7 @@ import { SmartDateTimePicker } from '@/components/SmartDateTimePicker';
 import { RecurrenceSelector, RecurrenceRule, parseRecurrenceRule } from '@/components/RecurrenceSelector';
 import { EventCategory, CATEGORY_CONFIG, detectCategoryFromTitle } from '@/components/CategoryBadge';
 import { DeleteConfirmDialog } from '@/components/admin/DeleteConfirmDialog';
+import { EventCancelDialog, type CancelAction, type CancelDetails } from '@/components/admin/EventCancelDialog';
 import { AddMembersToEventDialog } from '@/components/admin/AddMembersToEventDialog';
 import { EventAttendeesDialog } from '@/components/admin/EventAttendeesDialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -37,7 +38,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import * as Sentry from '@sentry/nextjs';
 import {
-  Calendar, Plus, Pencil, Trash2, Search, Copy, Lock,
+  Calendar, Plus, Pencil, Trash2, Search, Copy, Lock, CalendarClock, XCircle,
   ChevronLeft, ChevronRight, MoreHorizontal, ArrowLeft, Upload, X as XIcon, Gift, Mail, Check, UserPlus, Bell, ExternalLink, Send, Loader2, FlaskConical, ChevronsUpDown,
 } from 'lucide-react';
 
@@ -95,6 +96,11 @@ interface Event {
   business_member_price_deprecated?: number | null;
   // Null means RSVPs are open as soon as the event is published.
   rsvp_opens_at?: string | null;
+  intake_form_slug?: string | null;
+  // Lifecycle (cancel/reschedule). Read-only here: buildEventData never writes these.
+  status?: string | null;
+  cancel_reason?: string | null;
+  rescheduled_to_event_id?: string | null;
 }
 
 type AccessType = 'members_only' | 'public_ticketed' | 'public_free';
@@ -171,7 +177,9 @@ const PAGE_SIZE = 20;
 const EVENTS_STALE_TIME = 5 * 60 * 1000;
 
 // ── Data fetching ────────────────────────────────────────────────────────────
-async function fetchEventsData(page: number, filter: 'all' | 'upcoming' | 'past') {
+type EventsFilter = 'all' | 'upcoming' | 'past' | 'cancelled';
+
+async function fetchEventsData(page: number, filter: EventsFilter) {
   const start = (page - 1) * PAGE_SIZE;
   const end = start + PAGE_SIZE - 1;
   const now = new Date().toISOString();
@@ -179,6 +187,7 @@ async function fetchEventsData(page: number, filter: 'all' | 'upcoming' | 'past'
   let query = supabase.from('events').select('*', { count: 'exact' }).order('start_time', { ascending: filter !== 'past' });
   if (filter === 'upcoming') query = query.gte('start_time', now);
   else if (filter === 'past') query = query.lt('start_time', now);
+  else if (filter === 'cancelled') query = query.in('status', ['cancelled', 'rescheduled']);
 
   const { data, error, count } = await query.range(start, end);
   if (error) throw error;
@@ -206,7 +215,32 @@ async function fetchEventsData(page: number, filter: 'all' | 'upcoming' | 'past'
     (followupsRes.data || []).forEach(g => { if (g.event_id) followupCounts[g.event_id] = (followupCounts[g.event_id] || 0) + 1; });
   }
 
-  return { events, totalCount: count || 0, rsvpCounts, followupCounts, publicCountMap };
+  // RSVP HISTORY (any status, incl. child occurrences): Delete is only allowed
+  // when an event has zero rows in attendance_credentials, tickets and
+  // event_public_rsvps; otherwise the admin must Cancel instead.
+  const historyCounts: Record<string, number> = {};
+  if (ids.length > 0) {
+    const { data: kids } = await supabase.from('events').select('id, parent_event_id').in('parent_event_id', ids);
+    const childToParent: Record<string, string> = {};
+    (kids || []).forEach(k => { if (k.parent_event_id) childToParent[k.id] = k.parent_event_id; });
+    const allIds = [...ids, ...Object.keys(childToParent)];
+    const bump = (eventId: string | null) => {
+      if (!eventId) return;
+      const owner = childToParent[eventId] ?? eventId;
+      historyCounts[owner] = (historyCounts[owner] || 0) + 1;
+      if (owner !== eventId) historyCounts[eventId] = (historyCounts[eventId] || 0) + 1;
+    };
+    const [hc, ht, hp] = await Promise.all([
+      supabase.from('attendance_credentials').select('event_id').in('event_id', allIds),
+      supabase.from('tickets').select('event_id').in('event_id', allIds),
+      supabase.from('event_public_rsvps').select('event_id').in('event_id', allIds),
+    ]);
+    (hc.data || []).forEach(r => bump(r.event_id));
+    (ht.data || []).forEach(r => bump(r.event_id));
+    (hp.data || []).forEach(r => bump(r.event_id));
+  }
+
+  return { events, totalCount: count || 0, rsvpCounts, followupCounts, publicCountMap, historyCounts };
 }
 
 // ── Host picker options ──────────────────────────────────────────────────────
@@ -272,7 +306,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   } | null>(null);
   const [form, setForm] = useState<EventForm>(getDefaultEventForm());
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'all' | 'upcoming' | 'past'>('upcoming');
+  const [filter, setFilter] = useState<EventsFilter>('upcoming');
   const [page, setPage] = useState(1);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -309,7 +343,23 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   const rsvpCounts = data?.rsvpCounts ?? {};
   const followupCounts = data?.followupCounts ?? {};
   const publicCountMap = data?.publicCountMap ?? {};
+  const historyCounts = data?.historyCounts ?? {};
   const [sentFollowups, setSentFollowups] = useState<Record<string, boolean>>({});
+
+  // ── Cancel / Reschedule ─────────────────────────────────────────────────
+  const [cancelDlg, setCancelDlg] = useState<{ open: boolean; event: Event | null; action: CancelAction }>({ open: false, event: null, action: 'cancel' });
+  // Reschedule round-trip: details captured -> prefilled form -> new event id -> preview.
+  const [pendingReschedule, setPendingReschedule] = useState<{ event: Event; details: CancelDetails } | null>(null);
+  const [rescheduleTargetId, setRescheduleTargetId] = useState<string | null>(null);
+  const isClosed = (e: Event) => e.status === 'cancelled' || e.status === 'rescheduled';
+  const isRecurringEvent = (e: Event) => !!e.parent_event_id || !!e.recurrence_rule;
+  const hasHistory = (e: Event) => (historyCounts[e.id] || 0) > 0;
+  const openCancel = (e: Event, action: CancelAction) => { setRescheduleTargetId(null); setPendingReschedule(null); setCancelDlg({ open: true, event: e, action }); };
+  const statusBadge = (e: Event) => {
+    if (e.status === 'cancelled') return <Badge variant="destructive" className="ml-2 align-middle" data-testid="status-badge">Cancelled</Badge>;
+    if (e.status === 'rescheduled') return <Badge variant="secondary" className="ml-2 align-middle border border-primary/40 text-primary" data-testid="status-badge">Rescheduled</Badge>;
+    return null;
+  };
 
   const invalidateEvents = () => queryClient.invalidateQueries({ queryKey: ['admin-events'] });
 
@@ -388,24 +438,35 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
         return { type: 'updated' as const, count: 1 };
       }
 
+      // Reschedule clone: carry the intake form slug; the new row gets fresh
+      // defaults for status, ics_sequence, discussion_opened_at and Eventbrite.
+      const extras = pendingReschedule ? { intake_form_slug: pendingReschedule.event.intake_form_slug ?? null } : {};
+
       if (isRecurring && recurringEvents && recurringEvents.length > 0) {
-        const { data: parent, error: pErr } = await supabase.from('events').insert([recurringEvents[0]]).select().single();
+        const { data: parent, error: pErr } = await supabase.from('events').insert([{ ...recurringEvents[0], ...extras }]).select().single();
         if (pErr) throw pErr;
         if (recurringEvents.length > 1) {
-          const children = recurringEvents.slice(1).map(e => ({ ...e, parent_event_id: parent.id }));
+          const children = recurringEvents.slice(1).map(e => ({ ...e, ...extras, parent_event_id: parent.id }));
           const { error: cErr } = await supabase.from('events').insert(children);
           if (cErr) throw new Error('Created first event but failed to create recurring instances');
         }
-        return { type: 'created-recurring' as const, count: recurringEvents.length };
+        return { type: 'created-recurring' as const, count: recurringEvents.length, newId: parent.id as string };
       }
 
-      const { error } = await supabase.from('events').insert([eventData]);
+      const { data: created, error } = await supabase.from('events').insert([{ ...eventData, ...extras }]).select('id').single();
       if (error) throw error;
-      return { type: 'created' as const, count: 1 };
+      return { type: 'created' as const, count: 1, newId: created.id as string };
     },
     onSuccess: async (result) => {
       setDialogOpen(false);
       invalidateEvents();
+      if ((result.type === 'created' || result.type === 'created-recurring') && pendingReschedule) {
+        // New event is live -> back to the reschedule dialog at the preview step.
+        toast.success(result.type === 'created-recurring' ? `Created ${result.count} new dates - now notify the old attendees` : 'New date created - now notify the old attendees');
+        setRescheduleTargetId(result.newId);
+        setCancelDlg({ open: true, event: pendingReschedule.event, action: 'reschedule' });
+        return;
+      }
       if (result.type === 'created-recurring') { toast.success(`Created ${result.count} recurring events`); return; }
       if (result.type === 'created') { toast.success('Event created'); return; }
 
@@ -473,7 +534,8 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       if (scope === 'this') return { count: 1, occurrences };
 
       const parentId = ev.parent_event_id || ev.id;
-      let query = supabase.from('events').select('id, start_time, end_time, is_published').neq('id', ev.id);
+      // Cancelled/rescheduled siblings are frozen: a series edit never touches them.
+      let query = supabase.from('events').select('id, start_time, end_time, is_published').neq('id', ev.id).eq('status', 'scheduled');
       if (ev.parent_event_id) {
         query = query.or(`parent_event_id.eq.${parentId},id.eq.${parentId}`);
       } else { query = query.eq('parent_event_id', ev.id); }
@@ -807,6 +869,18 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
     setDialogOpen(true);
   };
 
+  // Reschedule (hybrid): capture reason/note/scope, then open the normal form
+  // prefilled from the old event (duplicate() prefill + event_type/required_tier
+  // already derived by the form; intake_form_slug/price columns carried at insert).
+  // The date resets to today so the admin must pick the new one.
+  const startReschedule = (event: Event, details: CancelDetails) => {
+    setCancelDlg({ open: false, event: null, action: 'reschedule' });
+    setPendingReschedule({ event, details });
+    setRescheduleTargetId(null);
+    duplicate(event);
+    toast.info('Set the new date (and anything else), then save - the old attendees are notified after.');
+  };
+
   // ── Build data ───────────────────────────────────────────────────────────
   // The single source of truth for what the opening-time column should become on
   // this save. Immediate mode is always null, which the doors and the DB gate
@@ -1091,9 +1165,9 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
           <Input placeholder="Search events..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
         <div className="flex gap-2">
-          {(['all', 'upcoming', 'past'] as const).map(f => (
-            <Button key={f} variant={filter === f ? 'filterActive' : 'filterInactive'} size="sm" onClick={() => { setFilter(f); setPage(1); }}>
-              {f.charAt(0).toUpperCase() + f.slice(1)}
+          {(['all', 'upcoming', 'past', 'cancelled'] as const).map(f => (
+            <Button key={f} variant={filter === f ? 'filterActive' : 'filterInactive'} size="sm" onClick={() => { setFilter(f); setPage(1); }} data-testid={`filter-${f}`}>
+              {f === 'cancelled' ? 'Cancelled / Moved' : f.charAt(0).toUpperCase() + f.slice(1)}
             </Button>
           ))}
         </div>
@@ -1141,7 +1215,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                     const ebPublished = event.eventbrite_published ?? false;
                     return (
                       <TableRow key={event.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openEdit(event)}>
-                        <TableCell className="font-medium py-3 max-w-[250px]"><span className="truncate block">{event.title}</span></TableCell>
+                        <TableCell className="font-medium py-3 max-w-[250px]"><span className="truncate block">{event.title}{statusBadge(event)}</span></TableCell>
                         <TableCell className="py-3 text-muted-foreground whitespace-nowrap">{format(new Date(event.start_time), 'MMM d')}</TableCell>
                         <TableCell className="py-3 text-muted-foreground whitespace-nowrap">{format(new Date(event.start_time), 'h:mm a')}</TableCell>
                         <TableCell className="py-3 whitespace-nowrap" onClick={e => e.stopPropagation()}>
@@ -1193,8 +1267,14 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={e => { e.stopPropagation(); openEdit(event); }}><Pencil className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
                               <DropdownMenuItem onClick={e => { e.stopPropagation(); duplicate(event); }}><Copy className="w-4 h-4 mr-2" /> Duplicate</DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={e => { e.stopPropagation(); setDeleteMenuEvent(event); }}>
-                                <Trash2 className="w-4 h-4 mr-2" /> Delete
+                              {isUpcoming && !isClosed(event) && (
+                                <>
+                                  <DropdownMenuItem onClick={e => { e.stopPropagation(); openCancel(event, 'reschedule'); }} data-testid="menu-reschedule"><CalendarClock className="w-4 h-4 mr-2" /> Reschedule</DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={e => { e.stopPropagation(); openCancel(event, 'cancel'); }} data-testid="menu-cancel"><XCircle className="w-4 h-4 mr-2" /> Cancel event</DropdownMenuItem>
+                                </>
+                              )}
+                              <DropdownMenuItem className="text-destructive focus:text-destructive" disabled={hasHistory(event)} onClick={e => { e.stopPropagation(); if (!hasHistory(event)) setDeleteMenuEvent(event); }} data-testid="menu-delete">
+                                <Trash2 className="w-4 h-4 mr-2" /> {hasHistory(event) ? 'Delete (has RSVPs - use Cancel)' : 'Delete'}
                               </DropdownMenuItem>
                               {!isUpcoming && rsvpCount > 0 && (
                                 <DropdownMenuItem
@@ -1254,7 +1334,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <h4 className="font-medium truncate">{event.title}</h4>
+                          <h4 className="font-medium truncate">{event.title}{statusBadge(event)}</h4>
                           <p className="text-sm text-muted-foreground mt-0.5">{format(new Date(event.start_time), 'MMM d · h:mm a')}</p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
@@ -1302,8 +1382,14 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => openEdit(event)}><Pencil className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => duplicate(event)}><Copy className="w-4 h-4 mr-2" /> Duplicate</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteMenuEvent(event)}>
-                              <Trash2 className="w-4 h-4 mr-2" /> Delete
+                            {isUpcoming && !isClosed(event) && (
+                              <>
+                                <DropdownMenuItem onClick={() => openCancel(event, 'reschedule')} data-testid="menu-reschedule"><CalendarClock className="w-4 h-4 mr-2" /> Reschedule</DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => openCancel(event, 'cancel')} data-testid="menu-cancel"><XCircle className="w-4 h-4 mr-2" /> Cancel event</DropdownMenuItem>
+                              </>
+                            )}
+                            <DropdownMenuItem className="text-destructive focus:text-destructive" disabled={hasHistory(event)} onClick={() => { if (!hasHistory(event)) setDeleteMenuEvent(event); }} data-testid="menu-delete">
+                              <Trash2 className="w-4 h-4 mr-2" /> {hasHistory(event) ? 'Delete (has RSVPs - use Cancel)' : 'Delete'}
                             </DropdownMenuItem>
                             {!isUpcoming && rsvpCount > 0 && (
                               <DropdownMenuItem
@@ -1690,9 +1776,19 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
           </div>
           <DialogFooter className="flex flex-col-reverse sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-2">
             <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+              {editingEvent && new Date(editingEvent.start_time) > new Date() && !isClosed(editingEvent) && (
+                <>
+                  <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); openCancel(editingEvent, 'reschedule'); }} disabled={submitting} className="flex-1 sm:flex-none" data-testid="edit-reschedule">
+                    <CalendarClock className="w-4 h-4 mr-2" /> Reschedule
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); openCancel(editingEvent, 'cancel'); }} disabled={submitting} className="flex-1 sm:flex-none text-destructive border-destructive/40" data-testid="edit-cancel">
+                    <XCircle className="w-4 h-4 mr-2" /> Cancel event
+                  </Button>
+                </>
+              )}
               {editingEvent && (
-                <Button variant="destructive" onClick={() => setDeleteInEditOpen(true)} disabled={submitting || deleteMutation.isPending} className="flex-1 sm:flex-none">
-                  <Trash2 className="w-4 h-4 mr-2" /> Delete Event
+                <Button variant="destructive" onClick={() => { if (!hasHistory(editingEvent)) setDeleteInEditOpen(true); }} disabled={submitting || deleteMutation.isPending || hasHistory(editingEvent)} title={hasHistory(editingEvent) ? 'This event has RSVPs - use Cancel instead.' : undefined} className="flex-1 sm:flex-none" data-testid="edit-delete">
+                  <Trash2 className="w-4 h-4 mr-2" /> {hasHistory(editingEvent) ? 'Delete (has RSVPs - use Cancel)' : 'Delete Event'}
                 </Button>
               )}
               {editingEvent && (
@@ -1842,6 +1938,19 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
         description="This permanently removes the event. This action cannot be undone."
         destructive
         loading={deleteMutation.isPending}
+      />
+
+      {/* Cancel / Reschedule */}
+      <EventCancelDialog
+        open={cancelDlg.open}
+        onOpenChange={(open) => { setCancelDlg(prev => ({ ...prev, open })); if (!open) { setRescheduleTargetId(null); setPendingReschedule(null); } }}
+        event={cancelDlg.event}
+        action={cancelDlg.action}
+        isRecurring={cancelDlg.event ? isRecurringEvent(cancelDlg.event) : false}
+        rescheduledToEventId={rescheduleTargetId}
+        initialDetails={pendingReschedule?.event.id === cancelDlg.event?.id ? pendingReschedule?.details ?? null : null}
+        onNeedNewEvent={(details) => { if (cancelDlg.event) startReschedule(cancelDlg.event, details); }}
+        onDone={() => invalidateEvents()}
       />
 
       {/* Attendees Dialog */}

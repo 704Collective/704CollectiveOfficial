@@ -61,6 +61,7 @@ export function useNextEvent(userId: string) {
       const { data: nextEvent } = await supabase
         .from('events')
         .select('id, title, start_time, location_name, image_url')
+        .eq('status', 'scheduled') // cancelled/rescheduled events are hidden
         .gt('start_time', now)
         .eq('is_published', true)
         .order('start_time', { ascending: true })
@@ -174,6 +175,7 @@ export function useMyRsvpdEvents(userId: string, includeGuestPassDisabled = fals
         const { data: allowed } = await supabase
           .from('events')
           .select('id')
+          .eq('status', 'scheduled') // cancelled/rescheduled events are hidden
           .in('id', upcoming.map((e) => e.id))
           .eq('allows_guest_passes', true);
         const allowedIds = new Set((allowed ?? []).map((e) => e.id));
@@ -196,6 +198,7 @@ export function useUpcomingEvents() {
       const { data, error } = await supabase
         .from('events')
         .select('id, title, start_time')
+        .eq('status', 'scheduled') // cancelled/rescheduled events are hidden
         .gte('start_time', new Date().toISOString())
         .eq('is_published', true)
         .eq('allows_guest_passes', true)

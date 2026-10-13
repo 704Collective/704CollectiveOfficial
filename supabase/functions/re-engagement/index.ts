@@ -64,6 +64,7 @@ serve(async (req) => {
   const { data: upcoming } = await supabase
     .from("events")
     .select("title, start_time, location_name")
+        .eq("status", "scheduled") // cancelled/rescheduled events never get this email
     .gte("start_time", now.toISOString())
     .lte("start_time", thirtyDaysFromNow)
     .eq("is_published", true)

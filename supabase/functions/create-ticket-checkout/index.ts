@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { rsvpNotOpen, rsvpOpensCopy } from "../_shared/rsvpWindow.ts";
+import { eventClosedResponse, isEventClosed } from "../_shared/eventStatus.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,13 +46,15 @@ serve(async (req) => {
     // columns for old events that haven't been migrated yet.
     const { data: eventData, error: eventError } = await supabaseAdmin
       .from("events")
-      .select("capacity, required_tier, price_cents, member_price_cents, ticket_price_deprecated, social_member_price_deprecated, business_member_price_deprecated, access_type_deprecated, rsvp_opens_at")
+      .select("capacity, required_tier, price_cents, member_price_cents, ticket_price_deprecated, social_member_price_deprecated, business_member_price_deprecated, access_type_deprecated, rsvp_opens_at, status, rescheduled_to_event_id")
       .eq("id", eventId)
       .single();
 
     if (eventError || !eventData) {
       throw new Error(`Event not found: ${eventId}`);
     }
+    // Cancelled/rescheduled event: no checkout session is ever created (kind refusal).
+    if (isEventClosed(eventData)) return eventClosedResponse(corsHeaders, eventData);
 
     // Derive ticket_mode + prices from canonical columns (sweep schema).
     // Falls back to deprecated columns if canonical not populated.

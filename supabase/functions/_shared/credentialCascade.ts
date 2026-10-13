@@ -267,6 +267,136 @@ export async function voidAllCredentialsForPerson(
   return { total, rsvps };
 }
 
+// ── Event-scoped cancellation (the event itself is closed) ────────────────────
+// Unlike the person-scoped paths above, a cancelled/rescheduled event must NOT
+// promote its waitlist: the seats are not freeing up, the event is gone. The
+// waitlist is read (so those people get the cancel email) and then cleared so
+// claim-waitlist-seat can never succeed on it.
+
+export type EventVoidRow = {
+  credential_id: string;
+  event_id: string;
+  person_id: string;
+  credential_type: string;
+  metadata: Record<string, unknown> | null;
+  email: string | null;
+  full_name: string | null;
+};
+
+/**
+ * Void every ACTIVE credential bound to the given events (member_rsvp, guest_pass
+ * incl. business +1s, public_rsvp, paid tickets). Lifetime member passes have
+ * event_id NULL and are never touched. No waitlist release. Returns the voided
+ * rows with the holder's email for the recipient list.
+ */
+export async function voidEventCredentials(
+  supabase: AnySupabase,
+  args: { eventIds: string[]; source: string },
+): Promise<EventVoidRow[]> {
+  if (args.eventIds.length === 0) return [];
+  const { data: rows, error } = await supabase
+    .from("attendance_credentials")
+    .select("id, event_id, person_id, credential_type, metadata, person:people!attendance_credentials_person_id_fkey(email, full_name)")
+    .in("event_id", args.eventIds)
+    .eq("status", "active")
+    .not("event_id", "is", null);
+  if (error) throw new Error(`event credential lookup failed (${args.source}): ${error.message}`);
+  const list = (rows ?? []) as Array<{ id: string; event_id: string; person_id: string; credential_type: string; metadata: Record<string, unknown> | null; person: { email: string | null; full_name: string | null } | Array<{ email: string | null; full_name: string | null }> | null }>;
+  if (list.length === 0) return [];
+  const ids = list.map((r) => r.id);
+  const { error: vErr } = await supabase
+    .from("attendance_credentials")
+    .update({ status: "voided", updated_at: new Date().toISOString() })
+    .in("id", ids)
+    .eq("status", "active");
+  if (vErr) throw new Error(`event credential void failed (${args.source}): ${vErr.message}`);
+  log("event credentials voided", { events: args.eventIds.length, count: ids.length, source: args.source });
+  return list.map((r) => {
+    const p = Array.isArray(r.person) ? r.person[0] : r.person;
+    return { credential_id: r.id, event_id: r.event_id, person_id: r.person_id, credential_type: r.credential_type, metadata: r.metadata, email: p?.email ?? null, full_name: p?.full_name ?? null };
+  });
+}
+
+export type WaitlistRow = { event_id: string; user_id: string; email: string | null; full_name: string | null };
+
+/** Read the waitlist for emailing, then delete it so no claim can succeed. No promotion. */
+export async function closeEventWaitlist(
+  supabase: AnySupabase,
+  args: { eventIds: string[]; source: string },
+): Promise<WaitlistRow[]> {
+  if (args.eventIds.length === 0) return [];
+  const { data: rows, error } = await supabase
+    .from("event_waitlist")
+    .select("id, event_id, user_id")
+    .in("event_id", args.eventIds);
+  if (error) throw new Error(`waitlist lookup failed (${args.source}): ${error.message}`);
+  const list = (rows ?? []) as Array<{ id: string; event_id: string; user_id: string }>;
+  if (list.length === 0) return [];
+  const userIds = [...new Set(list.map((r) => r.user_id))];
+  const { data: profiles } = await supabase.from("profiles").select("id, email, full_name").in("id", userIds);
+  const byId: Record<string, { email: string | null; full_name: string | null }> = {};
+  for (const p of (profiles ?? []) as Array<{ id: string; email: string | null; full_name: string | null }>) byId[p.id] = { email: p.email, full_name: p.full_name };
+  const { error: dErr } = await supabase.from("event_waitlist").delete().in("id", list.map((r) => r.id));
+  if (dErr) throw new Error(`waitlist clear failed (${args.source}): ${dErr.message}`);
+  log("event waitlist cleared (no promotion)", { events: args.eventIds.length, rows: list.length, source: args.source });
+  return list.map((r) => ({ event_id: r.event_id, user_id: r.user_id, email: byId[r.user_id]?.email ?? null, full_name: byId[r.user_id]?.full_name ?? null }));
+}
+
+export type LegacyRow = { event_id: string; email: string | null; full_name: string | null; kind: "ticket" | "public_rsvp"; amount_paid_cents?: number | null };
+
+/**
+ * Legacy mirrors: tickets (status→cancelled + cancelled_at + cancellation_reason)
+ * and event_public_rsvps (status→cancelled). Returns the contacts found there so
+ * nobody who only exists in a mirror is missed.
+ */
+export async function cancelLegacyMirrors(
+  supabase: AnySupabase,
+  args: { eventIds: string[]; reason: string; source: string },
+): Promise<LegacyRow[]> {
+  if (args.eventIds.length === 0) return [];
+  const out: LegacyRow[] = [];
+  const nowIso = new Date().toISOString();
+  const { data: tix, error: tErr } = await supabase
+    .from("tickets")
+    .select("id, event_id, user_id, guest_email, guest_name, amount_paid_cents, status")
+    .in("event_id", args.eventIds)
+    .neq("status", "cancelled");
+  if (tErr) log("legacy tickets lookup failed (non-fatal)", { error: tErr.message });
+  const tickets = (tix ?? []) as Array<{ id: string; event_id: string; user_id: string | null; guest_email: string | null; guest_name: string | null; amount_paid_cents: number | null }>;
+  if (tickets.length > 0) {
+    const { error } = await supabase
+      .from("tickets")
+      .update({ status: "cancelled", cancelled_at: nowIso, cancellation_reason: args.reason })
+      .in("id", tickets.map((t) => t.id));
+    if (error) log("legacy tickets cancel failed (non-fatal)", { error: error.message });
+    const userIds = [...new Set(tickets.map((t) => t.user_id).filter(Boolean))] as string[];
+    const byId: Record<string, { email: string | null; full_name: string | null }> = {};
+    if (userIds.length) {
+      const { data: profiles } = await supabase.from("profiles").select("id, email, full_name").in("id", userIds);
+      for (const p of (profiles ?? []) as Array<{ id: string; email: string | null; full_name: string | null }>) byId[p.id] = { email: p.email, full_name: p.full_name };
+    }
+    for (const t of tickets) {
+      const email = t.guest_email ?? (t.user_id ? byId[t.user_id]?.email ?? null : null);
+      const full_name = t.guest_name ?? (t.user_id ? byId[t.user_id]?.full_name ?? null : null);
+      out.push({ event_id: t.event_id, email, full_name, kind: "ticket", amount_paid_cents: t.amount_paid_cents });
+    }
+  }
+  const { data: prs, error: pErr } = await supabase
+    .from("event_public_rsvps")
+    .select("id, event_id, email, first_name, last_name, status")
+    .in("event_id", args.eventIds)
+    .neq("status", "cancelled");
+  if (pErr) log("public rsvps lookup failed (non-fatal)", { error: pErr.message });
+  const publics = (prs ?? []) as Array<{ id: string; event_id: string; email: string | null; first_name: string | null; last_name: string | null }>;
+  if (publics.length > 0) {
+    const { error } = await supabase.from("event_public_rsvps").update({ status: "cancelled", updated_at: nowIso }).in("id", publics.map((p) => p.id));
+    if (error) log("public rsvps cancel failed (non-fatal)", { error: error.message });
+    for (const p of publics) out.push({ event_id: p.event_id, email: p.email, full_name: [p.first_name, p.last_name].filter(Boolean).join(" ") || null, kind: "public_rsvp" });
+  }
+  log("legacy mirrors cancelled", { tickets: tickets.length, public_rsvps: publics.length, source: args.source });
+  return out;
+}
+
 /** Future-dated subset of a voided list (for "we removed these" emails). */
 export const futureOnly = (rsvps: VoidedRsvp[], nowMs = Date.now()) =>
   rsvps.filter((r) => r.start_time && new Date(r.start_time).getTime() > nowMs);

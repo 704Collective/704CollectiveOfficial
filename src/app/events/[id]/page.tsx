@@ -50,6 +50,10 @@ interface Event {
   ticket_mode: 'none' | 'public_only' | 'all' | null;
   required_tier?: string | null;
   event_type?: string | null;
+  status?: string | null;
+  cancel_reason?: string | null;
+  cancel_note?: string | null;
+  rescheduled_to_event_id?: string | null;
   price_cents?: number | null;
   member_price_cents?: number | null;
   intake_form_slug?: string | null;
@@ -279,6 +283,11 @@ export default function EventDetail() {
   const ctaNotOpen = rsvpNotOpen && !isSuperAdmin;
   const rsvpOpensLabel = rsvpOpensAt ? format(rsvpOpensAt, "EEEE, MMM d 'at' h:mm a") : '';
 
+  // Cancelled / rescheduled event: banner + no live CTA anywhere (the write doors
+  // refuse too). The page itself stays readable (details, discussion link).
+  const eventClosed = event?.status === 'cancelled' || event?.status === 'rescheduled';
+  const eventMoved = event?.status === 'rescheduled' && !!event?.rescheduled_to_event_id;
+
   // Paid-window gate for pending-cancel members: a member who cancelled at
   // period end keeps access until subscription_ends_at but cannot take a seat
   // at an event that starts after that date. Members with
@@ -490,6 +499,12 @@ export default function EventDetail() {
       });
 
       const data = await res.json();
+      // Kind refusal (200 + success:false): event cancelled/moved.
+      if (res.ok && data && data.success === false) {
+        setPublicRsvpError(data.error || 'This event is no longer taking RSVPs.');
+        setPublicRsvpLoading(false);
+        return;
+      }
       if (!res.ok) {
         const errMsg = (data.error || '').toLowerCase();
         if (res.status === 409 || errMsg.includes('capacity') || errMsg.includes('full')) {
@@ -670,6 +685,20 @@ export default function EventDetail() {
   };
 
   const renderTicketCard = () => {
+    // STATE 0: the event itself is closed (cancelled or moved) - nothing to RSVP to here.
+    if (eventClosed) return (
+      <div style={{ textAlign: 'center' }} data-testid="event-closed-card">
+        <span style={{ display: 'inline-block', fontSize: '0.6875rem', fontWeight: 600, color: eventMoved ? '#C6A664' : '#E57373', backgroundColor: eventMoved ? 'rgba(198,166,100,0.08)' : 'rgba(229,115,115,0.06)', padding: '4px 12px', borderRadius: '100px', marginBottom: '12px' }}>{eventMoved ? 'Moved to a new date' : 'Cancelled'}</span>
+        <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '6px' }}>{eventMoved ? 'This event has a new date' : 'This event was cancelled'}</h3>
+        <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', marginBottom: '18px', lineHeight: 1.6 }}>{event.cancel_reason ? event.cancel_reason : 'Sorry for the change of plans.'}{eventMoved ? ' Your previous RSVP does not carry over.' : ''}</p>
+        {eventMoved ? (
+          <Link href={`/events/${event.rescheduled_to_event_id}`} style={{ ...linkBtn, backgroundColor: '#C6A664', color: '#1A1A1A', fontWeight: 700 }} data-testid="event-moved-link">RSVP for the new date</Link>
+        ) : (
+          <Link href="/events" style={{ ...linkBtn, backgroundColor: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)' }}>Browse Other Events</Link>
+        )}
+      </div>
+    );
+
     // STATE 7: Attended - past event with checked_in_at OR status='attended'
     const isAttended = ticketStatus === 'attended' || checkedInAt;
     if (hasTicket && isAttended) return (
@@ -1044,7 +1073,7 @@ export default function EventDetail() {
   const handleMobileCTA = () => {
     // Locked: the bar renders a non-actionable state, but guard the handler too so
     // a stray tap can never reach a door.
-    if (ctaNotOpen) return;
+    if (ctaNotOpen || eventClosed) return;
     if (isActiveMember && membershipEndsBeforeEvent) return;
     if (useIntakeForm) { router.push(intakeHref); return; }
     if (event.access_type === 'public_free') {
@@ -1103,6 +1132,18 @@ export default function EventDetail() {
                 {rsvpNotOpen && <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#C6A664', backgroundColor: 'rgba(198,166,100,0.08)', padding: '4px 12px', borderRadius: '100px' }}>RSVPs open {rsvpOpensLabel}</span>}
               </div>
 
+              {eventClosed && (
+                <div role="status" data-testid="event-closed-banner" style={{ marginBottom: '18px', padding: '14px 16px', borderRadius: '12px', backgroundColor: eventMoved ? 'rgba(198,166,100,0.08)' : 'rgba(229,115,115,0.08)', border: `1px solid ${eventMoved ? 'rgba(198,166,100,0.35)' : 'rgba(229,115,115,0.35)'}` }}>
+                  <p style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
+                    {eventMoved ? 'This event moved to a new date' : 'This event was cancelled'}
+                    {event.cancel_reason ? <span style={{ fontWeight: 500, color: 'rgba(255,255,255,0.7)' }}> - {event.cancel_reason}</span> : null}
+                  </p>
+                  {event.cancel_note && <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.6)', margin: '6px 0 0', lineHeight: 1.6 }}>{event.cancel_note}</p>}
+                  {eventMoved && (
+                    <Link href={`/events/${event.rescheduled_to_event_id}`} style={{ display: 'inline-block', marginTop: '10px', fontSize: '0.875rem', fontWeight: 700, color: '#C6A664', textDecoration: 'underline', textUnderlineOffset: '3px' }}>See the new date and RSVP here →</Link>
+                  )}
+                </div>
+              )}
               <h1 style={{ fontSize: 'clamp(1.75rem, 4.5vw, 2.5rem)', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: '20px' }}>{event.title}</h1>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '28px' }}>
@@ -1183,7 +1224,13 @@ export default function EventDetail() {
         {!hasTicket && !waitlistPosition && (
           <div className="mobile-sticky-cta" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40, backgroundColor: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(12px)', borderTop: '1px solid rgba(255,255,255,0.06)', padding: '14px 24px', display: 'none' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', maxWidth: '500px', margin: '0 auto' }}>
-              {ctaNotOpen ? (
+              {eventClosed ? (
+                eventMoved ? (
+                  <Link href={`/events/${event.rescheduled_to_event_id}`} style={{ flex: 1, padding: '14px 24px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 700, backgroundColor: '#C6A664', color: '#1A1A1A', textAlign: 'center', textDecoration: 'none' }} data-testid="event-moved-link-mobile">Moved - RSVP for the new date</Link>
+                ) : (
+                  <div style={{ flex: 1, padding: '14px 24px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, backgroundColor: 'rgba(229,115,115,0.08)', color: '#E57373', border: '1px solid rgba(229,115,115,0.25)', textAlign: 'center', cursor: 'default' }} data-testid="event-cancelled-mobile">This event was cancelled</div>
+                )
+              ) : ctaNotOpen ? (
                 /* Not open yet — same non-actionable pattern as the eligibility
                    state below, so the bar stays truthful instead of tappable. */
                 <div style={{ flex: 1, padding: '14px 24px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, backgroundColor: 'rgba(198,166,100,0.08)', color: '#C6A664', border: '1px solid rgba(198,166,100,0.25)', textAlign: 'center', cursor: 'default' }}>

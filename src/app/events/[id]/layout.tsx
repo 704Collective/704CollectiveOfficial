@@ -36,7 +36,7 @@ export async function generateMetadata({
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     const { data: event } = await supabase
       .from('events')
-      .select('title, description, image_url, start_time, location_name, is_published')
+      .select('title, description, image_url, start_time, location_name, is_published, status, cancel_reason')
       .eq('id', id)
       .maybeSingle();
 
@@ -48,17 +48,24 @@ export async function generateMetadata({
       };
     }
 
-    const title = `${event.title} | 704 Collective`;
-    const description =
-      (event.description && event.description.slice(0, 155).trim()) ||
-      `Join us for ${event.title} in Charlotte. RSVP on 704 Collective.`;
+    // Cancelled/rescheduled: say so in the title/description and stop indexing the page.
+    const closed = event.status === 'cancelled' || event.status === 'rescheduled';
+    const title = closed
+      ? `${event.status === 'rescheduled' ? 'Moved' : 'Cancelled'}: ${event.title} | 704 Collective`
+      : `${event.title} | 704 Collective`;
+    const description = closed
+      ? (event.status === 'rescheduled'
+          ? `${event.title} has moved to a new date. See the new date and RSVP again on 704 Collective.`
+          : `${event.title} has been cancelled${event.cancel_reason ? ` (${event.cancel_reason})` : ''}.`)
+      : (event.description && event.description.slice(0, 155).trim()) ||
+        `Join us for ${event.title} in Charlotte. RSVP on 704 Collective.`;
     const ogImage = absoluteImage(event.image_url);
     const url = `${SITE_URL}/events/${id}`;
 
     return {
       title,
       description,
-      robots: event.is_published ? { index: true, follow: true } : { index: false, follow: true },
+      robots: event.is_published && !closed ? { index: true, follow: true } : { index: false, follow: true },
       openGraph: {
         title,
         description,

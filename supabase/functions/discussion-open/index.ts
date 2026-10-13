@@ -76,6 +76,7 @@ Deno.serve(async (req) => {
     const { data: one, error } = await supabase
       .from("events")
       .select("id, title, image_url, start_time, location_name")
+        .eq("status", "scheduled") // cancelled/rescheduled events never get this email
       .eq("id", targetEventId)
       .eq("is_published", true)
       .maybeSingle();
@@ -86,6 +87,7 @@ Deno.serve(async (req) => {
     const result = await supabase
       .from("events")
       .select("id, title, image_url, start_time, location_name")
+        .eq("status", "scheduled") // cancelled/rescheduled events never get this email
       .eq("is_published", true)
       .is("discussion_opened_at", null)
       .gt("start_time", now.toISOString())

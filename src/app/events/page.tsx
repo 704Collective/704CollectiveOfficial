@@ -51,6 +51,7 @@ async function fetchEvents(): Promise<Event[]> {
   const { data, error } = await supabase
     .from('events')
     .select('*')
+    .eq('status', 'scheduled') // cancelled/rescheduled events are hidden
     .eq('is_published', true)
     .lte('start_time', sixtyDaysLater)
     .or(`end_time.gte.${thirtyMinsAgo},and(end_time.is.null,start_time.gte.${thirtyMinsAgo})`)
@@ -64,6 +65,7 @@ async function fetchPastEvents(): Promise<Event[]> {
   const { data, error } = await supabase
     .from('events')
     .select('*')
+    .eq('status', 'scheduled') // cancelled/rescheduled events are hidden
     .eq('is_published', true)
     .lt('start_time', now)
     .order('start_time', { ascending: false })

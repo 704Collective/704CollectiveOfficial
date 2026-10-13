@@ -48,6 +48,7 @@ async function fetchBusinessEvents(): Promise<Event[]> {
   const { data, error } = await supabase
     .from('events')
     .select('*')
+    .eq('status', 'scheduled') // cancelled/rescheduled events are hidden
     .gte('start_time', now)
     .lte('start_time', ninetyDaysLater)
     .order('start_time', { ascending: true });

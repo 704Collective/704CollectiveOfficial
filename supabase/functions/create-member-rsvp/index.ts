@@ -6,6 +6,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
 import { rsvpNotOpen, rsvpOpensCopy } from "../_shared/rsvpWindow.ts";
 import { membershipEndsBeforeEvent, membershipEndsBeforeEventResponse } from "../_shared/membershipWindow.ts";
+import { eventClosedResponse, isEventClosed } from "../_shared/eventStatus.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -127,7 +128,7 @@ serve(async (req) => {
     // -- Fetch event --
     const { data: event, error: eventError } = await adminClient
       .from("events")
-      .select("id, capacity, is_published, required_tier, rsvp_opens_at, start_time")
+      .select("id, capacity, is_published, required_tier, rsvp_opens_at, start_time, status, rescheduled_to_event_id")
       .eq("id", event_id)
       .maybeSingle();
 
@@ -136,6 +137,8 @@ serve(async (req) => {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // Cancelled/rescheduled event: kind refusal (200 + success:false), admins included.
+    if (isEventClosed(event)) { log("event closed", { event_id, status: event.status }); return eventClosedResponse(corsHeaders, event); }
     if (!event.is_published) {
       return new Response(JSON.stringify({ error: "Event is not currently available" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },

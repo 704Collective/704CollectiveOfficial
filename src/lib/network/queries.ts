@@ -65,6 +65,6 @@ export async function getHubPosts(hub: HubSlug): Promise<HubBlogPost[]> {
 
 /** Next published upcoming event for the "Meet the room in person" teaser. */
 export async function getNextEvent(): Promise<HubEvent | null> {
-  const { data } = await anon().from('events').select('id, title, start_time, location_name, image_url').eq('is_published', true).gte('start_time', new Date().toISOString()).order('start_time').limit(1).maybeSingle();
+  const { data } = await anon().from('events').select('id, title, start_time, location_name, image_url').eq('is_published', true).eq('status', 'scheduled').gte('start_time', new Date().toISOString()).order('start_time').limit(1).maybeSingle();
   return (data as HubEvent | null) ?? null;
 }

@@ -7,6 +7,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
+import { isEventClosed } from "../_shared/eventStatus.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,6 +37,8 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
     const { session_id, event_id } = await req.json();
     if (!session_id || !event_id) {
@@ -143,7 +146,44 @@ serve(async (req) => {
     const token = "C-" + Array.from(tokenBytes).map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 10).toUpperCase();
 
     // Capacity backstop (DB trigger trg_enforce_event_capacity also enforces atomically)
-    const { data: eventCapRow } = await supabaseClient.from("events").select("capacity").eq("id", event_id).single();
+    const { data: eventCapRow } = await supabaseClient.from("events").select("capacity, status, title, rescheduled_to_event_id").eq("id", event_id).single();
+
+    // Event cancelled/rescheduled AFTER checkout started: the payment is real, the
+    // seat is not. Record the payment (refund stays with an admin via
+    // admin-refund-ticket), issue NO credential, alert hello@ to refund.
+    if (isEventClosed(eventCapRow)) {
+      logStep("Event closed after payment - recording payment, no credential, alerting hello@", { paymentId, event_id, status: eventCapRow?.status });
+      const { data: existingPaymentClosed } = await supabaseClient.from("payments").select("id").eq("stripe_payment_intent_id", paymentId).maybeSingle();
+      if (!existingPaymentClosed) {
+        const stripeCustomerIdClosed = typeof session.customer === "string" ? session.customer : (session.customer as { id?: string })?.id || null;
+        await supabaseClient.from("payments").insert({
+          user_id: userId || null, stripe_payment_intent_id: paymentId, stripe_customer_id: stripeCustomerIdClosed,
+          amount: session.amount_total || 0, currency: session.currency || "usd", status: "succeeded", payment_type: "ticket",
+          description: `Event ticket (EVENT ${eventCapRow?.status?.toUpperCase()} - REFUND NEEDED): ${eventCapRow?.title || event_id}`,
+          metadata: { session_id: session.id, event_id, credential_id: null, needs_refund: true, event_status: eventCapRow?.status },
+        });
+      }
+      try {
+        const payerEmail = session.customer_details?.email || session.customer_email || null;
+        await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceRoleKey}`, apikey: serviceRoleKey },
+          body: JSON.stringify({
+            to: "hello@704collective.com", template: "admin-custom", skipCc: true,
+            data: {
+              recipientName: "704 team",
+              subject: `REFUND NEEDED: paid ticket on ${eventCapRow?.status} event "${eventCapRow?.title ?? event_id}"`,
+              bodyText: `A ticket payment completed after the event was ${eventCapRow?.status}.\n\nEvent: ${eventCapRow?.title ?? event_id} (${event_id})\nPayer: ${payerEmail ?? "unknown"}\nAmount: $${((session.amount_total || 0) / 100).toFixed(2)} ${(session.currency || "usd").toUpperCase()}\nStripe payment: ${paymentId}\nCheckout session: ${session.id}\n\nNo credential was issued. Please refund via Admin -> Refund ticket (admin-refund-ticket).`,
+            },
+          }),
+        });
+      } catch (alertErr) { logStep("refund alert email failed (non-blocking)", { error: String(alertErr) }); }
+      return new Response(
+        JSON.stringify({ success: false, code: "EVENT_CANCELLED", status: eventCapRow?.status, rescheduled_to_event_id: eventCapRow?.rescheduled_to_event_id ?? null, needs_refund: true, payment_intent: paymentId, error: eventCapRow?.status === "rescheduled" ? "This event moved to a new date after your checkout started. We've been notified and will refund this payment." : "This event was cancelled after your checkout started. We've been notified and will refund this payment." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (eventCapRow?.capacity != null) {
       const { count: capCount } = await supabaseClient
         .from("attendance_credentials")

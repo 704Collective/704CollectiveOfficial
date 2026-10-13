@@ -115,6 +115,7 @@ export default function PartnerPortalDashboardPage() {
         .select(
           'id, title, start_time, end_time, description, image_url, location_name, location_address, open_for_venue_partner, open_for_sponsor_inquiry, vendor_booth_spots_available'
         )
+        .eq('status', 'scheduled') // cancelled/rescheduled events are hidden
         .gte('start_time', nowIso)
         .order('start_time', { ascending: true })
         .limit(5);

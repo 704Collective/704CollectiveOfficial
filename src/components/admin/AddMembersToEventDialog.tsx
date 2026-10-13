@@ -262,10 +262,15 @@ export function AddMembersToEventDialog({
       // returns 0 for some callers (same pattern as commit fd862cc).
       const { data: eventRow, error: capErr } = await supabase
         .from('events')
-        .select('capacity')
+        .select('capacity, status')
         .eq('id', eventId)
         .single();
       if (capErr) throw capErr;
+      // Cancelled/rescheduled event: nobody gets added (use Cancel/Reschedule's new event instead).
+      if (eventRow?.status === 'cancelled' || eventRow?.status === 'rescheduled') {
+        toast.error(eventRow.status === 'rescheduled' ? 'This event moved to a new date - add people to the new event instead.' : 'This event was cancelled - no one can be added.');
+        throw new Error('CAPACITY_PRECHECK_ABORT');
+      }
       const capacity = eventRow?.capacity as number | null;
       if (capacity != null) {
         const { count, error: cntErr } = await supabase

@@ -5,6 +5,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
 import { membershipEndsBeforeEvent, membershipEndsBeforeEventResponse } from "../_shared/membershipWindow.ts";
+import { eventClosedResponse, isEventClosed } from "../_shared/eventStatus.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -122,15 +123,19 @@ serve(async (req) => {
       });
     }
 
+    // -- CHECK 3a: the event itself must still be open (cancel-event clears the
+    // waitlist, but a claim racing the cancel must still refuse kindly). --
+    const { data: evForWindow } = await adminClient
+      .from("events")
+      .select("start_time, status, rescheduled_to_event_id")
+      .eq("id", event_id)
+      .maybeSingle();
+    if (isEventClosed(evForWindow)) return eventClosedResponse(corsHeaders, evForWindow!);
+
     // -- CHECK 3b: paid-window gate. A pending-cancel member may not claim a
     // seat at an event that starts after their membership ends (kind refusal,
     // 200 + success:false). Their waitlist row is left as-is. --
     if (!isAdmin && profile.cancel_at_period_end === true) {
-      const { data: evForWindow } = await adminClient
-        .from("events")
-        .select("start_time")
-        .eq("id", event_id)
-        .maybeSingle();
       if (membershipEndsBeforeEvent(profile, evForWindow?.start_time)) {
         log("membership ends before event", { memberUserId, event_id, ends_at: profile.subscription_ends_at });
         return membershipEndsBeforeEventResponse(corsHeaders, profile.subscription_ends_at as string);

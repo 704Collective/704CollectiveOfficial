@@ -27,6 +27,7 @@ function PaymentSuccess() {
   usePageTitle('Payment Successful');
   const [isProcessing, setIsProcessing] = useState(true);
   const [verified, setVerified] = useState(false);
+  const [closedNotice, setClosedNotice] = useState<string | null>(null);
 
   const sessionId = searchParams.get('session_id');
   const eventId = searchParams.get('event_id');
@@ -44,7 +45,10 @@ function PaymentSuccess() {
           const { data, error } = await supabase.functions.invoke('verify-ticket-payment', {
             body: { session_id: sessionId, event_id: eventId },
           });
-          if (!error && !data?.error) {
+          if (!error && data?.code === 'EVENT_CANCELLED') {
+            // Event cancelled/moved after checkout started: payment recorded, no seat, refund in progress.
+            setClosedNotice(String(data.error || 'This event was cancelled after your checkout started. We have been notified and will refund this payment.'));
+          } else if (!error && !data?.error) {
             setVerified(true);
           } else {
             console.error('Ticket verification failed:', error || data?.error);
@@ -93,9 +97,9 @@ function PaymentSuccess() {
               <XCircle className="w-10 h-10 text-destructive" />
             </div>
             <div className="space-y-2">
-              <h1 className="text-3xl font-bold">Payment Not Verified</h1>
-              <p className="text-muted-foreground">
-                We couldn't verify your payment. If you completed a purchase, please check your email for confirmation or contact support.
+              <h1 className="text-3xl font-bold">{closedNotice ? 'Event No Longer Available' : 'Payment Not Verified'}</h1>
+              <p className="text-muted-foreground" data-testid={closedNotice ? 'payment-event-closed' : undefined}>
+                {closedNotice ?? "We couldn't verify your payment. If you completed a purchase, please check your email for confirmation or contact support."}
               </p>
             </div>
             <Button className="w-full" asChild>

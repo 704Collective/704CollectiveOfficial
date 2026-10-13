@@ -157,6 +157,7 @@ serve(async (req) => {
       const { data: recentEvents } = await supabase
         .from("events")
         .select("id")
+        .eq("status", "scheduled") // cancelled/rescheduled events get no follow-up
         .lte("end_time", oneHourAgo.toISOString())
         .gte("end_time", twentyFiveHoursAgo.toISOString());
 
