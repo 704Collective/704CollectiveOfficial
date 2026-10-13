@@ -15,3 +15,30 @@ verify_jwt = false
 
 [functions.capture-prospect]
 verify_jwt = false
+
+[functions.guest-followup]
+verify_jwt = false
+
+[functions.renewal-reminders]
+verify_jwt = false
+
+[functions.eventbrite-publish]
+verify_jwt = false
+
+[functions.deny-business-application]
+verify_jwt = false
+
+[functions.attendee-list-email]
+verify_jwt = false
+
+[functions.generate-apple-wallet-pass]
+verify_jwt = false
+
+[functions.update-backlog-sheet]
+verify_jwt = false
+
+[functions.send-apple-wallet-push]
+verify_jwt = false
+
+[functions.update-google-wallet-pass]
+verify_jwt = false
