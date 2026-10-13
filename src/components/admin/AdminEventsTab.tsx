@@ -240,7 +240,26 @@ async function fetchEventsData(page: number, filter: EventsFilter) {
     (hp.data || []).forEach(r => bump(r.event_id));
   }
 
-  return { events, totalCount: count || 0, rsvpCounts, followupCounts, publicCountMap, historyCounts };
+  // UNSENT cancel/reschedule emails: cancel-event queues one email_log row per
+  // recipient (status 'queued', then 'sent' | 'failed'). Rows still queued|failed
+  // for a closed event mean an interrupted send -> "Resume sending" action.
+  // email_log is admin-readable under RLS (admin_all_email_log), so no function hop.
+  const unsentCounts: Record<string, number> = {};
+  const closedIds = events.filter(e => e.status === 'cancelled' || e.status === 'rescheduled').map(e => e.id);
+  if (closedIds.length > 0) {
+    const { data: unsent } = await supabase
+      .from('email_log')
+      .select('metadata')
+      .eq('template', 'event-cancelled')
+      .in('status', ['queued', 'failed'])
+      .in('metadata->>anchor_event_id', closedIds);
+    (unsent || []).forEach(r => {
+      const anchor = (r.metadata as { anchor_event_id?: string } | null)?.anchor_event_id;
+      if (anchor) unsentCounts[anchor] = (unsentCounts[anchor] || 0) + 1;
+    });
+  }
+
+  return { events, totalCount: count || 0, rsvpCounts, followupCounts, publicCountMap, historyCounts, unsentCounts };
 }
 
 // ── Host picker options ──────────────────────────────────────────────────────
@@ -344,10 +363,15 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   const followupCounts = data?.followupCounts ?? {};
   const publicCountMap = data?.publicCountMap ?? {};
   const historyCounts = data?.historyCounts ?? {};
+  const unsentCounts = data?.unsentCounts ?? {};
   const [sentFollowups, setSentFollowups] = useState<Record<string, boolean>>({});
 
   // ── Cancel / Reschedule ─────────────────────────────────────────────────
-  const [cancelDlg, setCancelDlg] = useState<{ open: boolean; event: Event | null; action: CancelAction }>({ open: false, event: null, action: 'cancel' });
+  // resume=true opens the dialog straight into the send loop for a closed event
+  // that still has queued|failed cancel emails (interrupted send).
+  const [cancelDlg, setCancelDlg] = useState<{ open: boolean; event: Event | null; action: CancelAction; resume?: boolean }>({ open: false, event: null, action: 'cancel' });
+  const unsentFor = (e: Event) => unsentCounts[e.id] || 0;
+  const openResume = (e: Event) => { setRescheduleTargetId(null); setPendingReschedule(null); setCancelDlg({ open: true, event: e, action: e.status === 'rescheduled' ? 'reschedule' : 'cancel', resume: true }); };
   // Reschedule round-trip: details captured -> prefilled form -> new event id -> preview.
   const [pendingReschedule, setPendingReschedule] = useState<{ event: Event; details: CancelDetails } | null>(null);
   const [rescheduleTargetId, setRescheduleTargetId] = useState<string | null>(null);
@@ -356,8 +380,11 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
   const hasHistory = (e: Event) => (historyCounts[e.id] || 0) > 0;
   const openCancel = (e: Event, action: CancelAction) => { setRescheduleTargetId(null); setPendingReschedule(null); setCancelDlg({ open: true, event: e, action }); };
   const statusBadge = (e: Event) => {
-    if (e.status === 'cancelled') return <Badge variant="destructive" className="ml-2 align-middle" data-testid="status-badge">Cancelled</Badge>;
-    if (e.status === 'rescheduled') return <Badge variant="secondary" className="ml-2 align-middle border border-primary/40 text-primary" data-testid="status-badge">Rescheduled</Badge>;
+    const unsentBadge = unsentFor(e) > 0
+      ? <Badge variant="outline" className="ml-1 align-middle border-amber-500/60 text-amber-500" title="Cancellation emails still to send - use Resume sending" data-testid="unsent-badge">{unsentFor(e)} unsent</Badge>
+      : null;
+    if (e.status === 'cancelled') return <><Badge variant="destructive" className="ml-2 align-middle" data-testid="status-badge">Cancelled</Badge>{unsentBadge}</>;
+    if (e.status === 'rescheduled') return <><Badge variant="secondary" className="ml-2 align-middle border border-primary/40 text-primary" data-testid="status-badge">Rescheduled</Badge>{unsentBadge}</>;
     return null;
   };
 
@@ -1273,6 +1300,9 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                                   <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={e => { e.stopPropagation(); openCancel(event, 'cancel'); }} data-testid="menu-cancel"><XCircle className="w-4 h-4 mr-2" /> Cancel event</DropdownMenuItem>
                                 </>
                               )}
+                              {isClosed(event) && unsentFor(event) > 0 && (
+                                <DropdownMenuItem className="text-amber-500 focus:text-amber-500" onClick={e => { e.stopPropagation(); openResume(event); }} data-testid="menu-resume"><Send className="w-4 h-4 mr-2" /> Resume sending ({unsentFor(event)} unsent)</DropdownMenuItem>
+                              )}
                               <DropdownMenuItem className="text-destructive focus:text-destructive" disabled={hasHistory(event)} onClick={e => { e.stopPropagation(); if (!hasHistory(event)) setDeleteMenuEvent(event); }} data-testid="menu-delete">
                                 <Trash2 className="w-4 h-4 mr-2" /> {hasHistory(event) ? 'Delete (has RSVPs - use Cancel)' : 'Delete'}
                               </DropdownMenuItem>
@@ -1387,6 +1417,9 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                                 <DropdownMenuItem onClick={() => openCancel(event, 'reschedule')} data-testid="menu-reschedule"><CalendarClock className="w-4 h-4 mr-2" /> Reschedule</DropdownMenuItem>
                                 <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => openCancel(event, 'cancel')} data-testid="menu-cancel"><XCircle className="w-4 h-4 mr-2" /> Cancel event</DropdownMenuItem>
                               </>
+                            )}
+                            {isClosed(event) && unsentFor(event) > 0 && (
+                              <DropdownMenuItem className="text-amber-500 focus:text-amber-500" onClick={() => openResume(event)} data-testid="menu-resume"><Send className="w-4 h-4 mr-2" /> Resume sending ({unsentFor(event)} unsent)</DropdownMenuItem>
                             )}
                             <DropdownMenuItem className="text-destructive focus:text-destructive" disabled={hasHistory(event)} onClick={() => { if (!hasHistory(event)) setDeleteMenuEvent(event); }} data-testid="menu-delete">
                               <Trash2 className="w-4 h-4 mr-2" /> {hasHistory(event) ? 'Delete (has RSVPs - use Cancel)' : 'Delete'}
@@ -1786,6 +1819,11 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                   </Button>
                 </>
               )}
+              {editingEvent && isClosed(editingEvent) && unsentFor(editingEvent) > 0 && (
+                <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); openResume(editingEvent); }} disabled={submitting} className="flex-1 sm:flex-none text-amber-500 border-amber-500/40" data-testid="edit-resume">
+                  <Send className="w-4 h-4 mr-2" /> Resume sending ({unsentFor(editingEvent)} unsent)
+                </Button>
+              )}
               {editingEvent && (
                 <Button variant="destructive" onClick={() => { if (!hasHistory(editingEvent)) setDeleteInEditOpen(true); }} disabled={submitting || deleteMutation.isPending || hasHistory(editingEvent)} title={hasHistory(editingEvent) ? 'This event has RSVPs - use Cancel instead.' : undefined} className="flex-1 sm:flex-none" data-testid="edit-delete">
                   <Trash2 className="w-4 h-4 mr-2" /> {hasHistory(editingEvent) ? 'Delete (has RSVPs - use Cancel)' : 'Delete Event'}
@@ -1946,6 +1984,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
         onOpenChange={(open) => { setCancelDlg(prev => ({ ...prev, open })); if (!open) { setRescheduleTargetId(null); setPendingReschedule(null); } }}
         event={cancelDlg.event}
         action={cancelDlg.action}
+        resume={!!cancelDlg.resume}
         isRecurring={cancelDlg.event ? isRecurringEvent(cancelDlg.event) : false}
         rescheduledToEventId={rescheduleTargetId}
         initialDetails={pendingReschedule?.event.id === cancelDlg.event?.id ? pendingReschedule?.details ?? null : null}

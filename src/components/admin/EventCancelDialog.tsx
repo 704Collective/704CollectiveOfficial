@@ -54,6 +54,8 @@ interface Props {
   action: CancelAction;
   /** True when the event is part of a recurring series (parent or child). */
   isRecurring: boolean;
+  /** Closed event with queued|failed emails left over from an interrupted send: open straight into the send loop. */
+  resume?: boolean;
   /** Reschedule only: set once the new event has been created; skips straight to preview. */
   rescheduledToEventId?: string | null;
   /** Reschedule only: details captured before the form step, restored on return. */
@@ -64,7 +66,7 @@ interface Props {
   onDone?: () => void;
 }
 
-export function EventCancelDialog({ open, onOpenChange, event, action, isRecurring, rescheduledToEventId, initialDetails, onNeedNewEvent, onDone }: Props) {
+export function EventCancelDialog({ open, onOpenChange, event, action, isRecurring, resume = false, rescheduledToEventId, initialDetails, onNeedNewEvent, onDone }: Props) {
   const [step, setStep] = useState<'details' | 'preview' | 'sending' | 'done'>('details');
   const [reasonPick, setReasonPick] = useState<string>(initialDetails?.reason.split(':')[0] ?? '');
   const [reasonOther, setReasonOther] = useState('');
@@ -128,21 +130,31 @@ export function EventCancelDialog({ open, onOpenChange, event, action, isRecurri
     void loadPreview(details, rescheduledToEventId);
   };
 
+  // Drain the server queue: each 'resume' pass sends up to the server's batch size
+  // and only to rows still queued|failed, so this is safe to call any number of times.
+  const drain = useCallback(async (first: Record<string, unknown> | null) => {
+    let data = first ?? await invoke({ mode: 'resume', action });
+    let sent = Number(data.sent_total ?? 0), remaining = Number(data.remaining ?? 0), failed = Number(data.failed_total ?? 0);
+    setProgress({ sent, remaining, failed });
+    let guard = 0;
+    // 'failed' rows are retried by the server on each resume pass; stop when nothing is queued
+    // and a pass made no progress (a persistently failing recipient must not loop forever).
+    while (remaining > 0 && guard++ < 200) {
+      const before = sent;
+      data = await invoke({ mode: 'resume', action });
+      sent = Number(data.sent_total ?? sent); remaining = Number(data.remaining ?? 0); failed = Number(data.failed_total ?? failed);
+      setProgress({ sent, remaining, failed });
+      if (sent === before && Number(data.sent ?? 0) === 0) break;
+    }
+  }, [invoke, action]);
+
   const handleSend = async () => {
     if (!preview) return;
     setStep('sending'); setBusy(true); setErr(null);
     const details: CancelDetails = { action, scope: isRecurring ? scope : 'occurrence', reason, note: note.trim() };
     try {
-      let data = await invoke({ mode: 'commit', action, scope: details.scope, reason: details.reason, note: details.note, rescheduled_to_event_id: rescheduledToEventId ?? undefined });
-      let sent = Number(data.sent_total ?? 0), remaining = Number(data.remaining ?? 0), failed = Number(data.failed_total ?? 0);
-      setProgress({ sent, remaining, failed });
-      // Drain the queue: each pass sends up to the server's batch size.
-      let guard = 0;
-      while (remaining > 0 && guard++ < 200) {
-        data = await invoke({ mode: 'resume', action, scope: details.scope, rescheduled_to_event_id: rescheduledToEventId ?? undefined });
-        sent = Number(data.sent_total ?? sent); remaining = Number(data.remaining ?? 0); failed = Number(data.failed_total ?? failed);
-        setProgress({ sent, remaining, failed });
-      }
+      const data = await invoke({ mode: 'commit', action, scope: details.scope, reason: details.reason, note: details.note, rescheduled_to_event_id: rescheduledToEventId ?? undefined });
+      await drain(data);
       setStep('done');
       onDone?.();
     } catch (e) {
@@ -151,6 +163,20 @@ export function EventCancelDialog({ open, onOpenChange, event, action, isRecurri
     } finally { setBusy(false); }
   };
 
+  // Resume-only entry (closed event with unsent emails): no details/preview, straight to the loop.
+  const [resumeStarted, setResumeStarted] = useState(false);
+  useEffect(() => { if (!open) setResumeStarted(false); }, [open]);
+  useEffect(() => {
+    if (!open || !resume || !event || resumeStarted) return;
+    setResumeStarted(true);
+    (async () => {
+      setStep('sending'); setBusy(true); setErr(null);
+      try { await drain(null); setStep('done'); onDone?.(); }
+      catch (e) { setErr(e instanceof Error ? e.message : 'Resume failed'); setStep('done'); }
+      finally { setBusy(false); }
+    })();
+  }, [open, resume, event, resumeStarted, drain, onDone]);
+
   if (!event) return null;
   const verb = action === 'reschedule' ? 'Reschedule' : 'Cancel';
   const money = (c: number) => `$${(c / 100).toFixed(2)}`;
@@ -158,7 +184,7 @@ export function EventCancelDialog({ open, onOpenChange, event, action, isRecurri
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!busy || step === 'done') onOpenChange(o); }}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="event-cancel-dialog">
-        {step === 'details' && (
+        {step === 'details' && !resume && (
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">{action === 'reschedule' ? <CalendarClock className="w-5 h-5 text-primary" /> : <XCircle className="w-5 h-5 text-destructive" />}{verb} event</DialogTitle>
@@ -264,10 +290,11 @@ export function EventCancelDialog({ open, onOpenChange, event, action, isRecurri
           </>
         )}
 
-        {step === 'sending' && (
+        {(step === 'sending' || (step === 'details' && resume)) && (
           <div className="py-10 text-center space-y-3">
+            <DialogTitle className="sr-only">{resume ? 'Resuming sending' : 'Sending'}</DialogTitle>
             <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
-            <p className="font-medium">Sending…</p>
+            <p className="font-medium">{resume ? 'Resuming…' : 'Sending…'}</p>
             {progress && <p className="text-sm text-muted-foreground" data-testid="send-progress">{progress.sent} sent &middot; {progress.remaining} remaining{progress.failed ? ` · ${progress.failed} failed` : ''}</p>}
           </div>
         )}
@@ -275,9 +302,11 @@ export function EventCancelDialog({ open, onOpenChange, event, action, isRecurri
         {step === 'done' && (
           <>
             <DialogHeader>
-              <DialogTitle>{action === 'reschedule' ? 'Event rescheduled' : 'Event cancelled'}</DialogTitle>
+              <DialogTitle>{resume ? 'Sending resumed' : action === 'reschedule' ? 'Event rescheduled' : 'Event cancelled'}</DialogTitle>
               <DialogDescription data-testid="cancel-done">
-                {progress?.sent ?? 0} email{(progress?.sent ?? 0) === 1 ? '' : 's'} sent{progress?.failed ? `, ${progress.failed} failed (re-run ${verb} on this event to retry only those)` : ''}. RSVPs released{action === 'reschedule' ? ' - everyone was pointed at the new date.' : '.'}
+                {err ? <span className="text-destructive">{err} </span> : null}
+                {progress?.sent ?? 0} email{(progress?.sent ?? 0) === 1 ? '' : 's'} sent in total{progress?.failed ? `, ${progress.failed} still failed (use "Resume sending" on this event to retry only those)` : ''}.
+                {resume ? '' : ` RSVPs released${action === 'reschedule' ? ' - everyone was pointed at the new date.' : '.'}`}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter><Button onClick={() => onOpenChange(false)} data-testid="cancel-done-close">Done</Button></DialogFooter>

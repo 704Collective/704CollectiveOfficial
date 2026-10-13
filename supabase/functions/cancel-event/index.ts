@@ -277,10 +277,15 @@ serve(async (req) => {
     if (!resendKey) return json({ error: "RESEND_API_KEY not set" }, 500);
     const { data: pending } = await admin.from("email_log").select("id, to_email, to_name, metadata").eq("template", TEMPLATE).in("status", ["queued", "failed"]).filter("metadata->>anchor_event_id", "eq", anchorId).order("created_at").limit(SEND_BATCH);
     const batch = (pending ?? []) as Array<{ id: string; to_email: string; to_name: string | null; metadata: Record<string, unknown> }>;
-    // Re-read affected events for the current ICS sequence + template data (resume has no in-memory copy).
-    const { data: freshAffected } = await admin.from("events").select("*").in("id", affectedIds);
+    // Re-read affected events for the current ICS sequence + template data. On resume the
+    // caller passes no scope, so the affected set comes from the queued rows themselves
+    // (metadata.event_ids) - a resumed series send still lists every date + ICS.
+    const resumeIds = mode === "resume" ? [...new Set(batch.flatMap((r) => (r.metadata?.event_ids as string[] | undefined) ?? []))] : [];
+    const loadIds = [...new Set([...affectedIds, ...resumeIds])];
+    const { data: freshAffected } = await admin.from("events").select("*").in("id", loadIds);
     const byId: Record<string, EventRow> = {}; for (const e of (freshAffected ?? []) as EventRow[]) byId[e.id] = e;
-    if (!target && anchorEv.rescheduled_to_event_id) { const { data: t } = await admin.from("events").select("*").eq("id", anchorEv.rescheduled_to_event_id).maybeSingle(); target = (t as EventRow | null) ?? null; }
+    const storedTarget = (batch[0]?.metadata?.rescheduled_to_event_id as string | null | undefined) ?? anchorEv.rescheduled_to_event_id;
+    if (!target && storedTarget) { const { data: t } = await admin.from("events").select("*").eq("id", storedTarget).maybeSingle(); target = (t as EventRow | null) ?? null; }
     const storedReason = (batch[0]?.metadata?.reason as string | undefined) ?? reason;
     const effectiveAction = (batch[0]?.metadata?.action as string | undefined) ?? action;
 
