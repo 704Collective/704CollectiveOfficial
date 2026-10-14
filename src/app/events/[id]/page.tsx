@@ -71,6 +71,7 @@ export default function EventDetail() {
 
   const [event, setEvent] = useState<Event | null>(null);
   const [hostName, setHostName] = useState<string | null>(null);
+  const [hostAvatar, setHostAvatar] = useState<string | null>(null);
   const [hostDialogOpen, setHostDialogOpen] = useState(false);
   const [hostMessage, setHostMessage] = useState('');
   const [hostSending, setHostSending] = useState(false);
@@ -173,17 +174,17 @@ export default function EventDetail() {
     setEvent(derived as Event);
     setloading(false);
 
-    // Resolve the host's display name (members can read profile names, same as
-    // the discussion author join). Kept separate from the event row.
+    // Resolve the host's public display name + avatar through a narrow
+    // SECURITY DEFINER RPC (anon has no grant on profiles, which used to 401
+    // for logged-out visitors). Any failure degrades quietly: no host line.
     if (data.host_id) {
-      const { data: hostRow } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', data.host_id)
-        .maybeSingle();
-      setHostName(hostRow?.full_name ?? null);
+      const { data: hostRows, error: hostErr } = await supabase.rpc('get_event_host_public', { p_event_id: id });
+      const hostRow = !hostErr && Array.isArray(hostRows) ? hostRows[0] : null;
+      setHostName(hostRow?.display_name ?? null);
+      setHostAvatar(hostRow?.avatar_url ?? null);
     } else {
       setHostName(null);
+      setHostAvatar(null);
     }
   };
 
@@ -246,15 +247,14 @@ export default function EventDetail() {
   };
   const fetchTicketCount = async () => {
     // Capacity count comes from a SECURITY DEFINER RPC that counts
-    // attendance_credentials (status active|used) for the event. The RPC
-    // bypasses RLS so logged-out and non-admin visitors get the true count.
-    const { data, error } = await supabase.rpc('get_event_attendance_count', {
+    // attendance_credentials (status active|used) for published, scheduled
+    // events (NULL otherwise) and is executable by anon, so logged-out and
+    // non-admin visitors get the same count the list pages show. A failure
+    // degrades quietly to "Open" - no console noise.
+    const { data, error } = await supabase.rpc('get_event_public_attendance_count', {
       p_event_id: id,
     });
-    if (error) {
-      console.warn('[EventDetail] get_event_attendance_count failed:', error.message);
-      return;
-    }
+    if (error) return;
     setTicketCount(typeof data === 'number' ? data : 0);
   };
   const checkWaitlistStatus = async () => {
@@ -1159,6 +1159,17 @@ export default function EventDetail() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9375rem' }}>
                     <MapPin style={{ width: '15px', height: '15px', color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
                     <span style={{ color: 'rgba(255,255,255,0.55)' }}>{event.location_name}</span>
+                  </div>
+                )}
+                {hostName && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9375rem' }} data-testid="event-host-line">
+                    {hostAvatar ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- avatar host varies; plain img degrades silently via onError
+                      <img src={hostAvatar} alt="" width={22} height={22} style={{ width: '22px', height: '22px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(255,255,255,0.12)' }} onError={() => setHostAvatar(null)} />
+                    ) : (
+                      <span aria-hidden style={{ width: '22px', height: '22px', borderRadius: '50%', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6875rem', fontWeight: 700, color: '#C6A664', background: 'rgba(198,166,100,0.14)', border: '1px solid rgba(198,166,100,0.35)' }}>{hostName.trim().charAt(0).toUpperCase()}</span>
+                    )}
+                    <span style={{ color: 'rgba(255,255,255,0.55)' }}>Hosted by <span style={{ color: '#FFFFFF', fontWeight: 600 }}>{hostName}</span></span>
                   </div>
                 )}
               </div>

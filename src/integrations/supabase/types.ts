@@ -7615,6 +7615,17 @@ export type Database = {
         }[]
       }
       get_event_attendees: { Args: { p_event_id: string }; Returns: Json }
+      get_event_host_public: {
+        Args: { p_event_id: string }
+        Returns: {
+          display_name: string | null
+          avatar_url: string | null
+        }[]
+      }
+      get_event_public_attendance_count: {
+        Args: { p_event_id: string }
+        Returns: number | null
+      }
       get_event_discussion_mentionable_ids: {
         Args: { p_event_id: string }
         Returns: {
