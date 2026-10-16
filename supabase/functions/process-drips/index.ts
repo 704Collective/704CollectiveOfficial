@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
+import { compedReason } from "../_shared/compedMember.ts";
 
 /**
  * process-drips - Hourly cron job
@@ -17,6 +18,15 @@ import { resolvePerson } from "../_shared/resolvePerson.ts";
  *
  * SAFETY GUARD: skip + stop any enrollment whose email is currently an active
  * member (win-back/cancellation content must never reach a paying member).
+ * "Active" is the profile's real status (active | trialing | past_due, or a
+ * membership_override comp seat). people.override_paying is NOT consulted: on
+ * prod it is a stale import flag that is true for dozens of real Stripe payers,
+ * and reading it silently killed their win-back. people.member_status is only a
+ * fallback for identities that have no profile row at all.
+ * Comped members (shared compedMember rule) never get the member_canceled
+ * win-back, even if an enrollment somehow exists - stopped at send time.
+ * Only status='active' rows are ever read; stopped/completed/failed rows are
+ * never resumed by this function or anything else.
  *
  * Cron: hourly.
  */
@@ -30,7 +40,7 @@ serve(async (_req) => {
 
   const { data: enrollments, error: enrollErr } = await supabase
     .from("drip_enrollments")
-    .select("id, contact_email, contact_name, drip_campaign_id, current_step, next_send_at")
+    .select("id, contact_email, contact_name, drip_campaign_id, current_step, next_send_at, campaign:drip_campaigns!drip_enrollments_drip_campaign_id_fkey(trigger_type)")
     .eq("status", "active")
     .lte("next_send_at", now);
 
@@ -46,6 +56,7 @@ serve(async (_req) => {
   let processed = 0;
   let failed = 0;
   let skippedActiveMembers = 0;
+  let skippedComped = 0;
 
   for (const enrollment of enrollments) {
     try {
@@ -65,23 +76,41 @@ serve(async (_req) => {
       const emailLower = email.toLowerCase();
       const [{ data: prof }, { personId }] = await Promise.all([
         supabase.from("profiles")
-          .select("subscription_status, membership_override, deleted_at")
+          .select("subscription_status, membership_override, comp_reason, deleted_at")
           .ilike("email", emailLower).is("deleted_at", null).limit(1).maybeSingle(),
         resolvePerson(supabase, { email: emailLower, source: "process_drips", mint: false }),
       ]);
-      const { data: per } = personId
+      // people.member_status is only consulted when there is no profile row (an
+      // identity that never had an auth account); override_paying is never read.
+      const { data: per } = !prof && personId
         ? await supabase.from("people")
-            .select("member_status, override_paying")
+            .select("member_status")
             .eq("id", personId).maybeSingle()
         : { data: null };
+      const ACTIVE_STATUSES = ["active", "trialing", "past_due"];
       const isActiveMember =
-        (!!prof && (prof.subscription_status === "active" || prof.subscription_status === "trialing" || prof.membership_override === true)) ||
-        (!!per && (per.member_status === "active" || per.override_paying === true));
+        (!!prof && (ACTIVE_STATUSES.includes(prof.subscription_status ?? "") || prof.membership_override === true)) ||
+        (!prof && !!per && per.member_status === "active");
       if (isActiveMember) {
         await supabase.from("drip_enrollments")
           .update({ status: "stopped", stopped_reason: "Active member - drip suppressed by safety guard", completed_at: now })
           .eq("id", enrollment.id);
         skippedActiveMembers++;
+        continue;
+      }
+
+      // Belt and suspenders for Adam's rule: a comped member never gets the
+      // win-back, even if an enrollment slipped through (manual insert, older
+      // webhook build). Scoped to member_canceled campaigns.
+      const campaign = enrollment.campaign as { trigger_type?: string | null } | { trigger_type?: string | null }[] | null;
+      const triggerType = Array.isArray(campaign) ? campaign[0]?.trigger_type : campaign?.trigger_type;
+      const comped = triggerType === "member_canceled" ? compedReason(prof) : null;
+      if (comped) {
+        await supabase.from("drip_enrollments")
+          .update({ status: "stopped", stopped_reason: `Comped member - no win-back (${comped})`, completed_at: now })
+          .eq("id", enrollment.id);
+        console.log(`process-drips: comped member - no win-back (${comped}) for enrollment ${enrollment.id}`);
+        skippedComped++;
         continue;
       }
 
@@ -162,8 +191,8 @@ serve(async (_req) => {
     }
   }
 
-  console.log(`process-drips complete: ${processed} sent, ${failed} failed, ${skippedActiveMembers} active members skipped`);
-  return new Response(JSON.stringify({ processed, failed, skippedActiveMembers }), {
+  console.log(`process-drips complete: ${processed} sent, ${failed} failed, ${skippedActiveMembers} active members skipped, ${skippedComped} comped skipped`);
+  return new Response(JSON.stringify({ processed, failed, skippedActiveMembers, skippedComped }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
