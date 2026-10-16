@@ -147,6 +147,21 @@ export async function GET(request: NextRequest) {
     return redirectResponse;
   }
 
+  // OAuth provider / GoTrue errors arrive as query params instead of a code.
+  // The Before User Created hook refuses new-account creation via Google with a
+  // specific message; surface it on /login (with Join / "already a member" help)
+  // instead of the generic oauth error.
+  const oauthError = searchParams.get('error');
+  const oauthErrorDescription = searchParams.get('error_description') ?? '';
+  if (!code && oauthError) {
+    const blockedSignup = /No 704 account uses this Google email/i.test(oauthErrorDescription);
+    console.error('[auth/callback] OAuth error from provider:', oauthError, oauthErrorDescription.slice(0, 200));
+    const target = new URL('/login', origin);
+    target.searchParams.set('error', blockedSignup ? 'oauth_no_account' : 'oauth');
+    if (blockedSignup) target.searchParams.set('error_description', oauthErrorDescription);
+    return NextResponse.redirect(target);
+  }
+
   if (!code) {
     console.error('[auth/callback] No code in request - redirecting to login');
     return NextResponse.redirect(new URL('/login?error=oauth', origin));

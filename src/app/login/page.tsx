@@ -43,11 +43,21 @@ function Login() {
   const isBanned = searchParams.get('error') === 'banned';
   usePageTitle('Login');
 
+  // Google sign-in refused by the Before User Created hook (unknown Google
+  // email): shown as a persistent banner with the join / "use the email you
+  // joined with" help, not just a toast.
+  const oauthNoAccount = searchParams.get('error') === 'oauth_no_account';
+  const oauthNoAccountMessage =
+    searchParams.get('error_description') ||
+    'No 704 account uses this Google email. Sign in with the email you joined with, or join at 704collective.com/join.';
+
   useEffect(() => {
     const error = searchParams.get('error');
     const errorDescription = searchParams.get('error_description');
     if (error) {
-      if (error === 'no_account') {
+      if (error === 'oauth_no_account') {
+        // Rendered inline below; no toast needed.
+      } else if (error === 'no_account') {
         toast.error("You don't have an account. Please register first.");
       } else if (
         errorDescription?.includes('unable to fetch records') ||
@@ -240,7 +250,7 @@ function Login() {
           errorMsg.includes('not found')
         ) {
           setMagicLinkError({
-            message: 'No account found with that email.',
+            message: 'No account found for this email -',
             showSignupCta: true,
           });
         } else if (
@@ -305,7 +315,7 @@ function Login() {
           errorMsg.includes('not found')
         ) {
           setMagicLinkError({
-            message: 'No account found with that email.',
+            message: 'No account found for this email -',
             showSignupCta: true,
           });
         } else if (
@@ -426,6 +436,19 @@ function Login() {
           </div>
         )}
 
+        {/* Google sign-in refused: no account for that Google email */}
+        {oauthNoAccount && (
+          <div data-testid="oauth-no-account" style={{ backgroundColor: 'rgba(198,166,100,0.08)', border: '1px solid rgba(198,166,100,0.35)', borderRadius: '12px', padding: '16px', marginBottom: '20px', color: '#FFFFFF', fontSize: '0.875rem', textAlign: 'center', lineHeight: 1.6 }}>
+            <p style={{ margin: 0 }}>{oauthNoAccountMessage}</p>
+            <p style={{ margin: '10px 0 0', color: 'rgba(255,255,255,0.6)' }}>
+              Already a member? Use the email you joined with (magic link or password below).
+            </p>
+            <Link href="/join" style={{ display: 'inline-block', marginTop: '10px', color: '#C6A664', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: '3px' }}>
+              Join 704 →
+            </Link>
+          </div>
+        )}
+
         {/* Deactivated Alert */}
         {isDeactivated && (
           <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', padding: '16px', marginBottom: '20px', color: '#ef4444', fontSize: '0.875rem', textAlign: 'center' }}>
@@ -500,7 +523,7 @@ function Login() {
                               href="/join"
                               style={{ color: '#C6A664', textDecoration: 'underline' }}
                             >
-                              Sign up here →
+                              join here →
                             </Link>
                           </>
                         )}
@@ -599,7 +622,7 @@ function Login() {
                                 href="/join"
                                 style={{ color: '#C6A664', textDecoration: 'underline' }}
                               >
-                                Sign up here
+                                join here →
                               </Link>
                             </>
                           )}
