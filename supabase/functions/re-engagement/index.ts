@@ -98,11 +98,16 @@ serve(async (req) => {
   }
 
   // ---- REAL RUN ----
+  // Pending-cancel members (cancel_at_period_end=true) have already decided to
+  // leave; a "we miss you" nudge before their period ends is noise. Same guard
+  // renewal-reminders uses - null reads as false so legacy rows are unaffected.
+  const NOT_PENDING_CANCEL = "cancel_at_period_end.is.null,cancel_at_period_end.eq.false";
   const { data: activeMembers } = await supabase
     .from("profiles")
     .select("id, email, full_name, member_type, last_seen_at")
     .in("subscription_status", ["active", "trialing"])
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .or(NOT_PENDING_CANCEL);
 
   if (!activeMembers || activeMembers.length === 0) {
     return new Response(JSON.stringify({ sent: 0, skipped: 0 }), { status: 200 });

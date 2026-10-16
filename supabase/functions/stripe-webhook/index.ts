@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
+import { compedReason } from "../_shared/compedMember.ts";
 import { needsPayoutSetup, resolveMemberPayoutDestination } from "../_shared/memberPayoutDestination.ts";
 import { cascadeEnvFromDeno, futureOnly, sendMembershipCancelledEmail, voidAllCredentialsForPerson, type VoidedRsvp } from "../_shared/credentialCascade.ts";
 import {
@@ -1678,7 +1679,13 @@ async function handleSubscriptionDeleted(
     // on its next hourly run, and its active-member guard re-checks at send time.
     try {
       const enrollEmail = (profile.email ?? "").trim();
-      if (enrollEmail) {
+      // Comped members never get the win-back drip (profiles.membership_override /
+      // comp_reason - see _shared/compedMember.ts). Read from the profile row as it
+      // was BEFORE this handler's status write, which does not touch those columns.
+      const comped = compedReason(profile as { membership_override?: boolean | null; comp_reason?: string | null });
+      if (comped) {
+        log("Win-back enrollment skipped - comped member - no win-back", { email: enrollEmail, comped_by: comped });
+      } else if (enrollEmail) {
         const { data: wbCampaign } = await supabase
           .from("drip_campaigns")
           .select("id, status")

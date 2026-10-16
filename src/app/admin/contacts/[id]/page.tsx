@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Calendar, Gift, Mail, DollarSign, MapPin, Trash2 } from 'lucide-react';
+import { ArrowLeft, Calendar, Gift, Mail, DollarSign, MapPin, Trash2, KeyRound } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { parseContactRouteId } from '@/lib/admin/unified-contacts';
@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { AdminMemberBillingCard } from '@/components/admin/AdminMemberBillingCard';
 import { toast } from 'sonner';
@@ -68,7 +69,7 @@ function avatarColor(email: string) {
 export default function AdminContactDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { isSuperAdmin } = useAuth();
+  const { isAdmin, isSuperAdmin } = useAuth();
   const raw = typeof params.id === 'string' ? params.id : '';
   const parsed = useMemo(() => parseContactRouteId(raw), [raw]);
 
@@ -111,6 +112,54 @@ export default function AdminContactDetailPage() {
   const [welcomeTemplate, setWelcomeTemplate] = useState<'welcome-new' | 'welcome-back'>('welcome-new');
   const [customSubject, setCustomSubject] = useState('');
   const [customBody, setCustomBody] = useState('');
+
+  // Resend setup link (admin-only). Activation state comes from an admin-gated
+  // API route (service-role auth.users read) - never from the browser directly.
+  const [activation, setActivation] = useState<{ never_signed_in: boolean; last_sign_in_at: string | null; recovery_sent_at: string | null } | null>(null);
+  const [resendConfirmOpen, setResendConfirmOpen] = useState(false);
+  const [resendSending, setResendSending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0); // seconds left on the 60s double-send guard
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
+
+  const loadActivation = useCallback(async (profileId: string) => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) return;
+      const res = await fetch(`/api/admin/activation-status?user_id=${encodeURIComponent(profileId)}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) { setActivation(null); return; }
+      setActivation(await res.json());
+    } catch { setActivation(null); }
+  }, []);
+
+  const handleResendSetupLink = async () => {
+    if (!profile?.id || resendSending || resendCooldown > 0) return;
+    setResendSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('resend-setup-email', {
+        body: { userId: profile.id, template: 'welcome-setup', origin: 'https://704collective.com' },
+      });
+      if (error) {
+        let msg = error.message;
+        try { const ctx = (error as { context?: Response }).context; if (ctx) { const j = await ctx.json(); if (j?.error) msg = j.error; } } catch { /* keep message */ }
+        throw new Error(msg);
+      }
+      if ((data as { error?: string } | null)?.error) throw new Error(String((data as { error?: string }).error));
+      toast.success(`Setup link sent to ${email}. It expires in 24 hours.`);
+      setResendCooldown(60);
+      setResendConfirmOpen(false);
+      void loadActivation(profile.id as string);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not send the setup link');
+    } finally {
+      setResendSending(false);
+    }
+  };
 
   // Manual membership override state
   const [peopleRow, setPeopleRow] = useState<{ id: string; member_tier: string | null; member_status: string | null; override_paying: boolean | null; phone: string | null; full_name: string | null } | null>(null);
@@ -265,6 +314,14 @@ export default function AdminContactDetailPage() {
       setLoading(false);
     }
   }, [raw, isSuperAdmin]);
+
+  // Activation state loads once the profile is known AND the auth context has
+  // resolved the admin role (the role can arrive after the first data load).
+  const profileIdForActivation = (profile?.id as string | undefined) ?? null;
+  useEffect(() => {
+    if (profileIdForActivation && isAdmin) void loadActivation(profileIdForActivation);
+    else setActivation(null);
+  }, [profileIdForActivation, isAdmin, loadActivation]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -626,12 +683,43 @@ export default function AdminContactDetailPage() {
                   </p>
                 )}
               </div>
-              <Button variant="outline" size="sm" onClick={() => setEmailModalOpen(true)}>
-                <Mail className="w-4 h-4 mr-1.5" />
-                Send Email
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                {isMember && isAdmin && activation?.never_signed_in && (
+                  <span className="text-xs rounded-full px-2 py-0.5 border bg-amber-500/15 text-amber-400 border-amber-500/30" title={activation.recovery_sent_at ? `Last setup link sent ${format(new Date(activation.recovery_sent_at), 'MMM d, yyyy h:mm a')}` : undefined} data-testid="never-signed-in">
+                    Never signed in
+                  </span>
+                )}
+                {isMember && isAdmin && (
+                  <Button variant="outline" size="sm" onClick={() => setResendConfirmOpen(true)} disabled={resendSending || resendCooldown > 0} data-testid="resend-setup-link">
+                    <KeyRound className="w-4 h-4 mr-1.5" />
+                    {resendCooldown > 0 ? `Sent - wait ${resendCooldown}s` : 'Resend setup link'}
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" onClick={() => setEmailModalOpen(true)}>
+                  <Mail className="w-4 h-4 mr-1.5" />
+                  Send Email
+                </Button>
+              </div>
             </CardContent>
           </Card>
+
+          {/* Resend setup link - confirm */}
+          <AlertDialog open={resendConfirmOpen} onOpenChange={(o) => { if (!resendSending) setResendConfirmOpen(o); }}>
+            <AlertDialogContent data-testid="resend-setup-confirm">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Resend setup link to {name || email}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This sends a new setup link and cancels any older one. The email goes to {email} from no-reply@704collective.com and the link works for 24 hours.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={resendSending}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={(e) => { e.preventDefault(); void handleResendSetupLink(); }} disabled={resendSending} data-testid="resend-setup-send">
+                  {resendSending ? 'Sending…' : 'Send setup link'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           <Tabs defaultValue="overview">
             <TabsList className="flex flex-wrap h-auto gap-1 bg-muted/40 p-1">

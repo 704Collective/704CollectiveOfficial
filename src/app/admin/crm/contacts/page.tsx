@@ -22,6 +22,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { isCompedMember } from '@/lib/compedMember';
 
 /* ─── Types ─── */
 interface Contact {
@@ -70,6 +71,7 @@ function deriveStatus(row: { subscription_status?: string | null; membership_ove
 interface Drip {
   id: string;
   name: string;
+  trigger_type?: string | null;
 }
 
 interface Sequence {
@@ -265,7 +267,7 @@ function DripEnrollDialog({ open, onClose, contact }: { open: boolean; onClose: 
 
   useEffect(() => {
     if (open) {
-      supabase.from('drip_campaigns').select('id, name').eq('status', 'active').then(({ data }) => setDrips(data ?? []));
+      supabase.from('drip_campaigns').select('id, name, trigger_type').eq('status', 'active').then(({ data }) => setDrips(data ?? []));
     }
   }, [open]);
 
@@ -273,6 +275,22 @@ function DripEnrollDialog({ open, onClose, contact }: { open: boolean; onClose: 
     if (!selectedDrip || !contact) return;
     setEnrolling(true);
     try {
+      // Comped members never get the win-back (member_canceled) drip - same rule
+      // the Stripe webhook applies automatically at period end.
+      const campaign = drips.find((d) => d.id === selectedDrip);
+      if (campaign?.trigger_type === 'member_canceled') {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('membership_override, comp_reason')
+          .ilike('email', contact.email)
+          .is('deleted_at', null)
+          .limit(1)
+          .maybeSingle();
+        if (isCompedMember(prof)) {
+          toast.error('Comped member - no win-back. This contact is marked comped on their profile, so the win-back drip is not sent.');
+          return;
+        }
+      }
       const { error } = await supabase.from('drip_enrollments').insert({
         drip_campaign_id: selectedDrip,
         contact_email: contact.email,
