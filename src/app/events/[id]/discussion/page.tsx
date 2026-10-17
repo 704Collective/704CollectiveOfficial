@@ -30,10 +30,12 @@ import { EventDiscussionComments, type DiscComment } from '@/components/portal/E
 import { EventDiscussionGallery } from '@/components/portal/EventDiscussionGallery';
 import { EventMentionTextarea } from '@/components/portal/EventMentionTextarea';
 import { MentionText } from '@/components/portal/MentionText';
+import { CancelledTitlePrefix } from '@/components/events/CancelledTitlePrefix';
+import { discussionComposerOpen, isNotHostingLive } from '@/lib/events/eventVisibility';
 
 const isVideoUrl = (u: string) => /\.(mp4|mov|webm)(\?|$)/i.test(u);
 
-interface DiscussionEvent { id: string; title: string | null; image_url: string | null; start_time: string | null; category: string | null; host_id?: string | null; status?: string | null; rescheduled_to_event_id?: string | null; }
+interface DiscussionEvent { id: string; title: string | null; image_url: string | null; start_time: string | null; end_time?: string | null; category: string | null; host_id?: string | null; status?: string | null; cancel_mode?: string | null; rescheduled_to_event_id?: string | null; }
 interface Author { id: string; full_name: string | null; avatar_url: string | null; }
 interface DPost { id: string; author_id: string; content: string | null; image_urls: string[] | null; created_at: string; updated_at?: string | null; author: Author | null; }
 
@@ -101,19 +103,35 @@ export default function EventDiscussionPage() {
       if (admin) { if (!cancelled) setAccess('full'); return; }
       const personId = await resolvePersonId(user.id);
       if (!personId) { if (!cancelled) setAccess('teaser'); return; }
-      // A cancelled/rescheduled event voids its RSVPs; the thread stays readable for
-      // everyone who held one (voided counts), composer is hidden below.
-      const { data: evStatus } = await supabase.from('events').select('status').eq('id', eventId).maybeSingle();
+      // Standard cancel/reschedule: today's rule — any held RSVP (including voided) can read.
+      // not_hosting while live: only a credential voided BY the cancel (or still live) can enter.
+      const { data: evStatus } = await supabase.from('events').select('status, cancel_mode, end_time').eq('id', eventId).maybeSingle();
       const closedEvent = evStatus?.status === 'cancelled' || evStatus?.status === 'rescheduled';
-      const { data } = await supabase
-        .from('attendance_credentials')
-        .select('id')
-        .eq('person_id', personId)
-        .eq('event_id', eventId)
-        .in('credential_type', ['member', 'member_rsvp'])
-        .in('status', closedEvent ? ['active', 'used', 'voided'] : ['active', 'used'])
-        .limit(1);
-      if (!cancelled) setAccess(data && data.length > 0 ? 'full' : 'teaser');
+      const notHostingOpen = isNotHostingLive({
+        status: evStatus?.status,
+        cancel_mode: evStatus?.cancel_mode,
+        end_time: evStatus?.end_time,
+      });
+      const credBase = () =>
+        supabase
+          .from('attendance_credentials')
+          .select('id')
+          .eq('person_id', personId)
+          .eq('event_id', eventId)
+          .in('credential_type', ['member', 'member_rsvp'])
+          .limit(1);
+      let held = false;
+      if (notHostingOpen) {
+        const [live, voidedByCancel] = await Promise.all([
+          credBase().in('status', ['active', 'used']),
+          credBase().eq('status', 'voided').eq('void_reason', 'event_cancel'),
+        ]);
+        held = !!(live.data?.length || voidedByCancel.data?.length);
+      } else {
+        const { data } = await credBase().in('status', closedEvent ? ['active', 'used', 'voided'] : ['active', 'used']);
+        held = !!(data && data.length > 0);
+      }
+      if (!cancelled) setAccess(held ? 'full' : 'teaser');
     })();
     return () => { cancelled = true; };
   }, [authLoading, user, profile, eventId]);
@@ -129,7 +147,7 @@ export default function EventDiscussionPage() {
     let cancelled = false;
     (async () => {
       const { data: evData } = await supabase
-        .from('events').select('id, title, image_url, start_time, category, host_id, status, rescheduled_to_event_id').eq('id', eventId).single();
+        .from('events').select('id, title, image_url, start_time, end_time, category, host_id, status, cancel_mode, rescheduled_to_event_id').eq('id', eventId).single();
       if (!cancelled && evData) setEv(evData as DiscussionEvent);
       if (!cancelled && evData?.host_id) {
         const { data: hostRow } = await supabase
@@ -304,7 +322,7 @@ export default function EventDiscussionPage() {
                   </div>
                 )}
                 <div className="min-w-0">
-                  <h1 className="text-lg font-extrabold truncate">{ev?.title} — Discussion</h1>
+                  <h1 className="text-lg font-extrabold truncate"><CancelledTitlePrefix status={ev?.status} cancelMode={ev?.cancel_mode} />{ev?.title} — Discussion</h1>
                   <div className="text-sm text-muted-foreground flex items-center gap-2.5 flex-wrap mt-0.5">
                     {dateLabel && <span className="inline-flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {dateLabel}</span>}
                     <span>·</span>
@@ -333,10 +351,10 @@ export default function EventDiscussionPage() {
                 </div>
               )}
 
-              {(ev?.status === 'cancelled' || ev?.status === 'rescheduled') ? (
+              {!discussionComposerOpen(ev ?? {}) ? (
                 <div role="status" data-testid="discussion-closed" className="rounded-xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
-                  {ev.status === 'rescheduled' ? 'This event moved to a new date, so this thread is closed for new posts.' : 'This event was cancelled, so this thread is closed for new posts.'}
-                  {ev.status === 'rescheduled' && ev.rescheduled_to_event_id && (
+                  {ev?.status === 'rescheduled' ? 'This event moved to a new date, so this thread is closed for new posts.' : 'This event was cancelled, so this thread is closed for new posts.'}
+                  {ev?.status === 'rescheduled' && ev.rescheduled_to_event_id && (
                     <> <Link href={`/events/${ev.rescheduled_to_event_id}`} className="underline underline-offset-2 text-primary">See the new date</Link></>
                   )}
                 </div>

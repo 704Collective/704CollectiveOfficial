@@ -46,7 +46,9 @@ const SEND_SPACING_MS = 250;
 const NAME_PLACEHOLDER = "[[RECIPIENT_NAME]]";
 const REASONS = ["Weather", "Venue issue", "Host or vendor issue", "Other"];
 
-type EventRow = { id: string; title: string; description: string | null; start_time: string; end_time: string; location_name: string | null; location_address: string | null; parent_event_id: string | null; status: string; ics_sequence: number; eventbrite_published: boolean | null; eventbrite_event_id: string | null; is_published: boolean | null; rescheduled_to_event_id: string | null; cancel_reason: string | null; cancel_note: string | null };
+type CancelMode = "standard" | "not_hosting";
+type EventRow = { id: string; title: string; description: string | null; start_time: string; end_time: string; location_name: string | null; location_address: string | null; parent_event_id: string | null; status: string; ics_sequence: number; eventbrite_published: boolean | null; eventbrite_event_id: string | null; is_published: boolean | null; rescheduled_to_event_id: string | null; cancel_reason: string | null; cancel_note: string | null; cancel_mode?: string | null };
+const isMemberKind = (kinds: string[]) => kinds.some((k) => k === "member" || k === "member_rsvp" || k === "waitlist");
 type Recipient = { email: string; name: string; event_ids: string[]; kinds: string[] };
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "America/New_York" });
@@ -89,12 +91,13 @@ serve(async (req) => {
     const { data: isSuper } = isAdmin ? { data: false } : await admin.rpc("has_role", { _user_id: adminUserId, _role: "super_admin" });
     if (!isAdmin && !isSuper) return json({ error: "Admin access required" }, 403);
 
-    const body = (await req.json().catch(() => ({}))) as { event_id?: string; action?: string; scope?: string; reason?: string; note?: string; rescheduled_to_event_id?: string; mode?: string; origin?: string };
+    const body = (await req.json().catch(() => ({}))) as { event_id?: string; action?: string; scope?: string; reason?: string; note?: string; rescheduled_to_event_id?: string; mode?: string; origin?: string; cancel_mode?: string };
     const action = body.action === "reschedule" ? "reschedule" : "cancel";
     const scope = body.scope === "series" ? "series" : "occurrence";
     const mode = body.mode === "preview" ? "preview" : body.mode === "resume" ? "resume" : "commit";
     const reason = (body.reason ?? "").trim();
     const note = (body.note ?? "").trim();
+    const cancelMode: CancelMode = action === "cancel" && body.cancel_mode === "not_hosting" ? "not_hosting" : "standard";
     const origin = body.origin && /^https?:\/\//.test(body.origin) ? body.origin : siteUrl;
     if (!body.event_id) return json({ error: "event_id is required" }, 400);
     if (mode !== "resume" && !reason) return json({ error: "reason is required" }, 400);
@@ -179,11 +182,14 @@ serve(async (req) => {
     };
 
     // ── render the email once (name placeholder) ──
-    const render = async (recipientsEvents: EventRow[]) => {
+    const render = async (recipientsEvents: EventRow[], opts?: { showDiscussionCta?: boolean }) => {
+      const first = recipientsEvents[0];
       const data = {
         name: NAME_PLACEHOLDER,
         mode: action === "reschedule" ? "rescheduled" : "cancelled",
         reason, note,
+        cancelMode,
+        discussionUrl: opts?.showDiscussionCta && first ? `${origin}/events/${first.id}/discussion` : null,
         events: recipientsEvents.map((e) => ({ title: e.title, dateLabel: fmtDate(e.start_time), timeLabel: `${fmtTime(e.start_time)} - ${fmtTime(e.end_time)}`, location: locOf(e) })),
         newEvent: target ? { title: target.title, dateLabel: fmtDate(target.start_time), timeLabel: `${fmtTime(target.start_time)} - ${fmtTime(target.end_time)}`, location: locOf(target), url: `${origin}/events/${target.id}` } : null,
         origin,
@@ -196,9 +202,10 @@ serve(async (req) => {
     // ════════════════ PREVIEW ════════════════
     if (mode === "preview") {
       const { recipients, paid } = await collectRecipients(affectedIds);
-      const { subject, html } = await render(affected);
+      const memberTpl = await render(affected, { showDiscussionCta: cancelMode === "not_hosting" });
+      const publicTpl = cancelMode === "not_hosting" ? await render(affected, { showDiscussionCta: false }) : memberTpl;
       return json({
-        success: true, action, scope,
+        success: true, action, scope, cancel_mode: cancelMode,
         affected: affected.map((e) => ({ id: e.id, title: e.title, start_time: e.start_time, status: e.status })),
         already_closed: alreadyClosed.map((e) => e.id),
         recipients: recipients.map((r) => ({ email: r.email, name: r.name, event_count: r.event_ids.length, kinds: r.kinds })),
@@ -206,7 +213,8 @@ serve(async (req) => {
         paid,
         eventbrite_reminder: affected.filter((e) => e.eventbrite_published || e.eventbrite_event_id).map((e) => ({ id: e.id, title: e.title, eventbrite_event_id: e.eventbrite_event_id })),
         target: target ? { id: target.id, title: target.title, start_time: target.start_time } : null,
-        email: { subject, html: html.replace(NAME_PLACEHOLDER, "there") },
+        email: { subject: memberTpl.subject, html: memberTpl.html.replace(NAME_PLACEHOLDER, "there") },
+        email_public: { subject: publicTpl.subject, html: publicTpl.html.replace(NAME_PLACEHOLDER, "there") },
       });
     }
 
@@ -219,6 +227,7 @@ serve(async (req) => {
         const { error: mErr } = await admin.from("events").update({
           status: action === "reschedule" ? "rescheduled" : "cancelled",
           cancelled_at: nowIso, cancelled_by: adminUserId, cancel_reason: reason, cancel_note: note || null,
+          cancel_mode: action === "cancel" ? cancelMode : "standard",
           rescheduled_to_event_id: action === "reschedule" ? target!.id : null,
         }).in("id", toClose.map((e) => e.id)).eq("status", "scheduled");
         if (mErr) return json({ error: `Could not mark events: ${mErr.message}` }, 500);
@@ -226,7 +235,7 @@ serve(async (req) => {
       }
 
       // 2. void (event-scoped, no waitlist promotion) — collect contacts as we go
-      const voided: EventVoidRow[] = await voidEventCredentials(admin, { eventIds: affectedIds, source: "cancel-event" });
+      const voided: EventVoidRow[] = await voidEventCredentials(admin, { eventIds: affectedIds, source: "cancel-event", voidReason: "event_cancel" });
       const waitlisted: WaitlistRow[] = await closeEventWaitlist(admin, { eventIds: affectedIds, source: "cancel-event" });
       const legacy: LegacyRow[] = await cancelLegacyMirrors(admin, { eventIds: affectedIds, reason, source: "cancel-event" });
 
@@ -252,7 +261,7 @@ serve(async (req) => {
       const { subject } = await render(affected);
       const queueRows = [...map.values()].filter((r) => !already.has(r.email)).map((r) => ({
         to_email: r.email, to_name: r.name, from_email: "no-reply@704collective.com", subject, template: TEMPLATE, status: "queued",
-        metadata: { source: "cancel-event", anchor_event_id: anchorId, action, scope, reason, event_ids: r.event_ids, kinds: r.kinds, rescheduled_to_event_id: target?.id ?? null },
+        metadata: { source: "cancel-event", anchor_event_id: anchorId, action, scope, reason, cancel_mode: cancelMode, event_ids: r.event_ids, kinds: r.kinds, rescheduled_to_event_id: target?.id ?? null },
       }));
       if (queueRows.length > 0) {
         const { error: qErr } = await admin.from("email_log").insert(queueRows);
@@ -295,12 +304,17 @@ serve(async (req) => {
       const renderCache = new Map<string, { subject: string; html: string }>();
       for (const row of batch) {
         const evIds = (row.metadata?.event_ids as string[] | undefined)?.filter((id) => byId[id]) ?? affectedIds;
-        const key = evIds.slice().sort().join(",");
+        const kinds = (row.metadata?.kinds as string[] | undefined) ?? [];
+        const storedMode = ((row.metadata?.cancel_mode as string | undefined) ?? byId[evIds[0]]?.cancel_mode ?? cancelMode) === "not_hosting" ? "not_hosting" : "standard";
+        const showDiscussionCta = storedMode === "not_hosting" && isMemberKind(kinds);
+        const key = `${evIds.slice().sort().join(",")}|${showDiscussionCta ? "m" : "p"}`;
         let tpl = renderCache.get(key);
         if (!tpl) {
           const data = {
             name: NAME_PLACEHOLDER, mode: effectiveAction === "reschedule" ? "rescheduled" : "cancelled",
             reason: storedReason, note: (row.metadata?.note as string | undefined) ?? (byId[affectedIds[0]]?.cancel_note ?? note),
+            cancelMode: storedMode,
+            discussionUrl: showDiscussionCta && evIds[0] ? `${origin}/events/${evIds[0]}/discussion` : null,
             events: evIds.map((id) => byId[id]).map((e) => ({ title: e.title, dateLabel: fmtDate(e.start_time), timeLabel: `${fmtTime(e.start_time)} - ${fmtTime(e.end_time)}`, location: locOf(e) })),
             newEvent: target ? { title: target.title, dateLabel: fmtDate(target.start_time), timeLabel: `${fmtTime(target.start_time)} - ${fmtTime(target.end_time)}`, location: locOf(target), url: `${origin}/events/${target.id}` } : null,
             origin,

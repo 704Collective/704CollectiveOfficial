@@ -40,11 +40,13 @@ export function useNextEvent(userId: string) {
         events: {
           id: string; title: string; start_time: string; end_time: string | null;
           location_name: string | null; image_url: string | null;
+          status?: string | null; cancel_mode?: string | null;
         } | null;
       };
 
+      // Home "next event" teaser never shows a cancelled event (including not_hosting).
       const nextRsvp = ((myEvents ?? []) as unknown as MyEventRow[])
-        .find(r => r.events && r.events.start_time > now);
+        .find(r => r.events && r.events.start_time > now && r.events.status !== 'cancelled' && r.events.status !== 'rescheduled');
 
       if (nextRsvp?.events) {
         const ev = nextRsvp.events;

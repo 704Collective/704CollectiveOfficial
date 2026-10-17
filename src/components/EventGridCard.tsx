@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import { MapPin, Clock, Loader2, Lock } from 'lucide-react';
 import { CategoryBadge, EventCategory } from '@/components/CategoryBadge';
+import { CancelledTitlePrefix } from '@/components/events/CancelledTitlePrefix';
 
 interface EventGridCardProps {
   id: string;
@@ -29,6 +30,8 @@ interface EventGridCardProps {
   onClick: () => void;
   /** Business portal: category pills use amber vs gray outline. */
   categoryPortalTone?: 'default' | 'businessPortal';
+  status?: string | null;
+  cancelMode?: string | null;
 }
 
 export function EventGridCard({
@@ -37,6 +40,7 @@ export function EventGridCard({
   category, capacity, ticketCount = 0, loading,
   onGetTicket, onGuestPurchase, onClick,
   categoryPortalTone = 'default',
+  status, cancelMode,
 }: EventGridCardProps) {
   const startDate = new Date(startTime);
   const hasImage = !!imageUrl;
@@ -157,7 +161,7 @@ export function EventGridCard({
       </div>
 
       <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <h3 style={{ fontSize: '1.0625rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '8px', lineHeight: 1.3 }}>{title}</h3>
+        <h3 style={{ fontSize: '1.0625rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '8px', lineHeight: 1.3 }}><CancelledTitlePrefix status={status} cancelMode={cancelMode} />{title}</h3>
 
         {description && (
           <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)', lineHeight: 1.5, marginBottom: '12px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>

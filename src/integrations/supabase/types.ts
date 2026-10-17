@@ -771,6 +771,7 @@ export type Database = {
           token: string
           updated_at: string
           used_at: string | null
+          void_reason: string | null
           wallet_status: string | null
         }
         Insert: {
@@ -790,6 +791,7 @@ export type Database = {
           token: string
           updated_at?: string
           used_at?: string | null
+          void_reason?: string | null
           wallet_status?: string | null
         }
         Update: {
@@ -809,6 +811,7 @@ export type Database = {
           token?: string
           updated_at?: string
           used_at?: string | null
+          void_reason?: string | null
           wallet_status?: string | null
         }
         Relationships: [
@@ -3611,6 +3614,7 @@ export type Database = {
           cancel_reason: string | null
           cancelled_at: string | null
           cancelled_by: string | null
+          cancel_mode: string
           rescheduled_to_event_id: string | null
           status: string
           social_member_price_deprecated: number | null
@@ -3672,6 +3676,7 @@ export type Database = {
           cancel_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
+          cancel_mode?: string
           rescheduled_to_event_id?: string | null
           status?: string
           social_member_price_deprecated?: number | null
@@ -3733,6 +3738,7 @@ export type Database = {
           cancel_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
+          cancel_mode?: string
           rescheduled_to_event_id?: string | null
           status?: string
           social_member_price_deprecated?: number | null

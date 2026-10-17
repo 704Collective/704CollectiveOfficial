@@ -3,6 +3,7 @@
 import { format } from 'date-fns';
 import { MapPin, Loader2, Lock } from 'lucide-react';
 import { CategoryBadge, EventCategory } from '@/components/CategoryBadge';
+import { CancelledTitlePrefix } from '@/components/events/CancelledTitlePrefix';
 
 interface EventListItemProps {
   id: string;
@@ -26,6 +27,8 @@ interface EventListItemProps {
   onGuestPurchase: () => void;
   onClick: () => void;
   categoryPortalTone?: 'default' | 'businessPortal';
+  status?: string | null;
+  cancelMode?: string | null;
 }
 
 export function EventListItem({
@@ -34,6 +37,7 @@ export function EventListItem({
   category, capacity, ticketCount = 0, loading,
   onGetTicket, onGuestPurchase, onClick,
   categoryPortalTone = 'default',
+  status, cancelMode,
 }: EventListItemProps) {
   const startDate = new Date(startTime);
   const dayNum = format(startDate, 'd');
@@ -121,7 +125,7 @@ export function EventListItem({
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
-          <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#FFFFFF', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{title}</h3>
+          <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#FFFFFF', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}><CancelledTitlePrefix status={status} cancelMode={cancelMode} />{title}</h3>
           {category && category !== 'other' && (
             <CategoryBadge
               category={category as EventCategory}

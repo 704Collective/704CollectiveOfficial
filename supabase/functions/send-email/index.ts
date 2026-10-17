@@ -2216,6 +2216,8 @@ function eventCancelledTemplate(data: {
   mode?: "cancelled" | "rescheduled";
   reason?: string;
   note?: string;
+  cancelMode?: string;
+  discussionUrl?: string | null;
   events?: Array<{ title: string; dateLabel: string; timeLabel?: string; location?: string }>;
   newEvent?: { title: string; dateLabel: string; timeLabel?: string; location?: string; url: string } | null;
   origin?: string;
@@ -2248,6 +2250,12 @@ ${ne.location ? `<p style="margin:4px 0 0;font-size:14px;color:#6b7280;">${escap
 <p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:#6b7280;text-align:center;">Your previous RSVP does not carry over - please RSVP again to lock your spot.</p>`
     : "";
 
+  const discussionUrl = data.discussionUrl && /^https?:\/\//.test(data.discussionUrl) ? data.discussionUrl : "";
+  const discussionBlock = mode === "cancelled" && data.cancelMode === "not_hosting" && discussionUrl
+    ? `<p style="margin:16px 0 0;font-size:15px;line-height:1.6;color:#2E2E2E;">The event discussion is staying open until the event ends if you'd like to coordinate with other members.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0 8px;width:100%;"><tr><td align="center" style="background-color:#C6A664;border-radius:8px;"><a href="${discussionUrl}" style="display:block;padding:16px 32px;font-size:17px;font-weight:700;color:#1A1A1A;text-decoration:none;">Open the discussion</a></td></tr></table>`
+    : "";
+
   const lead = mode === "rescheduled"
     ? `We've had to move <strong>${title}</strong>${many ? " (and the dates below)" : ""} to a new date.`
     : `We're sorry - <strong>${title}</strong>${many ? " and the dates below have" : " has"} been cancelled.`;
@@ -2267,6 +2275,7 @@ ${ne.location ? `<p style="margin:4px 0 0;font-size:14px;color:#6b7280;">${escap
 <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#2E2E2E;">${lead}</p>
 ${datesBlock}
 ${reasonBlock}
+${discussionBlock}
 ${newBlock}
 <p style="margin:16px 0 0;font-size:15px;line-height:1.6;color:#2E2E2E;">${mode === "rescheduled" ? "Sorry for the shuffle - we'd love to see you on the new date." : "Your RSVP has been released and your calendar entry should update on its own. We'd love to see you at the next one."}</p>
 <p style="margin:20px 0 0;font-size:14px;line-height:1.6;color:#2E2E2E;"><strong>Need to reach out?</strong> Please don't reply to this email - contact us at <a href="mailto:hello@704collective.com" style="color:#C6A664;">hello@704collective.com</a>.</p>
@@ -2607,6 +2616,7 @@ function getTemplate(template: string, data: Record<string, unknown>): { subject
     case "event-cancelled":
       return eventCancelledTemplate(data as {
         name?: string; mode?: "cancelled" | "rescheduled"; reason?: string; note?: string;
+        cancelMode?: string; discussionUrl?: string | null;
         events?: Array<{ title: string; dateLabel: string; timeLabel?: string; location?: string }>;
         newEvent?: { title: string; dateLabel: string; timeLabel?: string; location?: string; url: string } | null; origin?: string;
       });

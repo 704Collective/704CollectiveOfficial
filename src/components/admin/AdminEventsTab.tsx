@@ -99,6 +99,7 @@ interface Event {
   intake_form_slug?: string | null;
   // Lifecycle (cancel/reschedule). Read-only here: buildEventData never writes these.
   status?: string | null;
+  cancel_mode?: string | null;
   cancel_reason?: string | null;
   rescheduled_to_event_id?: string | null;
 }
@@ -396,7 +397,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
     const unsentBadge = unsentFor(e) > 0
       ? <Badge variant="outline" className="ml-1 align-middle border-amber-500/60 text-amber-500" title="Cancellation emails still to send - use Resume sending" data-testid="unsent-badge">{unsentFor(e)} unsent</Badge>
       : null;
-    if (e.status === 'cancelled') return <><Badge variant="destructive" className="ml-2 align-middle" data-testid="status-badge">Cancelled</Badge>{unsentBadge}</>;
+    if (e.status === 'cancelled') return <><Badge variant="destructive" className="ml-2 align-middle" data-testid="status-badge">{e.cancel_mode === 'not_hosting' ? 'Cancelled - 704 not hosting' : 'Cancelled'}</Badge>{unsentBadge}</>;
     if (e.status === 'rescheduled') return <><Badge variant="secondary" className="ml-2 align-middle border border-primary/40 text-primary" data-testid="status-badge">Rescheduled</Badge>{unsentBadge}</>;
     return null;
   };

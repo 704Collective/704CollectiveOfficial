@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useTickets } from '@/hooks/queries';
+import { CancelledTitlePrefix } from '@/components/events/CancelledTitlePrefix';
 
 interface EventTicket {
   id: string;
@@ -25,6 +26,8 @@ interface EventTicket {
     end_time: string | null;
     location_name: string | null;
     image_url: string | null;
+    status?: string | null;
+    cancel_mode?: string | null;
   };
 }
 
@@ -70,7 +73,7 @@ export default function DashboardEventsPage() {
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{ticket.events.title}</p>
+          <p className="text-sm font-medium truncate"><CancelledTitlePrefix status={ticket.events.status} cancelMode={ticket.events.cancel_mode} />{ticket.events.title}</p>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="w-3 h-3" />

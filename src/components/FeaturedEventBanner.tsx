@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import { MapPin, Calendar, Clock, ArrowRight } from 'lucide-react';
 import { CategoryBadge, EventCategory } from '@/components/CategoryBadge';
+import { CancelledTitlePrefix } from '@/components/events/CancelledTitlePrefix';
 
 interface Event {
   id: string;
@@ -17,6 +18,8 @@ interface Event {
   is_members_only: boolean | null;
   is_business_only?: boolean | null;
   category?: string | null;
+  status?: string | null;
+  cancel_mode?: string | null;
 }
 
 interface FeaturedEventBannerProps {
@@ -63,7 +66,7 @@ export function FeaturedEventBanner({
       <div style={{ flex: 1, padding: '28px 32px', backgroundColor: '#1A1A1A', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '14px' }}>
         {event.category && event.category !== 'other' && <div><CategoryBadge category={event.category as EventCategory} size="sm" /></div>}
 
-        <h2 style={{ fontSize: 'clamp(1.25rem, 2.5vw, 1.625rem)', fontWeight: 700, color: '#FFFFFF', lineHeight: 1.2, letterSpacing: '-0.01em' }}>{event.title}</h2>
+        <h2 style={{ fontSize: 'clamp(1.25rem, 2.5vw, 1.625rem)', fontWeight: 700, color: '#FFFFFF', lineHeight: 1.2, letterSpacing: '-0.01em' }}><CancelledTitlePrefix status={event.status} cancelMode={event.cancel_mode} />{event.title}</h2>
 
         {event.description && <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, maxWidth: '440px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{event.description}</p>}
 

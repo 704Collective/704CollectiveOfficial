@@ -26,6 +26,7 @@ import { WaitlistBadge } from '@/components/WaitlistBadge';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import { resolvePersonId } from '@/lib/resolvePersonId';
 import { captureExchangeUtm, readExchangeUtm } from '@/lib/exchangeUtm';
+import { CancelledTitlePrefix } from '@/components/events/CancelledTitlePrefix';
 
 interface Event {
   id: string;
@@ -51,6 +52,7 @@ interface Event {
   required_tier?: string | null;
   event_type?: string | null;
   status?: string | null;
+  cancel_mode?: string | null;
   cancel_reason?: string | null;
   cancel_note?: string | null;
   rescheduled_to_event_id?: string | null;
@@ -1144,7 +1146,7 @@ export default function EventDetail() {
                   )}
                 </div>
               )}
-              <h1 style={{ fontSize: 'clamp(1.75rem, 4.5vw, 2.5rem)', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: '20px' }}>{event.title}</h1>
+              <h1 style={{ fontSize: 'clamp(1.75rem, 4.5vw, 2.5rem)', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: '20px' }}><CancelledTitlePrefix status={event.status} cancelMode={event.cancel_mode} />{event.title}</h1>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '28px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9375rem' }}>

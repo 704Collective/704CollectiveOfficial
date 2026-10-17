@@ -141,7 +141,8 @@ export async function notifyAfterDiscussionCommentCreated(commentId: string) {
     }
   }
 
-  // Reply -> bell the parent comment's author (skip self, skip if already belled via mention)
+  // Reply -> bell the parent comment's author only if they are still allowed
+  // in this discussion (same held-RSVP / not_hosting rule as mentions).
   if (comment.parent_comment_id) {
     const { data: parent } = await admin
       .from('event_discussion_comments')
@@ -150,8 +151,14 @@ export async function notifyAfterDiscussionCommentCreated(commentId: string) {
       .maybeSingle();
     const parentAuthor = parent?.author_id;
     if (parentAuthor && parentAuthor !== user.id && !belled.has(parentAuthor)) {
-      belled.add(parentAuthor);
-      bellRows.push({ user_id: parentAuthor, type: 'discussion_reply', title: 'New reply in event discussion', notification_type: 'discussion_reply', action_url: actionUrl, message: `${authorName} replied to your comment in an event discussion` });
+      const { data: eligible } = await admin.rpc('get_event_discussion_mentionable_ids', {
+        p_event_id: comment.event_id,
+      });
+      const allowed = new Set(((eligible as { id: string }[] | null) ?? []).map((r) => r.id));
+      if (allowed.has(parentAuthor)) {
+        belled.add(parentAuthor);
+        bellRows.push({ user_id: parentAuthor, type: 'discussion_reply', title: 'New reply in event discussion', notification_type: 'discussion_reply', action_url: actionUrl, message: `${authorName} replied to your comment in an event discussion` });
+      }
     }
   }
 

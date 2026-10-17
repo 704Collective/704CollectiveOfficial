@@ -22,6 +22,7 @@ import { EventCategory, CATEGORY_CONFIG } from '@/components/CategoryBadge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { deriveEventShape } from '@/lib/events/deriveEventShape';
+import { fetchVisibleUpcomingEvents } from '@/lib/events/eventVisibility';
 import { BringPlusOne } from '@/components/events/BringPlusOne';
 
 interface Event {
@@ -43,6 +44,8 @@ interface Event {
   ticket_mode: string | null;
   event_type?: string | null;
   required_tier?: string | null;
+  status?: string | null;
+  cancel_mode?: string | null;
 }
 
 const supabase = createClient();
@@ -50,16 +53,11 @@ const supabase = createClient();
 async function fetchEvents(): Promise<Event[]> {
   const thirtyMinsAgo = subMinutes(new Date(), 30).toISOString();
   const sixtyDaysLater = addDays(new Date(), 60).toISOString();
-  const { data, error } = await supabase
-    .from('events')
-    .select('*')
-    .eq('status', 'scheduled') // cancelled/rescheduled events are hidden
-    .eq('is_published', true)
-    .lte('start_time', sixtyDaysLater)
-    .or(`end_time.gte.${thirtyMinsAgo},and(end_time.is.null,start_time.gte.${thirtyMinsAgo})`)
-    .order('start_time', { ascending: true });
-  if (error) throw error;
-  return (data || []).map(deriveEventShape);
+  const data = await fetchVisibleUpcomingEvents<Event>(supabase, {
+    thirtyMinsAgoIso: thirtyMinsAgo,
+    untilIso: sixtyDaysLater,
+  });
+  return data.map(deriveEventShape);
 }
 
 async function fetchPastEvents(): Promise<Event[]> {
@@ -375,6 +373,8 @@ export default function BrowseEventsPage() {
                         onGetTicket={() => handleGetTicket(event)}
                         onGuestPurchase={() => router.push(`/events/${event.id}`)}
                         onClick={() => router.push(`/events/${event.id}`)}
+                        status={event.status}
+                        cancelMode={event.cancel_mode}
                       />
                     ))}
                   </div>
@@ -430,6 +430,8 @@ export default function BrowseEventsPage() {
                               onGetTicket={() => handleGetTicket(event)}
                               onGuestPurchase={() => router.push(`/events/${event.id}`)}
                               onClick={() => router.push(`/events/${event.id}`)}
+                              status={event.status}
+                              cancelMode={event.cancel_mode}
                             />
                           ))}
                         </div>

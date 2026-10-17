@@ -34,7 +34,8 @@ export type CancelDialogEvent = {
   status?: string | null;
 };
 
-export type CancelDetails = { action: CancelAction; scope: CancelScope; reason: string; note: string };
+export type CancelMode = 'standard' | 'not_hosting';
+export type CancelDetails = { action: CancelAction; scope: CancelScope; reason: string; note: string; cancel_mode: CancelMode };
 
 type Preview = {
   affected: Array<{ id: string; title: string; start_time: string; status: string }>;
@@ -45,6 +46,8 @@ type Preview = {
   eventbrite_reminder: Array<{ id: string; title: string }>;
   target: { id: string; title: string; start_time: string } | null;
   email: { subject: string; html: string };
+  email_public?: { subject: string; html: string };
+  cancel_mode?: CancelMode;
 };
 
 interface Props {
@@ -71,6 +74,7 @@ export function EventCancelDialog({ open, onOpenChange, event, action, isRecurri
   const [reasonPick, setReasonPick] = useState<string>(initialDetails?.reason.split(':')[0] ?? '');
   const [reasonOther, setReasonOther] = useState('');
   const [note, setNote] = useState(initialDetails?.note ?? '');
+  const [cancelMode, setCancelMode] = useState<CancelMode>(initialDetails?.cancel_mode ?? 'standard');
   const [scope, setScope] = useState<CancelScope>(initialDetails?.scope ?? 'occurrence');
   const [preview, setPreview] = useState<Preview | null>(null);
   const [busy, setBusy] = useState(false);
@@ -85,14 +89,14 @@ export function EventCancelDialog({ open, onOpenChange, event, action, isRecurri
 
   const reset = useCallback(() => {
     setStep('details'); setPreview(null); setBusy(false); setProgress(null); setErr(null);
-    if (!initialDetails) { setReasonPick(''); setReasonOther(''); setNote(''); setScope('occurrence'); }
+    if (!initialDetails) { setReasonPick(''); setReasonOther(''); setNote(''); setScope('occurrence'); setCancelMode('standard'); }
   }, [initialDetails]);
 
   useEffect(() => { if (!open) reset(); }, [open, reset]);
   useEffect(() => {
     if (initialDetails) {
       const [pick, ...rest] = initialDetails.reason.split(': ');
-      setReasonPick(pick); setReasonOther(rest.join(': ')); setNote(initialDetails.note); setScope(initialDetails.scope);
+      setReasonPick(pick); setReasonOther(rest.join(': ')); setNote(initialDetails.note); setScope(initialDetails.scope); setCancelMode(initialDetails.cancel_mode ?? 'standard');
     }
   }, [initialDetails]);
 
@@ -109,7 +113,7 @@ export function EventCancelDialog({ open, onOpenChange, event, action, isRecurri
   const loadPreview = useCallback(async (details: CancelDetails, targetId?: string | null) => {
     setBusy(true); setErr(null);
     try {
-      const data = await invoke({ mode: 'preview', action: details.action, scope: details.scope, reason: details.reason, note: details.note, rescheduled_to_event_id: targetId ?? undefined });
+      const data = await invoke({ mode: 'preview', action: details.action, scope: details.scope, reason: details.reason, note: details.note, cancel_mode: details.cancel_mode, rescheduled_to_event_id: targetId ?? undefined });
       setPreview(data as unknown as Preview);
       setStep('preview');
     } catch (e) { setErr(e instanceof Error ? e.message : 'Preview failed'); }
@@ -125,7 +129,7 @@ export function EventCancelDialog({ open, onOpenChange, event, action, isRecurri
 
   const handleDetailsNext = () => {
     if (!reasonValid) { toast.error('Pick a reason first'); return; }
-    const details: CancelDetails = { action, scope: isRecurring ? scope : 'occurrence', reason, note: note.trim() };
+    const details: CancelDetails = { action, scope: isRecurring ? scope : 'occurrence', reason, note: note.trim(), cancel_mode: action === 'cancel' ? cancelMode : 'standard' };
     if (action === 'reschedule' && !rescheduledToEventId) { onNeedNewEvent?.(details); return; }
     void loadPreview(details, rescheduledToEventId);
   };
@@ -151,9 +155,9 @@ export function EventCancelDialog({ open, onOpenChange, event, action, isRecurri
   const handleSend = async () => {
     if (!preview) return;
     setStep('sending'); setBusy(true); setErr(null);
-    const details: CancelDetails = { action, scope: isRecurring ? scope : 'occurrence', reason, note: note.trim() };
+    const details: CancelDetails = { action, scope: isRecurring ? scope : 'occurrence', reason, note: note.trim(), cancel_mode: action === 'cancel' ? cancelMode : 'standard' };
     try {
-      const data = await invoke({ mode: 'commit', action, scope: details.scope, reason: details.reason, note: details.note, rescheduled_to_event_id: rescheduledToEventId ?? undefined });
+      const data = await invoke({ mode: 'commit', action, scope: details.scope, reason: details.reason, note: details.note, cancel_mode: details.cancel_mode, rescheduled_to_event_id: rescheduledToEventId ?? undefined });
       await drain(data);
       setStep('done');
       onDone?.();
@@ -227,6 +231,20 @@ export function EventCancelDialog({ open, onOpenChange, event, action, isRecurri
                 <Label htmlFor="cancelNote" className="text-sm font-medium">Custom note <span className="text-muted-foreground font-normal">(optional, shown in the email)</span></Label>
                 <Textarea id="cancelNote" rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder={action === 'reschedule' ? 'e.g. The venue double-booked us - same plan, new night.' : 'e.g. The forecast calls for storms all afternoon.'} className="resize-none" data-testid="cancel-note" />
               </div>
+              {action === 'cancel' && (
+                <label className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer text-sm" data-testid="cancel-mode-not-hosting">
+                  <input
+                    type="checkbox"
+                    className="mt-1 accent-primary"
+                    checked={cancelMode === 'not_hosting'}
+                    onChange={(e) => setCancelMode(e.target.checked ? 'not_hosting' : 'standard')}
+                  />
+                  <span>
+                    <span className="font-medium">704 not hosting - keep event up + discussion open until it ends</span>
+                    <span className="block text-muted-foreground mt-1">RSVPs are still released and calendars still cancel. The event stays on the list with a red CANCELLED prefix and the discussion stays open until the end time.</span>
+                  </span>
+                </label>
+              )}
               {err && <p role="alert" className="text-sm text-destructive">{err}</p>}
             </div>
             <DialogFooter>
@@ -246,6 +264,14 @@ export function EventCancelDialog({ open, onOpenChange, event, action, isRecurri
               <DialogDescription>Nothing has been sent yet. Review, then confirm.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2 text-sm">
+              <div className="rounded-lg border border-border p-3 space-y-1" data-testid="preview-cancel-mode">
+                <p className="font-medium">Mode</p>
+                <p className="text-muted-foreground">
+                  {(preview.cancel_mode ?? cancelMode) === 'not_hosting'
+                    ? '704 not hosting — event stays visible and the discussion stays open until the end time.'
+                    : 'Standard cancel — hidden from lists and the discussion closes.'}
+                </p>
+              </div>
               <div className="rounded-lg border border-border p-3 space-y-1">
                 <p className="font-medium">Affected date{preview.affected.length > 1 ? 's' : ''}</p>
                 <ul className="list-disc list-inside text-muted-foreground" data-testid="preview-affected">
@@ -275,9 +301,17 @@ export function EventCancelDialog({ open, onOpenChange, event, action, isRecurri
                 </div>
               )}
               <div className="rounded-lg border border-border overflow-hidden">
-                <p className="px-3 py-2 text-xs uppercase tracking-wide text-muted-foreground border-b border-border">Email preview - subject: <span className="normal-case text-foreground">{preview.email.subject}</span></p>
+                <p className="px-3 py-2 text-xs uppercase tracking-wide text-muted-foreground border-b border-border">
+                  {(preview.cancel_mode ?? cancelMode) === 'not_hosting' ? 'Member email' : 'Email preview'} - subject: <span className="normal-case text-foreground">{preview.email.subject}</span>
+                </p>
                 <iframe title="Email preview" srcDoc={preview.email.html} className="w-full h-[380px] bg-white" sandbox="" data-testid="preview-email" />
               </div>
+              {(preview.cancel_mode ?? cancelMode) === 'not_hosting' && preview.email_public && (
+                <div className="rounded-lg border border-border overflow-hidden">
+                  <p className="px-3 py-2 text-xs uppercase tracking-wide text-muted-foreground border-b border-border">Public RSVP email (no discussion button) - subject: <span className="normal-case text-foreground">{preview.email_public.subject}</span></p>
+                  <iframe title="Public email preview" srcDoc={preview.email_public.html} className="w-full h-[380px] bg-white" sandbox="" data-testid="preview-email-public" />
+                </div>
+              )}
               {err && <p role="alert" className="text-sm text-destructive">{err}</p>}
             </div>
             <DialogFooter className="flex-col sm:flex-row gap-2">

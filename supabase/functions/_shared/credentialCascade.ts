@@ -291,7 +291,7 @@ export type EventVoidRow = {
  */
 export async function voidEventCredentials(
   supabase: AnySupabase,
-  args: { eventIds: string[]; source: string },
+  args: { eventIds: string[]; source: string; voidReason?: string },
 ): Promise<EventVoidRow[]> {
   if (args.eventIds.length === 0) return [];
   const { data: rows, error } = await supabase
@@ -306,7 +306,11 @@ export async function voidEventCredentials(
   const ids = list.map((r) => r.id);
   const { error: vErr } = await supabase
     .from("attendance_credentials")
-    .update({ status: "voided", updated_at: new Date().toISOString() })
+    .update({
+      status: "voided",
+      updated_at: new Date().toISOString(),
+      ...(args.voidReason ? { void_reason: args.voidReason } : {}),
+    })
     .in("id", ids)
     .eq("status", "active");
   if (vErr) throw new Error(`event credential void failed (${args.source}): ${vErr.message}`);

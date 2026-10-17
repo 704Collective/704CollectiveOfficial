@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths, isToday } from 'date-fns';
 import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
+import { CancelledTitlePrefix } from '@/components/events/CancelledTitlePrefix';
 
 interface CalendarEvent {
   id: string;
@@ -14,6 +15,8 @@ interface CalendarEvent {
   is_business_only?: boolean;
   category?: string | null;
   image_url?: string | null;
+  status?: string | null;
+  cancel_mode?: string | null;
 }
 
 interface EventCalendarViewProps {
@@ -240,7 +243,7 @@ export function EventCalendarView({
 
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: '0.9375rem', fontWeight: 600, color: colors.text, marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {ev.title}
+                      <CancelledTitlePrefix status={ev.status} cancelMode={ev.cancel_mode} />{ev.title}
                     </p>
                     <p style={{ fontSize: '0.75rem', color: colors.muted }}>
                       {isPrivate
