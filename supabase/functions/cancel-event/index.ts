@@ -48,7 +48,8 @@ const REASONS = ["Weather", "Venue issue", "Host or vendor issue", "Other"];
 
 type CancelMode = "standard" | "not_hosting";
 type EventRow = { id: string; title: string; description: string | null; start_time: string; end_time: string; location_name: string | null; location_address: string | null; parent_event_id: string | null; status: string; ics_sequence: number; eventbrite_published: boolean | null; eventbrite_event_id: string | null; is_published: boolean | null; rescheduled_to_event_id: string | null; cancel_reason: string | null; cancel_note: string | null; cancel_mode?: string | null };
-const isMemberKind = (kinds: string[]) => kinds.some((k) => k === "member" || k === "member_rsvp" || k === "waitlist");
+// Member pass / member_rsvp only — waitlist-only recipients cannot open the discussion.
+const isMemberKind = (kinds: string[]) => kinds.some((k) => k === "member" || k === "member_rsvp");
 type Recipient = { email: string; name: string; event_ids: string[]; kinds: string[] };
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "America/New_York" });

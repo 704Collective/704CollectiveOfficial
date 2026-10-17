@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/client';
 import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import { postAuthDestination } from '@/lib/postAuthRedirect';
+import { OAUTH_NO_ACCOUNT_MESSAGE } from '@/lib/auth/oauthNoAccount';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -48,8 +49,7 @@ function Login() {
   // joined with" help, not just a toast.
   const oauthNoAccount = searchParams.get('error') === 'oauth_no_account';
   const oauthNoAccountMessage =
-    searchParams.get('error_description') ||
-    'No 704 account uses this Google email. Sign in with the email you joined with, or join at 704collective.com/join.';
+    searchParams.get('error_description') || OAUTH_NO_ACCOUNT_MESSAGE;
 
   useEffect(() => {
     const error = searchParams.get('error');

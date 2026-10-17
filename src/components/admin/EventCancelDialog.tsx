@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { CANCEL_NOTE_HINT, showCancelDiscussionCta } from '@/lib/events/cancelDiscussionCta';
 
 export type CancelAction = 'cancel' | 'reschedule';
 export type CancelScope = 'occurrence' | 'series';
@@ -230,6 +231,9 @@ export function EventCancelDialog({ open, onOpenChange, event, action, isRecurri
               <div className="space-y-2">
                 <Label htmlFor="cancelNote" className="text-sm font-medium">Custom note <span className="text-muted-foreground font-normal">(optional, shown in the email)</span></Label>
                 <Textarea id="cancelNote" rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder={action === 'reschedule' ? 'e.g. The venue double-booked us - same plan, new night.' : 'e.g. The forecast calls for storms all afternoon.'} className="resize-none" data-testid="cancel-note" />
+                {action === 'cancel' && (
+                  <p className="text-xs text-muted-foreground" data-testid="cancel-note-hint">{CANCEL_NOTE_HINT}</p>
+                )}
               </div>
               {action === 'cancel' && (
                 <label className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer text-sm" data-testid="cancel-mode-not-hosting">
@@ -282,7 +286,10 @@ export function EventCancelDialog({ open, onOpenChange, event, action, isRecurri
               <div className="rounded-lg border border-border p-3 space-y-1">
                 <p className="font-medium" data-testid="preview-recipient-count">{preview.recipient_count} {preview.recipient_count === 1 ? 'person' : 'people'} will be emailed</p>
                 <p className="text-muted-foreground max-h-28 overflow-y-auto" data-testid="preview-recipients">
-                  {preview.recipients.map((r) => `${r.name} <${r.email}>${r.event_count > 1 ? ` x${r.event_count}` : ''}`).join(', ') || 'No one holds a spot on this event.'}
+                  {preview.recipients.map((r) => {
+                    const cta = showCancelDiscussionCta(preview.cancel_mode ?? cancelMode, r.kinds ?? []);
+                    return `${r.name} <${r.email}>${r.event_count > 1 ? ` x${r.event_count}` : ''}${cta ? ' [Open the discussion]' : ''}`;
+                  }).join(', ') || 'No one holds a spot on this event.'}
                 </p>
               </div>
               {preview.paid.length > 0 && (

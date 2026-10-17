@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.1"
   }
   public: {
     Tables: {
@@ -893,10 +893,12 @@ export type Database = {
           created_at: string | null
           excerpt: string | null
           focus_keyword: string | null
+          hub: string | null
           id: string
           instagram_embed_url: string | null
           meta_description: string | null
           meta_title: string | null
+          network_listing_ids: string[] | null
           og_image_url: string | null
           published_at: string | null
           reading_time_minutes: number | null
@@ -919,10 +921,12 @@ export type Database = {
           created_at?: string | null
           excerpt?: string | null
           focus_keyword?: string | null
+          hub?: string | null
           id?: string
           instagram_embed_url?: string | null
           meta_description?: string | null
           meta_title?: string | null
+          network_listing_ids?: string[] | null
           og_image_url?: string | null
           published_at?: string | null
           reading_time_minutes?: number | null
@@ -945,10 +949,12 @@ export type Database = {
           created_at?: string | null
           excerpt?: string | null
           focus_keyword?: string | null
+          hub?: string | null
           id?: string
           instagram_embed_url?: string | null
           meta_description?: string | null
           meta_title?: string | null
+          network_listing_ids?: string[] | null
           og_image_url?: string | null
           published_at?: string | null
           reading_time_minutes?: number | null
@@ -3575,6 +3581,11 @@ export type Database = {
           access_type_deprecated: string | null
           allows_guest_passes: boolean
           business_member_price_deprecated: number | null
+          cancel_mode: string
+          cancel_note: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           capacity: number | null
           category: string | null
           created_at: string | null
@@ -3609,19 +3620,14 @@ export type Database = {
           recurrence_end_date: string | null
           recurrence_rule: string | null
           required_tier: string
-          rsvp_opens_at: string | null
-          cancel_note: string | null
-          cancel_reason: string | null
-          cancelled_at: string | null
-          cancelled_by: string | null
-          cancel_mode: string
           rescheduled_to_event_id: string | null
-          status: string
+          rsvp_opens_at: string | null
           social_member_price_deprecated: number | null
           sponsor_slot_price: number | null
           sponsor_slots_count: number
           sponsor_slots_enabled: boolean
           start_time: string
+          status: string
           tags: string[] | null
           ticket_mode: string
           ticket_price_deprecated: number | null
@@ -3637,6 +3643,11 @@ export type Database = {
           access_type_deprecated?: string | null
           allows_guest_passes?: boolean
           business_member_price_deprecated?: number | null
+          cancel_mode?: string
+          cancel_note?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           capacity?: number | null
           category?: string | null
           created_at?: string | null
@@ -3671,19 +3682,14 @@ export type Database = {
           recurrence_end_date?: string | null
           recurrence_rule?: string | null
           required_tier?: string
-          rsvp_opens_at?: string | null
-          cancel_note?: string | null
-          cancel_reason?: string | null
-          cancelled_at?: string | null
-          cancelled_by?: string | null
-          cancel_mode?: string
           rescheduled_to_event_id?: string | null
-          status?: string
+          rsvp_opens_at?: string | null
           social_member_price_deprecated?: number | null
           sponsor_slot_price?: number | null
           sponsor_slots_count?: number
           sponsor_slots_enabled?: boolean
           start_time: string
+          status?: string
           tags?: string[] | null
           ticket_mode?: string
           ticket_price_deprecated?: number | null
@@ -3699,6 +3705,11 @@ export type Database = {
           access_type_deprecated?: string | null
           allows_guest_passes?: boolean
           business_member_price_deprecated?: number | null
+          cancel_mode?: string
+          cancel_note?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           capacity?: number | null
           category?: string | null
           created_at?: string | null
@@ -3733,19 +3744,14 @@ export type Database = {
           recurrence_end_date?: string | null
           recurrence_rule?: string | null
           required_tier?: string
-          rsvp_opens_at?: string | null
-          cancel_note?: string | null
-          cancel_reason?: string | null
-          cancelled_at?: string | null
-          cancelled_by?: string | null
-          cancel_mode?: string
           rescheduled_to_event_id?: string | null
-          status?: string
+          rsvp_opens_at?: string | null
           social_member_price_deprecated?: number | null
           sponsor_slot_price?: number | null
           sponsor_slots_count?: number
           sponsor_slots_enabled?: boolean
           start_time?: string
+          status?: string
           tags?: string[] | null
           ticket_mode?: string
           ticket_price_deprecated?: number | null
@@ -3767,6 +3773,13 @@ export type Database = {
           {
             foreignKeyName: "events_parent_event_id_fkey"
             columns: ["parent_event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_rescheduled_to_event_id_fkey"
+            columns: ["rescheduled_to_event_id"]
             isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
@@ -5233,6 +5246,7 @@ export type Database = {
           listing_id: string
           message: string | null
           need: string | null
+          nudge_sent_at: string | null
           source: string | null
           status: string
           status_changed_at: string | null
@@ -5254,6 +5268,7 @@ export type Database = {
           listing_id: string
           message?: string | null
           need?: string | null
+          nudge_sent_at?: string | null
           source?: string | null
           status?: string
           status_changed_at?: string | null
@@ -5275,6 +5290,7 @@ export type Database = {
           listing_id?: string
           message?: string | null
           need?: string | null
+          nudge_sent_at?: string | null
           source?: string | null
           status?: string
           status_changed_at?: string | null
@@ -5438,6 +5454,8 @@ export type Database = {
           neighborhood: string | null
           next_review_at: string | null
           owner_profile_id: string | null
+          pending_content: Json | null
+          pending_submitted_at: string | null
           phone: string | null
           photo_urls: string[] | null
           rate_cents: number | null
@@ -5467,6 +5485,8 @@ export type Database = {
           neighborhood?: string | null
           next_review_at?: string | null
           owner_profile_id?: string | null
+          pending_content?: Json | null
+          pending_submitted_at?: string | null
           phone?: string | null
           photo_urls?: string[] | null
           rate_cents?: number | null
@@ -5496,6 +5516,8 @@ export type Database = {
           neighborhood?: string | null
           next_review_at?: string | null
           owner_profile_id?: string | null
+          pending_content?: Json | null
+          pending_submitted_at?: string | null
           phone?: string | null
           photo_urls?: string[] | null
           rate_cents?: number | null
@@ -7621,23 +7643,23 @@ export type Database = {
         }[]
       }
       get_event_attendees: { Args: { p_event_id: string }; Returns: Json }
-      get_event_host_public: {
-        Args: { p_event_id: string }
-        Returns: {
-          display_name: string | null
-          avatar_url: string | null
-        }[]
-      }
-      get_event_public_attendance_count: {
-        Args: { p_event_id: string }
-        Returns: number | null
-      }
       get_event_discussion_mentionable_ids: {
         Args: { p_event_id: string }
         Returns: {
           full_name: string
           id: string
         }[]
+      }
+      get_event_host_public: {
+        Args: { p_event_id: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+        }[]
+      }
+      get_event_public_attendance_count: {
+        Args: { p_event_id: string }
+        Returns: number
       }
       get_member_counts: {
         Args: never
@@ -7675,6 +7697,7 @@ export type Database = {
             Returns: boolean
           }
         | { Args: { role_name: string; user_uuid: string }; Returns: boolean }
+      hook_before_user_created: { Args: { event: Json }; Returns: Json }
       is_active_member: { Args: { p_user_id: string }; Returns: boolean }
       is_active_user: { Args: { _user_id: string }; Returns: boolean }
       is_admin_conversation_participant: {

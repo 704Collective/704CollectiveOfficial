@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import { SkipLink } from "@/components/SkipLink";
 import ScrollProgress from "@/components/ScrollProgress";
 import ScrollToTop from "@/components/ScrollToTop";
@@ -9,18 +9,20 @@ import { organizationSchema704 } from "@/lib/jsonLdSchemas";
 import { Providers } from "@/components/Providers";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
+const inter = localFont({
+  src: "../fonts/inter-latin-wght-normal.woff2",
   variable: "--font-body",
-  weight: ["300", "400", "500", "600", "700", "800"],
+  weight: "100 900",
+  style: "normal",
   display: "swap",
   preload: true,
 });
 
-const headingFont = Inter({
-  subsets: ["latin"],
+const headingFont = localFont({
+  src: "../fonts/inter-latin-wght-normal.woff2",
   variable: "--font-heading",
-  weight: ["600", "700", "800"],
+  weight: "100 900",
+  style: "normal",
   display: "swap",
   preload: true,
 });

@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse, type NextRequest } from 'next/server';
 import { postAuthDestination } from '@/lib/postAuthRedirect';
+import { isOauthNoAccountDescription, oauthErrorLoginPath } from '@/lib/auth/oauthNoAccount';
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -154,9 +155,9 @@ export async function GET(request: NextRequest) {
   const oauthError = searchParams.get('error');
   const oauthErrorDescription = searchParams.get('error_description') ?? '';
   if (!code && oauthError) {
-    const blockedSignup = /No 704 account uses this Google email/i.test(oauthErrorDescription);
+    const blockedSignup = isOauthNoAccountDescription(oauthErrorDescription);
     console.error('[auth/callback] OAuth error from provider:', oauthError, oauthErrorDescription.slice(0, 200));
-    const target = new URL('/login', origin);
+    const target = new URL(oauthErrorLoginPath(source), origin);
     target.searchParams.set('error', blockedSignup ? 'oauth_no_account' : 'oauth');
     if (blockedSignup) target.searchParams.set('error_description', oauthErrorDescription);
     return NextResponse.redirect(target);
@@ -164,7 +165,7 @@ export async function GET(request: NextRequest) {
 
   if (!code) {
     console.error('[auth/callback] No code in request - redirecting to login');
-    return NextResponse.redirect(new URL('/login?error=oauth', origin));
+    return NextResponse.redirect(new URL(`${oauthErrorLoginPath(source)}?error=oauth`, origin));
   }
 
   let sessionError: Error | { message: string } | null = null;
@@ -176,14 +177,14 @@ export async function GET(request: NextRequest) {
   }
 
   if (sessionError) {
-    return NextResponse.redirect(new URL('/login?error=oauth', origin));
+    return NextResponse.redirect(new URL(`${oauthErrorLoginPath(source)}?error=oauth`, origin));
   }
 
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
     console.error('[auth/callback] No user after successful code exchange');
-    return NextResponse.redirect(new URL('/login?error=oauth', origin));
+    return NextResponse.redirect(new URL(`${oauthErrorLoginPath(source)}?error=oauth`, origin));
   }
 
   // Recovery: always land on /reset-password before any profile / access check.
@@ -203,6 +204,15 @@ export async function GET(request: NextRequest) {
       businessRedirect.cookies.set(name, value, options as Parameters<typeof businessRedirect.cookies.set>[2]);
     });
     return businessRedirect;
+  }
+
+  // Ambassador Google sign-in: land on the portal, not postAuthDestination.
+  if (source === 'ambassadors' && safeNext) {
+    const nextRedirect = NextResponse.redirect(new URL(safeNext, origin));
+    pendingCookies.forEach(({ name, value, options }) => {
+      nextRedirect.cookies.set(name, value, options as Parameters<typeof nextRedirect.cookies.set>[2]);
+    });
+    return nextRedirect;
   }
 
   const { data: profile } = await supabase

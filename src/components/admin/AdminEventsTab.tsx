@@ -27,6 +27,7 @@ import { RecurrenceSelector, RecurrenceRule, parseRecurrenceRule } from '@/compo
 import { EventCategory, CATEGORY_CONFIG, detectCategoryFromTitle } from '@/components/CategoryBadge';
 import { DeleteConfirmDialog } from '@/components/admin/DeleteConfirmDialog';
 import { EventCancelDialog, type CancelAction, type CancelDetails } from '@/components/admin/EventCancelDialog';
+import { adminEventStatusLabel } from '@/lib/events/adminEventStatus';
 import { AddMembersToEventDialog } from '@/components/admin/AddMembersToEventDialog';
 import { EventAttendeesDialog } from '@/components/admin/EventAttendeesDialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -397,9 +398,22 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
     const unsentBadge = unsentFor(e) > 0
       ? <Badge variant="outline" className="ml-1 align-middle border-amber-500/60 text-amber-500" title="Cancellation emails still to send - use Resume sending" data-testid="unsent-badge">{unsentFor(e)} unsent</Badge>
       : null;
-    if (e.status === 'cancelled') return <><Badge variant="destructive" className="ml-2 align-middle" data-testid="status-badge">{e.cancel_mode === 'not_hosting' ? 'Cancelled - 704 not hosting' : 'Cancelled'}</Badge>{unsentBadge}</>;
-    if (e.status === 'rescheduled') return <><Badge variant="secondary" className="ml-2 align-middle border border-primary/40 text-primary" data-testid="status-badge">Rescheduled</Badge>{unsentBadge}</>;
+    if (e.status === 'cancelled') return <><Badge variant="destructive" className="ml-2 align-middle">{e.cancel_mode === 'not_hosting' ? 'Cancelled - 704 not hosting' : 'Cancelled'}</Badge>{unsentBadge}</>;
+    if (e.status === 'rescheduled') return <><Badge variant="secondary" className="ml-2 align-middle border border-primary/40 text-primary">Rescheduled</Badge>{unsentBadge}</>;
     return null;
+  };
+
+  const statusColumn = (e: Event) => {
+    const { text, kind } = adminEventStatusLabel(e);
+    const className =
+      kind === 'upcoming'
+        ? 'bg-green-500/20 text-green-400 border border-green-500/30 rounded-full px-2 py-0.5 text-xs font-medium'
+        : kind === 'cancelled' || kind === 'cancelled_not_hosting'
+          ? 'bg-destructive/20 text-destructive border border-destructive/30 rounded-full px-2 py-0.5 text-xs font-medium'
+          : kind === 'rescheduled'
+            ? 'bg-primary/10 text-primary border border-primary/40 rounded-full px-2 py-0.5 text-xs font-medium'
+            : 'bg-muted text-muted-foreground border border-border rounded-full px-2 py-0.5 text-xs';
+    return <span className={className} data-testid="status-badge">{text}</span>;
   };
 
   const invalidateEvents = () => queryClient.invalidateQueries({ queryKey: ['admin-events'] });
@@ -1283,9 +1297,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                         </TableCell>
                         <TableCell className="py-3">
                           <div className="flex items-center gap-1.5">
-                            {isUpcoming
-                            ? <span className="bg-green-500/20 text-green-400 border border-green-500/30 rounded-full px-2 py-0.5 text-xs font-medium">Upcoming</span>
-                            : <span className="bg-muted text-muted-foreground border border-border rounded-full px-2 py-0.5 text-xs">Past</span>}
+                            {statusColumn(event)}
                             {(event.event_type === 'business' || event.is_business_only) && (
                               <Lock className="w-4 h-4 text-amber-400" aria-label="Business event" />
                             )}
@@ -1402,9 +1414,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                               </span>
                             )}
                           </button>
-                          {isUpcoming
-                            ? <span className="bg-green-500/20 text-green-400 border border-green-500/30 rounded-full px-2 py-0.5 text-xs font-medium">Upcoming</span>
-                            : <span className="bg-muted text-muted-foreground border border-border rounded-full px-2 py-0.5 text-xs">Past</span>}
+                          {statusColumn(event)}
                         </div>
                       </div>
                       <div className="flex items-center justify-between mt-3 gap-2" onClick={e => e.stopPropagation()}>

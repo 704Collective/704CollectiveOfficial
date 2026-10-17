@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
+import { OAUTH_NO_ACCOUNT_MESSAGE, isOauthNoAccountDescription } from '@/lib/auth/oauthNoAccount';
 
 function AmbassadorLoginInner() {
   const router = useRouter();
@@ -25,6 +26,9 @@ function AmbassadorLoginInner() {
 
   // Show invite expiry error if redirected from /ambassadors/welcome
   const searchParams = useSearchParams();
+  const oauthNoAccount = searchParams.get('error') === 'oauth_no_account'
+    || isOauthNoAccountDescription(searchParams.get('error_description') ?? '');
+  const oauthNoAccountMessage = searchParams.get('error_description') || OAUTH_NO_ACCOUNT_MESSAGE;
   useEffect(() => {
     const inviteError = searchParams.get('invite_error');
     if (inviteError) {
@@ -83,7 +87,8 @@ function AmbassadorLoginInner() {
       const { error: oauthErr } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/ambassadors/dashboard`,
+          redirectTo: `${window.location.origin}/auth/callback?source=ambassadors&next=/ambassadors/dashboard`,
+          queryParams: { prompt: 'select_account' },
         },
       });
       if (oauthErr) {
@@ -193,6 +198,18 @@ function AmbassadorLoginInner() {
               <h1 style={{ margin: '0 0 24px', fontSize: '1.375rem', fontWeight: 700, color: '#FFFFFF' }}>
                 Ambassador Login
               </h1>
+
+              {oauthNoAccount && (
+                <div data-testid="oauth-no-account" style={{ backgroundColor: 'rgba(198,166,100,0.08)', border: '1px solid rgba(198,166,100,0.35)', borderRadius: '12px', padding: '16px', marginBottom: '20px', color: '#FFFFFF', fontSize: '0.875rem', textAlign: 'center', lineHeight: 1.6 }}>
+                  <p style={{ margin: 0 }}>{oauthNoAccountMessage}</p>
+                  <p style={{ margin: '10px 0 0', color: 'rgba(255,255,255,0.6)' }}>
+                    Already a member? Use the email you joined with (magic link or password below).
+                  </p>
+                  <Link href="/join" style={{ display: 'inline-block', marginTop: '10px', color: '#C6A664', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: '3px' }}>
+                    Join 704 →
+                  </Link>
+                </div>
+              )}
 
               {/* Error banner */}
               {error && (

@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import { getMyStripeAccountStatus } from '@/app/actions/ambassadorActions';
+import { isOauthNoAccountDescription } from '@/lib/auth/oauthNoAccount';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -176,7 +177,20 @@ export default function AmbassadorDashboardPage() {
 
   const loadData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push('/ambassadors/login'); return; }
+    if (!user) {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const desc = params.get('error_description') ?? '';
+        if (params.get('error') === 'oauth_no_account' || isOauthNoAccountDescription(desc)) {
+          const q = new URLSearchParams({ error: 'oauth_no_account' });
+          if (desc) q.set('error_description', desc);
+          router.push(`/ambassadors/login?${q.toString()}`);
+          return;
+        }
+      }
+      router.push('/ambassadors/login');
+      return;
+    }
 
     const { data: amb } = await supabase
       .from('ambassadors')
