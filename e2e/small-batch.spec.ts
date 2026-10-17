@@ -65,6 +65,7 @@ test.describe("small-batch fonts + ambassador oauth message", () => {
   });
 
   test("desktop+mobile screenshots: after (local) and before (prod)", async ({ page }, testInfo) => {
+    test.skip(!!process.env.CI, "hits live prod for visual compare; not part of dummy-env CI");
     test.setTimeout(180_000);
     const project = testInfo.project.name;
     const pages: Array<{ path: string; label: string; marker: RegExp; localOnly?: boolean }> = [
