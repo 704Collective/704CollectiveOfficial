@@ -112,7 +112,7 @@ as $function$
       join events e on e.id = ac.event_id
       where ac.event_id = p_event_id
         and ac.credential_type in ('member', 'member_rsvp')
-        and (pe.auth_user_id = pr.id or pe.metadata->>'profile_id' = pr.id::text)
+        and pe.auth_user_id = pr.id
         and (
           ac.status in ('active', 'used')
           or (
@@ -158,7 +158,7 @@ as $function$
       join events e on e.id = ac.event_id
       where ac.event_id = p_event_id
         and ac.credential_type in ('member', 'member_rsvp')
-        and (pe.auth_user_id = pr.id or pe.metadata->>'profile_id' = pr.id::text)
+        and pe.auth_user_id = pr.id
         and (
           ac.status in ('active', 'used')
           or (
