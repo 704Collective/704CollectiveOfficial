@@ -330,6 +330,7 @@ async function syncPeopleBestEffort(
         roles: newRoles,
         member_tier: opts.memberType,
         member_status: 'active',
+        canceled_at: null,
         override_paying: true,
         metadata: {
           ...prevMeta,
@@ -552,6 +553,7 @@ export async function runCompInvite(
     member_type: memberType,
     membership_override: true,
     subscription_status: 'active',
+    canceled_at: null,
     comp_reason: compReason,
     updated_at: nowIso,
   };

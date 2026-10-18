@@ -314,7 +314,13 @@ serve(async (req) => {
     }
 
     if (profile.subscription_status !== "active") {
-      return new Response("Active membership required", { status: 403, headers: corsHeaders });
+      // Keep in sync with src/lib/calendar/feedAccess.ts
+      const s = String(profile.subscription_status ?? "").toLowerCase();
+      const denyStatus = s === "past_due" || s === "paused" || s === "trialing" ? 403 : 410;
+      return new Response(
+        denyStatus === 410 ? "Calendar feed gone" : "Active membership required",
+        { status: denyStatus, headers: corsHeaders },
+      );
     }
 
     const memberType = (profile.member_type as string | null) ?? null;

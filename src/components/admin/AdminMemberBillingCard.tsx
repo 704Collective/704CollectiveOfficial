@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { MemberBillingResponse } from '@/lib/admin/member-billing';
+import { shouldDisplayCanceledAt } from '@/lib/events/canceledAt';
 
 /** Stripe founding business monthly price — show Founding rate tag when matched. */
 const FOUNDING_PRICE_ID = 'price_1SrNeVRzSIH3EgWLI21DpLB0';
@@ -179,6 +180,15 @@ export function AdminMemberBillingCard({
                 </span>
                 <span className="font-medium">{fmtDate(periodEnd)}</span>
               </div>
+              {shouldDisplayCanceledAt(
+                stripe?.status || profile.subscription_status,
+                profile.canceled_at,
+              ) && (
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Canceled</span>
+                  <span className="font-medium">{fmtDate(profile.canceled_at)}</span>
+                </div>
+              )}
               <div className="flex justify-between gap-2">
                 <span className="text-muted-foreground">Discount</span>
                 <span className="font-medium">

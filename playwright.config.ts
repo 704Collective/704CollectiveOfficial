@@ -26,7 +26,7 @@ export default defineConfig({
   projects: [
     {
       name: "desktop-chrome",
-      testMatch: /small-batch\.spec\.ts/,
+      testMatch: /small-batch\.spec\.ts|cleanup-batch-b\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
     {

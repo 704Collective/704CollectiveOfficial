@@ -90,7 +90,7 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-touch-icon.png",
   },
-  manifest: "/manifest.json",
+  manifest: "/manifest.webmanifest",
   other: {
     "msapplication-TileColor": "#1A1A1A",
   },

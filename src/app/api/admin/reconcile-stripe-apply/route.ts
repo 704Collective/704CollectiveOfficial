@@ -270,6 +270,7 @@ export async function POST(req: NextRequest) {
         subscription_id: p.subscription_id,
         subscription_ends_at: p.subscription_ends_at,
         cancel_at_period_end: !!p.cancel_at_period_end,
+        canceled_at: p.canceled_at,
       };
 
       // Always re-fetch live Stripe state before writing.
@@ -302,6 +303,8 @@ export async function POST(req: NextRequest) {
 
       if (activeSub) {
         // Stripe has an active/trialing/past_due subscription: sync its state.
+        // Clear leftover canceled_at so reactivated members don't keep a stale
+        // cancel date (stripe-webhook currently stamps on cancel and never clears).
         after = {
           subscription_status: activeSub.status,
           subscription_id: activeSub.id,
@@ -309,6 +312,7 @@ export async function POST(req: NextRequest) {
             ? new Date(periodEndSec * 1000).toISOString()
             : null,
           cancel_at_period_end: !!activeSub.cancel_at_period_end,
+          canceled_at: null,
         };
       } else if (subs.length > 0) {
         // Stripe has subs but none are active: mark canceled.
@@ -356,6 +360,20 @@ export async function POST(req: NextRequest) {
           error: updErr.message || 'Update failed',
         });
         continue;
+      }
+
+      if (activeSub) {
+        const { error: peopleErr } = await supabase
+          .from('people')
+          .update({
+            canceled_at: null,
+            member_status: activeSub.status,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('auth_user_id', id);
+        if (peopleErr) {
+          console.warn('[STRIPE_RECONCILE] people canceled_at clear failed', p.email, peopleErr);
+        }
       }
 
       console.log(

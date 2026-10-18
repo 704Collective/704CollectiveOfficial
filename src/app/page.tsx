@@ -296,68 +296,6 @@ export default async function Home() {
 
             {/* Photo Slideshow - crossfade */}
             <div style={{ marginTop: '48px', width: '100%', maxWidth: '900px', margin: '48px auto 0', position: 'relative', borderRadius: '16px', overflow: 'hidden' }}>
-              <style>{`
-                .slide-img {
-                  position: absolute;
-                  inset: 0;
-                  width: 100%;
-                  height: 100%;
-                  object-fit: cover;
-                  opacity: 0;
-                  transition: opacity 0.8s ease-in-out;
-                }
-                .slide-img.active {
-                  opacity: 1;
-                }
-                .slideshow-container {
-                  position: relative;
-                  width: 100%;
-                  aspect-ratio: 3/2;
-                  background: #2E2E2E;
-                  border-radius: 16px;
-                  overflow: hidden;
-                }
-                .slideshow-arrow {
-                  position: absolute;
-                  top: 50%;
-                  transform: translateY(-50%);
-                  background: rgba(0,0,0,0.45);
-                  border: none;
-                  border-radius: 50%;
-                  width: 40px;
-                  height: 40px;
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  cursor: pointer;
-                  z-index: 10;
-                  color: #FFFFFF;
-                  transition: background 200ms ease;
-                }
-                .slideshow-arrow:hover { background: rgba(0,0,0,0.7); }
-                .slideshow-arrow.prev { left: 12px; }
-                .slideshow-arrow.next { right: 12px; }
-                .slideshow-dots {
-                  position: absolute;
-                  bottom: 12px;
-                  left: 50%;
-                  transform: translateX(-50%);
-                  display: flex;
-                  gap: 6px;
-                  z-index: 10;
-                }
-                .slideshow-dot {
-                  width: 6px;
-                  height: 6px;
-                  border-radius: 50%;
-                  background: rgba(255,255,255,0.4);
-                  border: none;
-                  cursor: pointer;
-                  padding: 0;
-                  transition: background 200ms ease;
-                }
-                .slideshow-dot.active { background: #FFFFFF; }
-              `}</style>
               <SlideshowWidget photos={[
                 'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9737%20(1).jpg',
                 'https://bnmtynevbuplqpuqvmna.supabase.co/storage/v1/object/public/public-assets/CH2A9805%20(1).jpg',
