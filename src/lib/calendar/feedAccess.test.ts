@@ -53,13 +53,25 @@ describe('calendarFeedHttpStatus (RSVP eligibility)', () => {
     ).toBe(200);
   });
 
-  it('inactive + comp_reason -> 200', () => {
-    expect(
-      statusOf({ subscription_status: 'inactive', comp_reason: 'Founding seat' }),
-    ).toBe(200);
+  it('inactive + comp_reason only (no override) -> 410', () => {
+    const profile = {
+      subscription_status: 'inactive',
+      membership_override: false,
+      comp_reason: 'Founding seat',
+    };
+    expect(statusOf(profile)).toBe(410);
   });
 
-  it('inactive, no comp -> 410', () => {
+  it('canceled + ended + comp_reason (Annslee) -> 410', () => {
+    const profile = {
+      subscription_status: 'canceled',
+      subscription_ends_at: PAST,
+      comp_reason: 'Comp ended',
+    };
+    expect(statusOf(profile)).toBe(410);
+  });
+
+  it('inactive, no override -> 410', () => {
     expect(statusOf({ subscription_status: 'inactive' })).toBe(410);
   });
 
