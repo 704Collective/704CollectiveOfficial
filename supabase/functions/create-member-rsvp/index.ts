@@ -6,6 +6,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
 import { rsvpNotOpen, rsvpOpensCopy } from "../_shared/rsvpWindow.ts";
 import { membershipEndsBeforeEvent, membershipEndsBeforeEventResponse } from "../_shared/membershipWindow.ts";
+import { isRsvpEligibleMember } from "../_shared/rsvpEligibility.ts";
 import { eventClosedResponse, isEventClosed } from "../_shared/eventStatus.ts";
 
 const corsHeaders = {
@@ -77,7 +78,7 @@ serve(async (req) => {
       // email, full_name and phone are here for the resolver: people.email is
       // NOT NULL, so a mint needs them.
       // cancel_at_period_end + subscription_ends_at: paid-window guard for pending-cancel members.
-      .select("id, email, full_name, phone, subscription_status, membership_override, member_type, role, cancel_at_period_end, subscription_ends_at")
+      .select("id, email, full_name, phone, subscription_status, membership_override, comp_reason, member_type, role, cancel_at_period_end, subscription_ends_at")
       .eq("id", memberUserId)
       .is("deleted_at", null)
       .single();
@@ -88,10 +89,7 @@ serve(async (req) => {
       });
     }
 
-    const isActiveMember =
-      profile.subscription_status === "active" ||
-      profile.subscription_status === "trialing" ||
-      profile.membership_override === true;
+    const isActiveMember = isRsvpEligibleMember(profile);
 
     if (!isActiveMember) {
       return new Response(JSON.stringify({ error: "Active membership required" }), {

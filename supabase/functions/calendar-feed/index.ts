@@ -1,7 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
-import { calendarFeedMembershipHttpStatus } from "../_shared/calendarFeedAccess.ts";
+import {
+  calendarFeedHttpStatus,
+  isCalendarFeedTokenFormat,
+  type CalendarFeedScope,
+} from "../_shared/calendarFeedAccess.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,7 +26,7 @@ interface Event {
   status?: string | null;
 }
 
-type Scope = "social" | "business" | "all" | "rsvp_only";
+type Scope = CalendarFeedScope;
 
 const VALID_SCOPES: ReadonlySet<Scope> = new Set<Scope>([
   "social",
@@ -72,15 +76,6 @@ function isRateLimited(token: string): boolean {
 function parseScope(raw: string | null): Scope {
   if (raw && VALID_SCOPES.has(raw as Scope)) return raw as Scope;
   return "rsvp_only";
-}
-
-function isScopeAuthorized(scope: Scope, memberType: string | null): boolean {
-  // business + all are gated to business-tier members; social + rsvp_only are
-  // open to any active member (social / business / partner).
-  if (scope === "business" || scope === "all") {
-    return memberType === "business";
-  }
-  return true;
 }
 
 // Simple ICS generator
@@ -279,8 +274,7 @@ serve(async (req) => {
     }
 
     // Validate token is a valid UUID format to prevent enumeration attacks
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(token)) {
+    if (!isCalendarFeedTokenFormat(token)) {
       return new Response("Invalid token format", { status: 400, headers: corsHeaders });
     }
 
@@ -309,28 +303,32 @@ serve(async (req) => {
       .is("deleted_at", null)
       .single();
 
-    if (!profile) {
-      // 404 — do not leak existence
+    // Same helper as create-member-rsvp / claim-waitlist-seat (isRsvpEligibleMember).
+    const gate = calendarFeedHttpStatus({
+      token,
+      profile: profile
+        ? {
+            subscription_status: profile.subscription_status as string | null,
+            subscription_ends_at: profile.subscription_ends_at as string | null,
+            membership_override: profile.membership_override as boolean | null,
+            comp_reason: profile.comp_reason as string | null,
+            member_type: (profile.member_type as string | null) ?? null,
+          }
+        : null,
+      scope,
+    });
+    if (gate === 400) {
+      return new Response("Invalid token format", { status: 400, headers: corsHeaders });
+    }
+    if (gate === 404) {
       return new Response("Invalid token", { status: 404, headers: corsHeaders });
     }
-
-    // Keep in sync with src/lib/calendar/feedAccess.ts
-    const membershipStatus = calendarFeedMembershipHttpStatus({
-      subscription_status: profile.subscription_status as string | null,
-      subscription_ends_at: profile.subscription_ends_at as string | null,
-      membership_override: profile.membership_override as boolean | null,
-      comp_reason: profile.comp_reason as string | null,
-    });
-    if (membershipStatus === 410) {
+    if (gate === 410) {
       return new Response("Calendar feed gone", { status: 410, headers: corsHeaders });
     }
-    if (membershipStatus === 403) {
-      return new Response("Active membership required", { status: 403, headers: corsHeaders });
-    }
 
-    const memberType = (profile.member_type as string | null) ?? null;
-
-    if (!isScopeAuthorized(scope, memberType)) {
+    const memberType = (profile?.member_type as string | null) ?? null;
+    if (gate === 403) {
       console.log(
         `[calendar-feed] scope=${scope} denied for tier=${memberType ?? "unknown"}`,
       );
@@ -338,6 +336,10 @@ serve(async (req) => {
         status: 403,
         headers: corsHeaders,
       });
+    }
+
+    if (!profile) {
+      return new Response("Invalid token", { status: 404, headers: corsHeaders });
     }
 
     console.log(`[calendar-feed] scope=${scope} tier=${memberType ?? "unknown"}`);
