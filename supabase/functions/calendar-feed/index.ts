@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
+import { calendarFeedMembershipHttpStatus } from "../_shared/calendarFeedAccess.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -303,7 +304,7 @@ serve(async (req) => {
     // Validate token; pull member_type for scope authorization.
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id, email, subscription_status, member_type")
+      .select("id, email, subscription_status, member_type, subscription_ends_at, membership_override, comp_reason")
       .eq("calendar_token", token)
       .is("deleted_at", null)
       .single();
@@ -313,14 +314,18 @@ serve(async (req) => {
       return new Response("Invalid token", { status: 404, headers: corsHeaders });
     }
 
-    if (profile.subscription_status !== "active") {
-      // Keep in sync with src/lib/calendar/feedAccess.ts
-      const s = String(profile.subscription_status ?? "").toLowerCase();
-      const denyStatus = s === "past_due" || s === "paused" || s === "trialing" ? 403 : 410;
-      return new Response(
-        denyStatus === 410 ? "Calendar feed gone" : "Active membership required",
-        { status: denyStatus, headers: corsHeaders },
-      );
+    // Keep in sync with src/lib/calendar/feedAccess.ts
+    const membershipStatus = calendarFeedMembershipHttpStatus({
+      subscription_status: profile.subscription_status as string | null,
+      subscription_ends_at: profile.subscription_ends_at as string | null,
+      membership_override: profile.membership_override as boolean | null,
+      comp_reason: profile.comp_reason as string | null,
+    });
+    if (membershipStatus === 410) {
+      return new Response("Calendar feed gone", { status: 410, headers: corsHeaders });
+    }
+    if (membershipStatus === 403) {
+      return new Response("Active membership required", { status: 403, headers: corsHeaders });
     }
 
     const memberType = (profile.member_type as string | null) ?? null;

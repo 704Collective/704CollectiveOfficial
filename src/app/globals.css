@@ -679,68 +679,6 @@ summary:focus-visible {
   }
 }
 
-/* ── Home slideshow (kept out of page.tsx to avoid SSR <style> hoist #418) ─ */
-.slide-img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0;
-  transition: opacity 0.8s ease-in-out;
-}
-.slide-img.active {
-  opacity: 1;
-}
-.slideshow-container {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 3/2;
-  background: #2E2E2E;
-  border-radius: 16px;
-  overflow: hidden;
-}
-.slideshow-arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(0,0,0,0.45);
-  border: none;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 10;
-  color: #FFFFFF;
-  transition: background 200ms ease;
-}
-.slideshow-arrow:hover { background: rgba(0,0,0,0.7); }
-.slideshow-arrow.prev { left: 12px; }
-.slideshow-arrow.next { right: 12px; }
-.slideshow-dots {
-  position: absolute;
-  bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 6px;
-  z-index: 10;
-}
-.slideshow-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.4);
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  transition: background 200ms ease;
-}
-.slideshow-dot.active { background: #FFFFFF; }
-
 /* ── Bottom safe area — iPhone home indicator ───────────────  */
 @media (max-width: 640px) {
   .portal-main-content {

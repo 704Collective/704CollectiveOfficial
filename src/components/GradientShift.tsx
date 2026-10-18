@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 
 export default function GradientShift({
@@ -13,11 +13,6 @@ export default function GradientShift({
   style?: React.CSSProperties;
 }) {
   const ref = useRef(null);
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => {
-    setHydrated(true);
-  }, []);
-
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start end", "end start"],
@@ -36,7 +31,7 @@ export default function GradientShift({
           right: 0,
           bottom: 0,
           background: "radial-gradient(ellipse at center, rgba(198, 166, 100, 0.04) 0%, transparent 70%)",
-          opacity: hydrated ? opacity : 0,
+          opacity,
           pointerEvents: "none",
         }}
       />

@@ -1,8 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
-import { useInViewAfterHydrate } from "@/lib/hydration/useInViewAfterHydrate";
+import { motion, useInView, useScroll, useTransform } from "framer-motion";
 
 /* ─── Fade up on scroll ─── */
 export function FadeUp({
@@ -17,7 +16,7 @@ export function FadeUp({
   className?: string;
 }) {
   const ref = useRef(null);
-  const isInView = useInViewAfterHydrate(ref, { once: true, margin: "-80px" });
+  const isInView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
     <motion.div
@@ -45,7 +44,7 @@ export function FadeIn({
   className?: string;
 }) {
   const ref = useRef(null);
-  const isInView = useInViewAfterHydrate(ref, { once: true, margin: "-80px" });
+  const isInView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
     <motion.div
@@ -75,7 +74,7 @@ export function SlideIn({
   className?: string;
 }) {
   const ref = useRef(null);
-  const isInView = useInViewAfterHydrate(ref, { once: true, margin: "-80px" });
+  const isInView = useInView(ref, { once: true, margin: "-80px" });
   const xStart = direction === "left" ? -60 : 60;
 
   return (
@@ -104,7 +103,7 @@ export function StaggerContainer({
   style?: React.CSSProperties;
 }) {
   const ref = useRef(null);
-  const isInView = useInViewAfterHydrate(ref, { once: true, margin: "-60px" });
+  const isInView = useInView(ref, { once: true, margin: "-60px" });
 
   return (
     <motion.div
@@ -169,7 +168,7 @@ export function ScaleUp({
   className?: string;
 }) {
   const ref = useRef(null);
-  const isInView = useInViewAfterHydrate(ref, { once: true, margin: "-80px" });
+  const isInView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
     <motion.div
@@ -195,7 +194,7 @@ export function DrawLine({
   className?: string;
 }) {
   const ref = useRef(null);
-  const isInView = useInViewAfterHydrate(ref, { once: true, margin: "-40px" });
+  const isInView = useInView(ref, { once: true, margin: "-40px" });
 
   const isHorizontal = direction === "horizontal";
 
@@ -256,7 +255,7 @@ export function WordReveal({
   style?: React.CSSProperties;
 }) {
   const ref = useRef(null);
-  const isInView = useInViewAfterHydrate(ref, { once: true, margin: "-80px" });
+  const isInView = useInView(ref, { once: true, margin: "-80px" });
 
   const words = text.split(" ");
 
@@ -302,7 +301,7 @@ export function CountUp({
   style?: React.CSSProperties;
 }) {
   const ref = useRef(null);
-  const isInView = useInViewAfterHydrate(ref, { once: true, margin: "-80px" });
+  const isInView = useInView(ref, { once: true, margin: "-80px" });
   const count = useTransform(
     useScroll({ target: ref, offset: ["start end", "center center"] }).scrollYProgress,
     [0, 1],
