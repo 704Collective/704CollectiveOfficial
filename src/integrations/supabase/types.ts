@@ -758,6 +758,8 @@ export type Database = {
           apple_pass_serial: string | null
           checked_in_at: string | null
           checked_in_by: string | null
+          checkin_failed_checks: string[] | null
+          checkin_override_reason: string | null
           created_at: string
           credential_type: string
           event_id: string | null
@@ -778,6 +780,8 @@ export type Database = {
           apple_pass_serial?: string | null
           checked_in_at?: string | null
           checked_in_by?: string | null
+          checkin_failed_checks?: string[] | null
+          checkin_override_reason?: string | null
           created_at?: string
           credential_type: string
           event_id?: string | null
@@ -798,6 +802,8 @@ export type Database = {
           apple_pass_serial?: string | null
           checked_in_at?: string | null
           checked_in_by?: string | null
+          checkin_failed_checks?: string[] | null
+          checkin_override_reason?: string | null
           created_at?: string
           credential_type?: string
           event_id?: string | null

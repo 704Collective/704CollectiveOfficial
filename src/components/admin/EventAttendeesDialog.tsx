@@ -11,8 +11,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { resolvePersonId } from '@/lib/identity/resolvePerson';
 import { toast } from 'sonner';
+import { checkInPatch, decideDoorCheckIn, formatBulkSummary } from '@/lib/doorCheckIn';
+import { applyDoorCheckIn, loadDoorEvent, loadProfilesByPerson } from '@/lib/doorCheckInLookup';
 import { format } from 'date-fns';
 import { Loader2, CheckCircle2, Clock, UserCheck, Check, Trash2 } from 'lucide-react';
 import { plusOneLabel } from '@/lib/events/plusOne';
@@ -28,6 +29,10 @@ interface AttendeeRow {
   rsvp_date: string | null;
   contact_route_id: string | null;
   has_payment: boolean;
+  person_id: string;
+  credential_type: string;
+  status: string;
+  event_id: string | null;
   /** Business member +1: "+1 of <member>" from credential metadata; null for ordinary guest passes. */
   guest_label?: string | null;
 }
@@ -53,6 +58,7 @@ export function EventAttendeesDialog({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkChecking, setBulkChecking] = useState(false);
   const [bulkRemoving, setBulkRemoving] = useState(false);
+  const [bulkSummary, setBulkSummary] = useState<string | null>(null);
 
   const fetchAttendees = useCallback(async () => {
     if (!eventId) return;
@@ -63,7 +69,7 @@ export function EventAttendeesDialog({
     // Canonical roster: attendance_credentials (replaces tickets + event_public_rsvps).
     const { data: creds, error: credErr } = await supabase
       .from('attendance_credentials')
-      .select('id, person_id, credential_type, status, checked_in_at, created_at, metadata')
+      .select('id, person_id, credential_type, status, checked_in_at, created_at, event_id, metadata')
       .eq('event_id', eventId)
       .in('status', ['active', 'used']);
 
@@ -139,6 +145,10 @@ export function EventAttendeesDialog({
             : null,
         has_payment: !!(c.metadata as Record<string, unknown> | null)?.stripe_payment_id,
         guest_label: kind === 'guest' ? plusOneLabel(c.metadata as Record<string, unknown> | null, 'Guest') : null,
+        person_id: c.person_id,
+        credential_type: c.credential_type,
+        status: c.status,
+        event_id: c.event_id,
       };
     }).sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
 
@@ -174,42 +184,44 @@ export function EventAttendeesDialog({
   };
 
   const handleBulkCheckIn = async () => {
-    if (selected.size === 0) return;
+    if (selected.size === 0 || !eventId) return;
     setBulkChecking(true);
-    const now = new Date().toISOString();
     try {
-      // Stamp the canonical attendance_credentials rows (selected keys are credential ids).
-      const ids = [...selected];
-      const updates = ids.map(id =>
-        supabase
-          .from('attendance_credentials')
-          .update({ checked_in_at: now, status: 'used' })
-          .eq('id', id),
-      );
-      const results = await Promise.all(updates);
-      const errorCount = results.filter(r => r.error).length;
-
-      // checked_in_by expects a people id; adminId is an auth user id, resolved
-      // through the shared helper (auth_user_id column first, sticky note second).
-      // Best-effort, mirroring CheckInFullScreen - check-ins already recorded above.
-      if (adminId) {
-        try {
-          const { personId: adminPersonId } = await resolvePersonId(adminId);
-          if (adminPersonId) {
-            await supabase
-              .from('attendance_credentials')
-              .update({ checked_in_by: adminPersonId })
-              .in('id', ids);
-          }
-        } catch {
-          // non-fatal
+      const event = await loadDoorEvent(eventId);
+      if (!event) {
+        toast.error('Could not load this event');
+        return;
+      }
+      const chosen = attendees.filter(a => selected.has(a.id));
+      const profiles = await loadProfilesByPerson(chosen.map(a => a.person_id));
+      const now = new Date().toISOString();
+      let checkedIn = 0;
+      const skipped: { message: string }[] = [];
+      for (const attendee of chosen) {
+        const decision = decideDoorCheckIn({
+          credential: {
+            id: attendee.id,
+            person_id: attendee.person_id,
+            event_id: attendee.event_id || eventId,
+            credential_type: attendee.credential_type,
+            status: attendee.status,
+            checked_in_at: attendee.checked_in_at,
+          },
+          event,
+          profile: profiles[attendee.person_id] ?? null,
+        });
+        if (decision.outcome !== 'allow') {
+          skipped.push({ message: decision.message });
+          continue;
         }
+        const err = await applyDoorCheckIn(attendee.id, adminId || '', checkInPatch(now, null));
+        if (err) skipped.push({ message: err === 'Already checked in' ? 'Already checked in' : 'Check-in failed' });
+        else checkedIn += 1;
       }
-      if (errorCount > 0) {
-        toast.error(errorCount + ' check-in(s) failed');
-      } else {
-        toast.success('Checked in ' + selected.size + ' attendee' + (selected.size !== 1 ? 's' : ''));
-      }
+      const summary = formatBulkSummary(checkedIn, skipped);
+      setBulkSummary(summary);
+      if (skipped.length > 0) toast.message(summary);
+      else toast.success(summary);
       setSelected(new Set());
       await fetchAttendees();
     } catch {
@@ -290,6 +302,12 @@ export function EventAttendeesDialog({
             </div>
           </DialogDescription>
         </DialogHeader>
+
+        {bulkSummary && (
+          <p data-testid="bulk-checkin-summary" className="px-6 py-2 text-sm text-foreground border-b border-border">
+            {bulkSummary}
+          </p>
+        )}
 
         {/* Bulk action bar */}
         {selected.size > 0 && (

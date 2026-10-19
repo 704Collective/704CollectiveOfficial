@@ -12,12 +12,30 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { resolvePersonId } from '@/lib/identity/resolvePerson';
 import { toast } from 'sonner';
-import { canAttendEvent } from '@/lib/eventEligibility';
 import { plusOneLabel } from '@/lib/events/plusOne';
+import { DoorCheckInPrompt } from '@/components/DoorCheckInPrompt';
+import {
+  checkInPatch,
+  decideDoorCheckIn,
+  isWalletProfileScan,
+  pickWalletCredential,
+  type DoorCredential,
+  type DoorDecision,
+  type DoorProfile,
+} from '@/lib/doorCheckIn';
+import {
+  applyDoorCheckIn,
+  loadDoorEvent,
+  loadPersonCredentials,
+  loadPersonName,
+  loadProfileById,
+  loadProfileForPerson,
+} from '@/lib/doorCheckInLookup';
 
 type AttendeeRow = {
   id: string;                 // attendance_credentials.id
   credential_type: string;    // member_rsvp | guest_pass | public_rsvp
+  status: string;
   person_id: string;
   full_name: string;
   email: string;
@@ -57,7 +75,12 @@ export function CheckInFullScreen({
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [showAttendeeList, setShowAttendeeList] = useState(false);
   const [successOverlay, setSuccessOverlay] = useState<{ name: string; isWalkIn: boolean; isOffline?: boolean } | null>(null);
-  const [eventTier, setEventTier] = useState<string>('public');
+  const [pendingDoor, setPendingDoor] = useState<{
+    credentialId: string;
+    name: string;
+    decision: Exclude<DoorDecision, { outcome: 'allow' }>;
+  } | null>(null);
+  const doorPromptRef = useRef(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -88,7 +111,7 @@ export function CheckInFullScreen({
     // Event-scoped passes: member_rsvp, guest_pass, public_rsvp, active|used.
     const { data: creds, error: credErr } = await supabase
       .from('attendance_credentials')
-      .select('id, person_id, credential_type, checked_in_at, metadata')
+      .select('id, person_id, credential_type, status, checked_in_at, metadata')
       .eq('event_id', eventId)
       .in('credential_type', ['member_rsvp', 'guest_pass', 'public_rsvp'])
       .in('status', ['active', 'used']);
@@ -117,6 +140,7 @@ export function CheckInFullScreen({
       return {
         id: c.id,
         credential_type: c.credential_type,
+        status: c.status,
         person_id: c.person_id,
         full_name: p?.full_name || 'Unknown',
         email: p?.email || '',
@@ -135,18 +159,6 @@ export function CheckInFullScreen({
       fetchAttendees();
     }
   }, [open, eventId, fetchAttendees]);
-
-  useEffect(() => {
-    if (!open || !eventId) return;
-    (async () => {
-      const { data } = await supabase
-        .from('events')
-        .select('required_tier')
-        .eq('id', eventId)
-        .maybeSingle();
-      setEventTier(data?.required_tier ?? 'public');
-    })();
-  }, [open, eventId]);
 
   useEffect(() => {
     if (!open) {
@@ -267,160 +279,95 @@ export function CheckInFullScreen({
     setTimeout(() => { startScanner(); }, 300);
   };
 
+  const openDoorPrompt = (name: string, credentialId: string, decision: DoorDecision) => {
+    if (decision.outcome === 'allow') return false;
+    if (decision.outcome === 'stop') {
+      toast.info(`${name} is already checked in`);
+      return true;
+    }
+    doorPromptRef.current = true;
+    setPendingDoor({ credentialId, name, decision });
+    return true;
+  };
+
+  const persistCheckIn = async (
+    credentialId: string,
+    name: string,
+    override: { reason: string; failedChecks: string[] } | null,
+  ) => {
+    const err = await applyDoorCheckIn(
+      credentialId,
+      adminId,
+      checkInPatch(new Date().toISOString(), override),
+    );
+    if (err) {
+      if (err === 'Already checked in') toast.info(`${name} is already checked in`);
+      else toast.error('Failed to check in');
+      return;
+    }
+    toast.success(`Welcome, ${name}!`);
+    addRecentCheckIn(name, false, false);
+    fetchAttendees();
+  };
+
   const handleQRScan = async (scannedText: string) => {
     const token = scannedText.trim();
 
-    // Ignore obvious non-tokens (e.g. an email QR).
     if (!token || token.includes('@')) {
       toast.error('Code not recognized');
       return;
     }
+    if (doorPromptRef.current) return;
 
     if (!isOnline) {
-      // Online connectivity is required to validate a credential against the
-      // database. The offline queue path is handled separately (manual list).
       toast.error('Cannot verify passes while offline');
       return;
     }
 
-    // One lookup: find the credential by its token.
-    const { data: credential, error: credErr } = await supabase
-      .from('attendance_credentials')
-      .select('id, person_id, event_id, credential_type, status, checked_in_at, metadata')
-      .eq('token', token)
-      .maybeSingle();
-
-    if (credErr || !credential) {
-      toast.error('Code not recognized');
+    const event = await loadDoorEvent(eventId);
+    if (!event) {
+      toast.error('Could not load this event');
       return;
     }
 
-    // Status checks.
-    if (credential.status === 'voided') {
-      toast.error('This pass is no longer valid');
-      return;
-    }
-    if (credential.status === 'expired') {
-      toast.error('This pass has expired');
-      return;
-    }
-    if (credential.status !== 'active' && credential.status !== 'used') {
-      toast.error('This pass is not valid');
-      return;
-    }
+    let credential: DoorCredential | null = null;
+    let profile: DoorProfile = null;
+    let personName = 'Guest';
+    let label = personName;
 
-    // Event scoping: an event-specific credential must match THIS event.
-    // A general member pass has event_id = null and works at any event.
-    if (credential.event_id && credential.event_id !== eventId) {
-      toast.error('This pass is for a different event');
-      return;
-    }
-
-    // Load the person.
-    const { data: person, error: personErr } = await supabase
-      .from('people')
-      .select('id, full_name, member_tier, roles, member_status')
-      .eq('id', credential.person_id)
-      .maybeSingle();
-
-    if (personErr || !person) {
-      toast.error('Code not recognized');
-      return;
-    }
-
-    const personName = person.full_name || 'Guest';
-
-    // Already checked in?
-    if (credential.checked_in_at) {
-      toast.info(`${personName} is already checked in`, {
-        description: `Checked in at ${format(new Date(credential.checked_in_at), 'h:mm a')}`,
-      });
-      return;
-    }
-
-    // Tier eligibility - one canonical helper, same as the website.
-    const eligibility = canAttendEvent(
-      { member_tier: person.member_tier, roles: person.roles ?? [] },
-      { required_tier: eventTier }
-    );
-    if (!eligibility.canAttend) {
-      toast.error(eligibility.reason || 'Not eligible for this event');
-      return;
-    }
-
-    // Stamp the check-in.
-    const { error: ciErr } = await supabase
-      .from('attendance_credentials')
-      .update({
-        checked_in_at: new Date().toISOString(),
-        status: 'used',
-      })
-      .eq('id', credential.id);
-
-    if (ciErr) {
-      console.error('[CHECK-IN] credential update failed', ciErr);
-      toast.error('Failed to check in');
-      return;
-    }
-
-    // checked_in_by expects a person id. adminId is an auth user id, so the
-    // shared resolver does the lookup: auth_user_id column first, the legacy
-    // metadata.profile_id sticky note only as a fallback. Best-effort: if it
-    // resolves, stamp it; if not, the check-in still succeeded above.
-    try {
-      const { personId: adminPersonId } = await resolvePersonId(adminId);
-      if (adminPersonId) {
-        await supabase
-          .from('attendance_credentials')
-          .update({ checked_in_by: adminPersonId })
-          .eq('id', credential.id);
+    if (isWalletProfileScan(token)) {
+      const { personId } = await resolvePersonId(token);
+      if (personId) {
+        credential = pickWalletCredential(await loadPersonCredentials(personId), eventId);
+        profile = await loadProfileById(token);
+        personName = await loadPersonName(personId);
+        label = personName;
       }
-    } catch {
-      // non-fatal - check-in already recorded
     }
 
-    const label =
-      credential.credential_type === 'guest_pass' ? `${personName} (${plusOneLabel((credential as { metadata?: Record<string, unknown> | null }).metadata, 'Guest')})`
-      : credential.credential_type === 'public_rsvp' ? `${personName} (Public RSVP)`
-      : personName;
-
-    toast.success(`Welcome, ${personName}!`);
-    addRecentCheckIn(label, false, false);
-    fetchAttendees();
-  };
-
-  const checkInAttendee = async (attendee: AttendeeRow, isWalkIn: boolean = false) => {
-    const name = attendee.full_name || attendee.email;
-
-    // Manual check-in stamps the attendance_credential, mirroring the QR path.
-    const { error } = await supabase
-      .from('attendance_credentials')
-      .update({ checked_in_at: new Date().toISOString(), status: 'used' })
-      .eq('id', attendee.id);
-
-    if (error) {
-      toast.error('Failed to check in');
-      return;
-    }
-
-    // checked_in_by expects a people id; adminId is an auth user id, resolved
-    // through the same shared helper as the QR path.
-    // Best-effort, same as the QR path - check-in already succeeded above.
-    try {
-      const { personId: adminPersonId } = await resolvePersonId(adminId);
-      if (adminPersonId) {
-        await supabase
-          .from('attendance_credentials')
-          .update({ checked_in_by: adminPersonId })
-          .eq('id', attendee.id);
+    if (!credential) {
+      const { data, error } = await supabase
+        .from('attendance_credentials')
+        .select('id, person_id, event_id, credential_type, status, checked_in_at, metadata')
+        .eq('token', token)
+        .maybeSingle();
+      if (error || !data) {
+        toast.error('Code not recognized');
+        return;
       }
-    } catch {
-      // non-fatal - check-in already recorded
+      credential = data;
+      profile = await loadProfileForPerson(data.person_id);
+      personName = await loadPersonName(data.person_id);
+      label = data.credential_type === 'guest_pass'
+        ? `${personName} (${plusOneLabel((data as { metadata?: Record<string, unknown> | null }).metadata, 'Guest')})`
+        : data.credential_type === 'public_rsvp'
+          ? `${personName} (Public RSVP)`
+          : personName;
     }
 
-    toast.success(`${name} checked in!`);
-    addRecentCheckIn(name, isWalkIn);
-    fetchAttendees();
+    const decision = decideDoorCheckIn({ credential, event, profile });
+    if (openDoorPrompt(personName, credential.id, decision)) return;
+    await persistCheckIn(credential.id, label, null);
   };
 
   const playSuccessSound = useCallback(() => {
@@ -481,7 +428,27 @@ export function CheckInFullScreen({
   };
 
   const handleManualCheckIn = async (attendee: AttendeeRow) => {
-    await checkInAttendee(attendee, false);
+    const event = await loadDoorEvent(eventId);
+    if (!event) {
+      toast.error('Could not load this event');
+      return;
+    }
+    const profile = await loadProfileForPerson(attendee.person_id);
+    const decision = decideDoorCheckIn({
+      credential: {
+        id: attendee.id,
+        person_id: attendee.person_id,
+        event_id: eventId,
+        credential_type: attendee.credential_type,
+        status: attendee.status,
+        checked_in_at: attendee.checked_in_at,
+      },
+      event,
+      profile,
+    });
+    const name = attendee.full_name || attendee.email;
+    if (openDoorPrompt(name, attendee.id, decision)) return;
+    await persistCheckIn(attendee.id, name, null);
     setShowAttendeeList(false);
   };
 
@@ -677,6 +644,27 @@ export function CheckInFullScreen({
             </Button>
           </div>
         </>
+      )}
+
+      {pendingDoor && (
+        <DoorCheckInPrompt
+          name={pendingDoor.name}
+          decision={pendingDoor.decision}
+          onDismiss={() => {
+            doorPromptRef.current = false;
+            setPendingDoor(null);
+          }}
+          onConfirm={(reason) => {
+            const pending = pendingDoor;
+            doorPromptRef.current = false;
+            setPendingDoor(null);
+            if (pending.decision.outcome !== 'override') return;
+            void persistCheckIn(pending.credentialId, pending.name, {
+              reason,
+              failedChecks: pending.decision.failedChecks,
+            });
+          }}
+        />
       )}
 
     </div>,

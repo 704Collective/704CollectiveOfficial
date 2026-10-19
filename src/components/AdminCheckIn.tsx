@@ -12,14 +12,17 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { CheckInFullScreen } from '@/components/CheckInFullScreen';
+import { DoorCheckInPrompt } from '@/components/DoorCheckInPrompt';
 import { supabase } from '@/integrations/supabase/client';
-import { resolvePersonId } from '@/lib/identity/resolvePerson';
 import { toast } from 'sonner';
 import { plusOneLabel } from '@/lib/events/plusOne';
+import { checkInPatch, decideDoorCheckIn, type DoorDecision } from '@/lib/doorCheckIn';
+import { applyDoorCheckIn, loadDoorEvent, loadProfileForPerson } from '@/lib/doorCheckInLookup';
 
 type AttendeeRow = {
   id: string; // attendance_credentials id
   credential_type: string;
+  status: string;
   person_id: string;
   full_name: string;
   email: string;
@@ -45,6 +48,11 @@ export function AdminCheckIn({ adminId }: AdminCheckInProps) {
   const [attendees, setAttendees] = useState<AttendeeRow[]>([]);
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [checkInLoadingId, setCheckInLoadingId] = useState<string | null>(null);
+  const [pendingDoor, setPendingDoor] = useState<{
+    credentialId: string;
+    name: string;
+    decision: Exclude<DoorDecision, { outcome: 'allow' }>;
+  } | null>(null);
 
   useEffect(() => {
     fetchEvents();
@@ -83,7 +91,7 @@ export function AdminCheckIn({ adminId }: AdminCheckInProps) {
     // Canonical roster: attendance_credentials + people, mirroring CheckInFullScreen.
     const { data: creds, error: credErr } = await supabase
       .from('attendance_credentials')
-      .select('id, person_id, credential_type, checked_in_at, metadata')
+      .select('id, person_id, credential_type, status, checked_in_at, event_id, metadata')
       .eq('event_id', selectedEventId)
       .in('credential_type', ['member_rsvp', 'guest_pass', 'public_rsvp'])
       .in('status', ['active', 'used']);
@@ -110,6 +118,7 @@ export function AdminCheckIn({ adminId }: AdminCheckInProps) {
       return {
         id: c.id,
         credential_type: c.credential_type,
+        status: c.status,
         person_id: c.person_id,
         full_name: p?.full_name || 'Unknown',
         email: p?.email || '',
@@ -122,47 +131,59 @@ export function AdminCheckIn({ adminId }: AdminCheckInProps) {
     setAttendees(merged);
   }, [selectedEventId]);
 
+  const finishRosterCheckIn = async (
+    credentialId: string,
+    name: string,
+    override: { reason: string; failedChecks: string[] } | null,
+  ) => {
+    const err = await applyDoorCheckIn(
+      credentialId,
+      adminId,
+      checkInPatch(new Date().toISOString(), override),
+    );
+    if (err) {
+      if (err === 'Already checked in') toast.info(`${name} is already checked in`);
+      else toast.error('Check-in failed');
+      return;
+    }
+    toast.success(`${name} checked in`);
+    await fetchAttendees();
+  };
+
   const handleQuickCheckIn = async (attendee: AttendeeRow) => {
-    if (attendee.checked_in_at) {
+    setCheckInLoadingId(attendee.id);
+    const event = await loadDoorEvent(selectedEventId);
+    const profile = await loadProfileForPerson(attendee.person_id);
+    setCheckInLoadingId(null);
+    if (!event) {
+      toast.error('Could not load this event');
+      return;
+    }
+    const decision = decideDoorCheckIn({
+      credential: {
+        id: attendee.id,
+        person_id: attendee.person_id,
+        event_id: selectedEventId,
+        credential_type: attendee.credential_type,
+        status: attendee.status,
+        checked_in_at: attendee.checked_in_at,
+      },
+      event,
+      profile,
+    });
+    if (decision.outcome === 'stop') {
       toast.info(`${attendee.full_name} is already checked in`, {
-        description: `Checked in at ${format(new Date(attendee.checked_in_at), 'h:mm a')}`,
+        description: attendee.checked_in_at
+          ? `Checked in at ${format(new Date(attendee.checked_in_at), 'h:mm a')}`
+          : undefined,
       });
       return;
     }
-
-    setCheckInLoadingId(attendee.id);
-
-    // Stamp the canonical attendance_credential, mirroring CheckInFullScreen.
-    const { error } = await supabase
-      .from('attendance_credentials')
-      .update({ checked_in_at: new Date().toISOString(), status: 'used' })
-      .eq('id', attendee.id);
-
-    setCheckInLoadingId(null);
-
-    if (error) {
-      toast.error('Check-in failed');
+    if (decision.outcome !== 'allow') {
+      setPendingDoor({ credentialId: attendee.id, name: attendee.full_name, decision });
       return;
     }
-
-    // checked_in_by expects a people id; adminId is an auth user id. The shared
-    // resolver answers that question the same way everywhere: auth_user_id column
-    // first, the legacy metadata.profile_id sticky note only as a fallback.
-    // Best-effort, same as CheckInFullScreen - check-in already recorded above.
-    try {
-      const { personId: adminPersonId } = await resolvePersonId(adminId);
-      if (adminPersonId) {
-        await supabase
-          .from('attendance_credentials')
-          .update({ checked_in_by: adminPersonId })
-          .eq('id', attendee.id);
-      }
-    } catch {
-      // non-fatal - check-in already recorded
-    }
-
-    toast.success(`${attendee.full_name} checked in`);
-    await fetchAttendees();
+    await finishRosterCheckIn(attendee.id, attendee.full_name, null);
   };
 
   const selectedEvent = events.find(e => e.id === selectedEventId);
@@ -301,6 +322,22 @@ export function AdminCheckIn({ adminId }: AdminCheckInProps) {
           eventId={selectedEventId}
           eventTitle={selectedEvent.title}
           adminId={adminId}
+        />
+      )}
+      {pendingDoor && (
+        <DoorCheckInPrompt
+          name={pendingDoor.name}
+          decision={pendingDoor.decision}
+          onDismiss={() => setPendingDoor(null)}
+          onConfirm={(reason) => {
+            const pending = pendingDoor;
+            setPendingDoor(null);
+            if (pending.decision.outcome !== 'override') return;
+            void finishRosterCheckIn(pending.credentialId, pending.name, {
+              reason,
+              failedChecks: pending.decision.failedChecks,
+            });
+          }}
         />
       )}
     </>
