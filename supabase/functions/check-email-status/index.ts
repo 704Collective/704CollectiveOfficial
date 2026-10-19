@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { emailCheckStatus } from "../_shared/emailCheckStatus.ts";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
 
 const corsHeaders = {
@@ -42,31 +43,20 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    // profiles is authoritative for active-member subscription status.
+    // Membership is the profile rule shared with RSVP and calendar-feed.
+    // people.override_paying is a stale import flag and is not consulted.
     // ilike with no wildcards = case-insensitive exact match. limit(1) keeps
     // maybeSingle() safe even if legacy duplicate rows exist.
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("id, subscription_status, membership_override, deleted_at")
+      .select("id, subscription_status, subscription_ends_at, membership_override, deleted_at")
       .ilike("email", emailLower)
       .is("deleted_at", null)
       .limit(1)
       .maybeSingle();
 
-    const profileActiveMember =
-      !!profile &&
-      (profile.subscription_status === "active" ||
-        profile.subscription_status === "trialing" ||
-        profile.membership_override === true);
-
-    // people is the canonical record + a backstop member signal. Biasing
-    // toward "treat as member" is the safe failure mode: worst case a real
-    // member is told to log in (recoverable), vs. a member being charged.
-    //
-    // Resolution goes through the shared resolver so this door agrees with
-    // every other one about who a person is. Email-only and mint:false: this
-    // is a pre-signup lookup and must never create or touch a row. The member
-    // signal still comes from the row itself, read back by the resolved id.
+    // People only distinguishes existing_contact from new. Email-only and
+    // mint:false: this is a pre-signup lookup and must never create a row.
     const { personId } = await resolvePerson(supabaseAdmin, {
       email: emailLower,
       source: "check_email_status",
@@ -76,26 +66,15 @@ serve(async (req) => {
     const { data: person } = personId
       ? await supabaseAdmin
           .from("people")
-          .select("id, member_status, override_paying")
+          .select("id")
           .eq("id", personId)
           .maybeSingle()
       : { data: null };
 
-    const peopleActiveMember =
-      !!person &&
-      (person.member_status === "active" || person.override_paying === true);
-
-    const isActiveMember = profileActiveMember || peopleActiveMember;
-    const existsSomewhere = !!profile || !!person;
-
-    let status: "active_member" | "existing_contact" | "new";
-    if (isActiveMember) {
-      status = "active_member";
-    } else if (existsSomewhere) {
-      status = "existing_contact";
-    } else {
-      status = "new";
-    }
+    const status = emailCheckStatus({
+      profile,
+      hasPerson: !!person,
+    });
 
     logStep("Resolved", { status, hasProfile: !!profile, hasPerson: !!person });
 
