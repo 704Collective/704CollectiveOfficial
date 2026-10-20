@@ -4,6 +4,9 @@
 [functions.stripe-webhook]
 verify_jwt = false
 
+[functions.stripe-connect-webhook]
+verify_jwt = false
+
 [functions.email-tracking-webhook]
 verify_jwt = false
 
