@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { emailCheckStatus } from "../_shared/emailCheckStatus.ts";
+import { parseCheckEmailStatusBody } from "../_shared/parseCheckEmailStatusBody.ts";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
 
 const corsHeaders = {
@@ -19,14 +20,14 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
-    const rawEmail = (body?.email ?? "").toString().trim();
-    if (!rawEmail) {
+    const parsed = parseCheckEmailStatusBody(await req.text());
+    if (!parsed.ok) {
       return new Response(
-        JSON.stringify({ error: "Missing required field: email" }),
+        JSON.stringify({ error: parsed.error }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    const rawEmail = parsed.email;
 
     const emailLower = rawEmail.toLowerCase();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
