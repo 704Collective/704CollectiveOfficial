@@ -1,0 +1,20 @@
+---
+description: Explicit grants and RLS on every new public table
+alwaysApply: true
+---
+
+# New public tables
+
+Every migration that creates a table in public MUST, in the same migration: enable RLS + add policies, and add explicit grants - service_role always (select, insert, update, delete); authenticated only what the feature needs; anon only if logged-out visitors must read it. Never rely on automatic grants (Supabase stopped them Oct 30, 2026).
+
+```sql
+alter table public.example enable row level security;
+
+create policy example_owner_read on public.example
+  for select to authenticated
+  using (profile_id = auth.uid());
+
+grant select, insert, update, delete on public.example to service_role;
+grant select on public.example to authenticated;
+-- grant select on public.example to anon;  -- only if logged-out visitors must read it
+```
