@@ -63,7 +63,7 @@ notif_tables.txt
 # in scripts/ and are never matched by these.
 /amb-*.mjs
 /cleanup-*.mjs
-/drill-*.mjs
+/drill-*
 /fri-*.mjs
 /r1b-*.mjs
 /r2b-*.mjs
@@ -91,6 +91,19 @@ scripts/test-*.mjs
 
 # member-data reports — never commit
 outputs/
+
+# root rehearsal notes
+/exchange_*.md
+
+# one-off develop/prod rehearsal scripts. Tracked keepers in scripts/ stay committed.
+/scripts/rehearse-*.mjs
+/scripts/prove-*.mjs
+/scripts/inspect-*.mjs
+/scripts/apply-develop-*.mjs
+/scripts/seed-cancel-nh*
+/scripts/verify-cancel-nh.sql
+/scripts/prod-ship-shots.mjs
+/scripts/read-supabase-token.ps1
 
 # Supabase CLI cache + local schema scratch
 supabase/.temp/
