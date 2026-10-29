@@ -6,6 +6,7 @@ import { Users, UserPlus, Search, ChevronLeft, ChevronRight } from 'lucide-react
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import {
   loadUnifiedContacts,
   contactRouteId,
@@ -210,15 +211,26 @@ function AddContactDialog({
   );
 }
 
+type SourceHit = { winning_type: string; winning_detail: string };
+
 function ContactsPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isSuperAdmin } = useAuth();
   const [all, setAll] = useState<UnifiedContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<TypeTab>('all');
   const [page, setPage] = useState(0);
   const [addOpen, setAddOpen] = useState(false);
+  const [sources, setSources] = useState<Map<string, SourceHit>>(new Map());
+  const [sourceType, setSourceType] = useState('all');
+  const [sourceDetail, setSourceDetail] = useState('all');
+
+  const sourceFor = useCallback((row: UnifiedContact): SourceHit | undefined => {
+    if (row.source_table === 'profiles') return sources.get(row.id) ?? sources.get(row.email.toLowerCase());
+    return sources.get(row.email.toLowerCase());
+  }, [sources]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -234,6 +246,23 @@ function ContactsPageInner() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    void supabase.rpc('list_member_sources').then(({ data, error }) => {
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      const map = new Map<string, SourceHit>();
+      for (const row of data ?? []) {
+        const hit = { winning_type: row.winning_type, winning_detail: row.winning_detail };
+        map.set(row.profile_id, hit);
+        map.set(row.email_lower, hit);
+      }
+      setSources(map);
+    });
+  }, [isSuperAdmin]);
 
   useEffect(() => {
     if (searchParams.get('add') === '1') {
@@ -261,8 +290,14 @@ function ContactsPageInner() {
         (r.full_name?.toLowerCase().includes(q) ?? false),
       );
     }
+    if (isSuperAdmin && sourceType !== 'all') {
+      rows = rows.filter(r => sourceFor(r)?.winning_type === sourceType);
+    }
+    if (isSuperAdmin && sourceDetail !== 'all') {
+      rows = rows.filter(r => sourceFor(r)?.winning_detail === sourceDetail);
+    }
     return rows;
-  }, [all, tab, search]);
+  }, [all, tab, search, isSuperAdmin, sourceType, sourceDetail, sourceFor]);
 
   const total = filtered.length;
   const slice = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -325,6 +360,37 @@ function ContactsPageInner() {
         })}
       </div>
 
+      {isSuperAdmin && (
+        <div className="flex flex-wrap gap-2">
+          <select
+            data-testid="source-filter-type"
+            className="h-10 rounded-md border border-input bg-transparent px-3 text-sm"
+            value={sourceType}
+            onChange={(e) => { setSourceType(e.target.value); setSourceDetail('all'); setPage(0); }}
+          >
+            <option value="all">All sources</option>
+            {Array.from(new Set(Array.from(sources.values()).map((s) => s.winning_type))).sort().map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+          <select
+            data-testid="source-filter-detail"
+            className="h-10 rounded-md border border-input bg-transparent px-3 text-sm"
+            value={sourceDetail}
+            onChange={(e) => { setSourceDetail(e.target.value); setPage(0); }}
+          >
+            <option value="all">All details</option>
+            {Array.from(new Set(
+              Array.from(sources.values())
+                .filter((s) => sourceType === 'all' || s.winning_type === sourceType)
+                .map((s) => s.winning_detail),
+            )).sort().map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div className="rounded-lg border border-border overflow-hidden">
         <Table>
           <TableHeader>
@@ -335,13 +401,14 @@ function ContactsPageInner() {
               <TableHead className="text-xs uppercase tracking-wider text-muted-foreground/70 px-4 py-3 font-normal">Type</TableHead>
               <TableHead className="text-xs uppercase tracking-wider text-muted-foreground/70 px-4 py-3 font-normal">Status</TableHead>
               <TableHead className="text-xs uppercase tracking-wider text-muted-foreground/70 px-4 py-3 font-normal">Added</TableHead>
+              {isSuperAdmin && <TableHead data-testid="member-source-column" className="text-xs uppercase tracking-wider text-muted-foreground/70 px-4 py-3 font-normal">Source</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-10 text-muted-foreground">Loading...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={isSuperAdmin ? 7 : 6} className="text-center py-10 text-muted-foreground">Loading...</TableCell></TableRow>
             ) : slice.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-10 text-muted-foreground">No contacts</TableCell></TableRow>
+              <TableRow><TableCell colSpan={isSuperAdmin ? 7 : 6} className="text-center py-10 text-muted-foreground">No contacts</TableCell></TableRow>
             ) : (
               slice.map(row => {
                 const active = isActiveStatus(row.status);
@@ -378,6 +445,11 @@ function ContactsPageInner() {
                     <TableCell className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
                       {row.created_at ? format(new Date(row.created_at), 'MMM d, yyyy') : '-'}
                     </TableCell>
+                    {isSuperAdmin && (
+                      <TableCell className="px-4 py-3 text-sm" data-testid="member-source-cell">
+                        {sourceFor(row)?.winning_detail ?? '—'}
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               })

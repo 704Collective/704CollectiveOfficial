@@ -7454,72 +7454,6 @@ export type Database = {
         }
         Relationships: []
       }
-      utm_tracking: {
-        Row: {
-          contact_id: string | null
-          conversion_type: string | null
-          converted: boolean | null
-          converted_at: string | null
-          created_at: string | null
-          id: string
-          page_url: string | null
-          profile_id: string | null
-          referrer: string | null
-          utm_campaign: string | null
-          utm_content: string | null
-          utm_medium: string | null
-          utm_source: string | null
-          utm_term: string | null
-        }
-        Insert: {
-          contact_id?: string | null
-          conversion_type?: string | null
-          converted?: boolean | null
-          converted_at?: string | null
-          created_at?: string | null
-          id?: string
-          page_url?: string | null
-          profile_id?: string | null
-          referrer?: string | null
-          utm_campaign?: string | null
-          utm_content?: string | null
-          utm_medium?: string | null
-          utm_source?: string | null
-          utm_term?: string | null
-        }
-        Update: {
-          contact_id?: string | null
-          conversion_type?: string | null
-          converted?: boolean | null
-          converted_at?: string | null
-          created_at?: string | null
-          id?: string
-          page_url?: string | null
-          profile_id?: string | null
-          referrer?: string | null
-          utm_campaign?: string | null
-          utm_content?: string | null
-          utm_medium?: string | null
-          utm_source?: string | null
-          utm_term?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "utm_tracking_contact_id_fkey"
-            columns: ["contact_id"]
-            isOneToOne: false
-            referencedRelation: "contacts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "utm_tracking_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       workspaces: {
         Row: {
           created_at: string
@@ -7666,6 +7600,51 @@ export type Database = {
       get_event_public_attendance_count: {
         Args: { p_event_id: string }
         Returns: number
+      }
+      list_member_sources: {
+        Args: never
+        Returns: {
+          profile_id: string
+          email_lower: string
+          winning_type: string
+          winning_detail: string
+        }[]
+      }
+      member_source_breakdown: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          bucket: string
+          winning_type: string | null
+          winning_detail: string | null
+          n: number
+        }[]
+      }
+      save_tracking_link: {
+        Args: { p_posted_on: string; p_campaign: string; p_spot: string; p_destination: string }
+        Returns: {
+          id: string
+          url: string
+          utm_source: string
+          utm_medium: string
+          utm_campaign: string
+          utm_content: string | null
+        }[]
+      }
+      list_tracking_links: {
+        Args: never
+        Returns: {
+          id: string
+          posted_on: string
+          campaign_text: string
+          spot: string | null
+          url: string
+          utm_source: string
+          utm_medium: string
+          utm_campaign: string
+          utm_content: string | null
+          created_at: string
+          new_members: number
+        }[]
       }
       get_member_counts: {
         Args: never

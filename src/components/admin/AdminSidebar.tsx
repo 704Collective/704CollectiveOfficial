@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Calendar, Users, FileText, DollarSign, Mail,
   MessageSquare, QrCode, Layers, GitPullRequest, Handshake, Receipt, Store,
   Newspaper, Shield, Lightbulb, BookOpen, Inbox, Upload, Lock, Database,
-  AlertTriangle, ClipboardList, Settings, BarChart2, Sparkles,
+  AlertTriangle, ClipboardList, Settings, BarChart2, Sparkles, Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminSection } from '@/components/AdminLayout';
@@ -188,6 +188,7 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
             <div className="space-y-0.5">
               {linkBtn('/admin/inbox',           Inbox,         'Team Inbox')}
               {linkBtn('/admin/import-members',  Upload,        'Import Members')}
+              {isSuperAdmin && linkBtn('/admin/sources', Link2, 'Member sources')}
               {isSuperAdmin && linkBtn('/admin/user-security', Lock,          'User Security')}
               {isSuperAdmin && linkBtn('/admin/reconcile-stripe', GitPullRequest, 'Stripe Sync')}
               {isSuperAdmin && linkBtn('/admin/upstash',       Database,      'Upstash')}

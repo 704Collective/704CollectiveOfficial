@@ -10,7 +10,9 @@ import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '
 import { addDays, format } from 'date-fns';
 import { Calendar, MapPin, Users, ArrowRight, Loader2 } from 'lucide-react';
 import { SOCIAL_TIER, BUSINESS_TIER, FLASH_SALE } from '@/lib/pricing';
-import { readAttributionPayload } from '@/lib/attribution';
+import { readAttributionPayload, readSourceTouches } from '@/lib/attribution';
+import { HeardAboutField } from '@/components/HeardAboutField';
+import type { HeardAboutValue } from '@/lib/heardAbout';
 import {
   promoQuoteView,
   type PromoDuration,
@@ -201,6 +203,9 @@ function JoinInner() {
   const [email, setEmail]                   = useState('');
   const [phone, setPhone]                   = useState('');
   const [goal, setGoal]                     = useState('');
+  const [heard, setHeard]                   = useState<HeardAboutValue | ''>('');
+  const [heardOther, setHeardOther]         = useState('');
+  const [heardError, setHeardError]         = useState<string | null>(null);
   const [password, setPassword]             = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [smsConsent, setSmsConsent]         = useState(false);
@@ -357,6 +362,8 @@ function JoinInner() {
     email.trim().length > 0 &&
     phone.replace(/\D/g, '').length >= 10 &&
     goal !== '' &&
+    heard !== '' &&
+    (heard !== 'other' || heardOther.trim().length > 0) &&
     password.length >= 8 &&
     password === confirmPassword;
 
@@ -376,11 +383,19 @@ function JoinInner() {
     if (password.length < 8) return 'Enter a password of at least 8 characters to continue';
     if (password !== confirmPassword) return 'Passwords must match to continue';
     if (goal === '') return 'Choose what you\'re most looking for to continue';
+    if (heard === '') return 'Choose how you heard about us to continue';
+    if (heard === 'other' && heardOther.trim().length === 0) return 'Tell us how you heard about us to continue';
     if (captchaGateActive) return 'Complete the security check above to continue';
     return null;
   })();
 
   const handleSubmit = async () => {
+    if (heard === '' || (heard === 'other' && heardOther.trim().length === 0)) {
+      setHeardError(heard === 'other' ? 'Tell us how you heard about us.' : 'Choose how you heard about us.');
+      setFormError(null);
+      return;
+    }
+    setHeardError(null);
     if (!isFormValid || submitting) return;
     // Block if a referral code was typed but didn't resolve to a valid ambassador
     if (referralCodeInput.trim() !== '' && resolvedAmbassador === null) {
@@ -401,6 +416,16 @@ function JoinInner() {
     // logged-in non-member already has an account, so skip it (and the captcha).
     // Ad attribution captured on landing (utm_* + fbclid); null when untagged.
     const attribution = readAttributionPayload();
+    const touches = readSourceTouches();
+    const heardPayload = {
+      heard_about: heard,
+      heard_about_other: heard === 'other' ? heardOther.trim() : null,
+      promo_code: (appliedPromoCode || promoCodeInput).trim()
+        ? (appliedPromoCode || promoCodeInput).trim().toUpperCase()
+        : null,
+      first_touch: touches.first,
+      latest_touch: touches.latest,
+    };
     let newUserId = user?.id ?? null;
     if (willSignUp) {
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
@@ -447,6 +472,7 @@ function JoinInner() {
         user_id: newUserId,
         primary_goal: goal,
         ambassador_id: ambassadorIdToUse,
+        ...heardPayload,
         ...(attribution ? { utm: attribution } : {}),
       },
     });
@@ -766,6 +792,15 @@ function JoinInner() {
                       })}
                     </div>
                   </div>
+
+                  <HeardAboutField
+                    variant="join"
+                    value={heard}
+                    other={heardOther}
+                    error={heardError}
+                    onChange={(next) => { setHeard(next); setHeardError(null); }}
+                    onOtherChange={(next) => { setHeardOther(next); setHeardError(null); }}
+                  />
 
                   {formError && (
                     <p style={{ fontSize: '0.875rem', color: '#ef4444', margin: 0 }}>{formError}</p>

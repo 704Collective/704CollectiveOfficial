@@ -16,6 +16,9 @@ import { toast } from 'sonner';
 import { Loader2, Crown, Ticket, X } from 'lucide-react';
 import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
 import { InAppBrowserBanner } from '@/components/InAppBrowserBanner';
+import { HeardAboutField } from '@/components/HeardAboutField';
+import type { HeardAboutValue } from '@/lib/heardAbout';
+import { readAttributionPayload, readSourceTouches } from '@/lib/attribution';
 
 type Step = 'form' | 'verify' | 'choice';
 
@@ -60,6 +63,9 @@ export default function SignupPage() {
   const [email, setEmail]         = useState('');
   const [phone, setPhone]         = useState('');
   const [password, setPassword]   = useState('');
+  const [heard, setHeard] = useState<HeardAboutValue | ''>('');
+  const [heardOther, setHeardOther] = useState('');
+  const [heardError, setHeardError] = useState<string | null>(null);
   const [showPartnerBanner, setShowPartnerBanner] = useState(true);
   const [captchaToken, setCaptchaToken] = useState('');
   const turnstileRef = useRef<TurnstileWidgetHandle>(null);
@@ -117,6 +123,11 @@ export default function SignupPage() {
       toast.error('Password must be at least 8 characters');
       return;
     }
+    if (heard === '' || (heard === 'other' && heardOther.trim().length === 0)) {
+      setHeardError(heard === 'other' ? 'Tell us how you heard about us.' : 'Choose how you heard about us.');
+      return;
+    }
+    setHeardError(null);
 
     setLoading(true);
     try {
@@ -183,6 +194,25 @@ export default function SignupPage() {
           phone: phone.trim(),
         });
         void sendSocialSignupConfirmationEmail();
+        const touches = readSourceTouches();
+        const attribution = readAttributionPayload();
+        const { error: captureError } = await supabase.functions.invoke('capture-prospect', {
+          body: {
+            email: email.trim(),
+            full_name: fullName,
+            phone: phone.trim(),
+            user_id: data.user.id,
+            heard_about: heard,
+            heard_about_other: heard === 'other' ? heardOther.trim() : null,
+            first_touch: touches.first,
+            latest_touch: touches.latest,
+            capture_context: 'signup',
+            ...(attribution ? { utm: attribution } : {}),
+          },
+        });
+        if (captureError) {
+          toast.error('Your account was created, but we could not save how you heard about us. Please try again from the form if it asks.');
+        }
       }
 
       setStep('verify');
@@ -447,6 +477,15 @@ export default function SignupPage() {
                 autoComplete="tel"
               />
             </div>
+
+            <HeardAboutField
+              variant="signup"
+              value={heard}
+              other={heardOther}
+              error={heardError}
+              onChange={(next) => { setHeard(next); setHeardError(null); }}
+              onOtherChange={(next) => { setHeardOther(next); setHeardError(null); }}
+            />
 
             <div className="space-y-1.5">
               <Label htmlFor="password">Password</Label>
