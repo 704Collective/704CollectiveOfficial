@@ -222,46 +222,50 @@ serve(async (req) => {
           }
         }
 
-        // Source row. Same profile lookup as above: user_id must already be a
-        // profiles.id, and the email on that row must match the body. Non-fatal.
-        const emailLower = email.toLowerCase().trim();
-        const { data: sourceProfile, error: sourceLookupError } = await supabase
-          .from("profiles")
-          .select("id, email")
-          .eq("id", user_id)
-          .maybeSingle();
-        if (sourceLookupError) {
-          console.error("[capture-prospect] member_sources lookup error (non-fatal):", sourceLookupError);
-        } else if (sourceProfile && (sourceProfile.email ?? "").toLowerCase() === emailLower) {
-          const heard = cleanHeard(heard_about);
-          const other = heard === "other" ? cleanOther(heard_about_other) : null;
-          const promo = cleanPromo(promo_code);
-          const firstTouch = sanitizeTouch(first_touch);
-          const latestTouch = sanitizeTouch(latest_touch);
-          if ((heard && (heard !== "other" || other)) || promo || firstTouch || latestTouch) {
-            const { data: existingSource } = await supabase
-              .from("member_sources")
-              .select("first_touch")
-              .eq("profile_id", sourceProfile.id)
-              .maybeSingle();
-            const sourceRow: Record<string, unknown> = {
-              profile_id: sourceProfile.id,
-              email_lower: emailLower,
-              first_touch: existingSource?.first_touch ?? firstTouch,
-              latest_touch: latestTouch ?? firstTouch,
-            };
-            if (heard && (heard !== "other" || other)) {
-              sourceRow.heard_about = heard;
-              sourceRow.heard_about_other = heard === "other" ? other : null;
-            }
-            if (promo) sourceRow.promo_code = promo;
-            const { error: sourceError } = await supabase
-              .from("member_sources")
-              .upsert(sourceRow, { onConflict: "profile_id" });
-            if (sourceError) {
-              console.error("[capture-prospect] member_sources upsert error (non-fatal):", sourceError);
+        // Source row. Same profile lookup as above. Never throw: a failed
+        // write must not change the HTTP response or block /join checkout.
+        try {
+          const emailLower = email.toLowerCase().trim();
+          const { data: sourceProfile, error: sourceLookupError } = await supabase
+            .from("profiles")
+            .select("id, email")
+            .eq("id", user_id)
+            .maybeSingle();
+          if (sourceLookupError) {
+            console.error("[capture-prospect] member_sources lookup error (non-fatal):", sourceLookupError);
+          } else if (sourceProfile && (sourceProfile.email ?? "").toLowerCase() === emailLower) {
+            const heard = cleanHeard(heard_about);
+            const other = heard === "other" ? cleanOther(heard_about_other) : null;
+            const promo = cleanPromo(promo_code);
+            const firstTouch = sanitizeTouch(first_touch);
+            const latestTouch = sanitizeTouch(latest_touch);
+            if ((heard && (heard !== "other" || other)) || promo || firstTouch || latestTouch) {
+              const { data: existingSource } = await supabase
+                .from("member_sources")
+                .select("first_touch")
+                .eq("profile_id", sourceProfile.id)
+                .maybeSingle();
+              const sourceRow: Record<string, unknown> = {
+                profile_id: sourceProfile.id,
+                email_lower: emailLower,
+                first_touch: existingSource?.first_touch ?? firstTouch,
+                latest_touch: latestTouch ?? firstTouch,
+              };
+              if (heard && (heard !== "other" || other)) {
+                sourceRow.heard_about = heard;
+                sourceRow.heard_about_other = heard === "other" ? other : null;
+              }
+              if (promo) sourceRow.promo_code = promo;
+              const { error: sourceError } = await supabase
+                .from("member_sources")
+                .upsert(sourceRow, { onConflict: "profile_id" });
+              if (sourceError) {
+                console.error("[capture-prospect] member_sources upsert error (non-fatal):", sourceError);
+              }
             }
           }
+        } catch (sourceErr) {
+          console.error("[capture-prospect] member_sources unexpected error (non-fatal):", sourceErr);
         }
       } else {
         console.error("[capture-prospect] no profiles row for user_id (skipping profile/onboarding writes):", user_id);

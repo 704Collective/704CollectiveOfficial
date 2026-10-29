@@ -196,22 +196,23 @@ export default function SignupPage() {
         void sendSocialSignupConfirmationEmail();
         const touches = readSourceTouches();
         const attribution = readAttributionPayload();
-        const { error: captureError } = await supabase.functions.invoke('capture-prospect', {
-          body: {
-            email: email.trim(),
-            full_name: fullName,
-            phone: phone.trim(),
-            user_id: data.user.id,
-            heard_about: heard,
-            heard_about_other: heard === 'other' ? heardOther.trim() : null,
-            first_touch: touches.first,
-            latest_touch: touches.latest,
-            capture_context: 'signup',
-            ...(attribution ? { utm: attribution } : {}),
-          },
-        });
-        if (captureError) {
-          toast.error('Your account was created, but we could not save how you heard about us. Please try again from the form if it asks.');
+        try {
+          await supabase.functions.invoke('capture-prospect', {
+            body: {
+              email: email.trim(),
+              full_name: fullName,
+              phone: phone.trim(),
+              user_id: data.user.id,
+              heard_about: heard,
+              heard_about_other: heard === 'other' ? heardOther.trim() : null,
+              first_touch: touches.first,
+              latest_touch: touches.latest,
+              capture_context: 'signup',
+              ...(attribution ? { utm: attribution } : {}),
+            },
+          });
+        } catch (captureErr) {
+          console.error('[signup] capture-prospect failed (non-blocking):', captureErr);
         }
       }
 

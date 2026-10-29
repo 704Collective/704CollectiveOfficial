@@ -219,7 +219,7 @@ export function MemberSourcesPanel() {
           <thead className="bg-muted/50">
             <tr>
               <th className="text-left px-4 py-2 font-medium">Link</th>
-              <th className="text-right px-4 py-2 font-medium">New members</th>
+              <th className="text-right px-4 py-2 font-medium">Joined after clicking</th>
             </tr>
           </thead>
           <tbody>
