@@ -12,9 +12,9 @@ import { SOCIAL_TIER } from '@/lib/pricing';
 const STRIPE_PRODUCT_ID = SOCIAL_TIER.productId;
 const MEMBERSHIP_PRICE = SOCIAL_TIER.monthlyPriceFull;
 const MEMBERSHIP_BILLING = 'Monthly recurring';
-// Note: STRIPE_CHECKOUT_URL points to the current Payment Link. Verify in
-// Stripe dashboard that this link is set to the $49/mo price.
-const STRIPE_CHECKOUT_URL = 'https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04';
+// Public join page — not a Stripe Payment Link. Copy this when someone
+// needs the signup URL.
+const JOIN_PAGE_URL = 'https://704collective.com/join?plan=social';
 const STRIPE_COUPONS_URL = 'https://dashboard.stripe.com/coupons';
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -75,9 +75,9 @@ export function MembershipSettings() {
     }
   };
 
-  const copyCheckoutUrl = () => {
-    navigator.clipboard.writeText(STRIPE_CHECKOUT_URL);
-    toast.success('Checkout URL copied');
+  const copyJoinPageUrl = () => {
+    navigator.clipboard.writeText(JOIN_PAGE_URL);
+    toast.success('Join page link copied');
   };
 
   return (
@@ -110,18 +110,18 @@ export function MembershipSettings() {
             <p className="text-xs text-muted-foreground font-mono break-all">{STRIPE_PRODUCT_ID}</p>
           </div>
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Checkout URL</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Join page link</p>
             <div className="flex items-center gap-2">
               <p className="text-xs text-muted-foreground font-mono truncate">
-                {STRIPE_CHECKOUT_URL}
+                {JOIN_PAGE_URL}
               </p>
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 shrink-0"
-                onClick={copyCheckoutUrl}
-                aria-label="Copy checkout URL"
-                title="Copy checkout URL"
+                onClick={copyJoinPageUrl}
+                aria-label="Copy join page link"
+                title="Copy the /join signup link (not a Stripe Payment Link)"
               >
                 <Copy className="w-3 h-3" />
               </Button>

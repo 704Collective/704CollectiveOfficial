@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import { SOCIAL_TIER } from '@/lib/pricing';
 
-const STRIPE_JOIN_URL = 'https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04';
+const JOIN_HREF = '/join?plan=social';
 
 const REASONS = [
   "Are new to Charlotte and don't have a solid friend group yet",
@@ -37,7 +37,7 @@ export function IsItRightSection() {
 
           <div className="mt-10 text-center">
             <Button size="xl" variant="hero" className="rounded-full w-full sm:w-auto" asChild>
-              <a href={STRIPE_JOIN_URL} target="_blank" rel="noopener noreferrer">
+              <a href={JOIN_HREF}>
                 Become a Member
                 <ArrowRight className="w-5 h-5" aria-hidden="true" />
               </a>

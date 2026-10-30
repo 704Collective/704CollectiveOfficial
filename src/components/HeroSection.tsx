@@ -4,7 +4,7 @@ import { ArrowRight, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HomepageImageGrid } from '@/components/HomepageImageGrid';
 
-const STRIPE_JOIN_URL = 'https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04';
+const JOIN_HREF = '/join?plan=social';
 
 export function HeroSection() {
   return (
@@ -36,7 +36,7 @@ export function HeroSection() {
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 animate-fade-up" style={{ animationDelay: '0.2s' }}>
             <Button size="xl" variant="hero" className="rounded-full w-full sm:w-auto" asChild>
-              <a href={STRIPE_JOIN_URL} target="_blank" rel="noopener noreferrer" aria-label="Become a member of 704 Collective">
+              <a href={JOIN_HREF} aria-label="Become a member of 704 Collective">
                 Become a Member
                 <ArrowRight className="w-5 h-5" aria-hidden="true" />
               </a>

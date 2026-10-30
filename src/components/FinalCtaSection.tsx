@@ -3,7 +3,7 @@
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const STRIPE_JOIN_URL = 'https://buy.stripe.com/fZu14pctP2kz5vf0Df0Jq04';
+const JOIN_HREF = '/join?plan=social';
 
 export function FinalCtaSection() {
   return (
@@ -17,7 +17,7 @@ export function FinalCtaSection() {
             Join Charlotte's premier community for young professionals.
           </p>
           <Button size="xl" variant="hero" className="rounded-full w-full sm:w-auto" asChild>
-            <a href={STRIPE_JOIN_URL} target="_blank" rel="noopener noreferrer">
+            <a href={JOIN_HREF}>
               Become a Member
               <ArrowRight className="w-5 h-5" aria-hidden="true" />
             </a>
