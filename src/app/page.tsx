@@ -1329,7 +1329,7 @@ export default async function Home() {
                 },
                 {
                   q: "Is there a contract or cancellation fee?",
-                  a: "No contract, no fees. Monthly Social members cancel anytime before their next billing date. Annual Business members commit for the year but lock in their rate. No hard feelings, no hoops.",
+                  a: "No contract, no fees. Members cancel anytime before their next billing date. No hard feelings, no hoops.",
                 },
               ].map((item, i) => (
                 <StaggerItem key={i}>
