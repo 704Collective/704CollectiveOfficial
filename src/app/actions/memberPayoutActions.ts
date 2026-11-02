@@ -93,7 +93,7 @@ export async function getMyReferralPayoutState(): Promise<{ ok: true; state: Ref
     .order('created_at', { ascending: false });
   if (error) return { ok: false, error: error.message };
 
-  const referrals = (rows ?? []) as ReferralRowView[];
+  const referrals = ((rows ?? []) as ReferralRowView[]).filter((r) => r.amount_cents > 0);
   const owedCents = referrals
     .filter((r) => r.payout_status === 'owed' && r.status === 'converted')
     .reduce((s, r) => s + (r.amount_cents || 0), 0);

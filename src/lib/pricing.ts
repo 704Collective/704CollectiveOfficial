@@ -18,12 +18,9 @@ export const SOCIAL_TIER = {
 } as const;
 
 export const BUSINESS_TIER = {
-  monthlyCents: 30000,
-  monthlyPrice: '$300',
-  monthlyPriceFull: '$300/month',
-  annualCents: 360000,
-  annualPrice: '$3,600',
-  annualPriceFull: '$3,600/year',
+  monthlyCents: 15000,
+  monthlyPrice: '$150',
+  monthlyPriceFull: '$150/month',
   productName: '704 Business Membership',
 } as const;
 

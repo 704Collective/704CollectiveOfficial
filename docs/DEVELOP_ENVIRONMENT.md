@@ -1,6 +1,6 @@
 # 704 Collective — Develop Branch Environment (Practice Kitchen)
 
-Last updated: 2026-07-16
+Last updated: 2026-11-02
 
 ## What this is
 Persistent Supabase branch for safe rehearsal of risky changes (migrations,
@@ -43,11 +43,15 @@ Rerun anytime with the single-invocation pattern above.
 - Test products created in the sandbox (recurring USD):
   - Social Membership  $49/mo   price_1TtgynRzSIH3EgWLX29sKSjP  (prod_UtTwv5D7ObQb81)
   - Social Ambassador  $35/mo   price_1Ttgz7RzSIH3EgWLKFzyJN2D
-  - Business Membership $300/mo price_1TtgzMRzSIH3EgWLYMXxFB2N
-  - Business Annual  $3600/yr   price_1TtgzsRzSIH3EgWLlRkVNjVh
+  - Business Membership $150/mo price_1UXTQpRzSIH3EgWLU11BBgzb  (prod_UtTx98QQ4DG4Ot)
+  - Business Membership $300/mo price_1TtgzMRzSIH3EgWLYMXxFB2N  (unused for new approvals)
+  - Business Annual  $3600/yr   price_1TtgzsRzSIH3EgWLlRkVNjVh  (unused; monthly only)
 - Branch secrets set: STRIPE_SOCIAL_PRICE_ID, STRIPE_SOCIAL_PRODUCT_ID,
-  STRIPE_AMBASSADOR_SOCIAL_PRICE_ID, STRIPE_BUSINESS_PRICE_ID,
-  STRIPE_BUSINESS_ANNUAL_PRICE_ID.
+  STRIPE_AMBASSADOR_SOCIAL_PRICE_ID, STRIPE_BUSINESS_PRICE_ID
+  (price_1UXTQpRzSIH3EgWLU11BBgzb, $150/mo), STRIPE_BUSINESS_ANNUAL_PRICE_ID
+  (unused for new charges).
+- Feature flag: public.app_settings.business_referral_payouts_enabled = false.
+  Referrals recorded while off stay $0 / payout_status disabled. No backfill.
 - Test card: 4242 4242 4242 4242, any future expiry, any CVC.
 
 ## Not yet configured on develop (deferred, intentional)

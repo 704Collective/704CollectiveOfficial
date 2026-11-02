@@ -2,6 +2,7 @@
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolveMemberPayoutDestination } from "../_shared/memberPayoutDestination.ts";
+import { businessReferralPayoutsEnabled } from "../_shared/appSettings.ts";
 
 // -- Types --------------------------------------------------------------------
 
@@ -391,8 +392,11 @@ serve(async (req) => {
 
     if (queryError) throw new Error(`Referral query failed: ${queryError.message}`);
 
-    const rows = (referrals ?? []) as unknown as ReferralRow[];
-    log(`Found ${rows.length} unpaid referrals`);
+    const payoutsOn = await businessReferralPayoutsEnabled(supabase);
+    const rows = ((referrals ?? []) as unknown as ReferralRow[]).filter(
+      (row) => payoutsOn || row.tier !== "business",
+    );
+    log(`Found ${rows.length} unpaid referrals`, { payoutsOn, skippedBusiness: !payoutsOn });
 
     // The member-referral pass (step 5) runs even when there is no ambassador
     // work, so an empty ambassador set no longer returns early.
@@ -586,7 +590,14 @@ serve(async (req) => {
     // Separate table, separate selection, separate idempotency keys. Ambassador
     // rows above are never touched by this pass.
 
-    const member = await runMemberReferralPass(stripe, supabase, supabaseUrl);
+    const member = payoutsOn
+      ? await runMemberReferralPass(stripe, supabase, supabaseUrl)
+      : {
+          processed: { referrers: 0, referrals: 0, totalCents: 0 },
+          held: [],
+          errors: [],
+        };
+    if (!payoutsOn) log("Member referral pass skipped (business payouts off)");
 
     // 4. Return summary -------------------------------------------------------
 

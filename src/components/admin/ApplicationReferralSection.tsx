@@ -257,10 +257,6 @@ export function ApplicationReferralSection({
             </div>
           )}
 
-          <p className="text-xs text-muted-foreground">
-            $250 is credited to the confirmed referrer when this member&apos;s second payment
-            clears. Approving without a confirmed referrer credits nobody.
-          </p>
         </>
       )}
     </div>

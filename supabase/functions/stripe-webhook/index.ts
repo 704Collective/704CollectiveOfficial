@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
+import { businessReferralPayoutsEnabled } from "../_shared/appSettings.ts";
 import { compedReason } from "../_shared/compedMember.ts";
 import { needsPayoutSetup, resolveMemberPayoutDestination } from "../_shared/memberPayoutDestination.ts";
 import { cascadeEnvFromDeno, futureOnly, sendMembershipCancelledEmail, voidAllCredentialsForPerson, type VoidedRsvp } from "../_shared/credentialCascade.ts";
@@ -1042,7 +1043,11 @@ async function handleCheckoutCompleted(
             ambEmail: ambRow.email,
           });
 
-          const rewardCents = ambassadorTierFromMeta === "business"
+          const payoutsOn = await businessReferralPayoutsEnabled(supabase);
+          const businessPayoutOff = ambassadorTierFromMeta === "business" && !payoutsOn;
+          const rewardCents = businessPayoutOff
+            ? 0
+            : ambassadorTierFromMeta === "business"
             ? ambRow.business_reward_cents
             : ambRow.social_reward_cents;
 
@@ -1080,7 +1085,7 @@ async function handleCheckoutCompleted(
               stripe_subscription_id: typeof session.subscription === "string" ? session.subscription : null,
               stripe_session_id: session.id,
               referred_at: new Date().toISOString(),
-              payout_status: "pending",
+              payout_status: businessPayoutOff ? "disabled" : "pending",
             })
             .select("id")
             .single();
@@ -1131,27 +1136,30 @@ async function handleCheckoutCompleted(
               if (ambFull) {
                 const rewardDollarsStr = (rewardCents / 100).toFixed(2);
 
-                // Email 1 — ambassador notification
-                fetch(sendEmailUrl, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json", Authorization: authHeader2 },
-                  body: JSON.stringify({
-                    to: ambFull.email,
-                    template: "ambassador-referral-received",
-                    skipCc: true,
-                    data: {
-                      ambassadorName: ambFull.full_name,
-                      referredName: customerName || customerEmail,
-                      tier: ambassadorTierFromMeta,
-                      code: ambFull.referral_code,
-                      rewardDollars: rewardDollarsStr,
-                      status: initialStatus,
-                      leaderboardUrl: `${productionUrl}/ambassadors/leaderboard`,
-                    },
-                  }),
-                }).catch((e: unknown) =>
-                  log("ambassador-referral-received email failed", { error: String(e) })
-                );
+                // Email 1 — ambassador notification. Business-tier mail is
+                // skipped while business_referral_payouts_enabled is false.
+                if (!businessPayoutOff) {
+                  fetch(sendEmailUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Authorization: authHeader2 },
+                    body: JSON.stringify({
+                      to: ambFull.email,
+                      template: "ambassador-referral-received",
+                      skipCc: true,
+                      data: {
+                        ambassadorName: ambFull.full_name,
+                        referredName: customerName || customerEmail,
+                        tier: ambassadorTierFromMeta,
+                        code: ambFull.referral_code,
+                        rewardDollars: rewardDollarsStr,
+                        status: initialStatus,
+                        leaderboardUrl: `${productionUrl}/ambassadors/leaderboard`,
+                      },
+                    }),
+                  }).catch((e: unknown) =>
+                    log("ambassador-referral-received email failed", { error: String(e) })
+                  );
+                }
 
                 // Email 2 — hello@ admin notification
                 fetch(sendEmailUrl, {
@@ -1378,7 +1386,7 @@ async function handleInvoicePaymentSucceeded(
     if (billingReason === "subscription_cycle" && subscriptionId) {
       const { data: refRow, error: refLookupErr } = await supabase
         .from("ambassador_referrals")
-        .select("id, status")
+        .select("id, status, tier")
         .eq("stripe_subscription_id", subscriptionId)
         .eq("status", "signed_up")
         .maybeSingle();
@@ -1388,6 +1396,13 @@ async function handleInvoicePaymentSucceeded(
           error: refLookupErr.message,
         });
       } else if (refRow) {
+        const payoutsOn = await businessReferralPayoutsEnabled(supabase);
+        if (refRow.tier === "business" && !payoutsOn) {
+          log("Ambassador business referral conversion skipped (payouts off)", {
+            referralId: refRow.id,
+            subscriptionId,
+          });
+        } else {
         const { error: convErr } = await supabase
           .from("ambassador_referrals")
           .update({
@@ -1408,6 +1423,7 @@ async function handleInvoicePaymentSucceeded(
             referralId: refRow.id,
             subscriptionId,
           });
+        }
         }
       }
     }
@@ -1430,6 +1446,10 @@ async function handleInvoicePaymentSucceeded(
       : null;
 
     if (billingReason === "subscription_cycle" && subscriptionId) {
+      const memberPayoutsOn = await businessReferralPayoutsEnabled(supabase);
+      if (!memberPayoutsOn) {
+        log("Member referral conversion skipped (payouts off)", { subscriptionId });
+      } else {
       const { data: memberRef, error: memberRefErr } = await supabase
         .from("referrals")
         .select("id, referrer_profile_id, referred_name, amount_cents")
@@ -1465,6 +1485,7 @@ async function handleInvoicePaymentSucceeded(
             amountCents: (memberRef.amount_cents as number) ?? 25000,
           });
         }
+      }
       }
     }
   } catch (e) {

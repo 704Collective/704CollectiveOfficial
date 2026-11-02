@@ -1691,7 +1691,6 @@ function ambassadorInviteTemplate(data: { name: string; email: string; referralC
 <p style="margin:0 0 12px;font-size:15px;font-weight:600;color:${BRAND.text};">As an ambassador, you'll earn:</p>
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
 <tr><td style="padding:6px 0;font-size:15px;color:${BRAND.textSecondary};">&rarr;&nbsp;<strong style="color:${BRAND.accent};">$20</strong> for every social member you refer</td></tr>
-<tr><td style="padding:6px 0;font-size:15px;color:${BRAND.textSecondary};">&rarr;&nbsp;<strong style="color:${BRAND.accent};">$125</strong> for every business member you refer</td></tr>
 </table>
 <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:${BRAND.textSecondary};">Payouts are deposited weekly to your bank account via Stripe.</p>
 <div style="background:rgba(198,166,100,0.1);border:1px solid rgba(198,166,100,0.3);border-radius:8px;padding:16px 20px;margin:0 0 28px;">
@@ -2715,6 +2714,35 @@ serve(async (req) => {
     }
 
     const { to, template, data, skipCc } = body;
+
+    // Business referral payouts default OFF. Do not send commission mail
+    // while the flag is false. Social ambassador mail is unchanged.
+    const businessPayoutMail = new Set([
+      "member-referral-earned",
+      "member-referral-payout",
+    ]);
+    const skipBusinessAmbassadorReceived =
+      template === "ambassador-referral-received" &&
+      String((data as { tier?: string } | undefined)?.tier ?? "") === "business";
+    if (businessPayoutMail.has(template) || skipBusinessAmbassadorReceived) {
+      const flagClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+        { auth: { persistSession: false } },
+      );
+      const { data: flagRow } = await flagClient
+        .from("app_settings")
+        .select("value")
+        .eq("key", "business_referral_payouts_enabled")
+        .maybeSingle();
+      if (flagRow?.value !== true) {
+        log("Skipped business referral payout email (flag off)", { template });
+        return new Response(
+          JSON.stringify({ success: true, skipped: true, reason: "business_referral_payouts_disabled" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    }
 
     if (!to || !template) {
       return new Response(JSON.stringify({ error: "Missing 'to' or 'template'" }), {

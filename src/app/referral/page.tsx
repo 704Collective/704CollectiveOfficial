@@ -8,6 +8,7 @@ import Nav from '@/components/Nav';
 import { Footer } from '@/components/Footer';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import { Loader2 } from 'lucide-react';
+import { BUSINESS_TIER } from '@/lib/pricing';
 
 interface Ambassador {
   id: string;
@@ -28,7 +29,6 @@ const BUSINESS_BENEFITS = [
   'Quarterly private business dinners',
   'Warm introductions via the collective',
   'Business member spotlight opportunities',
-  'Founding rate locked through 2026',
 ];
 
 function ReferralPageInner() {
@@ -194,21 +194,12 @@ function ReferralPageInner() {
                     704 Business
                   </p>
                   <div className="mb-4">
-                    <span
-                      className="text-sm line-through"
-                      style={{ color: 'rgba(255,255,255,0.35)' }}
-                    >
-                      $300/month
-                    </span>
                     <div
                       className="text-3xl font-bold mt-0.5"
                       style={{ color: '#FAF6F0' }}
                     >
-                      $250<span className="text-base font-normal" style={{ color: 'rgba(255,255,255,0.55)' }}>/month</span>
+                      {BUSINESS_TIER.monthlyPrice}<span className="text-base font-normal" style={{ color: 'rgba(255,255,255,0.55)' }}>/month</span>
                     </div>
-                    <p className="text-xs mt-1" style={{ color: '#C6A664' }}>
-                      Founding rate - locked through 2026
-                    </p>
                   </div>
                   <ul className="space-y-2 mb-6 flex-1">
                     {BUSINESS_BENEFITS.map(b => (

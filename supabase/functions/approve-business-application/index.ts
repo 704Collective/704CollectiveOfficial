@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolvePerson } from "../_shared/resolvePerson.ts";
+import { businessReferralPayoutsEnabled } from "../_shared/appSettings.ts";
 
 /** Member-to-member business referral reward, in cents. */
 const MEMBER_REFERRAL_AMOUNT_CENTS = 25000;
@@ -31,7 +32,7 @@ function randomPublicId12(): string {
  *  2.  Load profile by profile_id (canonical link set at signup)
  *  3.  Retrieve SetupIntent and validate card was saved
  *  4.  Set saved card as customer's default payment method
- *  5.  Determine business price from billing_plan
+ *  5.  Charge STRIPE_BUSINESS_PRICE_ID (monthly only)
  *  6.  If existing social member: calculate real proration, cancel social sub
  *  7.  Optionally create one-time coupon for proration credit
  *  8.  Create business subscription with explicit payment method
@@ -195,17 +196,15 @@ serve(async (req) => {
     console.log("[APPROVE] Customer default PM set:", custUpdate.invoice_settings?.default_payment_method);
 
     // ── Step 7: Determine business price ID ──────────────────────────────────
-    const billingPlan = app.billing_plan ?? "monthly";
-    const businessPriceId =
-      billingPlan === "annual"
-        ? (Deno.env.get("STRIPE_BUSINESS_ANNUAL_PRICE_ID") ?? "")
-        : (Deno.env.get("STRIPE_BUSINESS_PRICE_ID") ?? "");
+    // Monthly only. STRIPE_BUSINESS_ANNUAL_PRICE_ID stays in env for labeling
+    // existing payers and is not used to charge.
+    const businessPriceId = Deno.env.get("STRIPE_BUSINESS_PRICE_ID") ?? "";
 
     if (!businessPriceId) {
-      throw new Error(`Business price ID not configured in environment for billing_plan='${billingPlan}'`);
+      throw new Error("Business price ID not configured in environment");
     }
 
-    console.log("[APPROVE] billingPlan:", billingPlan, "businessPriceId:", businessPriceId);
+    console.log("[APPROVE] businessPriceId:", businessPriceId);
 
     // Fetch the business price so we can cap any proration credit
     const bPriceRes = await fetch(
@@ -213,7 +212,7 @@ serve(async (req) => {
       { headers: { Authorization: `Bearer ${STRIPE_SECRET_KEY}` } }
     );
     const bPrice = await bPriceRes.json();
-    const businessPriceAmount: number = bPrice.unit_amount ?? 30000;
+    const businessPriceAmount: number = bPrice.unit_amount ?? 15000;
     console.log("[APPROVE] businessPriceAmount:", businessPriceAmount, "cents");
 
     // ── Step 8: Proration for existing social member ─────────────────────────
@@ -367,9 +366,10 @@ serve(async (req) => {
 
     // Stripe's 2025+ invoice object no longer hangs payment_intent on the
     // invoice root. default_incomplete therefore returns status 'incomplete'
-    // with an open $300 invoice that still has to be collected. Pay it with
-    // the card already on the customer — same $300 charge, same proration
-    // coupon if one was attached. Amount and price id are untouched.
+    // with an open invoice for the configured monthly price that still has to
+    // be collected. Pay it with the card already on the customer — same
+    // charge, same proration coupon if one was attached. Amount and price id
+    // are untouched.
     if (sub.status !== "active" && sub.status !== "trialing" && invoiceId) {
       console.log("[APPROVE] Collecting first invoice:", invoiceId);
       const payRes = await fetch(`https://api.stripe.com/v1/invoices/${invoiceId}/pay`, {
@@ -560,10 +560,10 @@ serve(async (req) => {
     }
 
     // ── Step 15b: Ambassador referral ledger ─────────────────────────────────
-    // Written in exactly the shape the shipped conversion watcher already looks
-    // for: status 'signed_up' plus the subscription id. When the second invoice
-    // succeeds, stripe-webhook flips it to 'converted' / payout_status 'owed'
-    // and the Monday payout run picks it up. No new machinery.
+    // Always record who referred whom. While business_referral_payouts_enabled
+    // is false, amount is 0 and payout_status is 'disabled' so the cron never
+    // selects the row. Flipping the flag on later does not backfill these rows.
+    const payoutsOn = await businessReferralPayoutsEnabled(supabase);
     if (app.ambassador_id && app.referral_code) {
       const { data: existingAmbRef } = await supabase
         .from("ambassador_referrals")
@@ -583,12 +583,12 @@ serve(async (req) => {
             referred_full_name: `${app.first_name ?? ""} ${app.last_name ?? ""}`.trim() || null,
             referred_person_id: personId,
             tier: "business",
-            reward_cents: AMBASSADOR_BUSINESS_REWARD_CENTS,
+            reward_cents: payoutsOn ? AMBASSADOR_BUSINESS_REWARD_CENTS : 0,
             status: "signed_up",
             referral_code: app.referral_code,
             stripe_subscription_id: newSubscriptionId,
             referred_at: nowIso,
-            payout_status: "pending",
+            payout_status: payoutsOn ? "pending" : "disabled",
           })
           .select("id")
           .maybeSingle();
@@ -621,7 +621,7 @@ serve(async (req) => {
             referred_profile_id: profile.id,
             referred_application_id: app.id,
             referrer_profile_id: app.confirmed_referrer_profile_id,
-            amount_cents: MEMBER_REFERRAL_AMOUNT_CENTS,
+            amount_cents: payoutsOn ? MEMBER_REFERRAL_AMOUNT_CENTS : 0,
             status: "pending",
             stripe_subscription_id: newSubscriptionId,
             // Display snapshot for /admin/referrals, frozen at approval time.
@@ -629,7 +629,7 @@ serve(async (req) => {
             referrer_email: referrer?.email ?? null,
             referred_name: `${app.first_name ?? ""} ${app.last_name ?? ""}`.trim() || null,
             referred_email: app.email,
-            payout_status: "pending",
+            payout_status: payoutsOn ? "pending" : "disabled",
           })
           .select("id")
           .maybeSingle();

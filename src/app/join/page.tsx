@@ -1145,23 +1145,9 @@ function JoinInner() {
                       704 Business
                     </h2>
                     <p style={{ fontSize: '2rem', fontWeight: 700, color: '#C6A664', margin: 0 }}>
-                      {resolvedAmbassador ? (
-                        <>
-                          <span style={{ textDecoration: 'line-through', opacity: 0.5, fontSize: '1.5rem', marginRight: '0.5rem' }}>
-                            {BUSINESS_TIER.monthlyPrice}
-                          </span>
-                          <span>$250</span>
-                        </>
-                      ) : (
-                        <span>{BUSINESS_TIER.monthlyPrice}</span>
-                      )}
+                      <span>{BUSINESS_TIER.monthlyPrice}</span>
                       <span style={{ fontSize: '1rem', fontWeight: 400, color: 'rgba(255,255,255,0.45)' }}>/month</span>
                     </p>
-                    {resolvedAmbassador && (
-                      <p style={{ fontSize: '0.875rem', color: '#C6A664', marginTop: '0.5rem', margin: '4px 0 0' }}>
-                        Referral rate - locked in until 2027
-                      </p>
-                    )}
                     <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)', margin: '0 0 16px' }}>
                       Application required
                     </p>

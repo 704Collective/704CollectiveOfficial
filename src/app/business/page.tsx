@@ -13,6 +13,7 @@ import {
 import { MarketingPageRoot } from "@/components/MarketingPageRoot";
 import JsonLd from "@/components/JsonLd";
 import { businessServiceSchema704 } from "@/lib/jsonLdSchemas";
+import { BUSINESS_TIER } from "@/lib/pricing";
 
 export const dynamic = "force-static";
 
@@ -593,15 +594,7 @@ export default function BusinessPage() {
             </div>
 
             <ScaleUp delay={0.2}>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "24px",
-                }}
-                className="pricing-grid"
-              >
-                {/* Monthly Card */}
+              <div style={{ maxWidth: "420px", margin: "0 auto" }}>
                 <div
                   style={{
                     backgroundColor: "#111111",
@@ -632,7 +625,7 @@ export default function BusinessPage() {
                         letterSpacing: "-0.03em",
                       }}
                     >
-                      $300
+                      {BUSINESS_TIER.monthlyPrice}
                     </span>
                     <span
                       style={{
@@ -655,96 +648,10 @@ export default function BusinessPage() {
                     className="btn-gold"
                     style={{ padding: "14px 28px", fontSize: "0.875rem", display: "inline-block", width: "100%", boxSizing: "border-box" }}
                   >
-                    START MONTHLY
-                  </a>
-                </div>
-
-                {/* Annual Card */}
-                <div
-                  style={{
-                    backgroundColor: "#111111",
-                    border: "1px solid rgba(198,166,100,0.3)",
-                    borderRadius: "16px",
-                    padding: "36px 28px",
-                    textAlign: "center",
-                    position: "relative",
-                  }}
-                >
-                  <span
-                    style={{
-                      display: "inline-block",
-                      fontSize: "0.625rem",
-                      fontWeight: 700,
-                      letterSpacing: "0.15em",
-                      color: "#C6A664",
-                      border: "1px solid rgba(198,166,100,0.4)",
-                      borderRadius: "100px",
-                      padding: "4px 10px",
-                      marginBottom: "12px",
-                    }}
-                  >
-                    BEST VALUE
-                  </span>
-                  <p
-                    style={{
-                      fontSize: "0.6875rem",
-                      fontWeight: 700,
-                      letterSpacing: "0.12em",
-                      textTransform: "uppercase",
-                      color: "rgba(255,255,255,0.35)",
-                      marginBottom: "20px",
-                    }}
-                  >
-                    ANNUAL
-                  </p>
-                  <div style={{ marginBottom: "8px" }}>
-                    <span
-                      style={{
-                        fontSize: "clamp(2rem, 5vw, 2.75rem)",
-                        fontWeight: 700,
-                        color: "#FAF6F0",
-                        letterSpacing: "-0.03em",
-                      }}
-                    >
-                      $3,600
-                    </span>
-                    <span
-                      style={{
-                        color: "rgba(250,246,240,0.3)",
-                        fontSize: "0.9rem",
-                        marginLeft: "4px",
-                      }}
-                    >
-                      /year
-                    </span>
-                  </div>
-                  <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.8125rem", marginBottom: "4px" }}>
-                    Save $600 vs monthly
-                  </p>
-                  <p style={{ color: "rgba(255,255,255,0.25)", fontSize: "0.75rem", marginBottom: "32px" }}>
-                    Rate locked for 1 year
-                  </p>
-                  <a
-                    href="/apply/business"
-                    className="btn-gold"
-                    style={{ padding: "14px 28px", fontSize: "0.875rem", display: "inline-block", width: "100%", boxSizing: "border-box" }}
-                  >
-                    JOIN ANNUAL
+                    APPLY NOW
                   </a>
                 </div>
               </div>
-
-              <p
-                style={{
-                  fontSize: "0.8125rem",
-                  color: "rgba(255,255,255,0.3)",
-                  textAlign: "center",
-                  marginTop: "24px",
-                  fontStyle: "italic",
-                }}
-              >
-                Joining at the annual rate locks your rate for the full year. Prices will increase as the community grows.
-              </p>
             </ScaleUp>
           </div>
         </section>

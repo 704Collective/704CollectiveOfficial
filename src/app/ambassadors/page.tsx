@@ -112,8 +112,7 @@ export default async function AmbassadorsPage() {
               </h1>
 
               <p style={{ fontSize: 'clamp(1rem, 2.5vw, 1.125rem)', color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, margin: '0 0 12px' }}>
-                Earn <strong style={{ color: '#C6A664' }}>$20</strong> for every Social member you refer,{' '}
-                <strong style={{ color: '#C6A664' }}>$125</strong> for every Business member.
+                Earn <strong style={{ color: '#C6A664' }}>$20</strong> for every Social member you refer.
               </p>
 
               <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6, margin: '0 0 40px' }}>
@@ -132,7 +131,6 @@ export default async function AmbassadorsPage() {
               }}>
                 {[
                   { label: 'Per Social Referral', value: '$20' },
-                  { label: 'Per Business Referral', value: '$125' },
                   { label: 'Payouts', value: 'Monthly' },
                 ].map((card) => (
                   <div key={card.label} style={{

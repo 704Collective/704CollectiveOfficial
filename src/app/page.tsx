@@ -4,7 +4,7 @@ import Nav from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import Link from "next/link";
 import { HERO_BLUR_DATA_URL } from "@/lib/heroBlur";
-import { SOCIAL_TIER } from "@/lib/pricing";
+import { SOCIAL_TIER, BUSINESS_TIER } from "@/lib/pricing";
 import { getFeaturedPartnerLogos } from "@/lib/partnerFeatured";
 import { FeaturedPartnersCarousel } from "@/components/partners/FeaturedPartnersCarousel";
 import {
@@ -1065,7 +1065,7 @@ export default async function Home() {
                           color: "#FFFFFF",
                         }}
                       >
-                        Starting at $300/mo
+                        Starting at {BUSINESS_TIER.monthlyPrice}/mo
                       </span>
                     </div>
 
@@ -1305,7 +1305,7 @@ export default async function Home() {
                 },
                 {
                   q: "How much does it cost?",
-                  a: `704 Social is ${SOCIAL_TIER.monthlyPriceFull}. 704 Business starts at $300/month or $3,600/year (save $600). No contracts, cancel anytime.`,
+                  a: `704 Social is ${SOCIAL_TIER.monthlyPriceFull}. 704 Business is ${BUSINESS_TIER.monthlyPriceFull}. No contracts, cancel anytime.`,
                 },
                 {
                   q: "Do I have to attend every event?",
