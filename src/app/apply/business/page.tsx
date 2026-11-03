@@ -112,7 +112,10 @@ function PaymentForm({ onSuccess }: { onSuccess: () => void }) {
       <PaymentElement
         options={
           process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_')
-            ? { wallets: { link: 'never' } }
+            ? {
+                wallets: { link: 'never' },
+                layout: { type: 'accordion', defaultCollapsed: false },
+              }
             : undefined
         }
       />
