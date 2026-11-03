@@ -109,7 +109,13 @@ function PaymentForm({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <PaymentElement />
+      <PaymentElement
+        options={
+          process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_')
+            ? { wallets: { link: 'never' } }
+            : undefined
+        }
+      />
       {errorMessage && (
         <p className="text-sm text-red-400">{errorMessage}</p>
       )}
