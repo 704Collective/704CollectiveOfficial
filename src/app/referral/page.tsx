@@ -20,7 +20,7 @@ const SOCIAL_BENEFITS = [
   'Monthly curated social events',
   'Access to the member directory & feed',
   'Priority event registration',
-  'Founding member rate - locked in for life',
+  'Social member rate via your referral code',
 ];
 
 // ── Business tier benefits shown on the referral page ─────────────
@@ -122,7 +122,7 @@ function ReferralPageInner() {
                   {resolvedAmbassador.full_name} thinks you&apos;d love 704 Collective.
                 </h1>
                 <p className="text-base" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                  Your referral code unlocks founding member rates - claimed below.
+                  Your referral code is applied below. 704 Business is {BUSINESS_TIER.monthlyPriceFull}.
                 </p>
               </div>
 
@@ -158,7 +158,7 @@ function ReferralPageInner() {
                       $35<span className="text-base font-normal" style={{ color: 'rgba(255,255,255,0.55)' }}>/month</span>
                     </div>
                     <p className="text-xs mt-1" style={{ color: '#C6A664' }}>
-                      Founding rate - locked in for life
+                      Ambassador Social rate
                     </p>
                   </div>
                   <ul className="space-y-2 mb-6 flex-1">
@@ -269,7 +269,7 @@ function ReferralPageInner() {
                 Have a referral code?
               </h1>
               <p className="text-sm" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                Enter your friend&apos;s code below to unlock founding member rates.
+                Enter your friend&apos;s code below. 704 Business is {BUSINESS_TIER.monthlyPriceFull}.
               </p>
             </div>
 
