@@ -86,7 +86,10 @@ export function FoldersView({ folderId }: { folderId?: string }) {
   async function createFolder() {
     if (!newName.trim()) return;
     const res = await tmCreateFolder(newName.trim(), '#C6A664', folderId ?? null);
-    if (!res.ok) return toast.error(res.error);
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
     await applyFolders(res.data);
     setNewName('');
     toast.success('Folder created');
@@ -114,10 +117,16 @@ export function FoldersView({ folderId }: { folderId?: string }) {
   async function moveAllThenDelete() {
     if (!deleteId || !moveTo) return;
     const moved = await tmMoveAllFolderTasks(deleteId, moveTo);
-    if (!moved.ok) return toast.error(moved.error);
+    if (!moved.ok) {
+      toast.error(moved.error);
+      return;
+    }
     await applyFolders(moved.data.folders);
     const del = await tmDeleteFolder(deleteId);
-    if (!del.ok) return toast.error(del.error);
+    if (!del.ok) {
+      toast.error(del.error);
+      return;
+    }
     await applyFolders(del.data);
     toast.success('Moved and deleted');
     setDeleteId(null);
@@ -272,7 +281,10 @@ export function FoldersView({ folderId }: { folderId?: string }) {
                   data-testid={`tm-folder-restore-${f.id}`}
                   onClick={async () => {
                     const res = await tmRestoreFolder(f.id);
-                    if (!res.ok) return toast.error(res.error);
+                    if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
                     setFolders(res.data.folders);
                     setTrash(res.data.trash);
                     toast.success('Restored');
@@ -345,7 +357,10 @@ export function FoldersView({ folderId }: { folderId?: string }) {
                 e.preventDefault();
                 if (!renameId) return;
                 const res = await tmRenameFolder(renameId, renameVal);
-                if (!res.ok) return toast.error(res.error);
+                if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
                 await applyFolders(res.data);
                 setRenameId(null);
               }}

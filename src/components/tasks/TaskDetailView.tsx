@@ -103,7 +103,10 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
 
   async function setStatus(status: Exclude<TmStatus, 'cancelled'>) {
     const res = await tmSetStatus(row.id, status);
-    if (!res.ok) return toast.error(res.error);
+    if (!res.ok) {
+                    toast.error(res.error);
+                    return;
+                  }
     await load();
     void refresh();
     toast.success('Status updated');
@@ -111,7 +114,10 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
 
   async function saveDue(date: string | null, time: string | null, why?: string) {
     const res = await tmSetDue(row.id, date, time, why);
-    if (!res.ok) return toast.error(res.error);
+    if (!res.ok) {
+                    toast.error(res.error);
+                    return;
+                  }
     setPanel(null);
     setPendingDue(null);
     setReason('');
@@ -217,7 +223,15 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
             <Switch
               data-testid="tm-counts-toggle"
               checked={task.counts}
-              onCheckedChange={(v) => void tmSetCounts(task.id, v).then((r) => (r.ok ? load() : toast.error(r.error)))}
+              onCheckedChange={(v) =>
+                void tmSetCounts(task.id, v).then((r) => {
+                  if (!r.ok) {
+                    toast.error(r.error);
+                    return;
+                  }
+                  return load();
+                })
+              }
             />
           ) : (
             <Button
@@ -226,9 +240,14 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
               variant="outline"
               data-testid="tm-counts-request"
               onClick={() =>
-                void tmCreateRequest(task.id, 'counts_off').then((r) =>
-                  r.ok ? (toast.success('Request sent'), load()) : toast.error(r.error)
-                )
+                void tmCreateRequest(task.id, 'counts_off').then((r) => {
+                  if (!r.ok) {
+                    toast.error(r.error);
+                    return;
+                  }
+                  toast.success('Request sent');
+                  return load();
+                })
               }
             >
               Request
@@ -266,7 +285,10 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
             onClick={async () => {
               if (!checkTitle.trim()) return;
               const res = await tmChecklistAdd(task.id, checkTitle.trim());
-              if (!res.ok) return toast.error(res.error);
+              if (!res.ok) {
+                    toast.error(res.error);
+                    return;
+                  }
               setCheckTitle('');
               await load();
             }}
@@ -287,7 +309,15 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
           type="button"
           className="mt-2"
           variant="outline"
-          onClick={() => void tmUpdateTask({ id: task.id, notes }).then((r) => (r.ok ? toast.success('Notes saved') : toast.error(r.error)))}
+          onClick={() =>
+            void tmUpdateTask({ id: task.id, notes }).then((r) => {
+              if (!r.ok) {
+                toast.error(r.error);
+                return;
+              }
+              toast.success('Notes saved');
+            })
+          }
         >
           Save notes
         </Button>
@@ -321,7 +351,10 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
             onClick={async () => {
               if (!drive.trim()) return;
               const res = await tmAttachmentAdd({ taskId: task.id, name: 'Drive link', driveUrl: drive.trim() });
-              if (!res.ok) return toast.error(res.error);
+              if (!res.ok) {
+                    toast.error(res.error);
+                    return;
+                  }
               setDrive('');
               await load();
             }}
@@ -356,7 +389,10 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
           onClick={async () => {
             if (!comment.trim()) return;
             const res = await tmCommentAdd(task.id, comment.trim());
-            if (!res.ok) return toast.error(res.error);
+            if (!res.ok) {
+                    toast.error(res.error);
+                    return;
+                  }
             setComment('');
             await load();
             if (res.data.mentions?.length) toast.success('Mention sent');
@@ -395,7 +431,10 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
               className="w-full text-white/35"
               onClick={async () => {
                 const res = await tmSoftDeleteTask(task.id);
-                if (!res.ok) return toast.error(res.error);
+                if (!res.ok) {
+                    toast.error(res.error);
+                    return;
+                  }
                 toast.success('Deleted');
                 router.push('/admin/tasks/my');
               }}
@@ -410,9 +449,14 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
             className="w-full"
             data-testid="tm-request-cancel"
             onClick={() =>
-              void tmCreateRequest(task.id, 'cancel', 'Please cancel').then((r) =>
-                r.ok ? (toast.success('Cancel requested'), load()) : toast.error(r.error)
-              )
+              void tmCreateRequest(task.id, 'cancel', 'Please cancel').then((r) => {
+                if (!r.ok) {
+                  toast.error(r.error);
+                  return;
+                }
+                toast.success('Cancel requested');
+                return load();
+              })
             }
           >
             Request cancel
@@ -512,7 +556,10 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
                         ? task.owners.filter((o) => o.id !== s.id).map((o) => o.id)
                         : [...task.owners.map((o) => o.id), s.id];
                       const res = await tmSetOwners(task.id, next);
-                      if (!res.ok) return toast.error(res.error);
+                      if (!res.ok) {
+                    toast.error(res.error);
+                    return;
+                  }
                       await load();
                     }}
                   />
@@ -541,7 +588,10 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
                 className="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-white/5"
                 onClick={async () => {
                   const res = await tmMoveTask(task.id, f.id);
-                  if (!res.ok) return toast.error(res.error);
+                  if (!res.ok) {
+                    toast.error(res.error);
+                    return;
+                  }
                   setPanel(null);
                   await load();
                   toast.success('Moved');
@@ -572,7 +622,10 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
                         ? task.goals.filter((x) => x.id !== g.id).map((x) => x.id)
                         : [...task.goals.map((x) => x.id), g.id];
                       const res = await tmSetGoals(task.id, next);
-                      if (!res.ok) return toast.error(res.error);
+                      if (!res.ok) {
+                    toast.error(res.error);
+                    return;
+                  }
                       await load();
                     }}
                   />
@@ -671,7 +724,10 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
               onClick={(e) => {
                 e.preventDefault();
                 void tmCancelTask(task.id, reason || 'Cancelled').then((r) => {
-                  if (!r.ok) return toast.error(r.error);
+                  if (!r.ok) {
+                    toast.error(r.error);
+                    return;
+                  }
                   toast.success('Cancelled');
                   router.push('/admin/tasks/my');
                 });
