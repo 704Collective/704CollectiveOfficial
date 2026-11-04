@@ -45,3 +45,6 @@ verify_jwt = false
 
 [functions.update-google-wallet-pass]
 verify_jwt = false
+
+[functions.tm-tick]
+verify_jwt = false

@@ -14,6 +14,9 @@ import {
   tmMoveAllGoalTasks,
   tmSetGoalCountsTimeBars,
   tmSetGoals,
+  tmGoalExtend,
+  tmGoalFail,
+  tmGoalReopen,
 } from '@/app/actions/tasksActions';
 import { useTasks } from '@/components/tasks/TasksProvider';
 import { ConfettiBurst } from '@/components/tasks/ConfettiBurst';
@@ -41,6 +44,7 @@ export function GoalDetailView({ id }: { id: string }) {
   const [confetti, setConfetti] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [moveTo, setMoveTo] = useState('');
+  const [extendDue, setExtendDue] = useState('');
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reason, setReason] = useState('');
 
@@ -115,11 +119,55 @@ export function GoalDetailView({ id }: { id: string }) {
       <p className="tm-display mt-6 text-6xl text-[#C6A664]" data-testid="tm-goal-pct">{Math.round(goal.pct)}%</p>
       <GoalBar pct={goal.pct} color={goal.color} got={goal.got} total={goal.total} testId="tm-goal-bar" />
 
-      {overdue && (
+      {(overdue || row.status === 'failed') && (
         <div className="mt-4 rounded-xl border border-[#E24B4A]/30 bg-[#E24B4A]/10 px-4 py-3" data-testid="tm-goal-overdue">
-          <p className="text-sm font-semibold text-[#ffb4b0]">Overdue</p>
-          <p className="text-xs text-white/45">Extend / Leave as failed / Cancel goal land in Wave 4.</p>
+          <p className="text-sm font-semibold text-[#ffb4b0]">{row.status === 'failed' ? 'Failed' : 'Overdue'}</p>
+          {isSuper && (
+            <div className="mt-3 space-y-2">
+              <div className="flex gap-2">
+                <Input data-testid="tm-goal-extend-date" type="date" className="border-white/10 bg-[#1a1a1a]" value={extendDue} onChange={(e) => setExtendDue(e.target.value)} />
+                <Button
+                  type="button"
+                  data-testid="tm-goal-extend"
+                  size="sm"
+                  className="bg-[#C6A664] text-black"
+                  onClick={() => {
+                    if (!extendDue) {
+                      toast.error('Pick a new due date');
+                      return;
+                    }
+                    void tmGoalExtend(row.id, extendDue, reason || 'Extended').then((r) => {
+                      if (!r.ok) {
+                        toast.error(r.error);
+                        return;
+                      }
+                      toast.success('Extended');
+                      return load();
+                    });
+                  }}
+                >
+                  Extend
+                </Button>
+              </div>
+              <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason" className="border-white/10 bg-[#1a1a1a]" />
+              {row.status !== 'failed' && (
+                <>
+                <Button type="button" data-testid="tm-goal-fail" variant="outline" className="w-full" onClick={() => void tmGoalFail(row.id).then((r) => { if (!r.ok) { toast.error(r.error); return; } toast.success('Left as failed'); return load(); })}>
+                  Leave as failed
+                </Button>
+                <Button type="button" data-testid="tm-goal-cancel" variant="outline" className="w-full" onClick={() => setCancelOpen(true)}>
+                  Cancel goal
+                </Button>
+                </>
+              )}
+            </div>
+          )}
         </div>
+      )}
+      {(row.status === 'failed' || row.status === 'completed') && isSuper && (
+        <Button type="button" data-testid="tm-goal-reopen" className="mt-3" variant="outline" onClick={() => void tmGoalReopen(row.id).then((r) => { if (!r.ok) { toast.error(r.error); return; } toast.success('Reopened'); return load(); })}>
+          Reopen
+        </Button>
       )}
 
       {ready && isSuper && !closed && (

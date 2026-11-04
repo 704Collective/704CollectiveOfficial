@@ -35,6 +35,8 @@ function rpcError(error: { message?: string } | null): string {
   if (m.includes('not_ready')) return 'Goal is not at 100% yet';
   if (m.includes('open_subgoals')) return 'Finish or complete every sub-goal first';
   if (m.includes('size_required')) return 'Size is required to count toward time bars';
+  if (m.includes('no_reschedule')) return 'Missed repeats cannot be rescheduled';
+  if (m.includes('invalid_action')) return 'That fix is not available';
   return m;
 }
 
@@ -353,4 +355,81 @@ export async function tmListMyNotifications() {
 
 export async function tmListNeedsGoal() {
   return rpc<TmTask[]>('tm_list_needs_goal');
+}
+
+export async function tmFixTask(input: {
+  id: string;
+  action: 'reschedule' | 'park' | 'done_late' | 'cancel' | 'missed';
+  reason?: string | null;
+  note?: string | null;
+  newDue?: string | null;
+  newFolder?: string | null;
+  newGoal?: string | null;
+  newOwners?: string[] | null;
+}) {
+  return rpc<{ ok: boolean; pending_request?: boolean; fix_log_id: string; task?: TmTask }>('tm_fix_task', {
+    p_task_id: input.id,
+    p_action: input.action,
+    p_reason: input.reason ?? null,
+    p_note: input.note ?? null,
+    p_new_due: input.newDue ?? null,
+    p_new_folder: input.newFolder ?? null,
+    p_new_goal: input.newGoal ?? null,
+    p_new_owners: input.newOwners ?? null,
+  });
+}
+
+export async function tmFixTasks(ids: string[], input: {
+  action: 'reschedule' | 'park' | 'done_late' | 'cancel' | 'missed';
+  reason?: string | null;
+  note?: string | null;
+  newDue?: string | null;
+}) {
+  return rpc<{ ok: boolean }>('tm_fix_tasks', {
+    p_task_ids: ids,
+    p_action: input.action,
+    p_reason: input.reason ?? null,
+    p_note: input.note ?? null,
+    p_new_due: input.newDue ?? null,
+    p_new_folder: null,
+    p_new_goal: null,
+    p_new_owners: null,
+  });
+}
+
+export async function tmUndoFix(id: string) {
+  return rpc<{ ok: boolean }>('tm_undo_fix', { p_fix_log_id: id });
+}
+
+export async function tmGoalExtend(id: string, due: string, reason: string) {
+  return rpc<TmGoal>('tm_goal_extend', { p_id: id, p_new_due: due, p_reason: reason });
+}
+
+export async function tmGoalFail(id: string) {
+  return rpc<TmGoal>('tm_goal_fail', { p_id: id });
+}
+
+export async function tmGoalReopen(id: string) {
+  return rpc<TmGoal>('tm_goal_reopen', { p_id: id });
+}
+
+export async function tmApplyFuture(id: string, patch: Record<string, string | null>) {
+  return rpc<TmTask>('tm_apply_future', { p_id: id, p_patch: patch });
+}
+
+export async function tmMarkNotificationRead(id: string) {
+  return rpc<TmNotification[]>('tm_mark_notification_read', { p_id: id });
+}
+
+export async function tmMarkAllNotificationsRead() {
+  return rpc<TmNotification[]>('tm_mark_all_notifications_read');
+}
+
+export async function tmSetTimeMachine(at: string | null) {
+  if (!at) return rpc<{ ok: boolean }>('tm_clear_time_machine');
+  return rpc<{ ok: boolean; today?: string }>('tm_set_time_machine', { p_at: at });
+}
+
+export async function tmRunTick() {
+  return rpc<{ ok: boolean; today?: string; spawned?: number; closed_missed?: number }>('tm_tick');
 }

@@ -35,6 +35,9 @@ export type TmTask = {
   cancelled_reason: string | null;
   done_at: string | null;
   done_late: boolean;
+  missed?: boolean;
+  repeat_series_id?: string | null;
+  repeat_anchor_date?: string | null;
   created_at: string;
   updated_at: string;
   overdue: boolean;
@@ -69,6 +72,10 @@ export type TmBootstrap = {
   profile_id: string;
   full_name: string | null;
   overdue_count: number;
+  unread_count?: number;
+  honor_time_machine?: boolean;
+  time_machine?: string | null;
+  effective_today?: string;
   reasons: string[];
   inbox_folder_id: string | null;
   misc_folder_id: string | null;
@@ -145,11 +152,14 @@ export type TmRequest = {
 
 export type TmNotification = {
   id: string;
-  profile_id: string;
+  profile_id?: string;
   kind: string;
   title: string;
   body: string | null;
+  task_id?: string | null;
+  goal_id?: string | null;
   created_at: string;
+  read_at?: string | null;
 };
 
 export type TmTaskDetail = TmTask & {

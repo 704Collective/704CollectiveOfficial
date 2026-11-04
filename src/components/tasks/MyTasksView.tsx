@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { tmListMyTasks } from '@/app/actions/tasksActions';
 import { useTasks } from '@/components/tasks/TasksProvider';
 import { TaskGroup } from '@/components/tasks/TaskRow';
-import type { TmBucket, TmMyTasks } from '@/lib/tasks/types';
+import { FixItSheet } from '@/components/tasks/FixItSheet';
+import { Button } from '@/components/ui/button';
+import type { TmBucket, TmMyTasks, TmTask } from '@/lib/tasks/types';
 
 const BUCKETS: { id: TmBucket; label: string }[] = [
   { id: 'today', label: 'Today' },
@@ -23,6 +25,8 @@ export function MyTasksView() {
   const { isSuper, markFetchFailed } = useTasks();
   const [data, setData] = useState<TmMyTasks | null>(null);
   const [bucket, setBucket] = useState<TmBucket>('today');
+  const [picked, setPicked] = useState<string[]>([]);
+  const [fixTasks, setFixTasks] = useState<TmTask[]>([]);
 
   useEffect(() => {
     void tmListMyTasks().then((res) => {
@@ -64,12 +68,55 @@ export function MyTasksView() {
       {!data ? (
         <p className="text-sm text-white/35">Loading…</p>
       ) : (
+        <>
         <div className="space-y-6">
-          <TaskGroup tasks={group?.counted ?? []} showFolder={isSuper} empty="Nothing here." />
+          {bucket === 'overdue' && (
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                data-testid="tm-fix-many"
+                variant="outline"
+                disabled={picked.length === 0}
+                onClick={() => {
+                  const all = [...(group?.counted ?? []), ...(group?.not_counted ?? [])];
+                  setFixTasks(all.filter((t) => picked.includes(t.id)));
+                }}
+              >
+                Fix many{picked.length ? ` · ${picked.length}` : ''}
+              </Button>
+            </div>
+          )}
+          <TaskGroup
+            tasks={group?.counted ?? []}
+            showFolder={isSuper}
+            empty="Nothing here."
+            selected={bucket === 'overdue' ? picked : undefined}
+            onSelect={bucket === 'overdue' ? (id) => setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])) : undefined}
+            onFix={bucket === 'overdue' ? (t) => setFixTasks([t]) : undefined}
+          />
           {(group?.not_counted.length ?? 0) > 0 && (
-            <TaskGroup title="Not counted" tasks={group?.not_counted ?? []} showFolder={isSuper} />
+            <TaskGroup
+              title="Not counted"
+              tasks={group?.not_counted ?? []}
+              showFolder={isSuper}
+              selected={bucket === 'overdue' ? picked : undefined}
+              onSelect={bucket === 'overdue' ? (id) => setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])) : undefined}
+              onFix={bucket === 'overdue' ? (t) => setFixTasks([t]) : undefined}
+            />
           )}
         </div>
+        <FixItSheet
+          open={fixTasks.length > 0}
+          onOpenChange={(o) => !o && setFixTasks([])}
+          tasks={fixTasks}
+          onDone={() => {
+            setPicked([]);
+            void tmListMyTasks().then((res) => {
+              if (res.ok) setData(res.data);
+            });
+          }}
+        />
+        </>
       )}
     </div>
   );

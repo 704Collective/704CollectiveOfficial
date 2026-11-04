@@ -45,7 +45,7 @@ export function HomeView() {
   useEffect(() => {
     void load(person);
     void tmListMyNotifications().then((res) => {
-      if (res.ok) setNotesFeed(res.data.filter((n) => n.kind === 'request_denied' || n.kind === 'request_approved').slice(0, 5));
+      if (res.ok) setNotesFeed(res.data.filter((n) => n.kind === 'request_denied' || n.kind === 'request_approved' || n.kind === 'request_decided').slice(0, 5));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [person]);
@@ -123,7 +123,13 @@ export function HomeView() {
               <ul className="space-y-1 text-sm">
                 {dash.needs_decision.map((item) => (
                   <li key={`${item.kind}-${item.id}`} className="text-white/70">
-                    {item.title} · {item.kind}
+                    <Link
+                      href={item.kind === 'goal' ? `/admin/tasks/goals/${item.id}` : `/admin/tasks/t/${item.id}`}
+                      className="text-inherit no-underline"
+                      data-testid={`tm-decision-${item.kind}-${item.id}`}
+                    >
+                      {item.title} · {item.kind}{item.pushed_count ? ` · Pushed ${item.pushed_count}x` : ''}
+                    </Link>
                   </li>
                 ))}
               </ul>

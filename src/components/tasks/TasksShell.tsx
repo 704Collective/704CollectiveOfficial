@@ -7,6 +7,7 @@ import { Folder, Flag, History, Home, LayoutGrid, ListTodo, Plus, Settings } fro
 import { useAuth } from '@/hooks/useAuth';
 import { useTasks } from '@/components/tasks/TasksProvider';
 import { QuickAddSheet } from '@/components/tasks/QuickAddSheet';
+import { NotificationBell } from '@/components/tasks/NotificationBell';
 import { Button } from '@/components/ui/button';
 
 function NavLink({
@@ -117,10 +118,12 @@ export function TasksShell({ children }: { children: React.ReactNode }) {
               />
             )}
           </nav>
+          <div className="mt-auto flex items-center justify-between px-1">
+            <NotificationBell />
           <Button
             type="button"
             variant="ghost"
-            className="mt-auto text-white/40"
+            className="text-white/40"
             data-testid="tasks-sign-out"
             onClick={async () => {
               await signOut();
@@ -129,10 +132,13 @@ export function TasksShell({ children }: { children: React.ReactNode }) {
           >
             Sign out
           </Button>
+          </div>
         </aside>
         <div className="flex min-w-0 flex-1 flex-col pb-20 md:pb-0">
           <header className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3 md:hidden">
             <p className="tm-display text-xl text-[#C6A664]">704 Tasks</p>
+            <div className="flex items-center gap-1">
+            <NotificationBell />
             <Button
               type="button"
               variant="ghost"
@@ -146,6 +152,7 @@ export function TasksShell({ children }: { children: React.ReactNode }) {
             >
               Sign out
             </Button>
+            </div>
           </header>
           <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-5">{children}</main>
         </div>

@@ -1,5 +1,5 @@
-import { PlaceholderView } from '@/components/tasks/PlaceholderView';
+import { ManageView } from '@/components/tasks/ManageView';
 
 export default function ManagePage() {
-  return <PlaceholderView title="Manage" testId="tm-manage" />;
+  return <ManageView />;
 }

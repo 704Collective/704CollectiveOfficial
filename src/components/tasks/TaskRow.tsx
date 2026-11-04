@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { formatDue } from '@/lib/tasks/dates';
 import type { TmTask } from '@/lib/tasks/types';
@@ -12,7 +13,19 @@ function initials(name: string | null | undefined) {
     .join('');
 }
 
-export function TaskRow({ task, showFolder }: { task: TmTask; showFolder: boolean }) {
+export function TaskRow({
+  task,
+  showFolder,
+  selected,
+  onSelect,
+  onFix,
+}: {
+  task: TmTask;
+  showFolder: boolean;
+  selected?: boolean;
+  onSelect?: (id: string) => void;
+  onFix?: (task: TmTask) => void;
+}) {
   const statusClass = task.status === 'done'
     ? 'is-done'
     : task.overdue
@@ -24,13 +37,40 @@ export function TaskRow({ task, showFolder }: { task: TmTask; showFolder: boolea
     ? `${task.parent_folder_name} / ${task.folder_name}`
     : task.folder_name;
   const goal = task.goals[0];
+  const [swiped, setSwiped] = useState(false);
 
   return (
+    <div
+      className="relative overflow-hidden rounded-xl"
+      onTouchStart={(e) => {
+        (e.currentTarget as HTMLElement).dataset.x = String(e.changedTouches[0]?.clientX ?? 0);
+      }}
+      onTouchEnd={(e) => {
+        const start = Number((e.currentTarget as HTMLElement).dataset.x ?? 0);
+        const end = e.changedTouches[0]?.clientX ?? start;
+        if (onFix && start - end > 56) {
+          setSwiped(true);
+          onFix(task);
+        } else if (end - start > 24) {
+          setSwiped(false);
+        }
+      }}
+    >
+    {onSelect && (
+      <label className="absolute left-2 top-3 z-10">
+        <input
+          type="checkbox"
+          data-testid={`tm-select-${task.id}`}
+          checked={!!selected}
+          onChange={() => onSelect(task.id)}
+        />
+      </label>
+    )}
     <Link
       href={`/admin/tasks/t/${task.id}`}
       data-testid={`tm-task-row-${task.id}`}
       data-tm-title={task.title}
-      className="flex overflow-hidden rounded-xl border border-white/[0.06] bg-[#141414] no-underline text-inherit"
+      className={`flex overflow-hidden rounded-xl border border-white/[0.06] bg-[#141414] no-underline text-inherit transition-transform ${onSelect ? 'pl-6' : ''} ${task.status === 'cancelled' ? 'opacity-50' : ''} ${swiped && onFix ? '-translate-x-16' : ''}`}
     >
       <span className="w-1.5 shrink-0" style={{ background: task.folder_color || '#8A8A8A' }} aria-hidden />
       <span className="flex min-w-0 flex-1 gap-3 px-3 py-3">
@@ -85,6 +125,17 @@ export function TaskRow({ task, showFolder }: { task: TmTask; showFolder: boolea
         </span>
       </span>
     </Link>
+    {onFix && (
+      <button
+        type="button"
+        data-testid={`tm-row-fix-${task.id}`}
+        className="absolute inset-y-0 right-0 w-16 bg-[#E24B4A] text-xs font-semibold text-white"
+        onClick={() => onFix(task)}
+      >
+        Fix it
+      </button>
+    )}
+    </div>
   );
 }
 
@@ -93,11 +144,17 @@ export function TaskGroup({
   tasks,
   showFolder,
   empty,
+  selected,
+  onSelect,
+  onFix,
 }: {
   title?: string;
   tasks: TmTask[];
   showFolder: boolean;
   empty?: string;
+  selected?: string[];
+  onSelect?: (id: string) => void;
+  onFix?: (task: TmTask) => void;
 }) {
   if (!tasks.length && !empty) return null;
   return (
@@ -106,7 +163,16 @@ export function TaskGroup({
       {tasks.length === 0 ? (
         <p className="px-1 text-sm text-white/35">{empty}</p>
       ) : (
-        tasks.map((t) => <TaskRow key={t.id} task={t} showFolder={showFolder} />)
+        tasks.map((t) => (
+          <TaskRow
+            key={t.id}
+            task={t}
+            showFolder={showFolder}
+            selected={selected?.includes(t.id)}
+            onSelect={onSelect}
+            onFix={onFix}
+          />
+        ))
       )}
     </div>
   );

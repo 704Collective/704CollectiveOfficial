@@ -19,8 +19,10 @@ import {
   tmSetRepeat,
   tmSetStatus,
   tmSoftDeleteTask,
+  tmApplyFuture,
   tmUpdateTask,
 } from '@/app/actions/tasksActions';
+import { FixItSheet } from '@/components/tasks/FixItSheet';
 import { useTasks } from '@/components/tasks/TasksProvider';
 import { formatDue, isLaterDue } from '@/lib/tasks/dates';
 import { SmartDateTimePicker } from '@/components/SmartDateTimePicker';
@@ -72,6 +74,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
   const [picked, setPicked] = useState<Date | undefined>();
   const [reason, setReason] = useState('');
   const [pendingDue, setPendingDue] = useState<{ date: string; time: string | null } | null>(null);
+  const [pendingRepeat, setPendingRepeat] = useState<TmRepeat | null>(null);
 
   async function load() {
     const res = await tmGetTask(taskId);
@@ -160,7 +163,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
         ))}
       </div>
 
-      {task.overdue && task.status !== 'done' && (
+      {task.overdue && task.status !== 'done' && task.status !== 'cancelled' && (
         <Button
           type="button"
           data-testid="tm-fix-it"
@@ -170,6 +173,11 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
         >
           Fix it
         </Button>
+      )}
+      {task.status === 'cancelled' && (
+        <p className="mb-4 text-sm text-white/40" data-testid="tm-cancelled">
+          Cancelled{task.cancelled_reason ? ` · ${task.cancelled_reason}` : ''}
+        </p>
       )}
 
       <div className="divide-y divide-white/[0.06] rounded-xl border border-white/[0.06] bg-[#141414]">
@@ -274,6 +282,13 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
           )}
         </div>
         <Row label="Repeat" value={task.repeat === 'none' ? 'Does not repeat' : task.repeat} onChange={() => setPanel('repeat')} />
+        {task.repeat !== 'none' && (
+          <div className="px-4 py-2">
+            <Button type="button" data-testid="tm-stop-repeat" variant="ghost" size="sm" className="text-white/50" onClick={() => void tmSetRepeat(task.id, 'none').then(() => load())}>
+              Stop repeating
+            </Button>
+          </div>
+        )}
       </div>
 
       <section className="mt-6">
@@ -700,22 +715,76 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
       </AlertDialog>
 
       <AlertDialog open={panel === 'repeat'} onOpenChange={(o) => !o && setPanel(null)}>
-        <AlertDialogContent className="bg-[#111] text-[#f4f1ea]">
+        <AlertDialogContent data-testid="tm-repeat-panel" className="bg-[#111] text-[#f4f1ea]">
           <AlertDialogHeader>
             <AlertDialogTitle>Repeat</AlertDialogTitle>
-            <AlertDialogDescription>Stored now. The engine arrives in Wave 4.</AlertDialogDescription>
+            <AlertDialogDescription>Just this copy, or all future copies in the series.</AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex flex-wrap gap-2">
             {(['none', 'weekly', 'monthly', 'quarterly', 'yearly'] as TmRepeat[]).map((s) => (
               <button
                 key={s}
                 type="button"
-                className={`rounded-full px-3 py-1 ${task.repeat === s ? 'bg-[#C6A664] text-black' : 'bg-white/8'}`}
-                onClick={() => void tmSetRepeat(task.id, s).then(() => load())}
+                data-testid={`tm-repeat-${s}`}
+                className={`rounded-full px-3 py-1 ${(pendingRepeat ?? task.repeat) === s ? 'bg-[#C6A664] text-black' : 'bg-white/8'}`}
+                onClick={() => setPendingRepeat(s)}
               >
-                {s}
+                {s === 'none' ? 'off' : s}
               </button>
             ))}
+          </div>
+          <div className="mt-3 flex gap-2">
+            <Button
+              type="button"
+              data-testid="tm-repeat-this"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                void tmSetRepeat(task.id, pendingRepeat ?? task.repeat).then((r) => {
+                  if (!r.ok) {
+                    toast.error(r.error);
+                    return;
+                  }
+                  setPanel(null);
+                  setPendingRepeat(null);
+                  return load();
+                });
+              }}
+            >
+              Just this one
+            </Button>
+            <Button
+              type="button"
+              data-testid="tm-repeat-future"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const next = pendingRepeat ?? task.repeat;
+                void tmSetRepeat(task.id, next).then((first) => {
+                  if (!first.ok) {
+                    toast.error(first.error);
+                    return;
+                  }
+                  if (next === 'none') {
+                    setPanel(null);
+                    setPendingRepeat(null);
+                    return load();
+                  }
+                  return tmApplyFuture(task.id, { title: task.title, size: task.size, repeat: next }).then((r) => {
+                    if (!r.ok) {
+                      toast.error(r.error);
+                      return;
+                    }
+                    toast.success('Future copies updated');
+                    setPanel(null);
+                    setPendingRepeat(null);
+                    return load();
+                  });
+                });
+              }}
+            >
+              All future
+            </Button>
           </div>
         </AlertDialogContent>
       </AlertDialog>
@@ -758,17 +827,12 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={panel === 'fix'} onOpenChange={(o) => !o && setPanel(null)}>
-        <AlertDialogContent data-testid="tm-fix-wave4" className="bg-[#111] text-[#f4f1ea]">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Fix it</AlertDialogTitle>
-            <AlertDialogDescription>Coming in Wave 4.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Close</AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <FixItSheet
+        open={panel === 'fix'}
+        onOpenChange={(o) => !o && setPanel(null)}
+        tasks={[task]}
+        onDone={() => void load()}
+      />
     </div>
   );
 }
