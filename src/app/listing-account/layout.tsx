@@ -17,7 +17,7 @@ export default async function ListingAccountLayout({ children }: { children: Rea
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login?redirect=/listing-account');
   const { data: profile } = await networkServiceClient().from('profiles').select('full_name, member_type, role').eq('id', user.id).maybeSingle();
-  const isAdmin = ['admin', 'super_admin'].includes(profile?.role ?? '');
+  const isAdmin = profile?.role === 'super_admin';
   if (profile?.member_type !== 'listing' && !isAdmin) redirect('/dashboard');
   return <ListingPortalShell name={profile?.full_name ?? null}>{children}</ListingPortalShell>;
 }

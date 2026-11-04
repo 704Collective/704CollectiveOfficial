@@ -130,7 +130,7 @@ export default function PartnerInquiriesPage() {
     }
     const enriched: MsgRow[] = list.map((m) => {
       const pr = nameById[m.sender_id];
-      const staff = pr?.role === 'admin' || pr?.role === 'super_admin';
+      const staff = pr?.role === 'super_admin';
       const sender_name = staff ? '704 Collective Team' : pr?.full_name?.trim() || 'Team';
       return {
         id: m.id,

@@ -65,7 +65,7 @@ export default function BusinessMessagesPage() {
   const searchParams = useSearchParams();
   const p = profile as any;
   const isSuperAdmin = p?.role === 'super_admin';
-  const isAdmin = p?.role === 'admin' || isSuperAdmin;
+  const isAdmin = isSuperAdmin;
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConv, setActiveConv] = useState<Conversation | null>(null);

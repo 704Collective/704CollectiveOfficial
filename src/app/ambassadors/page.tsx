@@ -80,7 +80,7 @@ export default async function AmbassadorsPage() {
       supabase.from('ambassadors').select('id').eq('profile_id', user.id).maybeSingle(),
     ]);
     const role = profileRes.data?.role ?? null;
-    const isAdmin = role === 'admin' || role === 'super_admin';
+    const isAdmin = role === 'super_admin';
     const isAmbassador = !!ambassadorRes.data;
     canViewLeaderboard = isAdmin || isAmbassador;
   }

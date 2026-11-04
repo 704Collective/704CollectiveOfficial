@@ -36,7 +36,7 @@ export default function AdminLayout({
         .maybeSingle();
 
       const role = profile?.role as string | undefined;
-      if (role !== "admin" && role !== "super_admin") {
+      if (role !== "super_admin") {
         router.push("/login");
         return;
       }

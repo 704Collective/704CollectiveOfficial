@@ -410,7 +410,7 @@ export function Header() {
                           <ChevronRight className="h-4 w-4 shrink-0 opacity-40" />
                         </Link>
                       </SheetClose>
-                      {isAdmin && (
+                      {(isAdmin || isHelperAdmin) && (
                         <SheetClose asChild>
                           <Link
                             href={isHelperAdmin ? '/admin/tasks' : '/admin'}
@@ -543,7 +543,7 @@ export function Header() {
                 <DropdownMenuItem onClick={goToSettings}>
                   <Settings className="w-4 h-4 mr-2" />Settings
                 </DropdownMenuItem>
-                {isAdmin && (
+                {(isAdmin || isHelperAdmin) && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={goToAdmin}>

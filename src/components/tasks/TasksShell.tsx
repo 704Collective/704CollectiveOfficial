@@ -54,7 +54,7 @@ function NavLink({
 export function TasksShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, loading: authLoading, isAdmin, signOut } = useAuth();
+  const { user, loading: authLoading, isAdmin, isHelperAdmin, signOut } = useAuth();
   const { boot, loading, offline, isSuper, refresh } = useTasks();
   const [quickOpen, setQuickOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -78,7 +78,7 @@ export function TasksShell({ children }: { children: React.ReactNode }) {
   if (authLoading || loading) {
     return <div className="min-h-screen bg-[#0B0B0B]" data-testid="tasks-loading" />;
   }
-  if (!user || !isAdmin) {
+  if (!user || !(isAdmin || isHelperAdmin)) {
     router.replace('/admin/login');
     return <div className="min-h-screen bg-[#0B0B0B]" />;
   }

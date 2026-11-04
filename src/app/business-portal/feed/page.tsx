@@ -57,7 +57,7 @@ export default function BusinessFeedPage() {
   const { user, profile } = useAuth();
   const p = profile as any;
   const isSuperAdmin = p?.role === 'super_admin';
-  const isAdmin = p?.role === 'admin' || isSuperAdmin;
+  const isAdmin = isSuperAdmin;
   const isBusinessMember = p?.member_type === 'business' || isAdmin;
 
   const [posts, setPosts] = useState<FeedPost[]>([]);

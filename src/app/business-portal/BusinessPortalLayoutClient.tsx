@@ -21,7 +21,7 @@ export default function BusinessPortalLayout({
       return;
     }
     const p = profile as any;
-    if (p.member_type !== 'business' && p.role !== 'super_admin' && p.role !== 'admin') {
+    if (p.member_type !== 'business' && p.role !== 'super_admin') {
       router.replace('/dashboard');
     }
   }, [user, profile, loading, router]);
@@ -35,7 +35,7 @@ export default function BusinessPortalLayout({
   }
 
   const p = profile as any;
-  const isBusiness = p?.member_type === 'business' || p?.role === 'super_admin' || p?.role === 'admin';
+  const isBusiness = p?.member_type === 'business' || p?.role === 'super_admin';
   if (!isBusiness) return null;
 
   return (

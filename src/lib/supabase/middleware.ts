@@ -201,7 +201,8 @@ export async function updateSession(request: NextRequest) {
 
     const role = profile?.role ?? 'lead';
     const isSuperAdmin = role === 'super_admin';
-    const isAdmin = role === 'admin' || isSuperAdmin;
+    const isHelperAdmin = role === 'admin';
+    const isAdmin = isSuperAdmin;
     const isActive =
       profile?.subscription_status === 'active' ||
       profile?.subscription_status === 'trialing' ||
@@ -255,23 +256,22 @@ export async function updateSession(request: NextRequest) {
     }
 
     // ── Admin-only routes (/admin includes /admin/crm/*) ─────────────────────
-    // Lead is the default member role — never admin access.
-    if (path.startsWith('/admin') && !isAdmin) {
+    // Lead is the default member role. Helpers may only use Tasks + auth basics.
+    if (path.startsWith('/admin') && !isSuperAdmin && !isHelperAdmin) {
       const url = request.nextUrl.clone();
       url.pathname = '/dashboard';
       return NextResponse.redirect(url);
     }
 
-    // Helper admins: Tasks + login/request-access only.
-    if (path.startsWith('/admin') && role === 'admin' && !isHelperAdminAllowedPath(path)) {
+    if (path.startsWith('/admin') && isHelperAdmin && !isHelperAdminAllowedPath(path)) {
       const url = request.nextUrl.clone();
       url.pathname = '/admin/tasks';
       url.search = '';
       return NextResponse.redirect(url);
     }
 
-    // ── Partner program /partners/admin — 704 admin or super_admin only ────────
-    if (path.startsWith('/partners/admin') && !isAdmin) {
+    // Partner program /partners/admin — super_admin only.
+    if (path.startsWith('/partners/admin') && !isSuperAdmin) {
       const url = request.nextUrl.clone();
       url.pathname = '/login';
       url.searchParams.set('redirect', path);

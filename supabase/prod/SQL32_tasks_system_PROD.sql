@@ -882,7 +882,7 @@ create policy ac_select_own_or_admin on public.attendance_credentials
 -- attachments, activity). Helpers never receive folder names.
 
 -- ---------------------------------------------------------------------------
--- Defaults: Inbox folder, November goal, distinct folder colors
+-- Defaults: Inbox folder, distinct folder colors
 -- ---------------------------------------------------------------------------
 
 insert into public.tm_folders (name, color, sort)
@@ -890,13 +890,6 @@ select 'Inbox', '#5C5C5C', 5
 where not exists (
   select 1 from public.tm_folders f
   where f.name = 'Inbox' and f.parent_id is null and f.deleted_at is null
-);
-
-insert into public.tm_goals (name, kind, status, color, due_date)
-select 'Fill November events', 'task', 'active', '#C6A664', date '2026-11-30'
-where not exists (
-  select 1 from public.tm_goals g
-  where g.name = 'Fill November events' and g.deleted_at is null
 );
 
 update public.tm_folders set color = '#C6A664' where name = 'Events' and parent_id is null and deleted_at is null;

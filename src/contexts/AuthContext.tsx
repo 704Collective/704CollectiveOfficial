@@ -70,7 +70,8 @@ function deriveFlags(profile: any) {
   const role = profile?.role ?? 'lead';
   const isSuperAdmin = role === 'super_admin';
   const isHelperAdmin = role === 'admin';
-  const isAdmin = isHelperAdmin || isSuperAdmin;
+  // isAdmin is super_admin only. Helpers are never admins outside /admin/tasks.
+  const isAdmin = isSuperAdmin;
   // Wave H4: a listing-only account (paid hub listing, no membership) is never
   // an active member, whatever its billing columns say.
   const isListingAccount = profile?.member_type === 'listing';

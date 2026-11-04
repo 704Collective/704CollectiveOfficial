@@ -110,7 +110,7 @@ export async function notifyAfterFeedPostCreated(postId: string) {
   const { data: authorProf } = await admin.from('profiles').select('full_name, role').eq('id', user.id).maybeSingle();
   const authorName = authorProf?.full_name?.trim() || 'Someone';
   const isAdminPost =
-    authorProf?.role === 'admin' || authorProf?.role === 'super_admin';
+    authorProf?.role === 'super_admin';
 
   // Mentions
   const mentioned = await findMentionedProfiles(admin, content);

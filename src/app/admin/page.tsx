@@ -100,8 +100,8 @@ function AdminDashboard() {
   }, [searchParams, router]);
 
   useEffect(() => {
-    if (!authLoading && (!user || !isAdmin)) router.push("/admin/login");
-  }, [user, isAdmin, authLoading, router]);
+    if (!authLoading && (!user || !(isAdmin || isHelperAdmin))) router.push("/admin/login");
+  }, [user, isAdmin, isHelperAdmin, authLoading, router]);
 
   useEffect(() => {
     if (!authLoading && isHelperAdmin) router.replace('/admin/tasks');
@@ -117,7 +117,7 @@ function AdminDashboard() {
 
   const p = profile as any;
   const isSuperAdmin = p?.role === 'super_admin';
-  const isAdminOrSuper = p?.role === 'super_admin' || p?.role === 'admin';
+  const isAdminOrSuper = p?.role === 'super_admin';
 
   if (isHelperAdmin) {
     return null;

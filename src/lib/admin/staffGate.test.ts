@@ -18,5 +18,6 @@ describe('staffGate', () => {
     expect(isHelperAdminAllowedPath('/admin/contacts')).toBe(false);
     expect(isHelperAdminAllowedPath('/admin/sources')).toBe(false);
     expect(isHelperAdminAllowedPath('/admin/events')).toBe(false);
+    expect(isHelperAdminAllowedPath('/partners/admin')).toBe(false);
   });
 });
