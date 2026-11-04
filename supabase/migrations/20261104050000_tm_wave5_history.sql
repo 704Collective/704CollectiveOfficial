@@ -391,11 +391,8 @@ begin
 
   if v_week.id is not null and v_today >= (v_week.ends + 1) and v_hour >= 8 then
     for v_person in
-      select p.id, p.role
-      from public.profiles p
-      where p.deleted_at is null
-        and p.role in ('super_admin', 'admin')
-        and coalesce(p.email, '') not ilike 'hello@%'
+      select (el->>'id')::uuid as id, el->>'role' as role
+      from jsonb_array_elements(public.tm_staff_people()) el
     loop
       if v_person.role = 'super_admin' then
         v_pct := coalesce(v_week.pct, 0);
