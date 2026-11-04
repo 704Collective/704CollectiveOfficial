@@ -185,7 +185,7 @@ export function useTicketActions(): UseTicketActionsReturn {
       // Runs after the isActiveMember + duplicate checks, before any DB write.
       const memberType = (p?.member_type ?? null) as string | null;
       const userRole = (p?.role ?? null) as string | null;
-      const isAdminUser = userRole === 'admin' || userRole === 'super_admin';
+      const isAdminUser = userRole === 'super_admin';
       if (!isAdminUser) {
         const al = event.access_level;
         if (al === 'business_only') {

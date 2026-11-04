@@ -1,0 +1,71 @@
+.tm {
+  --tm-gold: #c6a664;
+  --tm-bg: #0b0b0b;
+  --tm-card: #141414;
+  --tm-line: rgba(255, 255, 255, 0.08);
+  --tm-muted: rgba(255, 255, 255, 0.48);
+  --tm-open: #8a8a8a;
+  --tm-progress: #c6a664;
+  --tm-done: #4caf50;
+  --tm-overdue: #e24b4a;
+  min-height: 100dvh;
+  background: var(--tm-bg);
+  color: #f4f1ea;
+  font-family: var(--font-body), Inter, system-ui, sans-serif;
+}
+
+.tm-display {
+  font-family: var(--nw-serif), Fraunces, Georgia, serif;
+  font-weight: 520;
+  letter-spacing: -0.02em;
+}
+
+.tm-status {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--tm-open);
+  flex-shrink: 0;
+  background: transparent;
+}
+
+.tm-status.is-progress {
+  border-color: var(--tm-progress);
+  background: var(--tm-progress);
+}
+
+.tm-status.is-done {
+  border-color: var(--tm-done);
+  background: var(--tm-done);
+}
+
+.tm-status.is-overdue {
+  border-color: var(--tm-overdue);
+  background: var(--tm-overdue);
+}
+
+.tm-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.tm-chip-overdue {
+  color: #ffb4b0;
+  background: rgba(226, 75, 74, 0.16);
+}
+
+.tm-chip-soon {
+  color: #e8d29a;
+  background: rgba(198, 166, 100, 0.16);
+}
+
+.tm-chip-muted {
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.08);
+}

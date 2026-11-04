@@ -64,7 +64,7 @@ export default function EventDiscussionPage() {
   const params = useParams();
   const router = useRouter();
   const eventId = (params?.id as string) ?? '';
-  const { user, profile, loading: authLoading, isAdmin } = useAuth();
+  const { user, profile, loading: authLoading, isSuperAdmin } = useAuth();
 
   const [access, setAccess] = useState<AccessState>('loading');
   const [ev, setEv] = useState<DiscussionEvent | null>(null);
@@ -89,7 +89,7 @@ export default function EventDiscussionPage() {
     let cancelled = false;
     (async () => {
       if (!user || !profile) { if (!cancelled) setAccess('denied'); return; }
-      const admin = profile.role === 'admin' || profile.role === 'super_admin';
+      const admin = profile.role === 'super_admin';
       const mt = profile.member_type;
       const st = profile.subscription_status;
       const activeMember =
@@ -327,7 +327,7 @@ export default function EventDiscussionPage() {
                     {dateLabel && <span className="inline-flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {dateLabel}</span>}
                     <span>·</span>
                     <span>{going} going</span>
-                    {isAdmin && <span className="text-[10.5px] tracking-wide uppercase text-rose-500 font-bold inline-flex items-center gap-1.5"><Lock className="w-3 h-3" /> Admin view</span>}
+                    {isSuperAdmin && <span className="text-[10.5px] tracking-wide uppercase text-rose-500 font-bold inline-flex items-center gap-1.5"><Lock className="w-3 h-3" /> Admin view</span>}
                   </div>
                 </div>
               </div>
@@ -366,7 +366,7 @@ export default function EventDiscussionPage() {
                 />
               )}
 
-              <EventDiscussionGallery eventId={eventId} userId={user!.id} isAdmin={isAdmin} />
+              <EventDiscussionGallery eventId={eventId} userId={user!.id} isAdmin={isSuperAdmin} />
 
               {loadingData ? (
                 <div className="card-elevated rounded-2xl p-8 text-center text-sm text-muted-foreground">Loading discussion…</div>
@@ -395,7 +395,7 @@ export default function EventDiscussionPage() {
                               {isPostEdited(post) && <span className="ml-1.5">(edited)</span>}
                             </p>
                           </div>
-                          {(post.author_id === user!.id || isAdmin) && (
+                          {(post.author_id === user!.id || isSuperAdmin) && (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <button type="button" aria-label="Post actions" className="text-muted-foreground hover:text-foreground p-1 rounded shrink-0">
@@ -468,7 +468,7 @@ export default function EventDiscussionPage() {
                           postId={post.id}
                           comments={comments as unknown as DiscComment[]}
                           currentUser={{ id: user!.id, full_name: profile?.full_name ?? null, avatar_url: profile?.avatar_url ?? null }}
-                          isAdmin={isAdmin}
+                          isAdmin={isSuperAdmin}
                           mentionIdsFor={commentMentionIdsFor(post.id)}
                           onCommentAdded={handleCommentAdded}
                           onCommentUpdated={handleCommentUpdated(post.id)}

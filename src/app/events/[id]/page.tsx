@@ -68,7 +68,7 @@ export default function EventDetail() {
   const router = useRouter();
   // Read ?claim=1 client-side (avoids the useSearchParams Suspense requirement).
   const [claimParam, setClaimParam] = useState(false);
-  const { user, profile, isActiveMember, isAdmin, isSuperAdmin, loading: authLoading } = useAuth();
+  const { user, profile, isActiveMember, isSuperAdmin, loading: authLoading } = useAuth();
   const { hasTicket: checkHasTicket, rsvpLoadingId, showThankYou, setShowThankYou, thankYouType, thankYouEvent, registerMemberTicket, refreshUserTickets } = useTicketActions();
 
   const [event, setEvent] = useState<Event | null>(null);
@@ -222,11 +222,11 @@ export default function EventDetail() {
 
   useEffect(() => {
     if (!event || authLoading) return;
-    if (event.is_published === false && !isAdmin && !isSuperAdmin) {
+    if (event.is_published === false && !isSuperAdmin) {
       toast.error('This event is not available');
       router.push('/events');
     }
-  }, [event, authLoading, isAdmin, isSuperAdmin, router]);
+  }, [event, authLoading, isSuperAdmin, router]);
   const fetchTicketId = async () => {
     if (!user) return;
     // Member "do I have an RSVP" state now reads attendance_credentials.
@@ -649,7 +649,7 @@ export default function EventDetail() {
   // sticky CTA — the mobile bar previously skipped this check entirely) ---
   const userMemberType = (profile?.member_type ?? '') as string;
   const userRole = (profile?.role ?? '') as string;
-  const isAdminOverride = userRole === 'admin' || userRole === 'super_admin';
+  const isAdminOverride = userRole === 'super_admin';
   const isBusinessOnly = event.access_level === 'business_only';
   const isSocialOnly = event.access_level === 'social_only';
   const isAccessAll = !event.access_level || event.access_level === 'all';
@@ -670,8 +670,8 @@ export default function EventDetail() {
     const memberType = (profile?.member_type ?? '') as string;
     const role = (profile?.role ?? '') as string;
 
-    // Admins always attend free
-    if (role === 'admin' || role === 'super_admin') return null;
+    // Super admins always attend free. Helpers RSVP as members.
+    if (role === 'super_admin') return null;
 
     // 'none' and 'public_only' modes: members RSVP free
     if (!event.ticket_mode || event.ticket_mode === 'none' || event.ticket_mode === 'public_only') return null;
@@ -1219,7 +1219,7 @@ export default function EventDetail() {
                 {/* Admin discovery: backend already grants admins full discussion access;
                     this surfaces the link when they hold no ticket (same open-window rule as members). */}
                 {(() => {
-                  if (!isAdmin || hasTicket) return null;
+                  if (!isSuperAdmin || hasTicket) return null;
                   const opensAtMs = new Date(event.start_time).getTime() - 120 * 60 * 60 * 1000;
                   const discussionOpen = Boolean((event as unknown as { discussion_opened_at?: string | null }).discussion_opened_at) || Date.now() >= opensAtMs;
                   if (!discussionOpen) return null;
