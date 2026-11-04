@@ -131,4 +131,17 @@ begin
       insert into public.tm_task_goals (task_id, goal_id) values (r.id, r.goal);
     end if;
   end loop;
+
+  insert into public.events (id, title, start_time, end_time, is_published, status, ticket_mode, capacity)
+  values (
+    'c0000000-0000-4000-8000-000000000099',
+    'SEED unpublished helper wall',
+    now() + interval '14 days',
+    now() + interval '14 days 3 hours',
+    false,
+    'scheduled',
+    'none',
+    10
+  )
+  on conflict (id) do update set is_published = false, title = excluded.title;
 end $$;
