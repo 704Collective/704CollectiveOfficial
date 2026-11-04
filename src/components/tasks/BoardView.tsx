@@ -55,10 +55,20 @@ function dropStatus(overId: string): Exclude<TmStatus, 'cancelled'> | null {
   return COLS.some((c) => c.id === raw) ? (raw as Exclude<TmStatus, 'cancelled'>) : null;
 }
 
-function CardFace({ task, ghost }: { task: TmTask; ghost?: boolean }) {
+function GripDots() {
+  return (
+    <span className="grid grid-cols-2 gap-[3px]" aria-hidden>
+      {Array.from({ length: 6 }, (_, i) => (
+        <span key={i} className="h-1 w-1 rounded-full bg-white/35" />
+      ))}
+    </span>
+  );
+}
+
+function CardBody({ task, ghost }: { task: TmTask; ghost?: boolean }) {
   const owner = task.owners[0];
   return (
-    <div className={`flex overflow-hidden rounded-xl border border-white/[0.06] bg-[#141414] ${ghost ? 'shadow-lg' : ''}`}>
+    <>
       <span className={`tm-status m-3 shrink-0 self-start ${statusClass(task)}`} aria-hidden data-testid={ghost ? undefined : `tm-board-status-${task.id}`} />
       <span className="w-1.5 shrink-0" style={{ background: task.folder_color || '#8A8A8A' }} aria-hidden />
       <span className="min-w-0 flex-1 px-3 py-2.5">
@@ -74,6 +84,17 @@ function CardFace({ task, ghost }: { task: TmTask; ghost?: boolean }) {
           )}
         </span>
       </span>
+    </>
+  );
+}
+
+function CardFace({ task, ghost }: { task: TmTask; ghost?: boolean }) {
+  return (
+    <div className={`tm-board-card flex overflow-hidden rounded-xl border border-white/[0.06] bg-[#141414] ${ghost ? 'tm-board-card-ghost' : ''}`}>
+      <CardBody task={task} ghost={ghost} />
+      <span className="tm-board-handle flex h-11 w-11 shrink-0 items-center justify-center self-center">
+        <GripDots />
+      </span>
     </div>
   );
 }
@@ -83,21 +104,30 @@ function BoardCard({ task }: { task: TmTask }) {
   return (
     <div
       ref={setNodeRef}
-      {...listeners}
-      {...attributes}
       data-testid={`tm-board-card-${task.id}`}
-      className={isDragging ? 'opacity-40' : ''}
+      className={`tm-board-card flex overflow-hidden rounded-xl border border-white/[0.06] bg-[#141414] ${isDragging ? 'opacity-40' : ''}`}
     >
       <Link
         href={`/admin/tasks/t/${task.id}`}
         tabIndex={-1}
-        className="block no-underline text-inherit"
+        className="flex min-w-0 flex-1 items-start no-underline text-inherit"
         onClick={(e) => {
           if (isDragging) e.preventDefault();
         }}
       >
-        <CardFace task={task} />
+        <CardBody task={task} />
       </Link>
+      <button
+        type="button"
+        data-testid={`tm-board-handle-${task.id}`}
+        className="tm-board-handle flex h-11 w-11 shrink-0 items-center justify-center self-center"
+        aria-label={`Move ${task.title}`}
+        {...listeners}
+        {...attributes}
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        <GripDots />
+      </button>
     </div>
   );
 }
@@ -186,8 +216,8 @@ export function BoardView() {
   useLockBodyScroll(dragging);
 
   const sensors = useSensors(
-    useSensor(DesktopPointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 400, tolerance: 8 } }),
+    useSensor(DesktopPointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 0, tolerance: 4 } }),
     useSensor(KeyboardSensor)
   );
 
