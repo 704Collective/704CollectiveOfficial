@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { tmListGoals } from '@/app/actions/tasksActions';
 import { useTasks } from '@/components/tasks/TasksProvider';
-import { GoalBar, GoalTags, goalDueLabel } from '@/components/tasks/GoalBar';
+import { GoalBar, GoalTags, goalBarFill, goalDueLabel } from '@/components/tasks/GoalBar';
 import { TmEmpty, TmSkeleton } from '@/components/tasks/uiBits';
 import type { TmGoal } from '@/lib/tasks/types';
 
@@ -27,7 +27,7 @@ function GoalCard({ goal, nested }: { goal: TmGoal; nested?: boolean }) {
         <p className="tm-display text-2xl text-[#C6A664]">{Math.round(goal.pct)}%</p>
       </div>
       <div className="mt-3">
-        <GoalBar pct={goal.pct} color={goal.color} got={goal.got} total={goal.total} />
+        <GoalBar pct={goal.pct} color={goalBarFill(goal)} got={goal.got} total={goal.total} />
       </div>
     </Link>
   );

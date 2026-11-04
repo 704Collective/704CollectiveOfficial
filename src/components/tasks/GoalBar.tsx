@@ -1,5 +1,14 @@
 import type { TmGoal } from '@/lib/tasks/types';
 
+export function goalBarFill(goal: {
+  color?: string | null;
+  status?: string | null;
+  tags?: string[] | null;
+}) {
+  if (goal.status === 'failed' || (goal.tags ?? []).includes('Overdue')) return '#E24B4A';
+  return goal.color || '#C6A664';
+}
+
 export function GoalBar({
   pct,
   color,

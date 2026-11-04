@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { tmDashboard, tmDecideRequest, tmListMyNotifications } from '@/app/actions/tasksActions';
 import { useTasks } from '@/components/tasks/TasksProvider';
-import { GoalBar } from '@/components/tasks/GoalBar';
+import { GoalBar, goalBarFill } from '@/components/tasks/GoalBar';
 import { TaskGroup } from '@/components/tasks/TaskRow';
 import { TmSkeleton } from '@/components/tasks/uiBits';
 import { Button } from '@/components/ui/button';
@@ -218,7 +218,7 @@ export function HomeView() {
               {dash.goals.map((g) => (
                 <Link key={g.id} href={`/admin/tasks/goals/${g.id}`} className="block rounded-xl border border-white/[0.06] p-3 no-underline text-inherit">
                   <div className="flex justify-between text-sm"><span>{g.name}</span><span>{Math.round(g.pct)}%</span></div>
-                  <GoalBar pct={g.pct} color={g.color} got={g.got} total={g.total} />
+                  <GoalBar pct={g.pct} color={goalBarFill(g)} got={g.got} total={g.total} />
                 </Link>
               ))}
             </div>

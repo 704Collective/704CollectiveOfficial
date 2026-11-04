@@ -17,7 +17,7 @@ import {
 } from '@/app/actions/tasksActions';
 import { useTasks } from '@/components/tasks/TasksProvider';
 import { ConfettiBurst } from '@/components/tasks/ConfettiBurst';
-import { GoalBar, GoalTags, goalDueLabel } from '@/components/tasks/GoalBar';
+import { GoalBar, GoalTags, goalBarFill, goalDueLabel } from '@/components/tasks/GoalBar';
 import { GoalFixSheet } from '@/components/tasks/GoalFixSheet';
 import { TaskGroup } from '@/components/tasks/TaskRow';
 import { formatShortDate } from '@/lib/tasks/dates';
@@ -121,7 +121,7 @@ export function GoalDetailView({ id }: { id: string }) {
       <p className="text-sm text-white/40">{goalDueLabel(goal)}</p>
       <GoalTags tags={goal.tags ?? []} />
       <p className="tm-display mt-6 text-6xl text-[#C6A664]" data-testid="tm-goal-pct">{Math.round(goal.pct)}%</p>
-      <GoalBar pct={goal.pct} color={goal.color} got={goal.got} total={goal.total} testId="tm-goal-bar" />
+      <GoalBar pct={goal.pct} color={goalBarFill(goal)} got={goal.got} total={goal.total} testId="tm-goal-bar" />
 
       {(overdue || row.status === 'failed') && (
         <div className="mt-4 flex items-center justify-between gap-3" data-testid="tm-goal-overdue">
@@ -197,7 +197,7 @@ export function GoalDetailView({ id }: { id: string }) {
             {goal.children!.map((c) => (
               <Link key={c.id} href={`/admin/tasks/goals/${c.id}`} className="block rounded-xl border border-white/[0.06] p-3 no-underline text-inherit">
                 <div className="flex justify-between"><span>{c.name}</span><span>{Math.round(c.pct)}%</span></div>
-                <GoalBar pct={c.pct} color={c.color} got={c.got} total={c.total} />
+                <GoalBar pct={c.pct} color={goalBarFill(c)} got={c.got} total={c.total} />
               </Link>
             ))}
           </div>
