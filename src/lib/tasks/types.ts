@@ -228,9 +228,79 @@ export type TmRequestRow = {
   requester_name: string | null;
 };
 
+export type TmHistoryTask = {
+  id: string;
+  title: string;
+  owner_ids: string[];
+  owners: { id: string; full_name: string | null }[];
+  folder_id?: string | null;
+  folder?: string | null;
+  goals: { id: string; name: string; color?: string | null }[];
+  size: TmSize;
+  counts: boolean;
+  outcome: 'done_on_time' | 'done_late' | 'missed' | 'cancelled' | 'open_carried';
+  reason?: string | null;
+  note?: string | null;
+  fixed_by?: string | null;
+  what_happened_after?: string | null;
+  due_date?: string | null;
+};
+
+export type TmHistoryPerson = {
+  profile_id: string;
+  full_name: string | null;
+  done: number;
+  missed: number;
+  cancelled: number;
+  on_time: number;
+  late: number;
+  pct: number;
+};
+
+export type TmHistoryPeriod = {
+  id: string;
+  kind: 'week' | 'month' | 'quarter' | 'year';
+  starts: string;
+  ends: string;
+  locked_at: string | null;
+  provisional: boolean;
+  pct: number;
+  done: number;
+  missed: number;
+  cancelled: number;
+  got: number;
+  total: number;
+  note: string | null;
+  people: TmHistoryPerson[];
+  tasks?: TmHistoryTask[];
+};
+
+export type TmHistoryGoal = {
+  id: string;
+  goal_id: string;
+  name: string;
+  color: string | null;
+  status: 'completed' | 'failed' | 'cancelled';
+  pct: number;
+  got: number;
+  total: number;
+  closed_at: string | null;
+  reason: string | null;
+  lines: string[];
+};
+
 export type TmDashboard = {
   role: TmRole;
-  recap: { placeholder: boolean; headline: string };
+  recap: {
+    placeholder: boolean;
+    headline: string;
+    pct?: number;
+    missed?: number;
+    period_id?: string;
+    provisional?: boolean;
+    starts?: string;
+    ends?: string;
+  };
   bars: { week: TmProgress; month: TmProgress; quarter: TmProgress; year: TmProgress };
   people: { id: string; full_name: string | null; role: string }[];
   needs_decision: { id: string; title: string; kind: string; overdue_days?: number; pushed_count?: number; due_date?: string }[];

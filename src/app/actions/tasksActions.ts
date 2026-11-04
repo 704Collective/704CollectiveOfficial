@@ -18,6 +18,8 @@ import type {
   TmTaskDetail,
   TmTeamPerson,
   TmTrashedFolder,
+  TmHistoryPeriod,
+  TmHistoryGoal,
 } from '@/lib/tasks/types';
 
 function rpcError(error: { message?: string } | null): string {
@@ -432,4 +434,20 @@ export async function tmSetTimeMachine(at: string | null) {
 
 export async function tmRunTick() {
   return rpc<{ ok: boolean; today?: string; spawned?: number; closed_missed?: number }>('tm_tick');
+}
+
+export async function tmListHistory(kind: 'week' | 'month' | 'quarter' | 'year') {
+  return rpc<TmHistoryPeriod[]>('tm_list_history', { p_kind: kind });
+}
+
+export async function tmGetHistoryPeriod(id: string) {
+  return rpc<TmHistoryPeriod>('tm_get_history_period', { p_id: id });
+}
+
+export async function tmSetPeriodNote(id: string, note: string) {
+  return rpc<TmHistoryPeriod>('tm_set_period_note', { p_period_id: id, p_note: note });
+}
+
+export async function tmListHistoryGoals() {
+  return rpc<TmHistoryGoal[]>('tm_list_history_goals');
 }

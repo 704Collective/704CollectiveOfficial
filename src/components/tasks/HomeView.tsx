@@ -57,12 +57,20 @@ export function HomeView() {
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#C6A664]">Home</p>
       <h1 className="tm-display mb-6 mt-1 text-3xl">Hey {first}.</h1>
 
-      {isSuper && (
-        <section className="mb-6 rounded-xl border border-white/[0.06] bg-[#141414] p-4" data-testid="tm-recap">
-          <p className="text-xs uppercase tracking-wide text-white/35">Monday recap</p>
+      <section className="mb-6 rounded-xl border border-white/[0.06] bg-[#141414] p-4" data-testid="tm-recap">
+        <p className="text-xs uppercase tracking-wide text-white/35">Monday recap</p>
+        {dash.recap.period_id ? (
+          <Link
+            href={`/admin/tasks/history/${dash.recap.period_id}`}
+            className="mt-1 block text-sm text-white/80 no-underline"
+            data-testid="tm-recap-link"
+          >
+            {dash.recap.headline}
+          </Link>
+        ) : (
           <p className="mt-1 text-sm text-white/60">{dash.recap.headline}</p>
-        </section>
-      )}
+        )}
+      </section>
 
       <section className="mb-6">
         <div className="mb-2 flex items-center justify-between">

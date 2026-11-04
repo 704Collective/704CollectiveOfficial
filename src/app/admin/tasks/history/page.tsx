@@ -1,5 +1,5 @@
-import { PlaceholderView } from '@/components/tasks/PlaceholderView';
+import { HistoryView } from '@/components/tasks/HistoryView';
 
 export default function HistoryPage() {
-  return <PlaceholderView title="History" testId="tm-history" />;
+  return <HistoryView />;
 }
