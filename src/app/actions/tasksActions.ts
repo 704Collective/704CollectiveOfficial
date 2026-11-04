@@ -4,9 +4,15 @@ import { createClient } from '@/lib/supabase/server';
 import type {
   ActionResult,
   TmBootstrap,
+  TmDashboard,
   TmFolder,
+  TmGoal,
+  TmGoalDetail,
   TmMyTasks,
+  TmNotification,
+  TmProgress,
   TmRepeat,
+  TmRequestRow,
   TmStatus,
   TmTask,
   TmTaskDetail,
@@ -23,6 +29,12 @@ function rpcError(error: { message?: string } | null): string {
   if (m.includes('file_too_large')) return 'Files are capped at 25MB';
   if (m.includes('not_found')) return 'Not found';
   if (m.includes('Folders are limited')) return 'Folders are limited to 2 levels';
+  if (m.includes('goal_has_tasks')) return 'Move tasks off this goal first';
+  if (m.includes('goal_closed')) return 'That goal is closed to new tasks';
+  if (m.includes('misc_locked')) return 'Misc cannot be changed that way';
+  if (m.includes('not_ready')) return 'Goal is not at 100% yet';
+  if (m.includes('open_subgoals')) return 'Finish or complete every sub-goal first';
+  if (m.includes('size_required')) return 'Size is required to count toward time bars';
   return m;
 }
 
@@ -225,4 +237,120 @@ export async function tmAttachmentDelete(id: string) {
 
 export async function tmActivityList(taskId: string) {
   return rpc('tm_activity_list', { p_task_id: taskId });
+}
+
+export async function tmListGoals() {
+  return rpc<TmGoal[]>('tm_list_goals');
+}
+
+export async function tmGetGoal(id: string) {
+  return rpc<TmGoalDetail>('tm_get_goal', { p_id: id });
+}
+
+export async function tmGoalProgress(id: string) {
+  return rpc<TmProgress>('tm_goal_progress', { p_goal_id: id });
+}
+
+export async function tmPeriodProgress(kind: 'week' | 'month' | 'quarter' | 'year', person?: string | null) {
+  return rpc<TmProgress>('tm_period_progress', {
+    p_kind: kind,
+    p_for_date: null,
+    p_person: person ?? null,
+  });
+}
+
+export async function tmCreateGoal(input: {
+  name: string;
+  kind: 'task' | 'number';
+  color: string | null;
+  dueDate?: string | null;
+  parentId?: string | null;
+  numberTarget?: number | null;
+  numberUnit?: string | null;
+  numberSource?: string | null;
+  rangeStart?: string | null;
+  rangeEnd?: string | null;
+}) {
+  return rpc<TmGoal>('tm_create_goal', {
+    p_name: input.name,
+    p_kind: input.kind,
+    p_color: input.color,
+    p_due_date: input.dueDate ?? null,
+    p_parent_id: input.parentId ?? null,
+    p_number_target: input.numberTarget ?? null,
+    p_number_unit: input.numberUnit ?? null,
+    p_number_source: input.numberSource ?? null,
+    p_range_start: input.rangeStart ?? null,
+    p_range_end: input.rangeEnd ?? null,
+  });
+}
+
+export async function tmUpdateGoal(input: {
+  id: string;
+  name?: string | null;
+  color?: string | null;
+  dueDate?: string | null;
+  description?: string | null;
+  numberTarget?: number | null;
+  numberUnit?: string | null;
+  numberSource?: string | null;
+  rangeStart?: string | null;
+  rangeEnd?: string | null;
+}) {
+  return rpc<TmGoal>('tm_update_goal', {
+    p_id: input.id,
+    p_name: input.name ?? null,
+    p_color: input.color ?? null,
+    p_due_date: input.dueDate ?? null,
+    p_description: input.description ?? null,
+    p_number_target: input.numberTarget ?? null,
+    p_number_unit: input.numberUnit ?? null,
+    p_number_source: input.numberSource ?? null,
+    p_range_start: input.rangeStart ?? null,
+    p_range_end: input.rangeEnd ?? null,
+  });
+}
+
+export async function tmSetGoalCountsTimeBars(id: string, on: boolean, size?: string | null) {
+  return rpc<TmGoal>('tm_set_goal_counts_time_bars', { p_id: id, p_on: on, p_size: size ?? null });
+}
+
+export async function tmLogGoalProgress(id: string, delta: number, note?: string) {
+  return rpc<TmGoalDetail>('tm_log_goal_progress', { p_id: id, p_delta: delta, p_note: note ?? null });
+}
+
+export async function tmCompleteGoal(id: string) {
+  return rpc<TmGoal>('tm_complete_goal', { p_id: id });
+}
+
+export async function tmCancelGoal(id: string, reason: string) {
+  return rpc<TmGoal>('tm_cancel_goal', { p_id: id, p_reason: reason });
+}
+
+export async function tmDeleteGoal(id: string) {
+  return rpc<TmGoal[]>('tm_delete_goal', { p_id: id });
+}
+
+export async function tmMoveAllGoalTasks(fromId: string, toId: string) {
+  return rpc<{ moved: number; goals: TmGoal[] }>('tm_move_all_goal_tasks', { p_from: fromId, p_to: toId });
+}
+
+export async function tmDashboard(person?: string | null) {
+  return rpc<TmDashboard>('tm_dashboard', { p_person: person ?? null });
+}
+
+export async function tmListRequests() {
+  return rpc<TmRequestRow[]>('tm_list_requests');
+}
+
+export async function tmDecideRequest(id: string, approve: boolean, note?: string) {
+  return rpc<TmRequestRow[]>('tm_decide_request', { p_id: id, p_approve: approve, p_note: note ?? null });
+}
+
+export async function tmListMyNotifications() {
+  return rpc<TmNotification[]>('tm_list_my_notifications');
+}
+
+export async function tmListNeedsGoal() {
+  return rpc<TmTask[]>('tm_list_needs_goal');
 }

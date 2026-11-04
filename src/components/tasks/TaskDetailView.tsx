@@ -211,7 +211,26 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
             onChange={() => setPanel('folder')}
           />
         )}
-        <Row label="Goal" value={task.goals.map((g) => g.name).join(', ') || '—'} onChange={isSuper ? () => setPanel('goal') : undefined} />
+        <div className="flex items-center justify-between gap-3 px-4 py-3">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-white/35">Goal</p>
+            <div className="mt-1 flex flex-wrap gap-1" data-testid="tm-goal-chips">
+              {task.goals.length === 0 && <span className="text-sm">—</span>}
+              {task.goals.map((g) => (
+                <span key={g.id} className="tm-chip tm-chip-muted" data-testid={`tm-goal-chip-${g.id}`}>
+                  <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full" style={{ background: g.color || '#8A8A8A' }} />
+                  {g.name}
+                  {g.is_misc && task.goals.length === 1 ? ' · Needs a goal' : ''}
+                </span>
+              ))}
+            </div>
+          </div>
+          {isSuper && (
+            <Button type="button" size="sm" variant="ghost" onClick={() => setPanel('goal')}>
+              Change
+            </Button>
+          )}
+        </div>
         <Row label="Size" value={task.counts ? task.size : 'Hidden'} onChange={() => setPanel('size')} />
         <Row label="Priority" value={task.priority} onChange={() => setPanel('priority')} />
         <div className="flex items-center justify-between px-4 py-3">

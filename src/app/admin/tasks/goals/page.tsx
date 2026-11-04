@@ -1,5 +1,5 @@
-import { PlaceholderView } from '@/components/tasks/PlaceholderView';
+import { GoalsView } from '@/components/tasks/GoalsView';
 
 export default function GoalsPage() {
-  return <PlaceholderView title="Goals" testId="tm-goals" />;
+  return <GoalsView />;
 }

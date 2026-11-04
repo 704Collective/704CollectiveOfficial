@@ -168,4 +168,68 @@ export type TmTrashedFolder = {
   deleted_at: string;
 };
 
+export type TmProgress = {
+  got: number;
+  total: number;
+  pct: number;
+  kind?: string;
+  starts?: string;
+  ends?: string;
+};
+
+export type TmGoal = TmGoalRef & {
+  description?: string | null;
+  kind: 'task' | 'number' | 'parent';
+  due_date: string | null;
+  parent_id: string | null;
+  status: 'active' | 'ready' | 'completed' | 'failed' | 'cancelled';
+  completed_at?: string | null;
+  number_current?: number | null;
+  number_target?: number | null;
+  number_unit?: string | null;
+  number_source?: string | null;
+  counts_time_bars: boolean;
+  size?: TmSize | null;
+  range_start?: string | null;
+  range_end?: string | null;
+  pushed_count?: number;
+  got: number;
+  total: number;
+  pct: number;
+  tags: string[];
+  children?: TmGoal[];
+};
+
+export type TmGoalDetail = TmGoal & {
+  log: { id: string; delta: number; note: string | null; logged_at: string; logged_by_name: string | null }[];
+  counted_tasks: TmTask[];
+  not_counted_tasks: TmTask[];
+};
+
+export type TmRequestRow = {
+  id: string;
+  task_id: string;
+  task_title: string;
+  kind: string;
+  reason: string | null;
+  status: string;
+  created_at: string;
+  requested_by: string;
+  requester_name: string | null;
+};
+
+export type TmDashboard = {
+  role: TmRole;
+  recap: { placeholder: boolean; headline: string };
+  bars: { week: TmProgress; month: TmProgress; quarter: TmProgress; year: TmProgress };
+  people: { id: string; full_name: string | null; role: string }[];
+  needs_decision: { id: string; title: string; kind: string; overdue_days?: number; pushed_count?: number; due_date?: string }[];
+  requests: TmRequestRow[];
+  needs_home: TmTask[];
+  needs_goal: TmTask[];
+  overdue: TmTask[];
+  due_today: TmTask[];
+  goals: TmGoal[];
+};
+
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
