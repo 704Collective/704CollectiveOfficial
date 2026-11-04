@@ -99,9 +99,10 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
   }, [task]);
 
   if (!task) return <p className="text-sm text-white/35">Loading…</p>;
+  const row = task;
 
   async function setStatus(status: Exclude<TmStatus, 'cancelled'>) {
-    const res = await tmSetStatus(task.id, status);
+    const res = await tmSetStatus(row.id, status);
     if (!res.ok) return toast.error(res.error);
     await load();
     void refresh();
@@ -109,13 +110,13 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
   }
 
   async function saveDue(date: string | null, time: string | null, why?: string) {
-    const res = await tmSetDue(task.id, date, time, why);
+    const res = await tmSetDue(row.id, date, time, why);
     if (!res.ok) return toast.error(res.error);
     setPanel(null);
     setPendingDue(null);
     setReason('');
     await load();
-    toast.success(res.data.pushed_count > task.pushed_count ? `Pushed ${res.data.pushed_count}x` : 'Due date updated');
+    toast.success(res.data.pushed_count > row.pushed_count ? `Pushed ${res.data.pushed_count}x` : 'Due date updated');
   }
 
   return (
