@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminSection } from '@/components/AdminLayout';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AdminBottomNavProps {
   activeSection?: AdminSection;
@@ -32,12 +33,17 @@ const NAV_ITEMS: NavItem[] = [
 export function AdminBottomNav({ activeSection, onSectionChange }: AdminBottomNavProps) {
   const router        = useRouter();
   const pathname      = usePathname();
+  const { isHelperAdmin } = useAuth();
   const isOnDashboard = pathname === '/admin';
   const isOnSettings  = pathname === '/admin/settings';
   const isOnCrm       = pathname.startsWith('/admin/crm');
   const isOnContacts  = pathname.startsWith('/admin/contacts');
 
   const handleTap = (item: NavItem) => {
+    if (isHelperAdmin) {
+      router.push('/admin/tasks');
+      return;
+    }
     if (item.href) {
       router.push(item.href);
     } else if (item.section) {
@@ -53,6 +59,7 @@ export function AdminBottomNav({ activeSection, onSectionChange }: AdminBottomNa
     if (item.href === '/admin/settings') return isOnSettings;
     if (item.href === '/admin/crm')      return isOnCrm;
     if (item.href === '/admin/contacts') return isOnContacts;
+    if (item.section === 'tasks' && pathname.startsWith('/admin/tasks')) return true;
     return isOnDashboard && activeSection === item.section;
   };
 
@@ -65,7 +72,7 @@ export function AdminBottomNav({ activeSection, onSectionChange }: AdminBottomNa
         className="flex items-stretch overflow-x-auto overflow-y-hidden"
         style={{ height: '56px', WebkitOverflowScrolling: 'touch' }}
       >
-        {NAV_ITEMS.map((item) => {
+        {(isHelperAdmin ? NAV_ITEMS.filter((item) => item.section === 'tasks') : NAV_ITEMS).map((item) => {
           const active = isActive(item);
           const Icon   = item.icon;
           return (

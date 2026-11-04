@@ -211,7 +211,7 @@ export async function submitPartnerEventInquiry(payload: {
     bodyHtml: detailLines.join(''),
   });
 
-  const ids = await staffIds(admin, ['admin', 'super_admin']);
+  const ids = await staffIds(admin, ['super_admin']);
   if (ids.length) {
     const rows = ids.map((uid) => ({
       user_id: uid,
@@ -249,7 +249,7 @@ export async function postEventInquiryMessage(
   if (!inq) return { ok: false, error: 'Inquiry not found' };
 
   const { data: me } = await admin.from('profiles').select('role, email, full_name').eq('id', user.id).maybeSingle();
-  const isStaff = me?.role === 'admin' || me?.role === 'super_admin';
+  const isStaff = me?.role === 'super_admin';
   const isOwner = inq.partner_id === user.id;
   if (!isStaff && !isOwner) return { ok: false, error: 'Forbidden' };
 
@@ -261,7 +261,7 @@ export async function postEventInquiryMessage(
   if (msgErr) return { ok: false, error: msgErr.message };
 
   if (isOwner) {
-    const ids = await staffIds(admin, ['admin', 'super_admin']);
+    const ids = await staffIds(admin, ['super_admin']);
     if (ids.length) {
       await admin.from('notifications').insert(
         ids.map((uid) => ({
@@ -427,7 +427,7 @@ export async function postPartnerTeamThreadMessage(
   if (insErr) return { ok: false, error: insErr.message };
 
   if (isPartnerSender) {
-    const bellIds = await staffIds(admin, ['admin', 'super_admin']);
+    const bellIds = await staffIds(admin, ['super_admin']);
     if (bellIds.length) {
       await admin.from('notifications').insert(
         bellIds.map((uid) => ({

@@ -12,6 +12,8 @@ do $g$ begin
 end $g$;
 
 -- ---------- WIPE PRIOR SEED (FK-safe order) ----------
+delete from public.tm_task_owners where profile_id in (select id from public.profiles where email like 'seed-%@704collective.dev');
+delete from public.tm_tasks where title like 'SEED %';
 delete from public.payments where user_id in (select id from public.profiles where email like 'seed-%@704collective.dev');
 delete from public.attendance_credentials where person_id in (select id from public.people where email like 'seed-%@704collective.dev');
 delete from public.tickets where event_id in (select id from public.events where title like 'SEED %');
@@ -47,7 +49,8 @@ from (values
   ('a0000000-0000-4000-8000-000000000011'::uuid,'seed-social-nonmember@704collective.dev','Seed Social NonMember'),
   ('a0000000-0000-4000-8000-000000000012'::uuid,'seed-biz-nonmember@704collective.dev','Seed Business Applicant'),
   ('a0000000-0000-4000-8000-000000000013'::uuid,'seed-partner@704collective.dev','Seed Partner Vendor'),
-  ('a0000000-0000-4000-8000-000000000014'::uuid,'seed-unsubscribed@704collective.dev','Seed Unsubscribed')
+  ('a0000000-0000-4000-8000-000000000014'::uuid,'seed-unsubscribed@704collective.dev','Seed Unsubscribed'),
+  ('a0000000-0000-4000-8000-000000000015'::uuid,'seed-helper@704collective.dev','Seed Helper')
 ) as v(id,email,fn);
 
 insert into auth.identities (provider_id, user_id, identity_data, provider,
@@ -76,7 +79,8 @@ values
  ('a0000000-0000-4000-8000-000000000011','seed-social-nonmember@704collective.dev','Seed Social NonMember',null,'inactive',null,null,null,false,'social_non_member','lead','member',false,null,null,null,null,null,false,false,false),
  ('a0000000-0000-4000-8000-000000000012','seed-biz-nonmember@704collective.dev','Seed Business Applicant',null,'inactive',null,null,null,false,'business_non_member','lead','member',false,null,'pending',null,null,null,false,false,false),
  ('a0000000-0000-4000-8000-000000000013','seed-partner@704collective.dev','Seed Partner Vendor',null,'inactive',null,null,null,true,'partner','lead','partner',true,'vendor',null,null,null,null,false,false,false),
- ('a0000000-0000-4000-8000-000000000014','seed-unsubscribed@704collective.dev','Seed Unsubscribed','cus_SEED014','active','sub_SEED014',now()-interval '45 days',now()-interval '45 days',false,'social','lead','member',false,null,null,null,null,null,true,false,false)
+ ('a0000000-0000-4000-8000-000000000014','seed-unsubscribed@704collective.dev','Seed Unsubscribed','cus_SEED014','active','sub_SEED014',now()-interval '45 days',now()-interval '45 days',false,'social','lead','member',false,null,null,null,null,null,true,false,false),
+ ('a0000000-0000-4000-8000-000000000015','seed-helper@704collective.dev','Seed Helper',null,'inactive',null,null,null,false,'non_member','admin','member',false,null,null,null,null,null,false,false,true)
 on conflict (id) do update set
   email=excluded.email, full_name=excluded.full_name, stripe_customer_id=excluded.stripe_customer_id,
   subscription_status=excluded.subscription_status, subscription_id=excluded.subscription_id,
@@ -150,5 +154,21 @@ values
  ('a0000000-0000-4000-8000-000000000008','cus_SEED008',4900,'succeeded','subscription','SEED last charge before clean cancel',now()-interval '70 days'),
  ('a0000000-0000-4000-8000-000000000009','cus_SEED009',4900,'succeeded','subscription','SEED drift: charged AFTER cancel',now()-interval '5 days'),
  ('a0000000-0000-4000-8000-000000000011',null,2500,'succeeded','one_time','SEED public paid ticket',now()-interval '9 days');
+
+-- ---------- TASKS WAVE 1 proof rows ----------
+insert into public.tm_tasks (id, title, notes, status, size, priority, counts, needs_home, created_by)
+values
+  ('e0000000-0000-4000-8000-000000000001','SEED helper own task','Helper can see this','open','M','normal',true,true,'a0000000-0000-4000-8000-000000000015'),
+  ('e0000000-0000-4000-8000-000000000002','SEED admin only task','Helper must not see this','open','M','normal',true,false,'a0000000-0000-4000-8000-000000000001');
+
+insert into public.tm_task_owners (task_id, profile_id)
+values
+  ('e0000000-0000-4000-8000-000000000001','a0000000-0000-4000-8000-000000000015'),
+  ('e0000000-0000-4000-8000-000000000002','a0000000-0000-4000-8000-000000000001');
+
+insert into public.tm_task_goals (task_id, goal_id)
+select 'e0000000-0000-4000-8000-000000000001', g.id
+from public.tm_goals g where g.is_misc and g.deleted_at is null
+on conflict do nothing;
 
 commit;

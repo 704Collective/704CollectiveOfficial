@@ -32,7 +32,7 @@ async function requireAdmin(opts?: { superAdminOnly?: boolean }) {
     if (role !== 'super_admin') {
       return { error: NextResponse.json({ ok: false, error: 'Super admin required' }, { status: 403 }) };
     }
-  } else if (role !== 'admin' && role !== 'super_admin') {
+  } else if (role !== 'super_admin') {
     return { error: NextResponse.json({ ok: false, error: 'Admin access required' }, { status: 403 }) };
   }
   return { supabase, user, role };

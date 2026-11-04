@@ -225,7 +225,7 @@ serve(async (req) => {
     }
 
     const role = profile.role ?? "lead";
-    const isAdmin = role === "admin" || role === "super_admin";
+    const isAdmin = role === "super_admin";
     const isActiveMember =
       (profile.member_type === "social" || profile.member_type === "business") &&
       (profile.subscription_status === "active" ||

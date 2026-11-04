@@ -64,7 +64,7 @@ export default function AdminPage() {
 }
 
 function AdminDashboard() {
-  const { user, loading: authLoading, isAdmin, profile, refreshProfile } = useAuth();
+  const { user, loading: authLoading, isAdmin, isHelperAdmin, profile, refreshProfile } = useAuth();
   usePageTitle('Admin Dashboard');
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -103,6 +103,10 @@ function AdminDashboard() {
     if (!authLoading && (!user || !isAdmin)) router.push("/admin/login");
   }, [user, isAdmin, authLoading, router]);
 
+  useEffect(() => {
+    if (!authLoading && isHelperAdmin) router.replace('/admin/tasks');
+  }, [authLoading, isHelperAdmin, router]);
+
   const goToDashboard = () => setActiveSection('dashboard');
 
   const handleFilterChange = (filter: string) => {
@@ -114,6 +118,10 @@ function AdminDashboard() {
   const p = profile as any;
   const isSuperAdmin = p?.role === 'super_admin';
   const isAdminOrSuper = p?.role === 'super_admin' || p?.role === 'admin';
+
+  if (isHelperAdmin) {
+    return null;
+  }
 
   if (authLoading) {
     return (

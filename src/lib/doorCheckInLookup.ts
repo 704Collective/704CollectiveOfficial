@@ -1,5 +1,4 @@
 import { supabase } from '@/integrations/supabase/client';
-import { resolvePersonId } from '@/lib/identity/resolvePerson';
 import {
   overrideReasonOk,
   type CheckInPatch,
@@ -83,31 +82,17 @@ export async function loadPersonName(personId: string): Promise<string> {
 /** Writes a check-in once. A row that already has checked_in_at is left alone. */
 export async function applyDoorCheckIn(
   credentialId: string,
-  adminAuthId: string,
+  _adminAuthId: string,
   patch: CheckInPatch,
 ): Promise<string | null> {
   if (patch.checkin_failed_checks?.length && !overrideReasonOk(patch.checkin_override_reason)) {
     return 'A reason is required';
   }
-  const { data, error } = await supabase
-    .from('attendance_credentials')
-    .update(patch)
-    .eq('id', credentialId)
-    .is('checked_in_at', null)
-    .select('id');
+  const { data, error } = await supabase.rpc('door_apply_checkin', {
+    p_credential_id: credentialId,
+    p_override_reason: patch.checkin_override_reason,
+    p_failed_checks: patch.checkin_failed_checks,
+  });
   if (error) return error.message;
-  if (!data || data.length === 0) return 'Already checked in';
-
-  try {
-    const { personId } = await resolvePersonId(adminAuthId);
-    if (personId) {
-      await supabase
-        .from('attendance_credentials')
-        .update({ checked_in_by: personId })
-        .eq('id', credentialId);
-    }
-  } catch {
-    // The check-in is already recorded.
-  }
-  return null;
+  return (data as string | null) ?? null;
 }

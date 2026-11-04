@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
       { auth: { persistSession: false } },
     );
     const { data: caller } = await admin.from('profiles').select('role').eq('id', user.id).maybeSingle();
-    if (!caller || !['admin', 'super_admin'].includes(caller.role ?? '')) {
+    if (!caller || caller.role !== 'super_admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 

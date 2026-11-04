@@ -9,7 +9,8 @@ export type PostAuthProfile = {
 
 /**
  * Where to send the user immediately after a successful auth exchange.
- * - Admins → /admin
+ * - Helper admins → /admin/tasks
+ * - Super admins → /admin
  * - Partners → /partner-portal
  * - Active members, membership override, past_due, or applicant non-members → /dashboard
  * - Canceled members → /membership-ended
@@ -28,9 +29,8 @@ export function postAuthDestination(
   }
   if (!profile) return options?.fallbackNoAccess ?? "/signup";
 
-  const isAdmin =
-    profile.role === "admin" || profile.role === "super_admin";
-  if (isAdmin) return "/admin";
+  if (profile.role === "admin") return "/admin/tasks";
+  if (profile.role === "super_admin") return "/admin";
 
   if (profile.member_type === "partner") return "/partner-portal";
 

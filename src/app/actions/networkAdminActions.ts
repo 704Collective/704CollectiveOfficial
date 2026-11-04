@@ -15,7 +15,7 @@ async function requireAdmin(): Promise<Gate> {
   if (!user) return { ok: false, error: 'Unauthorized' };
   const admin = networkServiceClient();
   const { data: prof } = await admin.from('profiles').select('role').eq('id', user.id).is('deleted_at', null).maybeSingle();
-  if (!prof || !['admin', 'super_admin'].includes(prof.role)) return { ok: false, error: 'Forbidden' };
+  if (!prof || prof.role !== 'super_admin') return { ok: false, error: 'Forbidden' };
   return { ok: true, admin, userId: user.id };
 }
 

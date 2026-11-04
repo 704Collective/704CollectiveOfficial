@@ -47,7 +47,7 @@ serve(async (req) => {
       actorId = (claims?.claims as { sub?: string } | undefined)?.sub ?? null;
       if (!actorId) return json({ error: "Unauthorized" }, 401);
       const { data: prof } = await admin.from("profiles").select("role").eq("id", actorId).is("deleted_at", null).maybeSingle();
-      if (!prof || !["admin", "super_admin"].includes(prof.role)) return json({ error: "Forbidden" }, 403);
+      if (!prof || prof.role !== "super_admin") return json({ error: "Forbidden" }, 403);
     }
 
     const body = (await req.json().catch(() => ({}))) as { application_id?: string };

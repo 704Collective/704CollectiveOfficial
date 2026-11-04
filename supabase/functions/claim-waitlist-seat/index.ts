@@ -111,7 +111,7 @@ serve(async (req) => {
       });
     }
 
-    const isAdmin = profile.role === "admin" || profile.role === "super_admin";
+    const isAdmin = profile.role === "super_admin";
     const isActiveMember = isRsvpEligibleMember(profile) || isAdmin;
 
     if (!isActiveMember) {

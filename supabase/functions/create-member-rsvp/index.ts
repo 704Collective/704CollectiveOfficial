@@ -143,7 +143,7 @@ serve(async (req) => {
       });
     }
 
-    const isAdminOverride = profile.role === "admin" || profile.role === "super_admin";
+    const isAdminOverride = profile.role === "super_admin";
 
     // -- Paid-window gate: a pending-cancel member may not take a seat at an
     // event that starts after their membership ends. Kind refusal (200 +

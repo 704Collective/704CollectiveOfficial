@@ -164,7 +164,7 @@ serve(async (req) => {
           });
         }
 
-        const { data: roleCheck } = await adminClient.rpc("has_role", { _user_id: userId, _role: "admin" });
+        const { data: roleCheck } = await adminClient.rpc("has_role", { _user_id: userId, _role: "super_admin" });
         if (!roleCheck) {
           return new Response(JSON.stringify({ error: "Admin access required" }), {
             status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },

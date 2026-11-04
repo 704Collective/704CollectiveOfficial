@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { isHelperAdminAllowedPath } from '@/lib/admin/staffGate';
 import { postAuthDestination } from '@/lib/postAuthRedirect';
 
 // Paths that must bypass all authentication checks entirely.
@@ -254,9 +255,18 @@ export async function updateSession(request: NextRequest) {
     }
 
     // ── Admin-only routes (/admin includes /admin/crm/*) ─────────────────────
+    // Lead is the default member role — never admin access.
     if (path.startsWith('/admin') && !isAdmin) {
       const url = request.nextUrl.clone();
       url.pathname = '/dashboard';
+      return NextResponse.redirect(url);
+    }
+
+    // Helper admins: Tasks + login/request-access only.
+    if (path.startsWith('/admin') && role === 'admin' && !isHelperAdminAllowedPath(path)) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/admin/tasks';
+      url.search = '';
       return NextResponse.redirect(url);
     }
 

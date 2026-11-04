@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       .eq('id', user.id)
       .maybeSingle();
 
-    if (!callerProfile || !['admin', 'super_admin'].includes(callerProfile.role ?? '')) {
+    if (!callerProfile || callerProfile.role !== 'super_admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 

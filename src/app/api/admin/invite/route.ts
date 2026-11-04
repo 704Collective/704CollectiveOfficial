@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     .eq('id', user.id)
     .maybeSingle();
 
-  if (profile?.role !== 'admin' && profile?.role !== 'super_admin') {
+  if (profile?.role !== 'super_admin') {
     return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
   }
 

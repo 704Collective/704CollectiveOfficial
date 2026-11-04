@@ -43,7 +43,7 @@ const MARKETING_ROUTES = ['/'];
 export function Header() {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, profile, isAdmin, isActiveMember, isSuperAdmin, isApprovedPartner } = useAuth();
+  const { user, profile, isAdmin, isHelperAdmin, isActiveMember, isSuperAdmin, isApprovedPartner } = useAuth();
   const supabaseRef = useRef(createClient());
   const [windowDashboard, setWindowDashboard] = useState(false);
 
@@ -70,7 +70,10 @@ export function Header() {
   const goToProfile = useCallback(() => router.push('/dashboard/profile'), [router]);
   const goToSettings = useCallback(() => router.push('/dashboard/settings'), [router]);
   const goToNotifications = useCallback(() => router.push('/dashboard/notifications'), [router]);
-  const goToAdmin = useCallback(() => router.push('/admin'), [router]);
+  const goToAdmin = useCallback(
+    () => router.push(isHelperAdmin ? '/admin/tasks' : '/admin'),
+    [router, isHelperAdmin],
+  );
 
   if (MARKETING_ROUTES.includes(pathname)) {
     return null;
@@ -410,7 +413,7 @@ export function Header() {
                       {isAdmin && (
                         <SheetClose asChild>
                           <Link
-                            href="/admin"
+                            href={isHelperAdmin ? '/admin/tasks' : '/admin'}
                             className={cn(
                               'group flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all',
                               isActive('/admin')

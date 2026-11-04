@@ -20,7 +20,7 @@ async function caller(): Promise<Caller | null> {
   const admin = networkServiceClient();
   const { data: prof } = await admin.from('profiles').select('role, member_type, full_name, email').eq('id', user.id).is('deleted_at', null).maybeSingle();
   if (!prof) return null;
-  return { userId: user.id, email: prof.email ?? user.email ?? '', fullName: prof.full_name ?? null, memberType: prof.member_type ?? null, isAdmin: ['admin', 'super_admin'].includes(prof.role) };
+  return { userId: user.id, email: prof.email ?? user.email ?? '', fullName: prof.full_name ?? null, memberType: prof.member_type ?? null, isAdmin: prof.role === 'super_admin' };
 }
 
 /** Listings the caller may act on: admins see all, everyone else their own. */

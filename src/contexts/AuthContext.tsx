@@ -37,6 +37,7 @@ interface AuthState {
   session: Session | null;
   loading: boolean;
   isAdmin: boolean;
+  isHelperAdmin: boolean;
   isSuperAdmin: boolean;
   isActiveMember: boolean;
   isBusinessMember: boolean;
@@ -60,7 +61,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const LOGGED_OUT_STATE: AuthState = {
   user: null, profile: null, session: null, loading: false,
-  isAdmin: false, isSuperAdmin: false, isActiveMember: false,
+  isAdmin: false, isHelperAdmin: false, isSuperAdmin: false, isActiveMember: false,
   isBusinessMember: false, isBanned: false, isPendingApplication: false,
   isApprovedPartner: false, isListingAccount: false,
 };
@@ -68,7 +69,8 @@ const LOGGED_OUT_STATE: AuthState = {
 function deriveFlags(profile: any) {
   const role = profile?.role ?? 'lead';
   const isSuperAdmin = role === 'super_admin';
-  const isAdmin = role === 'admin' || isSuperAdmin;
+  const isHelperAdmin = role === 'admin';
+  const isAdmin = isHelperAdmin || isSuperAdmin;
   // Wave H4: a listing-only account (paid hub listing, no membership) is never
   // an active member, whatever its billing columns say.
   const isListingAccount = profile?.member_type === 'listing';
@@ -83,7 +85,7 @@ function deriveFlags(profile: any) {
   const isApprovedPartner =
     profile?.member_type === 'partner' &&
     (profile as any)?.partner_status === 'approved';
-  return { isAdmin, isSuperAdmin, isActiveMember, isBusinessMember, isBanned, isPendingApplication, isApprovedPartner, isListingAccount };
+  return { isAdmin, isHelperAdmin, isSuperAdmin, isActiveMember, isBusinessMember, isBanned, isPendingApplication, isApprovedPartner, isListingAccount };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

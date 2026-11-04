@@ -37,7 +37,7 @@ async function assertAdmin() {
     .select('role')
     .eq('id', user.id)
     .maybeSingle();
-  if (prof?.role !== 'admin' && prof?.role !== 'super_admin') {
+  if (prof?.role !== 'super_admin') {
     return { ok: false as const, error: 'Forbidden' };
   }
   return { ok: true as const, userId: user.id, supabase, admin };

@@ -31,7 +31,7 @@ const NAV_INACTIVE = 'text-muted-foreground hover:text-foreground hover:bg-accen
 function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, globalSearch }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isSuperAdmin, isAdmin } = useAuth();
+  const { isSuperAdmin, isAdmin, isHelperAdmin } = useAuth();
 
   // Memoize derived flags so auth context updates don't cascade re-renders.
   const isOnDashboard   = useMemo(() => pathname === '/admin', [pathname]);
@@ -140,8 +140,14 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
         style={{ overscrollBehavior: 'contain', willChange: 'transform' }}
       >
 
+        {isHelperAdmin && (
+          <div className="space-y-0.5">
+            {linkBtn('/admin/tasks', ClipboardList, 'Tasks')}
+          </div>
+        )}
+
         {/* ── Group 1 - no heading ── */}
-        <div className="space-y-0.5">
+        {!isHelperAdmin && <div className="space-y-0.5">
           {sectionBtn({ icon: LayoutDashboard, label: 'Dashboard',    section: 'dashboard'    })}
           {sectionBtn({ icon: Calendar,        label: 'Events',       section: 'events'       })}
           {linkBtn('/admin/contacts', Users, 'Contacts')}
@@ -152,10 +158,10 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
           {sectionBtn({ icon: QrCode, label: 'Check-in', section: 'checkin' })}
           {linkBtn('/admin/exchange', Sparkles, 'The Exchange')}
           {/* HIDDEN 2026-06 — CRM/Partner hide-pass, restore later: {linkBtn('/admin/crm', BarChart2, 'CRM')} */}
-        </div>
+        </div>}
 
         {/* ── Group 2 - BUSINESS ── */}
-        <div className="mt-5 pt-3 border-t border-border">
+        {!isHelperAdmin && <div className="mt-5 pt-3 border-t border-border">
           {groupHeading('Business')}
           <div className="space-y-0.5">
             {linkBtn('/admin/hubs',       Layers,        'Hubs')}
@@ -166,10 +172,10 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
             {/* HIDDEN 2026-06 — CRM/Partner hide-pass, restore later: {isAdminOrSuper && sectionBtn({ icon: ClipboardList, label: 'Inquiries', section: 'inquiries' })} */}
             {/* HIDDEN 2026-06 — CRM/Partner hide-pass, restore later: {isAdminOrSuper && linkBtn('/admin/invoices', Receipt,   'Invoices')} */}
           </div>
-        </div>
+        </div>}
 
         {/* ── Group 3 - CONTENT ── */}
-        {isAdminOrSuper && (
+        {isAdminOrSuper && !isHelperAdmin && (
           <div className="mt-5 pt-3 border-t border-border">
             {groupHeading('Content')}
             <div className="space-y-0.5">
@@ -182,7 +188,7 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
         )}
 
         {/* ── Group 4 - SYSTEM ── */}
-        {isAdminOrSuper && (
+        {isAdminOrSuper && !isHelperAdmin && (
           <div className="mt-5 pt-3 border-t border-border">
             {groupHeading('System')}
             <div className="space-y-0.5">

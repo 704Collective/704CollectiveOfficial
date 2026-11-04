@@ -43,18 +43,16 @@ export default function AdminLogin() {
         throw new Error('Login failed');
       }
 
-      // Check if user has admin role
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
+      const { data: profile, error: roleError } = await supabase
+        .from('profiles')
         .select('role')
-        .eq('user_id', authData.user.id)
-        .eq('role', 'admin')
+        .eq('id', authData.user.id)
+        .is('deleted_at', null)
         .maybeSingle();
 
       if (roleError) throw roleError;
 
-      if (!roleData) {
-        // Not an admin - sign them out
+      if (profile?.role !== 'admin' && profile?.role !== 'super_admin') {
         await supabase.auth.signOut();
         setError('Access denied. You do not have admin privileges.');
         turnstileRef.current?.reset();
@@ -63,8 +61,7 @@ export default function AdminLogin() {
         return;
       }
 
-      // Success - redirect to admin dashboard
-      router.push('/admin');
+      router.push(profile.role === 'admin' ? '/admin/tasks' : '/admin');
     } catch (err: any) {
       setError(err.message || 'An error occurred during login');
       turnstileRef.current?.reset();

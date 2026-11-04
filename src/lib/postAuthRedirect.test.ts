@@ -7,9 +7,13 @@ const dest = (
 ) => postAuthDestination(profile, options);
 
 describe('postAuthDestination blast radius', () => {
-  it('sends admins to /admin (byte-identical)', () => {
-    expect(dest({ role: 'admin', subscription_status: 'past_due' })).toBe('/admin');
+  it('sends helper admins to /admin/tasks and super admins to /admin', () => {
+    expect(dest({ role: 'admin', subscription_status: 'past_due' })).toBe('/admin/tasks');
     expect(dest({ role: 'super_admin', subscription_status: 'canceled' })).toBe('/admin');
+  });
+
+  it('treats lead as a member, not staff', () => {
+    expect(dest({ role: 'lead', subscription_status: 'active' })).toBe('/dashboard');
   });
 
   it('sends partners to /partner-portal (byte-identical)', () => {

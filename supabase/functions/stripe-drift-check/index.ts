@@ -81,7 +81,7 @@ serve(async (req) => {
         const uid = (claims?.claims as { sub?: string } | undefined)?.sub;
         if (!uid) return json({ error: "Unauthorized" }, 401);
         const { data: prof } = await supabase.from("profiles").select("role").eq("id", uid).maybeSingle();
-        if (!prof || !["admin", "super_admin"].includes(prof.role)) return json({ error: "Forbidden" }, 403);
+        if (!prof || prof.role !== "super_admin") return json({ error: "Forbidden" }, 403);
       }
     }
 

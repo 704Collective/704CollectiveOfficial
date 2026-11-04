@@ -65,7 +65,7 @@ serve(async (req) => {
     // ── member + right ──
     const { data: profile } = await admin.from("profiles").select("id, email, full_name, phone, member_type, subscription_status, membership_override, role, cancel_at_period_end, subscription_ends_at").eq("id", user.id).is("deleted_at", null).maybeSingle();
     if (!profile) return json({ error: "Profile not found" }, 404);
-    const isAdmin = profile.role === "admin" || profile.role === "super_admin";
+    const isAdmin = profile.role === "super_admin";
     if (profile.member_type !== "business" && !isAdmin) return json({ error: "The +1 is a business-membership right.", code: "NOT_BUSINESS_MEMBER" }, 403);
     const isActive = profile.subscription_status === "active" || profile.subscription_status === "trialing" || profile.membership_override === true;
     if (!isActive && !isAdmin) return json({ error: "Membership is not active.", code: "NOT_ACTIVE" }, 403);
