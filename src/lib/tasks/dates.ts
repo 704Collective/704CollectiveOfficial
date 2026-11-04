@@ -36,6 +36,12 @@ export function formatDue(dueDate: string | null, dueTime?: string | null): stri
   return showTime ? `${label} ${formatTime(dueTime!)}` : label;
 }
 
+export function formatShortDate(isoDate?: string | null): string {
+  if (!isoDate) return '';
+  const [y, m, d] = isoDate.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 export function formatTime(t: string): string {
   const [hh, mm] = t.split(':').map(Number);
   const period = hh >= 12 ? 'PM' : 'AM';

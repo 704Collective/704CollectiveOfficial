@@ -6,8 +6,10 @@ import { toast } from 'sonner';
 import { tmGetHistoryPeriod, tmGoalReopen, tmListHistoryGoals, tmSetPeriodNote } from '@/app/actions/tasksActions';
 import { useTasks } from '@/components/tasks/TasksProvider';
 import { HistoryGoals, formatPeriod, pctColor } from '@/components/tasks/HistoryView';
+import { ViewportSheet } from '@/components/tasks/ViewportSheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { formatShortDate } from '@/lib/tasks/dates';
 import { chipName, firstName } from '@/lib/tasks/names';
 import type { TmHistoryGoal, TmHistoryPeriod, TmHistoryTask } from '@/lib/tasks/types';
 
@@ -18,11 +20,22 @@ const SECTIONS: { key: TmHistoryTask['outcome']; title: string; testId: string; 
   { key: 'cancelled', title: 'Cancelled', testId: 'tm-hist-cancelled', grey: true },
 ];
 
+function outcomeLine(task: TmHistoryTask): string | null {
+  if (task.what_happened_after) return task.what_happened_after;
+  if (task.outcome === 'missed') return 'Still open';
+  if (task.outcome === 'done_late') {
+    return `Done late ${formatShortDate(task.due_date) || ''}`.trim();
+  }
+  return null;
+}
+
 export function HistoryPeriodView({ id }: { id: string }) {
   const { isSuper, boot, markFetchFailed } = useTasks();
   const [period, setPeriod] = useState<TmHistoryPeriod | null>(null);
   const [goals, setGoals] = useState<TmHistoryGoal[]>([]);
   const [note, setNote] = useState('');
+  const [editingNote, setEditingNote] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [person, setPerson] = useState<string | 'everyone'>('everyone');
   const [goal, setGoal] = useState<string | 'all'>('all');
   const [folder, setFolder] = useState<string | 'all'>('all');
@@ -58,9 +71,20 @@ export function HistoryPeriodView({ id }: { id: string }) {
   const counted = tasks.filter((t) => t.counts && t.outcome !== 'open_carried');
   const notCounted = tasks.filter((t) => !t.counts);
   const goalsInTasks = Array.from(new Map((period.tasks ?? []).flatMap((t) => t.goals ?? []).map((g) => [g.id, g])).values());
-  const foldersInTasks = Array.from(new Set((period.tasks ?? []).map((t) => t.folder).filter(Boolean))) as string[];
+  const foldersInTasks = Array.from(
+    new Map(
+      (period.tasks ?? [])
+        .filter((t) => t.folder)
+        .map((t) => [t.folder_id ?? t.folder, { id: t.folder_id ?? t.folder!, name: t.folder! }])
+    ).values()
+  );
+
+  const personChip = person === 'everyone' ? null : chipName(period.people.find((p) => p.profile_id === person) ?? { full_name: 'Someone' }, period.people);
+  const goalChip = goal === 'all' ? null : goalsInTasks.find((g) => g.id === goal)?.name ?? null;
+  const folderChip = folder === 'all' ? null : foldersInTasks.find((f) => f.id === folder)?.name ?? folder;
 
   function TaskBlock({ task, grey }: { task: TmHistoryTask; grey?: boolean }) {
+    const after = outcomeLine(task);
     return (
       <li
         data-testid={`tm-hist-task-${task.id}`}
@@ -73,9 +97,17 @@ export function HistoryPeriodView({ id }: { id: string }) {
           {task.goals?.[0] ? ` · ${task.goals.map((g) => g.name).join(', ')}` : ''}
           {isSuper && task.folder ? ` · ${task.folder}` : ''}
         </p>
-        {task.reason && <p className="text-xs text-white/40">{task.reason}</p>}
-        {task.what_happened_after && (
-          <p className="text-xs text-[#C6A664]" data-testid={`tm-hist-after-${task.id}`}>{task.what_happened_after}</p>
+        {task.outcome === 'cancelled' && task.reason && (
+          <p className="text-xs text-white/40" data-testid={`tm-hist-reason-${task.id}`}>{task.reason}</p>
+        )}
+        {task.outcome === 'missed' && (
+          <>
+            {task.reason && <p className="text-xs text-white/40" data-testid={`tm-hist-reason-${task.id}`}>{task.reason}</p>}
+            {after && <p className="text-xs text-[#C6A664]" data-testid={`tm-hist-after-${task.id}`}>{after}</p>}
+          </>
+        )}
+        {task.outcome === 'done_late' && after && (
+          <p className="text-xs text-[#C6A664]" data-testid={`tm-hist-after-${task.id}`}>{after}</p>
         )}
       </li>
     );
@@ -93,92 +125,35 @@ export function HistoryPeriodView({ id }: { id: string }) {
           </p>
           {period.provisional && <span className="tm-chip tm-chip-soon mt-2">Provisional</span>}
         </div>
-        <span className="tm-display text-4xl" style={{ color: pctColor(Number(period.pct) || 0) }}>
-          {Math.round(Number(period.pct) || 0)}%
-        </span>
+        <div className="flex flex-col items-end gap-2">
+          <span className="tm-display text-4xl" style={{ color: pctColor(Number(period.pct) || 0) }}>
+            {Math.round(Number(period.pct) || 0)}%
+          </span>
+          <Button type="button" size="sm" variant="outline" data-testid="tm-hist-filter-open" onClick={() => setFilterOpen(true)}>
+            Filter
+          </Button>
+        </div>
       </div>
 
-      <section className="mt-4" data-testid="tm-history-note">
-        {isSuper ? (
-          <div className="flex flex-wrap gap-2">
-            <Input
-              data-testid="tm-history-note-input"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Period note"
-              className="border-white/10 bg-[#1a1a1a]"
-            />
-            <Button
-              type="button"
-              data-testid="tm-history-note-save"
-              className="bg-[#C6A664] text-black"
-              onClick={() => {
-                void tmSetPeriodNote(period.id, note).then((res) => {
-                  if (!res.ok) {
-                    toast.error(res.error);
-                    return;
-                  }
-                  toast.success('Note saved');
-                  return load();
-                });
-              }}
-            >
-              Save note
-            </Button>
-          </div>
-        ) : (
-          <p className="text-sm text-white/50">{period.note || 'No note.'}</p>
-        )}
-      </section>
-
-      <div className="mt-4 flex flex-wrap gap-2" data-testid="tm-history-filters">
-        {isSuper && (
-          <>
-            <button
-              type="button"
-              data-testid="tm-hist-filter-everyone"
-              className={`rounded-full px-3 py-1 text-xs ${person === 'everyone' ? 'bg-[#C6A664] text-black' : 'bg-white/8'}`}
-              onClick={() => setPerson('everyone')}
-            >
-              Everyone
+      {(personChip || goalChip || folderChip) && (
+        <div className="mt-3 flex flex-wrap gap-2" data-testid="tm-hist-active-chips">
+          {personChip && (
+            <button type="button" className="rounded-full bg-[#C6A664] px-3 py-1 text-xs text-black" onClick={() => setPerson('everyone')}>
+              {personChip} ×
             </button>
-            {(period.people ?? []).map((p) => (
-              <button
-                key={p.profile_id}
-                type="button"
-                data-testid={`tm-hist-filter-person-${p.profile_id}`}
-                className={`rounded-full px-3 py-1 text-xs ${person === p.profile_id ? 'bg-[#C6A664] text-black' : 'bg-white/8'}`}
-                onClick={() => setPerson(p.profile_id)}
-              >
-                {chipName(p, period.people ?? [])}
-              </button>
-            ))}
-          </>
-        )}
-        {!isSuper && (
-          <span className="rounded-full bg-white/8 px-3 py-1 text-xs">{boot?.full_name ? firstName(boot.full_name) : 'You'}</span>
-        )}
-        {goalsInTasks.map((g) => (
-          <button
-            key={g.id}
-            type="button"
-            className={`rounded-full px-3 py-1 text-xs ${goal === g.id ? 'bg-[#C6A664] text-black' : 'bg-white/8'}`}
-            onClick={() => setGoal((cur) => (cur === g.id ? 'all' : g.id))}
-          >
-            {g.name}
-          </button>
-        ))}
-        {isSuper && foldersInTasks.map((f) => (
-          <button
-            key={f}
-            type="button"
-            className={`rounded-full px-3 py-1 text-xs ${folder === f ? 'bg-[#C6A664] text-black' : 'bg-white/8'}`}
-            onClick={() => setFolder((cur) => (cur === f ? 'all' : f))}
-          >
-            {f}
-          </button>
-        ))}
-      </div>
+          )}
+          {goalChip && (
+            <button type="button" className="rounded-full bg-[#C6A664] px-3 py-1 text-xs text-black" onClick={() => setGoal('all')}>
+              {goalChip} ×
+            </button>
+          )}
+          {folderChip && (
+            <button type="button" className="rounded-full bg-[#C6A664] px-3 py-1 text-xs text-black" onClick={() => setFolder('all')}>
+              {folderChip} ×
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="mt-6 space-y-6">
         {SECTIONS.map((sec) => {
@@ -186,7 +161,7 @@ export function HistoryPeriodView({ id }: { id: string }) {
           if (!list.length) return null;
           return (
             <section key={sec.key} data-testid={sec.testId}>
-              <h2 className="mb-2 text-sm font-semibold">{sec.title}</h2>
+              <h2 className="mb-2 text-sm font-semibold">{sec.title} · {list.length}</h2>
               <ul className="space-y-2">
                 {list.map((t) => <TaskBlock key={t.id} task={t} grey={sec.grey} />)}
               </ul>
@@ -195,7 +170,7 @@ export function HistoryPeriodView({ id }: { id: string }) {
         })}
         {notCounted.length > 0 && (
           <section data-testid="tm-hist-not-counted">
-            <h2 className="mb-2 text-sm font-semibold">Not counted</h2>
+            <h2 className="mb-2 text-sm font-semibold">Not counted · {notCounted.length}</h2>
             <ul className="space-y-2">
               {notCounted.map((t) => <TaskBlock key={t.id} task={t} />)}
             </ul>
@@ -203,7 +178,7 @@ export function HistoryPeriodView({ id }: { id: string }) {
         )}
       </div>
 
-      {isSuper && period.kind === 'month' && (period.people ?? []).length > 0 && (
+      {isSuper && (period.people ?? []).length > 0 && (
         <section className="mt-8" data-testid="tm-history-ontime">
           <h2 className="mb-2 text-sm font-semibold">On-time %</h2>
           <ul className="space-y-1">
@@ -234,6 +209,105 @@ export function HistoryPeriodView({ id }: { id: string }) {
           }}
         />
       </section>
+
+      <section className="mt-8" data-testid="tm-history-note">
+        {isSuper ? (
+          editingNote || period.note ? (
+            <div className="space-y-2">
+              <Input
+                data-testid="tm-history-note-input"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Period note"
+                className="border-white/10 bg-[#1a1a1a]"
+                onFocus={() => setEditingNote(true)}
+              />
+              <Button
+                type="button"
+                data-testid="tm-history-note-save"
+                className="bg-[#C6A664] text-black"
+                onClick={() => {
+                  void tmSetPeriodNote(period.id, note).then((res) => {
+                    if (!res.ok) {
+                      toast.error(res.error);
+                      return;
+                    }
+                    toast.success('Note saved');
+                    setEditingNote(false);
+                    return load();
+                  });
+                }}
+              >
+                Save note
+              </Button>
+            </div>
+          ) : (
+            <Button type="button" variant="ghost" data-testid="tm-history-note-add" onClick={() => setEditingNote(true)}>
+              Add note
+            </Button>
+          )
+        ) : (
+          <p className="text-sm text-white/50">{period.note || 'No note.'}</p>
+        )}
+      </section>
+
+      <ViewportSheet open={filterOpen} onOpenChange={setFilterOpen} testId="tm-hist-filter-sheet">
+        <div className="flex min-h-0 flex-1 flex-col px-4 pt-4 pb-4">
+          <p className="tm-display mb-4 text-xl">Filter</p>
+          {isSuper && (
+            <label className="mb-4 block text-sm">
+              <span className="mb-1 block text-xs uppercase tracking-wide text-white/40">People</span>
+              <select
+                data-testid="tm-hist-filter-person"
+                className="w-full rounded-md border border-white/10 bg-[#1a1a1a] px-3 py-2"
+                value={person}
+                onChange={(e) => setPerson(e.target.value === 'everyone' ? 'everyone' : e.target.value)}
+              >
+                <option value="everyone">Everyone</option>
+                {(period.people ?? []).map((p) => (
+                  <option key={p.profile_id} value={p.profile_id}>{chipName(p, period.people ?? [])}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          {!isSuper && (
+            <p className="mb-4 text-sm text-white/50">{boot?.full_name ? firstName(boot.full_name) : 'You'}</p>
+          )}
+          <label className="mb-4 block text-sm">
+            <span className="mb-1 block text-xs uppercase tracking-wide text-white/40">Goals</span>
+            <select
+              data-testid="tm-hist-filter-goal"
+              className="w-full rounded-md border border-white/10 bg-[#1a1a1a] px-3 py-2"
+              value={goal}
+              onChange={(e) => setGoal(e.target.value === 'all' ? 'all' : e.target.value)}
+            >
+              <option value="all">All goals</option>
+              {goalsInTasks.map((g) => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          </label>
+          {isSuper && (
+            <label className="mb-4 block text-sm">
+              <span className="mb-1 block text-xs uppercase tracking-wide text-white/40">Folders</span>
+              <select
+                data-testid="tm-hist-filter-folder"
+                className="w-full rounded-md border border-white/10 bg-[#1a1a1a] px-3 py-2"
+                value={folder}
+                onChange={(e) => setFolder(e.target.value === 'all' ? 'all' : e.target.value)}
+              >
+                <option value="all">All folders</option>
+                {foldersInTasks.map((f) => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          <Button type="button" className="mt-auto bg-[#C6A664] text-black" data-testid="tm-hist-filter-done" onClick={() => setFilterOpen(false)}>
+            Done
+          </Button>
+        </div>
+      </ViewportSheet>
     </div>
   );
 }

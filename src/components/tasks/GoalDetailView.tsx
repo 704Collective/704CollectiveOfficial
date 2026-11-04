@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
-  tmCancelGoal,
   tmCompleteGoal,
   tmCreateTask,
   tmDeleteGoal,
@@ -14,16 +13,23 @@ import {
   tmMoveAllGoalTasks,
   tmSetGoalCountsTimeBars,
   tmSetGoals,
-  tmGoalExtend,
-  tmGoalFail,
   tmGoalReopen,
 } from '@/app/actions/tasksActions';
 import { useTasks } from '@/components/tasks/TasksProvider';
 import { ConfettiBurst } from '@/components/tasks/ConfettiBurst';
 import { GoalBar, GoalTags, goalDueLabel } from '@/components/tasks/GoalBar';
+import { GoalFixSheet } from '@/components/tasks/GoalFixSheet';
 import { TaskGroup } from '@/components/tasks/TaskRow';
+import { formatShortDate } from '@/lib/tasks/dates';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { MoreHorizontal } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,9 +50,7 @@ export function GoalDetailView({ id }: { id: string }) {
   const [confetti, setConfetti] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [moveTo, setMoveTo] = useState('');
-  const [extendDue, setExtendDue] = useState('');
-  const [cancelOpen, setCancelOpen] = useState(false);
-  const [reason, setReason] = useState('');
+  const [fixOpen, setFixOpen] = useState(false);
 
   async function load() {
     const res = await tmGetGoal(id);
@@ -120,47 +124,14 @@ export function GoalDetailView({ id }: { id: string }) {
       <GoalBar pct={goal.pct} color={goal.color} got={goal.got} total={goal.total} testId="tm-goal-bar" />
 
       {(overdue || row.status === 'failed') && (
-        <div className="mt-4 rounded-xl border border-[#E24B4A]/30 bg-[#E24B4A]/10 px-4 py-3" data-testid="tm-goal-overdue">
-          <p className="text-sm font-semibold text-[#ffb4b0]">{row.status === 'failed' ? 'Failed' : 'Overdue'}</p>
+        <div className="mt-4 flex items-center justify-between gap-3" data-testid="tm-goal-overdue">
+          <p className="text-sm text-[#ffb4b0]">
+            {row.status === 'failed' ? 'Failed' : `Overdue since ${formatShortDate(row.due_date) || 'the due date'}`}
+          </p>
           {isSuper && (
-            <div className="mt-3 space-y-2">
-              <div className="flex gap-2">
-                <Input data-testid="tm-goal-extend-date" type="date" className="border-white/10 bg-[#1a1a1a]" value={extendDue} onChange={(e) => setExtendDue(e.target.value)} />
-                <Button
-                  type="button"
-                  data-testid="tm-goal-extend"
-                  size="sm"
-                  className="bg-[#C6A664] text-black"
-                  onClick={() => {
-                    if (!extendDue) {
-                      toast.error('Pick a new due date');
-                      return;
-                    }
-                    void tmGoalExtend(row.id, extendDue, reason || 'Extended').then((r) => {
-                      if (!r.ok) {
-                        toast.error(r.error);
-                        return;
-                      }
-                      toast.success('Extended');
-                      return load();
-                    });
-                  }}
-                >
-                  Extend
-                </Button>
-              </div>
-              <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason" className="border-white/10 bg-[#1a1a1a]" />
-              {row.status !== 'failed' && (
-                <>
-                <Button type="button" data-testid="tm-goal-fail" variant="outline" className="w-full" onClick={() => void tmGoalFail(row.id).then((r) => { if (!r.ok) { toast.error(r.error); return; } toast.success('Left as failed'); return load(); })}>
-                  Leave as failed
-                </Button>
-                <Button type="button" data-testid="tm-goal-cancel" variant="outline" className="w-full" onClick={() => setCancelOpen(true)}>
-                  Cancel goal
-                </Button>
-                </>
-              )}
-            </div>
+            <Button type="button" data-testid="tm-goal-fix" size="sm" className="bg-[#C6A664] text-black" onClick={() => setFixOpen(true)}>
+              Fix it
+            </Button>
           )}
         </div>
       )}
@@ -171,9 +142,12 @@ export function GoalDetailView({ id }: { id: string }) {
       )}
 
       {ready && isSuper && !closed && (
-        <Button data-testid="tm-goal-complete" className="mt-4 bg-[#C6A664] text-black" onClick={() => void complete()}>
-          Mark complete
-        </Button>
+        <div className="mt-4 flex items-center justify-between gap-3" data-testid="tm-goal-ready">
+          <p className="text-sm text-[#C6A664]">Ready to complete</p>
+          <Button data-testid="tm-goal-complete" size="sm" className="bg-[#C6A664] text-black" onClick={() => void complete()}>
+            Mark complete
+          </Button>
+        </div>
       )}
       {closed && <p className="mt-4 text-sm text-[#C6A664]" data-testid="tm-goal-closed">Closed to new tasks</p>}
 
@@ -236,17 +210,31 @@ export function GoalDetailView({ id }: { id: string }) {
       </section>
 
       {isSuper && (
-        <div className="mt-8 space-y-2">
+        <div className="mt-8 flex items-center gap-2">
           {!closed && (
-            <Button type="button" data-testid="tm-goal-add-task" variant="outline" className="w-full" onClick={() => void addTask()}>
+            <Button type="button" data-testid="tm-goal-add-task" variant="outline" className="flex-1" onClick={() => void addTask()}>
               Add a task
             </Button>
           )}
-          <Link href={`/admin/tasks/goals/${goal.id}/edit`} className="block text-center text-sm text-[#C6A664]">Edit</Link>
-          <Button type="button" variant="outline" className="w-full" onClick={() => setCancelOpen(true)}>Cancel goal</Button>
-          <Button type="button" variant="outline" className="w-full text-[#E24B4A]" onClick={() => setMoveOpen(true)}>Delete…</Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" size="icon" data-testid="tm-goal-more" aria-label="More">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-[#141414] text-[#f4f1ea]">
+              <DropdownMenuItem asChild>
+                <Link href={`/admin/tasks/goals/${goal.id}/edit`} data-testid="tm-goal-edit">Edit</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem data-testid="tm-goal-delete" className="text-[#E24B4A]" onClick={() => setMoveOpen(true)}>
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )}
+
+      <GoalFixSheet open={fixOpen} onOpenChange={setFixOpen} goal={row} onDone={() => void load()} />
 
       <AlertDialog open={moveOpen} onOpenChange={setMoveOpen}>
         <AlertDialogContent className="bg-[#111] text-[#f4f1ea]">
@@ -288,32 +276,6 @@ export function GoalDetailView({ id }: { id: string }) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
-        <AlertDialogContent className="bg-[#111] text-[#f4f1ea]">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancel this goal?</AlertDialogTitle>
-          </AlertDialogHeader>
-          <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason" className="border-white/10 bg-[#1a1a1a]" />
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                void tmCancelGoal(row.id, reason || 'Cancelled').then((r) => {
-                  if (!r.ok) {
-                    toast.error(r.error);
-                    return;
-                  }
-                  toast.success('Cancelled');
-                  router.push('/admin/tasks/goals');
-                });
-              }}
-            >
-              Cancel goal
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
