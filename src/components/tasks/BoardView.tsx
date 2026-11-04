@@ -6,20 +6,27 @@ import {
   DndContext,
   DragEndEvent,
   DragMoveEvent,
+  DragOverEvent,
   DragOverlay,
   DragStartEvent,
   KeyboardSensor,
   PointerSensor,
   TouchSensor,
+  closestCenter,
+  pointerWithin,
   useDraggable,
   useDroppable,
   useSensor,
   useSensors,
+  type CollisionDetection,
+  type Modifier,
 } from '@dnd-kit/core';
+import { getEventCoordinates } from '@dnd-kit/utilities';
 import { toast } from 'sonner';
 import { tmListBoard, tmSetStatus } from '@/app/actions/tasksActions';
 import { useTasks } from '@/components/tasks/TasksProvider';
 import { TmEmpty, TmSkeleton } from '@/components/tasks/uiBits';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useLockBodyScroll } from '@/hooks/useVisualViewport';
 import { formatDue } from '@/lib/tasks/dates';
 import { personInitials } from '@/lib/tasks/names';
@@ -51,9 +58,39 @@ function statusClass(task: TmTask) {
 }
 
 function dropStatus(overId: string): Exclude<TmStatus, 'cancelled'> | null {
-  const raw = overId.replace(/^(strip-|tab-|col-)/, '');
+  const raw = overId.replace(/^(strip-|tab-|col-|bar-)/, '');
   return COLS.some((c) => c.id === raw) ? (raw as Exclude<TmStatus, 'cancelled'>) : null;
 }
+
+function isBarId(id: string) {
+  return id.startsWith('bar-') || id.startsWith('strip-');
+}
+
+const collisionDetection: CollisionDetection = (args) => {
+  const pointerHits = pointerWithin(args);
+  if (pointerHits.length) {
+    const bars = pointerHits.filter((c) => isBarId(String(c.id)) || String(c.id).startsWith('tab-'));
+    return bars.length ? bars : pointerHits;
+  }
+  return closestCenter(args);
+};
+
+const snapLeftCenterToCursor: Modifier = ({
+  activatorEvent,
+  draggingNodeRect,
+  overlayNodeRect,
+  transform,
+}) => {
+  if (!activatorEvent || !draggingNodeRect) return transform;
+  const coords = getEventCoordinates(activatorEvent);
+  if (!coords) return transform;
+  const height = overlayNodeRect?.height ?? 44;
+  return {
+    ...transform,
+    x: transform.x + (coords.x - draggingNodeRect.left),
+    y: transform.y + (coords.y - draggingNodeRect.top) - height / 2,
+  };
+};
 
 function GripDots() {
   return (
@@ -95,6 +132,15 @@ function CardFace({ task, ghost }: { task: TmTask; ghost?: boolean }) {
       <span className="tm-board-handle flex h-11 w-11 shrink-0 items-center justify-center self-center">
         <GripDots />
       </span>
+    </div>
+  );
+}
+
+function DragPill({ task }: { task: TmTask }) {
+  return (
+    <div data-testid="tm-board-pill" className="tm-board-pill">
+      <span className="h-full w-1.5 shrink-0" style={{ background: task.folder_color || '#8A8A8A' }} aria-hidden />
+      <span className="min-w-0 truncate px-3 text-sm font-medium text-[#f4f1ea]">{task.title}</span>
     </div>
   );
 }
@@ -169,6 +215,21 @@ function StripTarget({ id, label }: { id: string; label: string }) {
   );
 }
 
+function BarTarget({ id, label, current }: { id: string; label: string; current: boolean }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `bar-${id}` });
+  return (
+    <div
+      ref={setNodeRef}
+      data-testid={`tm-board-bar-${id}`}
+      className={`flex min-h-[72px] flex-1 items-center justify-center px-2 text-sm font-semibold ${
+        current ? 'bg-white/5 text-white/30' : isOver ? 'bg-[#C6A664] text-black' : 'bg-white/10 text-white/80'
+      }`}
+    >
+      {label}
+    </div>
+  );
+}
+
 function TabTarget({
   id,
   label,
@@ -208,11 +269,14 @@ function scrollColumnNearEdge(clientY: number) {
 
 export function BoardView() {
   const { markFetchFailed } = useTasks();
+  const isPhone = useIsMobile();
   const [cols, setCols] = useState<{ open: TmTask[]; in_progress: TmTask[]; done: TmTask[] } | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const dragging = !!activeId;
+  const overBar = !!overId && isBarId(overId);
   useLockBodyScroll(dragging);
 
   const sensors = useSensors(
@@ -269,9 +333,16 @@ export function BoardView() {
 
   function onDragStart(e: DragStartEvent) {
     setActiveId(String(e.active.id));
+    setOverId(null);
+  }
+
+  function onDragOver(e: DragOverEvent) {
+    setOverId(e.over?.id ? String(e.over.id) : null);
   }
 
   function onDragMove(e: DragMoveEvent) {
+    const over = e.over?.id ? String(e.over.id) : '';
+    if (isBarId(over)) return;
     const ev = e.activatorEvent as PointerEvent | KeyboardEvent | undefined;
     const startY = ev && 'clientY' in ev ? ev.clientY : 0;
     scrollColumnNearEdge(startY + (e.delta?.y ?? 0));
@@ -281,6 +352,7 @@ export function BoardView() {
     const id = String(e.active.id);
     const over = e.over?.id ? String(e.over.id) : '';
     setActiveId(null);
+    setOverId(null);
     const next = dropStatus(over);
     if (!next || !cols) return;
     const current = (['open', 'in_progress', 'done'] as const).find((k) => cols[k].some((t) => t.id === id));
@@ -303,11 +375,16 @@ export function BoardView() {
       ) : (
         <DndContext
           sensors={sensors}
-          autoScroll
+          collisionDetection={collisionDetection}
+          autoScroll={!overBar}
           onDragStart={onDragStart}
+          onDragOver={onDragOver}
           onDragMove={onDragMove}
           onDragEnd={onDragEnd}
-          onDragCancel={() => setActiveId(null)}
+          onDragCancel={() => {
+            setActiveId(null);
+            setOverId(null);
+          }}
         >
           <div className="mb-2 flex md:hidden" data-testid="tm-board-tabs">
             {COLS.map((c, i) => (
@@ -340,7 +417,25 @@ export function BoardView() {
               </div>
             ))}
           </div>
-          <DragOverlay>{activeTask ? <CardFace task={activeTask} ghost /> : null}</DragOverlay>
+          {dragging && (
+            <div
+              className="fixed inset-x-0 z-[80] flex bg-[#0B0B0B]/95"
+              style={{ bottom: 'env(safe-area-inset-bottom, 0px)' }}
+              data-testid="tm-board-drop-bar"
+            >
+              {COLS.map((c) => (
+                <BarTarget
+                  key={c.id}
+                  id={c.id}
+                  label={c.label}
+                  current={activeTask?.status === c.id}
+                />
+              ))}
+            </div>
+          )}
+          <DragOverlay modifiers={isPhone ? [snapLeftCenterToCursor] : undefined}>
+            {activeTask ? (isPhone ? <DragPill task={activeTask} /> : <CardFace task={activeTask} ghost />) : null}
+          </DragOverlay>
         </DndContext>
       )}
     </div>
