@@ -405,12 +405,12 @@ begin
       and t.status in ('open', 'in_progress')
       and public.tm_task_is_overdue(t)
       and exists (
-        select 1 from public.tm_tasks n
-        where n.repeat_series_id = t.repeat_series_id
-          and n.deleted_at is null
-          and n.id is distinct from t.id
-          and n.due_date > t.due_date
-          and public.tm_task_is_overdue(n)
+        select 1 from public.tm_tasks newer
+        where newer.repeat_series_id = t.repeat_series_id
+          and newer.deleted_at is null
+          and newer.id is distinct from t.id
+          and newer.due_date > t.due_date
+          and public.tm_task_is_overdue(newer)
       )
   loop
     update public.tm_tasks
@@ -1033,6 +1033,8 @@ declare
   v_now timestamptz := public.tm_effective_now();
   v_hour int := extract(hour from timezone('America/New_York', v_now));
   r record;
+  v_src public.tm_tasks;
+  v_task public.tm_tasks;
   v_next date;
   v_spawned int := 0;
   v_closed int := 0;
@@ -1057,16 +1059,16 @@ begin
       and t.due_date is not null
   loop
     for i in 1..24 loop
-      select t.* into r
+      select t.* into v_src
       from public.tm_tasks t
       where t.deleted_at is null and t.repeat_series_id = v_series
       order by t.due_date desc nulls last
       limit 1;
-      exit when r.id is null;
-      exit when r.status not in ('done', 'cancelled') and r.due_date >= v_today;
-      v_next := public.tm_next_repeat_date(r.repeat_anchor_date, r.repeat, r.due_date);
+      exit when v_src.id is null;
+      exit when v_src.status not in ('done', 'cancelled') and v_src.due_date >= v_today;
+      v_next := public.tm_next_repeat_date(v_src.repeat_anchor_date, v_src.repeat, v_src.due_date);
       exit when v_next is null;
-      if public.tm_clone_repeat(r.id, v_next) is null then
+      if public.tm_clone_repeat(v_src.id, v_next) is null then
         exit;
       end if;
       v_spawned := v_spawned + 1;
@@ -1075,32 +1077,32 @@ begin
 
   v_closed := public.tm_close_older_missed();
 
-  for r in
+  for v_task in
     select t.* from public.tm_tasks t
     where t.deleted_at is null and t.status in ('open', 'in_progress') and t.due_date is not null
   loop
-    if public.tm_task_is_overdue(r) then
+    if public.tm_task_is_overdue(v_task) then
       insert into public.tm_notifications (profile_id, kind, title, body, task_id)
-      select o.profile_id, 'overdue', 'Overdue', r.title, r.id
-      from public.tm_task_owners o where o.task_id = r.id
+      select o.profile_id, 'overdue', 'Overdue', v_task.title, v_task.id
+      from public.tm_task_owners o where o.task_id = v_task.id
       on conflict do nothing;
-      if not exists (select 1 from public.tm_task_owners o where o.task_id = r.id) then
+      if not exists (select 1 from public.tm_task_owners o where o.task_id = v_task.id) then
         insert into public.tm_notifications (profile_id, kind, title, body, task_id)
-        select p.id, 'overdue', 'Overdue (unassigned)', r.title, r.id
+        select p.id, 'overdue', 'Overdue (unassigned)', v_task.title, v_task.id
         from public.profiles p
         where p.role = 'super_admin' and p.deleted_at is null
         on conflict do nothing;
       end if;
       get diagnostics v_notes = row_count;
-    elsif r.due_date = v_today then
+    elsif v_task.due_date = v_today then
       insert into public.tm_notifications (profile_id, kind, title, body, task_id)
-      select o.profile_id, 'due_today', 'Due today', r.title, r.id
-      from public.tm_task_owners o where o.task_id = r.id
+      select o.profile_id, 'due_today', 'Due today', v_task.title, v_task.id
+      from public.tm_task_owners o where o.task_id = v_task.id
       on conflict do nothing;
-    elsif r.due_date <= v_today + 2 then
+    elsif v_task.due_date <= v_today + 2 then
       insert into public.tm_notifications (profile_id, kind, title, body, task_id)
-      select o.profile_id, 'due_soon', 'Due soon', r.title, r.id
-      from public.tm_task_owners o where o.task_id = r.id
+      select o.profile_id, 'due_soon', 'Due soon', v_task.title, v_task.id
+      from public.tm_task_owners o where o.task_id = v_task.id
       on conflict do nothing;
     end if;
   end loop;
