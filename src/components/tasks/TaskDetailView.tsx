@@ -24,7 +24,8 @@ import {
 } from '@/app/actions/tasksActions';
 import { FixItSheet } from '@/components/tasks/FixItSheet';
 import { useTasks } from '@/components/tasks/TasksProvider';
-import { formatDue, isLaterDue } from '@/lib/tasks/dates';
+import { formatDue, hasDueTime, isLaterDue } from '@/lib/tasks/dates';
+import { usePhoneViewportStyle, useVisualViewport, visualViewportStyle } from '@/hooks/useVisualViewport';
 import { SmartDateTimePicker } from '@/components/SmartDateTimePicker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,8 +47,8 @@ function parseDate(task: TmTaskDetail): Date | undefined {
   if (!task.due_date) return undefined;
   const [y, m, d] = task.due_date.split('-').map(Number);
   const dt = new Date(y, m - 1, d);
-  if (task.due_time) {
-    const [hh, mm] = task.due_time.split(':').map(Number);
+  if (hasDueTime(task.due_time)) {
+    const [hh, mm] = task.due_time!.split(':').map(Number);
     dt.setHours(hh, mm, 0, 0);
   }
   return dt;
@@ -75,6 +76,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
   const [reason, setReason] = useState('');
   const [pendingDue, setPendingDue] = useState<{ date: string; time: string | null } | null>(null);
   const [pendingRepeat, setPendingRepeat] = useState<TmRepeat | null>(null);
+  const dueViewportStyle = usePhoneViewportStyle(panel === 'due');
 
   async function load() {
     const res = await tmGetTask(taskId);
@@ -410,31 +412,21 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
             </div>
           ))}
         </div>
-        <Textarea
-          data-testid="tm-comment-input"
+        <CommentCompose
           value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          placeholder="Write a comment. Use @seed-helper to mention."
-          className="mt-2 min-h-20 border-white/10 bg-[#1a1a1a]"
-        />
-        <Button
-          type="button"
-          data-testid="tm-comment-submit"
-          className="mt-2"
-          onClick={async () => {
+          onChange={setComment}
+          onSubmit={async () => {
             if (!comment.trim()) return;
             const res = await tmCommentAdd(task.id, comment.trim());
             if (!res.ok) {
-                    toast.error(res.error);
-                    return;
-                  }
+              toast.error(res.error);
+              return;
+            }
             setComment('');
             await load();
             if (res.data.mentions?.length) toast.success('Mention sent');
           }}
-        >
-          Comment
-        </Button>
+        />
         {isSuper && task.notifications.length > 0 && (
           <div data-testid="tm-mentions" className="mt-3 text-xs text-white/40">
             {task.notifications.filter((n) => n.kind === 'mention').length} mention notification
@@ -505,7 +497,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
       </div>
 
       <AlertDialog open={panel === 'due'} onOpenChange={(o) => !o && setPanel(null)}>
-        <AlertDialogContent className="bg-[#111] text-[#f4f1ea]">
+        <AlertDialogContent className="bg-[#111] text-[#f4f1ea]" style={dueViewportStyle}>
           <AlertDialogHeader>
             <AlertDialogTitle>Change due date</AlertDialogTitle>
           </AlertDialogHeader>
@@ -834,6 +826,55 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
         tasks={[task]}
         onDone={() => void load()}
       />
+    </div>
+  );
+}
+
+function CommentCompose({
+  value,
+  onChange,
+  onSubmit,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  onSubmit: () => void;
+}) {
+  const [focused, setFocused] = useState(false);
+  const box = useVisualViewport(focused);
+  const pin = focused;
+  return (
+    <div
+      data-testid="tm-comment-compose"
+      className={pin ? 'z-40 bg-[#0B0B0B] px-4 py-2' : 'mt-2'}
+      style={
+        pin
+          ? {
+              ...visualViewportStyle(box),
+              height: 'auto',
+              top: 'auto',
+              bottom: typeof window !== 'undefined' ? Math.max(0, window.innerHeight - box.offsetTop - box.height) : 0,
+            }
+          : undefined
+      }
+    >
+      <Textarea
+        data-testid="tm-comment-input"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Write a comment. Use @seed-helper to mention."
+        className="min-h-20 border-white/10 bg-[#1a1a1a]"
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+      />
+      <Button
+        type="button"
+        data-testid="tm-comment-submit"
+        className="mt-2"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => void onSubmit()}
+      >
+        Comment
+      </Button>
     </div>
   );
 }

@@ -16,10 +16,4 @@ export function TmEmpty({ children, testId }: { children: React.ReactNode; testI
   );
 }
 
-export function initials(name: string | null | undefined) {
-  return (name ?? '?')
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() ?? '')
-    .join('');
-}
+export { personInitials as initials } from '@/lib/tasks/names';

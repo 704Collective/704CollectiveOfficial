@@ -26,7 +26,7 @@ const NAV_ITEMS: NavItem[] = [
   { icon: Users,           label: 'Members',  href: '/admin/contacts'   },
   // HIDDEN 2026-06 — CRM/Partner hide-pass, restore later: { icon: Layers, label: 'CRM', href: '/admin/crm' },
   { icon: ScanLine,        label: 'Check-in', section: 'checkin'        },
-  { icon: CheckSquare,     label: 'Tasks',    section: 'tasks'          },
+  { icon: CheckSquare,     label: 'Tasks',    href: '/admin/tasks'      },
   { icon: Settings,        label: 'Settings', href: '/admin/settings'   },
 ];
 
@@ -38,6 +38,7 @@ export function AdminBottomNav({ activeSection, onSectionChange }: AdminBottomNa
   const isOnSettings  = pathname === '/admin/settings';
   const isOnCrm       = pathname.startsWith('/admin/crm');
   const isOnContacts  = pathname.startsWith('/admin/contacts');
+  const isOnTasks     = pathname.startsWith('/admin/tasks');
 
   const handleTap = (item: NavItem) => {
     if (isHelperAdmin) {
@@ -59,7 +60,7 @@ export function AdminBottomNav({ activeSection, onSectionChange }: AdminBottomNa
     if (item.href === '/admin/settings') return isOnSettings;
     if (item.href === '/admin/crm')      return isOnCrm;
     if (item.href === '/admin/contacts') return isOnContacts;
-    if (item.section === 'tasks' && pathname.startsWith('/admin/tasks')) return true;
+    if (item.href === '/admin/tasks') return isOnTasks;
     return isOnDashboard && activeSection === item.section;
   };
 
@@ -72,7 +73,7 @@ export function AdminBottomNav({ activeSection, onSectionChange }: AdminBottomNa
         className="flex items-stretch overflow-x-auto overflow-y-hidden"
         style={{ height: '56px', WebkitOverflowScrolling: 'touch' }}
       >
-        {(isHelperAdmin ? NAV_ITEMS.filter((item) => item.section === 'tasks') : NAV_ITEMS).map((item) => {
+        {(isHelperAdmin ? NAV_ITEMS.filter((item) => item.href === '/admin/tasks') : NAV_ITEMS).map((item) => {
           const active = isActive(item);
           const Icon   = item.icon;
           return (

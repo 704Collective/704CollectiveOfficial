@@ -31,6 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useLockBodyScroll, usePhoneViewportStyle } from '@/hooks/useVisualViewport';
 import type { TmFolder, TmTask, TmTeamPerson, TmTrashedFolder } from '@/lib/tasks/types';
 
 const COLORS = ['#C6A664', '#6B8E9F', '#C47B5A', '#7A9E7E', '#8B7BB8', '#4A9B8C', '#8A8A8A', '#E24B4A'];
@@ -49,6 +50,8 @@ export function FoldersView({ folderId }: { folderId?: string }) {
   const [blocked, setBlocked] = useState(false);
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState('');
+  const renameViewportStyle = usePhoneViewportStyle(!!renameId);
+  useLockBodyScroll(!!renameId);
 
   const current = folders.find((f) => f.id === folderId);
   const roots = useMemo(() => folders.filter((f) => !f.parent_id && !f.archived_at), [folders]);
@@ -345,7 +348,7 @@ export function FoldersView({ folderId }: { folderId?: string }) {
       </AlertDialog>
 
       <AlertDialog open={!!renameId} onOpenChange={(o) => !o && setRenameId(null)}>
-        <AlertDialogContent className="bg-[#111] text-[#f4f1ea]">
+        <AlertDialogContent className="bg-[#111] text-[#f4f1ea]" style={renameViewportStyle}>
           <AlertDialogHeader>
             <AlertDialogTitle>Rename folder</AlertDialogTitle>
           </AlertDialogHeader>

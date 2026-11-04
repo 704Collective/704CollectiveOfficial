@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { tmCreateTask } from '@/app/actions/tasksActions';
 import { addDays, charlotteToday } from '@/lib/tasks/dates';
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
+import { ViewportSheet } from '@/components/tasks/ViewportSheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SmartDateTimePicker } from '@/components/SmartDateTimePicker';
@@ -24,10 +24,17 @@ export function QuickAddSheet({
   onCreated?: () => void;
 }) {
   const router = useRouter();
+  const titleRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState('');
   const [chip, setChip] = useState<Chip>('none');
   const [picked, setPicked] = useState<Date | undefined>();
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const t = window.setTimeout(() => titleRef.current?.focus(), 40);
+    return () => window.clearTimeout(t);
+  }, [open]);
 
   function reset() {
     setTitle('');
@@ -65,13 +72,14 @@ export function QuickAddSheet({
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent data-testid="tm-quick-add" className="border-white/10 bg-[#111] text-[#f4f1ea]">
-        <DrawerHeader>
-          <DrawerTitle className="tm-display text-left text-xl">New task</DrawerTitle>
-        </DrawerHeader>
-        <div className="space-y-4 px-4 pb-8">
+    <ViewportSheet open={open} onOpenChange={onOpenChange} testId="tm-quick-add">
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="shrink-0 px-4 pb-2 pt-4">
+          <p className="tm-display text-left text-xl">New task</p>
+        </div>
+        <div className="shrink-0 px-4">
           <Input
+            ref={titleRef}
             data-testid="tm-quick-title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -82,6 +90,8 @@ export function QuickAddSheet({
               if (e.key === 'Enter') void submit();
             }}
           />
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
           <div className="flex flex-wrap gap-2">
             {(
               [
@@ -105,8 +115,12 @@ export function QuickAddSheet({
             ))}
           </div>
           {chip === 'pick' && (
-            <SmartDateTimePicker value={picked} onChange={setPicked} label="Due" />
+            <div className="mt-3">
+              <SmartDateTimePicker value={picked} onChange={setPicked} label="Due" />
+            </div>
           )}
+        </div>
+        <div className="shrink-0 px-4 pb-4 pt-2">
           <Button
             data-testid="tm-quick-submit"
             type="button"
@@ -117,7 +131,7 @@ export function QuickAddSheet({
             {saving ? 'Adding…' : 'Add task'}
           </Button>
         </div>
-      </DrawerContent>
-    </Drawer>
+      </div>
+    </ViewportSheet>
   );
 }

@@ -3,15 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { formatDue } from '@/lib/tasks/dates';
+import { personInitials } from '@/lib/tasks/names';
 import type { TmTask } from '@/lib/tasks/types';
-
-function initials(name: string | null | undefined) {
-  return (name ?? '?')
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() ?? '')
-    .join('');
-}
 
 export function TaskRow({
   task,
@@ -117,7 +110,7 @@ export function TaskRow({
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={o.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
                   ) : (
-                    initials(o.full_name)
+                    personInitials(o.full_name)
                   )}
                 </span>
               ))}

@@ -10,6 +10,7 @@ import { TaskGroup } from '@/components/tasks/TaskRow';
 import { TmSkeleton } from '@/components/tasks/uiBits';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { chipName, firstName } from '@/lib/tasks/names';
 import type { TmDashboard, TmNotification, TmProgress } from '@/lib/tasks/types';
 
 function BarCard({ label, bar, testId }: { label: string; bar?: TmProgress; testId: string }) {
@@ -32,7 +33,7 @@ export function HomeView() {
   const [person, setPerson] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [notesFeed, setNotesFeed] = useState<TmNotification[]>([]);
-  const first = (boot?.full_name ?? 'there').split(' ')[0];
+  const first = boot?.full_name ? firstName(boot.full_name) : 'there';
 
   async function load(nextPerson = person) {
     const res = await tmDashboard(nextPerson);
@@ -95,7 +96,7 @@ export function HomeView() {
                 className={`rounded-full px-3 py-1 text-xs ${person === p.id ? 'bg-[#C6A664] text-black' : 'bg-white/8'}`}
                 onClick={() => setPerson(p.id)}
               >
-                {(p.full_name ?? 'Someone').split(' ')[0]}
+                {chipName(p, dash.people)}
               </button>
             ))}
           </div>

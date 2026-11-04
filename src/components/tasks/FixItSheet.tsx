@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { tmFixTask, tmFixTasks, tmUndoFix } from '@/app/actions/tasksActions';
 import { useTasks } from '@/components/tasks/TasksProvider';
+import { useLockBodyScroll, usePhoneViewportStyle } from '@/hooks/useVisualViewport';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -41,6 +42,8 @@ export function FixItSheet({
   const [reason, setReason] = useState('');
   const [note, setNote] = useState('');
   const [due, setDue] = useState('');
+  const viewportStyle = usePhoneViewportStyle(open);
+  useLockBodyScroll(open);
 
   const visible = OPTIONS.filter((o) => {
     if (o.id === 'missed') return !!missedCopy;
@@ -96,11 +99,15 @@ export function FixItSheet({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent data-testid="tm-fix-sheet" className="bg-[#111] text-[#f4f1ea]">
+      <AlertDialogContent
+        data-testid="tm-fix-sheet"
+        className="bg-[#111] text-[#f4f1ea] sm:translate-x-[-50%] sm:translate-y-[-50%]"
+        style={viewportStyle}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>Fix it{tasks.length > 1 ? ` · ${tasks.length}` : ''}</AlertDialogTitle>
         </AlertDialogHeader>
-        <div className="space-y-2">
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
           {visible.map((o) => (
             <button
               key={o.id}

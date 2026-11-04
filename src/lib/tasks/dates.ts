@@ -15,16 +15,25 @@ export function addDays(isoDate: string, days: number): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+/** True only when a real clock time was set. Midnight / 00:00:00 is treated as "date only". */
+export function hasDueTime(dueTime?: string | null): boolean {
+  if (!dueTime) return false;
+  const [hh, mm] = dueTime.split(':').map(Number);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return false;
+  return !(hh === 0 && mm === 0);
+}
+
 export function formatDue(dueDate: string | null, dueTime?: string | null): string {
   if (!dueDate) return 'No date';
   const [y, m, d] = dueDate.split('-').map(Number);
   const dt = new Date(y, m - 1, d);
   const today = charlotteToday();
   const tomorrow = addDays(today, 1);
-  if (dueDate === today) return dueTime ? `Today ${formatTime(dueTime)}` : 'Today';
-  if (dueDate === tomorrow) return dueTime ? `Tomorrow ${formatTime(dueTime)}` : 'Tomorrow';
+  const showTime = hasDueTime(dueTime);
+  if (dueDate === today) return showTime ? `Today ${formatTime(dueTime!)}` : 'Today';
+  if (dueDate === tomorrow) return showTime ? `Tomorrow ${formatTime(dueTime!)}` : 'Tomorrow';
   const label = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  return dueTime ? `${label} ${formatTime(dueTime)}` : label;
+  return showTime ? `${label} ${formatTime(dueTime!)}` : label;
 }
 
 export function formatTime(t: string): string {

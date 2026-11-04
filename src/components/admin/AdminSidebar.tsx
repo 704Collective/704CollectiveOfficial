@@ -61,7 +61,7 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
     );
   };
 
-  const linkBtn = (href: string, icon: React.ElementType, label: string) => {
+  const linkBtn = (href: string, icon: React.ElementType, label: string, testId?: string) => {
     const Icon = icon;
     const isActive = pathname === href
       || (href !== '/admin/crm' && pathname.startsWith(href + '/'))
@@ -70,6 +70,7 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
       <Link
         key={href}
         href={href}
+        data-testid={testId}
         onClick={onMobileClose}
         className={cn(NAV_BASE, isActive ? NAV_ACTIVE : NAV_INACTIVE)}
       >
@@ -142,7 +143,7 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
 
         {isHelperAdmin && (
           <div className="space-y-0.5">
-            {linkBtn('/admin/tasks', ClipboardList, 'Tasks')}
+            {linkBtn('/admin/tasks', ClipboardList, 'Tasks', 'admin-nav-tasks')}
           </div>
         )}
 
@@ -157,6 +158,7 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
           {disabledBtn(MessageSquare, 'Texting', 'Coming soon - SMS via Twilio')}
           {sectionBtn({ icon: QrCode, label: 'Check-in', section: 'checkin' })}
           {linkBtn('/admin/exchange', Sparkles, 'The Exchange')}
+          {isSuperAdmin && linkBtn('/admin/tasks', ClipboardList, 'Tasks', 'admin-nav-tasks')}
           {/* HIDDEN 2026-06 — CRM/Partner hide-pass, restore later: {linkBtn('/admin/crm', BarChart2, 'CRM')} */}
         </div>}
 
@@ -199,7 +201,6 @@ function AdminSidebarInner({ activeSection, onSectionChange, onMobileClose, glob
               {isSuperAdmin && linkBtn('/admin/reconcile-stripe', GitPullRequest, 'Stripe Sync')}
               {isSuperAdmin && linkBtn('/admin/upstash',       Database,      'Upstash')}
               {isSuperAdmin && linkBtn('/admin/sentry',        AlertTriangle, 'Sentry')}
-              {sectionBtn({ icon: ClipboardList, label: 'Tasks',    section: 'tasks' })}
               {linkBtn('/admin/settings', Settings, 'Settings')}
             </div>
           </div>

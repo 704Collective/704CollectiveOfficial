@@ -8,6 +8,7 @@ import { useTasks } from '@/components/tasks/TasksProvider';
 import { HistoryGoals, formatPeriod, pctColor } from '@/components/tasks/HistoryView';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { chipName, firstName } from '@/lib/tasks/names';
 import type { TmHistoryGoal, TmHistoryPeriod, TmHistoryTask } from '@/lib/tasks/types';
 
 const SECTIONS: { key: TmHistoryTask['outcome']; title: string; testId: string; grey?: boolean }[] = [
@@ -149,13 +150,13 @@ export function HistoryPeriodView({ id }: { id: string }) {
                 className={`rounded-full px-3 py-1 text-xs ${person === p.profile_id ? 'bg-[#C6A664] text-black' : 'bg-white/8'}`}
                 onClick={() => setPerson(p.profile_id)}
               >
-                {(p.full_name ?? 'Someone').split(' ')[0]}
+                {chipName(p, period.people ?? [])}
               </button>
             ))}
           </>
         )}
         {!isSuper && (
-          <span className="rounded-full bg-white/8 px-3 py-1 text-xs">{boot?.full_name?.split(' ')[0] ?? 'You'}</span>
+          <span className="rounded-full bg-white/8 px-3 py-1 text-xs">{boot?.full_name ? firstName(boot.full_name) : 'You'}</span>
         )}
         {goalsInTasks.map((g) => (
           <button

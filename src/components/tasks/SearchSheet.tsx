@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { tmPinFilter, tmSaveFilter, tmSearchTasks } from '@/app/actions/tasksActions';
 import { useTasks } from '@/components/tasks/TasksProvider';
 import { TaskGroup } from '@/components/tasks/TaskRow';
 import { TmEmpty, TmSkeleton } from '@/components/tasks/uiBits';
+import { useLockBodyScroll, useVisualViewport, visualViewportStyle } from '@/hooks/useVisualViewport';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { TmSavedFilter, TmTask } from '@/lib/tasks/types';
@@ -36,6 +37,15 @@ export function SearchSheet({
   const [results, setResults] = useState<TmTask[] | null>(null);
   const [saving, setSaving] = useState('');
   const saved = boot?.saved_filters ?? [];
+  const inputRef = useRef<HTMLInputElement>(null);
+  const box = useVisualViewport(open);
+  useLockBodyScroll(open);
+
+  useEffect(() => {
+    if (!open) return;
+    const t = window.setTimeout(() => inputRef.current?.focus(), 40);
+    return () => window.clearTimeout(t);
+  }, [open]);
 
   function spec() {
     const out: Record<string, string | boolean | null> = {};
@@ -64,10 +74,15 @@ export function SearchSheet({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0B0B0B]/95 p-4 pb-[env(safe-area-inset-bottom)]" data-testid="tm-search-sheet">
+    <div
+      className="z-50 overflow-hidden bg-[#0B0B0B]/95 p-4"
+      data-testid="tm-search-sheet"
+      style={visualViewportStyle(box)}
+    >
       <div className="mx-auto flex h-full max-w-3xl flex-col">
-        <div className="mb-3 flex items-center gap-2">
+        <div className="mb-3 flex shrink-0 items-center gap-2">
           <Input
+            ref={inputRef}
             autoFocus
             data-testid="tm-search-input"
             placeholder="Search tasks…"
