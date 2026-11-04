@@ -170,7 +170,9 @@ export function FoldersView({ folderId }: { folderId?: string }) {
                   data-testid={`tm-folder-color-${f.id}`}
                   onClick={() => {
                     const next = COLORS[(COLORS.indexOf(f.color || '') + 1) % COLORS.length];
-                    void tmRecolorFolder(f.id, next).then((r) => r.ok && applyFolders(r.data));
+                    void tmRecolorFolder(f.id, next).then((r) => {
+                      if (r.ok) return applyFolders(r.data);
+                    });
                   }}
                 >
                   Color
@@ -178,7 +180,11 @@ export function FoldersView({ folderId }: { folderId?: string }) {
                 <button
                   type="button"
                   className="text-xs text-white/35"
-                  onClick={() => void tmArchiveFolder(f.id, true).then((r) => r.ok && applyFolders(r.data))}
+                  onClick={() =>
+                    void tmArchiveFolder(f.id, true).then((r) => {
+                      if (r.ok) return applyFolders(r.data);
+                    })
+                  }
                 >
                   Archive
                 </button>
