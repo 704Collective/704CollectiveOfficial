@@ -29,6 +29,7 @@ import { DeleteConfirmDialog } from '@/components/admin/DeleteConfirmDialog';
 import { EventCancelDialog, type CancelAction, type CancelDetails } from '@/components/admin/EventCancelDialog';
 import { adminEventStatusLabel } from '@/lib/events/adminEventStatus';
 import { AddMembersToEventDialog } from '@/components/admin/AddMembersToEventDialog';
+import { CreateTasksFromEvent } from '@/components/tasks/CreateTasksFromEvent';
 import { EventAttendeesDialog } from '@/components/admin/EventAttendeesDialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
@@ -1866,6 +1867,9 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
                 <Button type="button" variant="outline" onClick={() => setAddMembersEvent(editingEvent)} className="flex-1 sm:flex-none">
                   <UserPlus className="w-4 h-4 mr-2" /> Add Members
                 </Button>
+              )}
+              {editingEvent && (
+                <CreateTasksFromEvent eventId={editingEvent.id} eventTitle={editingEvent.title} />
               )}
             </div>
             <div className="flex gap-2 w-full sm:w-auto sm:justify-end">

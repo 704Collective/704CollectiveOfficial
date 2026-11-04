@@ -83,6 +83,7 @@ export function TaskRow({
             {!task.due_date && task.status !== 'done' && <span className="tm-chip tm-chip-muted">No date</span>}
             {!task.counts && <span className="tm-chip tm-chip-muted">Not counted</span>}
             {task.repeat !== 'none' && <span className="tm-chip tm-chip-muted">{task.repeat}</span>}
+            {task.event_name && <span className="tm-chip tm-chip-muted" data-testid={`tm-event-chip-${task.id}`}>Event: {task.event_name}</span>}
             {task.pushed_count > 0 && (
               <span className="tm-chip tm-chip-muted" data-testid={`tm-pushed-${task.id}`}>
                 Pushed {task.pushed_count}x

@@ -1,5 +1,5 @@
-import { PlaceholderView } from '@/components/tasks/PlaceholderView';
+import { BoardView } from '@/components/tasks/BoardView';
 
 export default function BoardPage() {
-  return <PlaceholderView title="Board" testId="tm-board" />;
+  return <BoardView />;
 }

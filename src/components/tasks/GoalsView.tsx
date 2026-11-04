@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { tmListGoals } from '@/app/actions/tasksActions';
 import { useTasks } from '@/components/tasks/TasksProvider';
 import { GoalBar, GoalTags, goalDueLabel } from '@/components/tasks/GoalBar';
+import { TmEmpty, TmSkeleton } from '@/components/tasks/uiBits';
 import type { TmGoal } from '@/lib/tasks/types';
 
 function GoalCard({ goal, nested }: { goal: TmGoal; nested?: boolean }) {
@@ -34,7 +35,7 @@ function GoalCard({ goal, nested }: { goal: TmGoal; nested?: boolean }) {
 
 export function GoalsView() {
   const { isSuper, markFetchFailed } = useTasks();
-  const [goals, setGoals] = useState<TmGoal[]>([]);
+  const [goals, setGoals] = useState<TmGoal[] | null>(null);
 
   useEffect(() => {
     void tmListGoals().then((res) => {
@@ -64,15 +65,20 @@ export function GoalsView() {
         )}
       </div>
       <div className="space-y-3">
-        {goals.map((g) => (
+        {goals === null ? (
+          <TmSkeleton />
+        ) : goals.length === 0 ? (
+          <TmEmpty>No goals yet.</TmEmpty>
+        ) : (
+          goals.map((g) => (
           <div key={g.id} className="space-y-2">
             <GoalCard goal={g} />
             {(g.children ?? []).map((c) => (
               <GoalCard key={c.id} goal={c} nested />
             ))}
           </div>
-        ))}
-        {goals.length === 0 && <p className="text-sm text-white/40">No goals yet.</p>}
+          ))
+        )}
       </div>
     </div>
   );

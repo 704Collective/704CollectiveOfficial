@@ -5,6 +5,8 @@ import { tmListMyTasks } from '@/app/actions/tasksActions';
 import { useTasks } from '@/components/tasks/TasksProvider';
 import { TaskGroup } from '@/components/tasks/TaskRow';
 import { FixItSheet } from '@/components/tasks/FixItSheet';
+import { SavedFilterChips } from '@/components/tasks/SearchSheet';
+import { TmSkeleton } from '@/components/tasks/uiBits';
 import { Button } from '@/components/ui/button';
 import type { TmBucket, TmMyTasks, TmTask } from '@/lib/tasks/types';
 
@@ -49,7 +51,8 @@ export function MyTasksView() {
   return (
     <div data-testid="tm-my-tasks">
       <h1 className="tm-display mb-4 text-3xl">My Tasks</h1>
-      <div className="-mx-1 mb-5 flex gap-2 overflow-x-auto px-1 pb-1">
+      <SavedFilterChips onPick={() => undefined} />
+      <div className="mb-5 flex flex-wrap gap-2">
         {BUCKETS.map((b) => (
           <button
             key={b.id}
@@ -66,7 +69,7 @@ export function MyTasksView() {
         ))}
       </div>
       {!data ? (
-        <p className="text-sm text-white/35">Loading…</p>
+        <TmSkeleton />
       ) : (
         <>
         <div className="space-y-6">

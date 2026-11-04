@@ -7,6 +7,7 @@ import { tmDashboard, tmDecideRequest, tmListMyNotifications } from '@/app/actio
 import { useTasks } from '@/components/tasks/TasksProvider';
 import { GoalBar } from '@/components/tasks/GoalBar';
 import { TaskGroup } from '@/components/tasks/TaskRow';
+import { TmSkeleton } from '@/components/tasks/uiBits';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { TmDashboard, TmNotification, TmProgress } from '@/lib/tasks/types';
@@ -50,7 +51,7 @@ export function HomeView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [person]);
 
-  if (!dash) return <div data-testid="tm-home" className="text-sm text-white/35">Loading…</div>;
+  if (!dash) return <div data-testid="tm-home"><TmSkeleton rows={6} /></div>;
 
   return (
     <div data-testid="tm-home">

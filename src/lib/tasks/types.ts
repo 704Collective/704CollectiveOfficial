@@ -46,6 +46,8 @@ export type TmTask = {
   folder_id?: string | null;
   folder_name?: string | null;
   parent_folder_name?: string | null;
+  event_id?: string | null;
+  event_name?: string | null;
   owners: TmOwner[];
   goals: TmGoalRef[];
 };
@@ -83,6 +85,15 @@ export type TmBootstrap = {
   folders: TmFolder[];
   goals: TmGoalRef[];
   staff: TmStaff[];
+  show_tips?: boolean;
+  saved_filters?: TmSavedFilter[];
+};
+
+export type TmSavedFilter = {
+  id: string;
+  name: string;
+  spec: Record<string, string | boolean | null>;
+  pinned: boolean;
 };
 
 export type TmBucketGroup = {

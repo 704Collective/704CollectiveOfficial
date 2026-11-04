@@ -137,6 +137,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
           <div className="mt-2 flex flex-wrap gap-1">
             {task.overdue && <span className="tm-chip tm-chip-overdue">Overdue</span>}
             {task.due_soon && !task.overdue && <span className="tm-chip tm-chip-soon">Due soon</span>}
+            {task.event_name && <span className="tm-chip tm-chip-muted" data-testid="tm-event-chip">Event: {task.event_name}</span>}
             {task.pushed_count > 0 && (
               <span className="tm-chip tm-chip-muted" data-testid="tm-pushed-badge">
                 Pushed {task.pushed_count}x

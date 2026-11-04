@@ -3,11 +3,13 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
-import { Folder, Flag, History, Home, LayoutGrid, ListTodo, Plus, Settings } from 'lucide-react';
+import { CalendarDays, Folder, Flag, HelpCircle, History, Home, LayoutGrid, ListTodo, Plus, Search, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTasks } from '@/components/tasks/TasksProvider';
 import { QuickAddSheet } from '@/components/tasks/QuickAddSheet';
 import { NotificationBell } from '@/components/tasks/NotificationBell';
+import { SearchSheet } from '@/components/tasks/SearchSheet';
+import { TipsOverlay } from '@/components/tasks/TipsOverlay';
 import { Button } from '@/components/ui/button';
 
 function NavLink({
@@ -55,6 +57,7 @@ export function TasksShell({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading, isAdmin, signOut } = useAuth();
   const { boot, loading, offline, isSuper, refresh } = useTasks();
   const [quickOpen, setQuickOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const folderMatch = pathname.match(/^\/admin\/tasks\/folders\/([^/]+)/);
   const defaultFolderId = isSuper ? (folderMatch?.[1] ?? boot?.inbox_folder_id ?? null) : null;
 
@@ -109,6 +112,22 @@ export function TasksShell({ children }: { children: React.ReactNode }) {
               />
             ))}
             {isSuper && (
+            <NavLink
+              href="/admin/tasks/board"
+              label="Board"
+              icon={LayoutGrid}
+              testId="tm-nav-board-desk"
+              active={pathname.startsWith('/admin/tasks/board')}
+            />
+            )}
+            <NavLink
+              href="/admin/tasks/calendar"
+              label="Calendar"
+              icon={CalendarDays}
+              testId="tm-nav-calendar"
+              active={pathname.startsWith('/admin/tasks/calendar')}
+            />
+            {isSuper && (
               <NavLink
                 href="/admin/tasks/manage"
                 label="Manage"
@@ -117,8 +136,18 @@ export function TasksShell({ children }: { children: React.ReactNode }) {
                 active={pathname.startsWith('/admin/tasks/manage')}
               />
             )}
+            <NavLink
+              href="/admin/tasks/help"
+              label="Help"
+              icon={HelpCircle}
+              testId="tm-nav-help"
+              active={pathname.startsWith('/admin/tasks/help')}
+            />
           </nav>
           <div className="mt-auto flex items-center justify-between px-1">
+            <Button type="button" variant="ghost" size="sm" data-testid="tm-search-open-desk" aria-label="Search" onClick={() => setSearchOpen(true)}>
+              <Search className="h-5 w-5" />
+            </Button>
             <NotificationBell />
           <Button
             type="button"
@@ -138,6 +167,17 @@ export function TasksShell({ children }: { children: React.ReactNode }) {
           <header className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3 md:hidden">
             <p className="tm-display text-xl text-[#C6A664]">704 Tasks</p>
             <div className="flex items-center gap-1">
+            <Button type="button" variant="ghost" size="sm" data-testid="tm-search-open" aria-label="Search" onClick={() => setSearchOpen(true)}>
+              <Search className="h-5 w-5" />
+            </Button>
+            {isSuper && (
+              <Link href="/admin/tasks/board" data-testid="tm-header-board" aria-label="Board" className="p-2 text-white/60">
+                <LayoutGrid className="h-5 w-5" />
+              </Link>
+            )}
+            <Link href="/admin/tasks/calendar" data-testid="tm-header-calendar" aria-label="Calendar" className="p-2 text-white/60">
+              <CalendarDays className="h-5 w-5" />
+            </Link>
             <NotificationBell />
             <Button
               type="button"
@@ -154,7 +194,7 @@ export function TasksShell({ children }: { children: React.ReactNode }) {
             </Button>
             </div>
           </header>
-          <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-5">{children}</main>
+          <main className="mx-auto w-full max-w-5xl min-w-0 flex-1 overflow-x-hidden px-4 py-5">{children}</main>
         </div>
       </div>
 
@@ -191,6 +231,8 @@ export function TasksShell({ children }: { children: React.ReactNode }) {
         folderId={defaultFolderId}
         onCreated={() => void refresh()}
       />
+      <SearchSheet open={searchOpen} onOpenChange={setSearchOpen} />
+      <TipsOverlay />
     </div>
   );
 }

@@ -20,6 +20,7 @@ import type {
   TmTrashedFolder,
   TmHistoryPeriod,
   TmHistoryGoal,
+  TmSavedFilter,
 } from '@/lib/tasks/types';
 
 function rpcError(error: { message?: string } | null): string {
@@ -450,4 +451,86 @@ export async function tmSetPeriodNote(id: string, note: string) {
 
 export async function tmListHistoryGoals() {
   return rpc<TmHistoryGoal[]>('tm_list_history_goals');
+}
+
+export async function tmListBoard() {
+  return rpc<{ open: TmTask[]; in_progress: TmTask[]; done: TmTask[] }>('tm_list_board');
+}
+
+export async function tmListCalendar(month: string) {
+  return rpc<TmTask[]>('tm_list_calendar', { p_month: month });
+}
+
+export async function tmSearchTasks(q: string, filters: Record<string, string | boolean | null> = {}) {
+  return rpc<TmTask[]>('tm_search_tasks', { p_q: q, p_filters: filters });
+}
+
+export async function tmListSavedFilters() {
+  return rpc<TmSavedFilter[]>('tm_list_saved_filters');
+}
+
+export async function tmSaveFilter(name: string, spec: Record<string, string | boolean | null>, pinned = false) {
+  return rpc<TmSavedFilter[]>('tm_save_filter', { p_name: name, p_spec: spec, p_pinned: pinned });
+}
+
+export async function tmPinFilter(id: string, pinned: boolean) {
+  return rpc<TmSavedFilter[]>('tm_pin_filter', { p_id: id, p_pinned: pinned });
+}
+
+export async function tmListEventTemplates() {
+  return rpc<{ id: string; name: string; items: { id: string; title: string; days_before: number; size: string; counts: boolean }[] }[]>('tm_list_event_templates');
+}
+
+export async function tmUpsertEventTemplate(id: string | null, name: string, items: Record<string, unknown>[]) {
+  return rpc<{ id: string; name: string; items: Record<string, unknown>[] }[]>('tm_upsert_event_template', { p_id: id, p_name: name, p_items: items });
+}
+
+export async function tmDeleteEventTemplate(id: string) {
+  return rpc('tm_delete_event_template', { p_id: id });
+}
+
+export async function tmApplyEventTemplate(templateId: string, eventId: string, goalId: string | null, includePast: boolean) {
+  return rpc<{ ok: boolean; created: number; skipped: number; folder_id: string }>('tm_apply_event_template', {
+    p_template_id: templateId, p_event_id: eventId, p_goal_id: goalId, p_include_past: includePast,
+  });
+}
+
+export async function tmSetReasons(reasons: string[]) {
+  return rpc<string[]>('tm_set_reasons', { p_reasons: reasons });
+}
+
+export async function tmReorderFolders(ids: string[]) {
+  return rpc<TmFolder[]>('tm_reorder_folders', { p_ids: ids });
+}
+
+export async function tmRetireHelper(id: string) {
+  return rpc<{ ok: boolean }>('tm_retire_helper', { p_id: id });
+}
+
+export async function tmRestoreHelper(id: string) {
+  return rpc<{ ok: boolean }>('tm_restore_helper', { p_id: id });
+}
+
+export async function tmListPeople() {
+  return rpc<{ id: string; full_name: string | null; avatar_url: string | null; role: string; retired: boolean }[]>('tm_list_people');
+}
+
+export async function tmListTrash() {
+  return rpc<{
+    tasks: { id: string; title: string; deleted_at: string }[];
+    folders: { id: string; name: string; deleted_at: string }[];
+    goals: { id: string; name: string; deleted_at: string }[];
+  }>('tm_list_trash');
+}
+
+export async function tmRestoreAnything(kind: 'task' | 'folder' | 'goal', id: string) {
+  return rpc('tm_restore_anything', { p_kind: kind, p_id: id });
+}
+
+export async function tmDismissTips() {
+  return rpc<{ ok: boolean }>('tm_dismiss_tips');
+}
+
+export async function tmExportBundle() {
+  return rpc<{ tasks: unknown[]; goals: unknown[]; history: unknown[] }>('tm_export_bundle');
 }
