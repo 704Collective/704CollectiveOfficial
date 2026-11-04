@@ -610,7 +610,7 @@ begin
     and f.deleted_at is null
     and f.archived_at is null
     and lower(f.name) = lower(coalesce(p.full_name, ''));
-  update public.profiles set role = 'member' where id = p_id;
+  update public.profiles set role = 'lead' where id = p_id;
   return jsonb_build_object('ok', true);
 end;
 $$;
@@ -653,7 +653,9 @@ begin
       'role', p.role, 'retired', exists (select 1 from public.tm_retire_log r where r.profile_id = p.id)
     ) order by p.full_name)
     from public.profiles p
-    where p.role in ('admin', 'super_admin')
+    where p.id in (
+      select (el->>'id')::uuid from jsonb_array_elements(public.tm_staff_people()) el
+    )
        or exists (select 1 from public.tm_retire_log r where r.profile_id = p.id)
   ), '[]'::jsonb);
 end;

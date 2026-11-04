@@ -227,7 +227,7 @@ export function ManageView() {
                     });
                   }}>Retire helper</Button>
                 )}
-                {(p.retired || p.role === 'member') && (
+                {(p.retired || p.role === 'lead' || p.role === 'member') && (
                   <Button type="button" size="sm" variant="outline" data-testid={`tm-restore-helper-${p.id}`} onClick={() => {
                     void tmRestoreHelper(p.id).then((r) => {
                       if (!r.ok) toast.error(r.error);
