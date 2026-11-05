@@ -107,13 +107,19 @@ export function SmartDateTimePicker({ value, onChange, label }: SmartDateTimePic
               {value ? format(value, "MMM d, yyyy") : "Pick date"}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
+          <PopoverContent
+            className="z-[70] w-auto min-w-[min(18rem,calc(100vw-24px))] max-h-none overflow-visible p-0"
+            align="start"
+            side="top"
+            sideOffset={6}
+            collisionPadding={8}
+          >
             <Calendar
               mode="single"
               selected={value}
               onSelect={handleDateSelect}
               initialFocus
-              className="pointer-events-auto"
+              className="pointer-events-auto w-[min(18rem,calc(100vw-24px))]"
             />
           </PopoverContent>
         </Popover>

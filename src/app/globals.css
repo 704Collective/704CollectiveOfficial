@@ -646,23 +646,32 @@ summary:focus-visible {
 }
 
 /* ── Modal/dialog on mobile ──────────────────────────────────  */
+/* Scope to the fixed modal DialogContent only. Radix Popover also uses
+   role="dialog"; applying overflow/width here clips the event-form calendar. */
 @media (max-width: 640px) {
-  [role="dialog"] > div {
+  [role="dialog"].fixed > div:not([data-radix-popper-content-wrapper]) {
     width: calc(100vw - 32px) !important;
     max-width: calc(100vw - 32px) !important;
     margin: 0 16px !important;
   }
 
-  [role="dialog"] {
+  [role="dialog"].fixed {
     max-height: 90dvh;
     overflow-y: auto;
   }
 }
 
-/* ── Dropdown menus — prevent off-screen ────────────────────  */
+/* ── Dropdown menus — keep menus on-screen, not calendars ────  */
 @media (max-width: 640px) {
-  [data-radix-popper-content-wrapper] {
-    max-width: calc(100vw - 32px) !important;
+  [data-radix-popper-content-wrapper]:not(:has([data-slot="calendar"])) {
+    max-width: calc(100vw - 16px);
+  }
+
+  /* Radix collision shrinks the transformed wrapper; keep the month grid at
+     its natural size so days are not crushed into a sliver. */
+  [data-radix-popper-content-wrapper]:has([data-slot="calendar"]) {
+    width: max-content !important;
+    max-width: calc(100vw - 16px) !important;
   }
 }
 
