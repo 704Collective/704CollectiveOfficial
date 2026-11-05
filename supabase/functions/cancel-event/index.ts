@@ -1,7 +1,7 @@
 // cancel-event — admin CANCEL / RESCHEDULE of an event (or its upcoming series).
 //
-// AUTH PATTERN: browser admin call (user JWT verified, has_role admin — same as
-// notify-event-change), service role for writes.
+// AUTH PATTERN: browser admin call (user JWT verified, profiles.role ===
+// super_admin — same as notify-event-change), service role for writes.
 //
 // Body:
 //   { event_id, action: 'cancel' | 'reschedule', scope: 'occurrence' | 'series',
@@ -88,8 +88,8 @@ serve(async (req) => {
     const adminUserId = (claims?.claims as { sub?: string } | undefined)?.sub;
     if (claimsErr || !adminUserId) return json({ error: "Unauthorized" }, 401);
     const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
-    const { data: isSuper } = await admin.rpc("has_role", { _user_id: adminUserId, _role: "super_admin" });
-    if (!isSuper) return json({ error: "Admin access required" }, 403);
+    const { data: prof } = await admin.from("profiles").select("role").eq("id", adminUserId).is("deleted_at", null).maybeSingle();
+    if (!prof || prof.role !== "super_admin") return json({ error: "Admin access required" }, 403);
 
     const body = (await req.json().catch(() => ({}))) as { event_id?: string; action?: string; scope?: string; reason?: string; note?: string; rescheduled_to_event_id?: string; mode?: string; origin?: string; cancel_mode?: string };
     const action = body.action === "reschedule" ? "reschedule" : "cancel";

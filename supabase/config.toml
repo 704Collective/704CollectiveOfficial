@@ -48,3 +48,9 @@ verify_jwt = false
 
 [functions.tm-tick]
 verify_jwt = false
+
+[functions.notify-event-change]
+verify_jwt = true
+
+[functions.cancel-event]
+verify_jwt = true

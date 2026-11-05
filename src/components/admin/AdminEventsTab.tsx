@@ -44,6 +44,26 @@ import {
   ChevronLeft, ChevronRight, MoreHorizontal, ArrowLeft, Upload, X as XIcon, Gift, Mail, Check, UserPlus, Bell, ExternalLink, Send, Loader2, FlaskConical, ChevronsUpDown,
 } from 'lucide-react';
 
+async function updateEventOrThrow<T extends object>(id: string, eventData: T) {
+  const { data, error } = await supabase.from('events').update(eventData).eq('id', id).select('id');
+  if (error) throw error;
+  if (!data?.length) throw new Error('Event was not updated. You may not have permission, or it no longer exists.');
+}
+
+async function functionErrorMessage(res: { error: Error | null; data: unknown }, fallback = 'Unknown error') {
+  const dataErr = res.data && typeof res.data === 'object' && res.data !== null && 'error' in res.data
+    ? String((res.data as { error: unknown }).error)
+    : '';
+  if (dataErr) return dataErr;
+  if (res.error && typeof res.error === 'object' && 'context' in res.error) {
+    try {
+      const body = await (res.error as { context: Response }).context.json();
+      if (body?.error) return String(body.error);
+    } catch { /* keep fallback */ }
+  }
+  return res.error instanceof Error && res.error.message ? res.error.message : fallback;
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Event {
   id: string;
@@ -489,8 +509,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       recurringEvents?: ReturnType<typeof buildEventData>[];
     }) => {
       if (isEdit && editId) {
-        const { error } = await supabase.from('events').update(eventData).eq('id', editId);
-        if (error) throw error;
+        await updateEventOrThrow(editId, eventData);
         return { type: 'updated' as const, count: 1 };
       }
 
@@ -575,8 +594,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       const newOpensIso = rsvpOpensAtIso();
       const opensChanged = !!snap && (snap.rsvp_opens_at ?? null) !== newOpensIso;
 
-      const { error } = await supabase.from('events').update(eventData).eq('id', ev.id);
-      if (error) throw error;
+      await updateEventOrThrow(ev.id, eventData);
 
       const occurrences: ChangeOcc[] = [{
         id: ev.id,
@@ -640,9 +658,13 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
             // event's pre-edit location is the best "before" value we hold for them.
             oldLocation,
           });
-          return supabase.from('events').update(updateData).eq('id', sib.id);
+          return supabase.from('events').update(updateData).eq('id', sib.id).select('id');
         });
-        await Promise.all(updates);
+        const results = await Promise.all(updates);
+        for (const r of results) {
+          if (r.error) throw r.error;
+          if (!r.data?.length) throw new Error('A series event was not updated. You may not have permission, or it no longer exists.');
+        }
         return { count: siblings.length + 1, occurrences };
       }
       return { count: 1, occurrences };
@@ -653,7 +675,7 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       invalidateEvents();
       await handlePostSaveNotify(occurrences, count > 1 ? `Updated ${count} events in the series` : 'Event updated');
     },
-    onError: () => toast.error('Failed to update event'),
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to update event'),
   });
 
   const followupMutation = useMutation({
@@ -774,7 +796,9 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
           origin: window.location.origin,
         },
       });
-      if (res.error) throw res.error;
+      if (res.error || (res.data as { error?: string } | null)?.error) {
+        throw new Error(await functionErrorMessage(res, 'Notification failed'));
+      }
       // skipped:true = the server found no real change (belt and suspenders); counts as 0 notified.
       notified += (res.data as { sent?: number } | null)?.sent ?? 0;
     }
@@ -790,8 +814,8 @@ export function AdminEventsTab({ onNavigateToDashboard }: AdminEventsTabProps) {
       const notified = await fireChangeNotifications(toNotify);
       toast.success(`Saved. Notified ${notified} attendee(s) of the change.`);
     } catch (err) {
-      toast.success(baseToast);
-      toast.error('Saved, but attendee notification failed — send manually');
+      const reason = err instanceof Error ? err.message : String(err);
+      toast.error(`Saved. Attendee notification failed: ${reason}`);
       Sentry.captureException(err);
     }
   };
