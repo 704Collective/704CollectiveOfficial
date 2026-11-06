@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { formatDue } from '@/lib/tasks/dates';
-import { personInitials } from '@/lib/tasks/names';
+import { OwnerChip } from '@/components/tasks/uiBits';
 import type { TmTask } from '@/lib/tasks/types';
 
 export function TaskRow({
@@ -101,17 +101,8 @@ export function TaskRow({
             )}
             <span className="ml-auto inline-flex -space-x-1.5">
               {task.owners.slice(0, 3).map((o) => (
-                <span
-                  key={o.id}
-                  title={o.full_name ?? ''}
-                  className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#141414] bg-[#2a2a2a] text-[9px] font-semibold text-[#C6A664]"
-                >
-                  {o.avatar_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={o.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
-                  ) : (
-                    personInitials(o.full_name)
-                  )}
+                <span key={o.id} className="rounded-full border border-[#141414]">
+                  <OwnerChip name={o.full_name} />
                 </span>
               ))}
             </span>

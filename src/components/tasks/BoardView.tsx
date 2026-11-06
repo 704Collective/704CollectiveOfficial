@@ -29,7 +29,7 @@ import { TmEmpty, TmSkeleton } from '@/components/tasks/uiBits';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useLockBodyScroll } from '@/hooks/useVisualViewport';
 import { formatDue } from '@/lib/tasks/dates';
-import { personInitials } from '@/lib/tasks/names';
+import { OwnerChip } from '@/components/tasks/uiBits';
 import type { TmStatus, TmTask } from '@/lib/tasks/types';
 
 const COLS: { id: Exclude<TmStatus, 'cancelled'>; label: string }[] = [
@@ -114,11 +114,7 @@ function CardBody({ task, ghost }: { task: TmTask; ghost?: boolean }) {
           <span className={task.overdue ? 'text-[#E24B4A]' : 'text-white/40'}>
             {formatDue(task.due_date, task.due_time)}
           </span>
-          {owner && (
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#2a2a2a] text-[9px] font-semibold text-[#C6A664]">
-              {personInitials(owner.full_name)}
-            </span>
-          )}
+          {owner && <OwnerChip name={owner.full_name} />}
         </span>
       </span>
     </>

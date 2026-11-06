@@ -19,6 +19,7 @@ import {
 } from '@/app/actions/tasksActions';
 import { useTasks } from '@/components/tasks/TasksProvider';
 import { TaskGroup } from '@/components/tasks/TaskRow';
+import { ViewportSheet } from '@/components/tasks/ViewportSheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -31,7 +32,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useLockBodyScroll, usePhoneViewportStyle } from '@/hooks/useVisualViewport';
 import type { TmFolder, TmTask, TmTeamPerson, TmTrashedFolder } from '@/lib/tasks/types';
 
 const COLORS = ['#C6A664', '#6B8E9F', '#C47B5A', '#7A9E7E', '#8B7BB8', '#4A9B8C', '#8A8A8A', '#E24B4A'];
@@ -50,8 +50,6 @@ export function FoldersView({ folderId }: { folderId?: string }) {
   const [blocked, setBlocked] = useState(false);
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState('');
-  const renameViewportStyle = usePhoneViewportStyle(!!renameId);
-  useLockBodyScroll(!!renameId);
 
   const current = folders.find((f) => f.id === folderId);
   const roots = useMemo(() => folders.filter((f) => !f.parent_id && !f.archived_at), [folders]);
@@ -347,32 +345,37 @@ export function FoldersView({ folderId }: { folderId?: string }) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={!!renameId} onOpenChange={(o) => !o && setRenameId(null)}>
-        <AlertDialogContent className="bg-[#111] text-[#f4f1ea]" style={renameViewportStyle}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Rename folder</AlertDialogTitle>
-          </AlertDialogHeader>
-          <Input value={renameVal} onChange={(e) => setRenameVal(e.target.value)} className="border-white/10 bg-[#1a1a1a]" />
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async (e) => {
-                e.preventDefault();
+      <ViewportSheet open={!!renameId} onOpenChange={(o) => !o && setRenameId(null)} testId="tm-folder-rename">
+        <div className="flex min-h-0 flex-1 flex-col p-4">
+          <p className="tm-display text-xl">Rename folder</p>
+          <Input
+            value={renameVal}
+            onChange={(e) => setRenameVal(e.target.value)}
+            className="mt-3 border-white/10 bg-[#1a1a1a]"
+          />
+          <div className="mt-4 flex gap-2">
+            <Button type="button" variant="ghost" className="flex-1" onClick={() => setRenameId(null)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="flex-1 bg-[#C6A664] text-black"
+              onClick={async () => {
                 if (!renameId) return;
                 const res = await tmRenameFolder(renameId, renameVal);
                 if (!res.ok) {
-      toast.error(res.error);
-      return;
-    }
+                  toast.error(res.error);
+                  return;
+                }
                 await applyFolders(res.data);
                 setRenameId(null);
               }}
             >
               Save
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </div>
+        </div>
+      </ViewportSheet>
     </div>
   );
 }

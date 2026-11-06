@@ -20,7 +20,7 @@ export function formatPeriod(kind: string, starts: string, ends: string) {
   const s = new Date(`${starts}T12:00:00`);
   const e = new Date(`${ends}T12:00:00`);
   const mon = (d: Date) => d.toLocaleString('en-US', { month: 'short' });
-  if (kind === 'week') return `${mon(s)} ${s.getDate()} – ${mon(e)} ${e.getDate()}`;
+  if (kind === 'week') return `${mon(s)} ${s.getDate()} - ${mon(e)} ${e.getDate()}`;
   if (kind === 'month') return s.toLocaleString('en-US', { month: 'long', year: 'numeric' });
   if (kind === 'quarter') return `Q${Math.floor(s.getMonth() / 3) + 1} ${s.getFullYear()}`;
   return String(s.getFullYear());

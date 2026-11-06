@@ -12,6 +12,29 @@ import { SearchSheet } from '@/components/tasks/SearchSheet';
 import { TipsOverlay } from '@/components/tasks/TipsOverlay';
 import { Button } from '@/components/ui/button';
 
+function BackLink({ isSuper }: { isSuper: boolean }) {
+  if (isSuper) {
+    return (
+      <Link
+        href="/admin"
+        data-testid="tm-back-admin"
+        className="text-xs text-white/45 no-underline hover:text-white/80"
+      >
+        Back to Admin
+      </Link>
+    );
+  }
+  return (
+    <Link
+      href="/dashboard"
+      data-testid="tm-back-dashboard"
+      className="text-xs text-white/45 no-underline hover:text-white/80"
+    >
+      Back to dashboard
+    </Link>
+  );
+}
+
 function NavLink({
   href,
   label,
@@ -97,7 +120,12 @@ export function TasksShell({ children }: { children: React.ReactNode }) {
       )}
       <div className="md:flex md:min-h-dvh">
         <aside className="hidden w-56 shrink-0 flex-col border-r border-white/[0.06] px-3 py-5 md:flex">
-          <p className="tm-display px-3 pb-6 text-2xl text-[#C6A664]">704 Tasks</p>
+          <div className="px-3 pb-6">
+            <p className="tm-display text-2xl text-[#C6A664]">704 Tasks</p>
+            <div className="mt-2">
+              <BackLink isSuper={isSuper} />
+            </div>
+          </div>
           <nav className="flex flex-col gap-1">
             {items.map((item) => (
               <NavLink
@@ -165,7 +193,10 @@ export function TasksShell({ children }: { children: React.ReactNode }) {
         </aside>
         <div className="flex min-w-0 flex-1 flex-col pb-20 md:pb-0">
           <header className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3 md:hidden">
-            <p className="tm-display text-xl text-[#C6A664]">704 Tasks</p>
+            <div>
+              <p className="tm-display text-xl text-[#C6A664]">704 Tasks</p>
+              <BackLink isSuper={isSuper} />
+            </div>
             <div className="flex items-center gap-1">
             <Button type="button" variant="ghost" size="sm" data-testid="tm-search-open" aria-label="Search" onClick={() => setSearchOpen(true)}>
               <Search className="h-5 w-5" />

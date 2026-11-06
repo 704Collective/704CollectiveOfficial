@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { tmListGoals } from '@/app/actions/tasksActions';
 import { useTasks } from '@/components/tasks/TasksProvider';
-import { GoalBar, GoalTags, goalBarFill, goalDueLabel } from '@/components/tasks/GoalBar';
+import { GoalBar, GoalTags, goalBarFill, goalDueLabel, goalIsOverdue } from '@/components/tasks/GoalBar';
 import { TmEmpty, TmSkeleton } from '@/components/tasks/uiBits';
 import type { TmGoal } from '@/lib/tasks/types';
 
@@ -22,7 +22,7 @@ function GoalCard({ goal, nested }: { goal: TmGoal; nested?: boolean }) {
         <div>
           <p className="text-[15px] font-medium">{goal.name}</p>
           <p className="text-xs text-white/40">{goalDueLabel(goal)}</p>
-          <GoalTags tags={goal.tags ?? []} />
+          <GoalTags tags={(goal.tags ?? []).filter((tag) => tag !== 'Overdue' || goalIsOverdue(goal))} />
         </div>
         <p className="tm-display text-2xl text-[#C6A664]">{Math.round(goal.pct)}%</p>
       </div>

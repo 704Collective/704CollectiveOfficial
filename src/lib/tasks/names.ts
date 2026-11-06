@@ -39,8 +39,8 @@ export function chipName(
   return first;
 }
 
-/** First + last initials. Single-word names use the first two letters. */
-export function personInitials(fullName?: string | null, email?: string | null): string {
+/** First + last initials. Single-word names use the first two letters. Empty when there is no name. */
+export function personInitials(fullName?: string | null, _email?: string | null): string {
   const words = nameWords(fullName);
   if (words.length >= 2) {
     return `${words[0][0] ?? ''}${words[words.length - 1][0] ?? ''}`.toUpperCase();
@@ -48,6 +48,5 @@ export function personInitials(fullName?: string | null, email?: string | null):
   if (words.length === 1) {
     return words[0].slice(0, 2).toUpperCase();
   }
-  const local = emailLocalPart(email);
-  return (local?.slice(0, 2) || '?').toUpperCase();
+  return '';
 }

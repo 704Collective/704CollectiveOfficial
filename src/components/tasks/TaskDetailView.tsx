@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   tmAttachmentAdd,
+  tmAttachmentDelete,
   tmCancelTask,
   tmChecklistAdd,
   tmChecklistUpdate,
@@ -23,9 +24,11 @@ import {
   tmUpdateTask,
 } from '@/app/actions/tasksActions';
 import { FixItSheet } from '@/components/tasks/FixItSheet';
+import { ViewportSheet } from '@/components/tasks/ViewportSheet';
 import { useTasks } from '@/components/tasks/TasksProvider';
 import { formatDue, hasDueTime, isLaterDue } from '@/lib/tasks/dates';
-import { usePhoneViewportStyle, useVisualViewport, visualViewportStyle } from '@/hooks/useVisualViewport';
+import { supabase } from '@/integrations/supabase/client';
+import { useVisualViewport, visualViewportStyle } from '@/hooks/useVisualViewport';
 import { SmartDateTimePicker } from '@/components/SmartDateTimePicker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,6 +72,8 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
   const [comment, setComment] = useState('');
   const [notes, setNotes] = useState('');
   const [drive, setDrive] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [panel, setPanel] = useState<
     null | 'due' | 'owner' | 'folder' | 'goal' | 'size' | 'priority' | 'repeat' | 'cancel' | 'push' | 'fix'
   >(null);
@@ -76,7 +81,6 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
   const [reason, setReason] = useState('');
   const [pendingDue, setPendingDue] = useState<{ date: string; time: string | null } | null>(null);
   const [pendingRepeat, setPendingRepeat] = useState<TmRepeat | null>(null);
-  const dueViewportStyle = usePhoneViewportStyle(panel === 'due');
 
   async function load() {
     const res = await tmGetTask(taskId);
@@ -218,7 +222,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
         {isSuper && (
           <Row
             label="Folder"
-            value={task.parent_folder_name ? `${task.parent_folder_name} / ${task.folder_name}` : task.folder_name || '—'}
+            value={task.parent_folder_name ? `${task.parent_folder_name} / ${task.folder_name}` : task.folder_name || '-'}
             onChange={() => setPanel('folder')}
           />
         )}
@@ -226,7 +230,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
           <div>
             <p className="text-xs uppercase tracking-wide text-white/35">Goal</p>
             <div className="mt-1 flex flex-wrap gap-1" data-testid="tm-goal-chips">
-              {task.goals.length === 0 && <span className="text-sm">—</span>}
+              {task.goals.length === 0 && <span className="text-sm">-</span>}
               {task.goals.map((g) => (
                 <span key={g.id} className="tm-chip tm-chip-muted" data-testid={`tm-goal-chip-${g.id}`}>
                   <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full" style={{ background: g.color || '#8A8A8A' }} />
@@ -362,20 +366,108 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
 
       <section className="mt-6">
         <h2 className="tm-display mb-2 text-xl">Attachments</h2>
-        <ul className="mb-2 space-y-1 text-sm">
+        <ul className="mb-2 space-y-2 text-sm">
           {task.attachments.map((a) => (
-            <li key={a.id}>
+            <li key={a.id} className="flex items-center gap-2">
               {a.drive_url ? (
-                <a href={a.drive_url} className="text-[#C6A664]" target="_blank" rel="noreferrer">
+                <a
+                  href={a.drive_url}
+                  className="min-w-0 flex-1 truncate text-[#C6A664]"
+                  target="_blank"
+                  rel="noreferrer"
+                  data-testid={`tm-attachment-open-${a.id}`}
+                >
                   {a.name}
                 </a>
               ) : (
-                a.name
+                <span className="min-w-0 flex-1 truncate">{a.name}</span>
               )}
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="text-white/40"
+                data-testid={`tm-attachment-delete-${a.id}`}
+                onClick={async () => {
+                  const res = await tmAttachmentDelete(a.id);
+                  if (!res.ok) {
+                    toast.error(res.error);
+                    return;
+                  }
+                  await load();
+                  toast.success('Attachment removed');
+                }}
+              >
+                Delete
+              </Button>
             </li>
           ))}
         </ul>
-        <div className="flex gap-2">
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf"
+          className="hidden"
+          data-testid="tm-attachment-file"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (!file) return;
+            if (file.size > 25 * 1024 * 1024) {
+              toast.error('File too large (25MB max)');
+              return;
+            }
+            setUploading(true);
+            try {
+              const { data: presign, error: presignErr } = await supabase.functions.invoke('tm-attachment-upload', {
+                body: {
+                  task_id: task.id,
+                  file_name: file.name,
+                  content_type: file.type || 'application/octet-stream',
+                  file_size: file.size,
+                },
+              });
+              if (presignErr || !presign?.uploadUrl) {
+                throw new Error(presignErr?.message || presign?.error || 'Could not get upload URL');
+              }
+              const putRes = await fetch(presign.uploadUrl as string, {
+                method: 'PUT',
+                headers: { 'Content-Type': file.type || 'application/octet-stream' },
+                body: file,
+              });
+              if (!putRes.ok) throw new Error(`Upload failed (${putRes.status})`);
+              const res = await tmAttachmentAdd({
+                taskId: task.id,
+                name: file.name,
+                r2Key: presign.key as string,
+                size: file.size,
+                driveUrl: presign.publicUrl as string,
+              });
+              if (!res.ok) {
+                toast.error(res.error);
+                return;
+              }
+              await load();
+              toast.success('File attached');
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : 'Upload failed');
+            } finally {
+              setUploading(false);
+            }
+          }}
+        />
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            data-testid="tm-attachment-upload"
+            disabled={uploading}
+            onClick={() => fileRef.current?.click()}
+          >
+            {uploading ? 'Uploading…' : 'Upload file'}
+          </Button>
+        </div>
+        <div className="mt-2 flex gap-2">
           <Input
             value={drive}
             onChange={(e) => setDrive(e.target.value)}
@@ -389,9 +481,9 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
               if (!drive.trim()) return;
               const res = await tmAttachmentAdd({ taskId: task.id, name: 'Drive link', driveUrl: drive.trim() });
               if (!res.ok) {
-                    toast.error(res.error);
-                    return;
-                  }
+                toast.error(res.error);
+                return;
+              }
               setDrive('');
               await load();
             }}
@@ -399,7 +491,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
             Add link
           </Button>
         </div>
-        <p className="mt-1 text-xs text-white/35">Photos and files use the discussion media path. 25MB cap.</p>
+        <p className="mt-1 text-xs text-white/35">Photos, camera, and files. 25MB cap.</p>
       </section>
 
       <section className="mt-6">
@@ -496,18 +588,21 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
         )}
       </div>
 
-      <AlertDialog open={panel === 'due'} onOpenChange={(o) => !o && setPanel(null)}>
-        <AlertDialogContent className="bg-[#111] text-[#f4f1ea]" style={dueViewportStyle}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Change due date</AlertDialogTitle>
-          </AlertDialogHeader>
-          <SmartDateTimePicker value={picked} onChange={setPicked} label="Due" />
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
+      <ViewportSheet open={panel === 'due'} onOpenChange={(o) => !o && setPanel(null)} testId="tm-due-sheet">
+        <div className="flex min-h-0 flex-1 flex-col p-4">
+          <p className="tm-display text-xl">Change due date</p>
+          <div className="min-h-0 flex-1 overflow-y-auto py-3">
+            <SmartDateTimePicker value={picked} onChange={setPicked} label="Due" />
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" variant="ghost" className="flex-1" onClick={() => setPanel(null)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
               data-testid="tm-due-save"
-              onClick={(e) => {
-                e.preventDefault();
+              className="flex-1 bg-[#C6A664] text-black"
+              onClick={() => {
                 if (!picked) {
                   void saveDue(null, null);
                   return;
@@ -522,10 +617,10 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
               }}
             >
               Save
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </div>
+        </div>
+      </ViewportSheet>
 
       <AlertDialog open={panel === 'push'} onOpenChange={(o) => !o && setPanel(null)}>
         <AlertDialogContent data-testid="tm-push-reason" className="bg-[#111] text-[#f4f1ea]">

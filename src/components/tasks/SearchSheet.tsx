@@ -6,7 +6,7 @@ import { tmPinFilter, tmSaveFilter, tmSearchTasks } from '@/app/actions/tasksAct
 import { useTasks } from '@/components/tasks/TasksProvider';
 import { TaskGroup } from '@/components/tasks/TaskRow';
 import { TmEmpty, TmSkeleton } from '@/components/tasks/uiBits';
-import { useLockBodyScroll, useVisualViewport, visualViewportStyle } from '@/hooks/useVisualViewport';
+import { ViewportSheet } from '@/components/tasks/ViewportSheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { TmSavedFilter, TmTask } from '@/lib/tasks/types';
@@ -38,8 +38,6 @@ export function SearchSheet({
   const [saving, setSaving] = useState('');
   const saved = boot?.saved_filters ?? [];
   const inputRef = useRef<HTMLInputElement>(null);
-  const box = useVisualViewport(open);
-  useLockBodyScroll(open);
 
   useEffect(() => {
     if (!open) return;
@@ -71,15 +69,9 @@ export function SearchSheet({
     return () => clearTimeout(t);
   }, [open, q, filters]);
 
-  if (!open) return null;
-
   return (
-    <div
-      className="z-50 overflow-hidden bg-[#0B0B0B]/95 p-4"
-      data-testid="tm-search-sheet"
-      style={visualViewportStyle(box)}
-    >
-      <div className="mx-auto flex h-full max-w-3xl flex-col">
+    <ViewportSheet open={open} onOpenChange={onOpenChange} testId="tm-search-sheet">
+      <div className="flex min-h-0 flex-1 flex-col p-4">
         <div className="mb-3 flex shrink-0 items-center gap-2">
           <Input
             ref={inputRef}
@@ -195,7 +187,7 @@ export function SearchSheet({
           )}
         </div>
       </div>
-    </div>
+    </ViewportSheet>
   );
 }
 

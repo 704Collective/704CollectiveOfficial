@@ -17,7 +17,7 @@ import {
 } from '@/app/actions/tasksActions';
 import { useTasks } from '@/components/tasks/TasksProvider';
 import { ConfettiBurst } from '@/components/tasks/ConfettiBurst';
-import { GoalBar, GoalTags, goalBarFill, goalDueLabel } from '@/components/tasks/GoalBar';
+import { GoalBar, GoalTags, goalBarFill, goalDueLabel, goalIsOverdue } from '@/components/tasks/GoalBar';
 import { GoalFixSheet } from '@/components/tasks/GoalFixSheet';
 import { TaskGroup } from '@/components/tasks/TaskRow';
 import { formatShortDate } from '@/lib/tasks/dates';
@@ -70,7 +70,7 @@ export function GoalDetailView({ id }: { id: string }) {
   const row = goal;
 
   const ready = (row.tags ?? []).includes('Ready to complete');
-  const overdue = (row.tags ?? []).includes('Overdue');
+  const overdue = goalIsOverdue(row);
   const closed = row.status === 'completed';
 
   async function complete() {
@@ -119,7 +119,7 @@ export function GoalDetailView({ id }: { id: string }) {
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#C6A664]">Goal</p>
       <h1 className="tm-display mt-1 text-3xl">{goal.name}</h1>
       <p className="text-sm text-white/40">{goalDueLabel(goal)}</p>
-      <GoalTags tags={goal.tags ?? []} />
+      <GoalTags tags={(goal.tags ?? []).filter((tag) => tag !== 'Overdue' || overdue)} />
       <p className="tm-display mt-6 text-6xl text-[#C6A664]" data-testid="tm-goal-pct">{Math.round(goal.pct)}%</p>
       <GoalBar pct={goal.pct} color={goalBarFill(goal)} got={goal.got} total={goal.total} testId="tm-goal-bar" />
 
@@ -184,7 +184,7 @@ export function GoalDetailView({ id }: { id: string }) {
           </div>
           <ul className="mt-3 space-y-1 text-xs text-white/40" data-testid="tm-goal-log-list">
             {(goal.log ?? []).map((l) => (
-              <li key={l.id}>{l.delta > 0 ? '+' : ''}{l.delta} · {l.note ?? '—'} · {l.logged_by_name}</li>
+              <li key={l.id}>{l.delta > 0 ? '+' : ''}{l.delta} · {l.note ?? '-'} · {l.logged_by_name}</li>
             ))}
           </ul>
         </section>

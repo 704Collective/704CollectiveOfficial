@@ -31,4 +31,10 @@ describe('personInitials', () => {
     expect(personInitials('Seed Helper')).toBe('SH');
     expect(personInitials('Ada Lovelace')).toBe('AL');
   });
+
+  it('is empty when there is no name so chips can show a person icon', () => {
+    expect(personInitials(null)).toBe('');
+    expect(personInitials('   ')).toBe('');
+    expect(personInitials(null, 'ada@example.com')).toBe('');
+  });
 });

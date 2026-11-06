@@ -1,11 +1,24 @@
+import { charlotteToday } from '@/lib/tasks/dates';
 import type { TmGoal } from '@/lib/tasks/types';
+
+export function goalIsOverdue(goal: {
+  status?: string | null;
+  tags?: string[] | null;
+  due_date?: string | null;
+}) {
+  if (goal.status === 'failed') return true;
+  if (goal.status && !['active', 'ready'].includes(goal.status)) return false;
+  if (goal.due_date) return goal.due_date < charlotteToday();
+  return (goal.tags ?? []).includes('Overdue');
+}
 
 export function goalBarFill(goal: {
   color?: string | null;
   status?: string | null;
   tags?: string[] | null;
+  due_date?: string | null;
 }) {
-  if (goal.status === 'failed' || (goal.tags ?? []).includes('Overdue')) return '#E24B4A';
+  if (goalIsOverdue(goal)) return '#E24B4A';
   return goal.color || '#C6A664';
 }
 
