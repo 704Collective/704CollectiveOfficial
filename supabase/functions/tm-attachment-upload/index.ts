@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
     }
 
     const ext = (file_name.split(".").pop() ?? "bin").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8) || "bin";
-    const key = `tm/${task_id}/${user.id}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
+    const key = `tasks/${task_id}/${user.id}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
     const type = typeof content_type === "string" && content_type ? content_type : "application/octet-stream";
 
     const aws = new AwsClient({
