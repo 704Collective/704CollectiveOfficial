@@ -212,7 +212,8 @@ function ManageMembersModal({
     const t = setTimeout(async () => {
       setSearchLoading(true);
       // Hubs are a business-tier benefit, so only active business members are
-      // addable. Active = subscription_status active/trialing OR membership_override=true
+      // addable. Active = subscription_status active/trialing OR membership_override=true.
+      // Banned profiles (either banned column) never appear in this picker.
       const { data } = await supabase
         .from('profiles')
         .select('id, full_name, avatar_url, title, member_type')
@@ -220,6 +221,8 @@ function ManageMembersModal({
         .is('deleted_at', null)
         .eq('member_type', 'business')
         .eq('is_internal', false)
+        .eq('banned', false)
+        .not('is_banned', 'is', true)
         .or('subscription_status.in.(active,trialing),membership_override.eq.true')
         .limit(15);
       setSearchResults(((data ?? []) as MemberSearchResult[]).filter(
