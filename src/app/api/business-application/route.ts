@@ -13,6 +13,7 @@ import {
   SELF_CODE_MESSAGE,
   SELF_NAME_MESSAGE,
 } from '@/lib/referralRules';
+import { JOIN_BLOCKED_EMAIL_MESSAGE, isEmailBlocked } from '@/lib/blockedEmail';
 
 const limiter = createRateLimiter('business-application', 10);
 
@@ -136,6 +137,15 @@ export async function POST(request: NextRequest) {
 
   const applicantEmail = (user.email ?? profile?.email ?? '').trim().toLowerCase();
   if (!applicantEmail) return bad('Your account has no email address on file.');
+
+  try {
+    if (await isEmailBlocked(applicantEmail)) {
+      return bad(JOIN_BLOCKED_EMAIL_MESSAGE, 403);
+    }
+  } catch (err) {
+    console.error('business-application blocklist check failed:', err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'Unable to verify this email.' }, { status: 503 });
+  }
 
   const firstName = str(body.firstName) || (profile?.full_name ?? '').trim().split(/\s+/)[0] || '';
   const lastName =

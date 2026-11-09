@@ -889,6 +889,35 @@ export type Database = {
           },
         ]
       }
+      blocked_emails: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email_normalized: string
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email_normalized: string
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email_normalized?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocked_emails_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blog_posts: {
         Row: {
           author: string | null
@@ -6095,12 +6124,14 @@ export type Database = {
       people: {
         Row: {
           auth_user_id: string | null
+          banned: boolean
           canceled_at: string | null
           created_at: string
           email: string
           email_lower: string | null
           full_name: string | null
           id: string
+          is_banned: boolean
           joined_at: string | null
           last_attended: string | null
           marketing_unsubscribed: boolean
@@ -6124,12 +6155,14 @@ export type Database = {
         }
         Insert: {
           auth_user_id?: string | null
+          banned?: boolean
           canceled_at?: string | null
           created_at?: string
           email: string
           email_lower?: string | null
           full_name?: string | null
           id?: string
+          is_banned?: boolean
           joined_at?: string | null
           last_attended?: string | null
           marketing_unsubscribed?: boolean
@@ -6153,12 +6186,14 @@ export type Database = {
         }
         Update: {
           auth_user_id?: string | null
+          banned?: boolean
           canceled_at?: string | null
           created_at?: string
           email?: string
           email_lower?: string | null
           full_name?: string | null
           id?: string
+          is_banned?: boolean
           joined_at?: string | null
           last_attended?: string | null
           marketing_unsubscribed?: boolean
@@ -7695,6 +7730,11 @@ export type Database = {
       }
       is_event_discussion_moderator: { Args: never; Returns: boolean }
       is_hub_member: { Args: { p_hub_id: string }; Returns: boolean }
+      is_email_blocked: { Args: { p_email: string }; Returns: boolean }
+      lock_banned_person: {
+        Args: { p_emails: string[]; p_people_id: string }
+        Returns: Json
+      }
       search_event_discussion_mentionables: {
         Args: { p_event_id: string; p_query: string }
         Returns: {

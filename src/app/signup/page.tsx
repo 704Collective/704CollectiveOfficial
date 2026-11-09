@@ -131,33 +131,31 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      // Check if this email or name is banned before creating an account
       const normalizedEmail = email.trim().toLowerCase();
       const fullName = `${firstName.trim()} ${lastName.trim()}`;
 
-      const { data: bannedByEmail } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', normalizedEmail)
-        .eq('is_banned', true)
-        .maybeSingle();
-
-      const { data: bannedByName } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('full_name', fullName)
-        .eq('is_banned', true)
-        .maybeSingle();
-
-      if (bannedByEmail || bannedByName) {
-        toast.error('This email address is not eligible to create an account. Please contact hello@704collective.com.');
+      const blockRes = await fetch('/api/signup-email-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: normalizedEmail }),
+      });
+      const blockJson = (await blockRes.json().catch(() => null)) as
+        | { blocked?: boolean; error?: string }
+        | null;
+      if (blockRes.status === 403 || blockJson?.blocked) {
+        toast.error(blockJson?.error || "This email can't be used to join 704 Collective.");
+        setLoading(false);
+        return;
+      }
+      if (!blockRes.ok) {
+        toast.error(blockJson?.error || 'Unable to verify this email. Please try again.');
         setLoading(false);
         return;
       }
 
       // Sign up with Supabase auth
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim().toLowerCase(),
+        email: normalizedEmail,
         password,
         options: {
           data: {
