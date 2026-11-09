@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { randomBytes } from 'crypto';
+import { deleteProfileAfterAuthDelete } from '@/lib/partnerSignupCore';
 
 function serviceClient() {
   return createServiceClient(
@@ -142,6 +143,7 @@ export async function denyPartnerApplication(
 
   const { error: delErr } = await admin.auth.admin.deleteUser(app.user_id);
   if (delErr) return { ok: false, error: delErr.message };
+  await deleteProfileAfterAuthDelete(admin, app.user_id);
 
   return { ok: true };
 }

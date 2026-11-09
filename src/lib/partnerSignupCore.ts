@@ -29,6 +29,29 @@ function genCalendarToken(): string {
   return randomBytes(20).toString('hex');
 }
 
+type ServiceAdmin = ReturnType<typeof adminClient>;
+
+/** After auth.admin.deleteUser succeeds, drop the matching profiles row. people.auth_user_id is ON DELETE SET NULL. */
+export async function deleteProfileAfterAuthDelete(admin: ServiceAdmin, userId: string): Promise<void> {
+  const { data, error } = await admin.from('profiles').delete().eq('id', userId).select('id');
+  if (error) {
+    console.error('[partner] profile delete after auth delete failed', userId, error.message);
+    return;
+  }
+  if (!data?.length) {
+    console.warn('[partner] profile already gone after auth delete', userId);
+  }
+}
+
+async function rollbackPartnerAuthUser(admin: ServiceAdmin, userId: string): Promise<void> {
+  const { error } = await admin.auth.admin.deleteUser(userId);
+  if (error) {
+    console.error('[partnerSignup] auth delete failed', userId, error.message);
+    return;
+  }
+  await deleteProfileAfterAuthDelete(admin, userId);
+}
+
 export type PartnerSubmitResult = { ok: true } | { ok: false; error: string };
 
 /**
@@ -145,7 +168,7 @@ export async function runPartnerSignupFromFormData(formData: FormData): Promise<
       }
     }
   } catch (e) {
-    await admin.auth.admin.deleteUser(userId);
+    await rollbackPartnerAuthUser(admin, userId);
     return { ok: false, error: e instanceof Error ? e.message : 'Upload failed' };
   }
 
@@ -169,7 +192,7 @@ export async function runPartnerSignupFromFormData(formData: FormData): Promise<
   );
 
   if (profErr) {
-    await admin.auth.admin.deleteUser(userId);
+    await rollbackPartnerAuthUser(admin, userId);
     return { ok: false, error: profErr.message };
   }
 
@@ -187,7 +210,7 @@ export async function runPartnerSignupFromFormData(formData: FormData): Promise<
   });
 
   if (appErr) {
-    await admin.auth.admin.deleteUser(userId);
+    await rollbackPartnerAuthUser(admin, userId);
     return { ok: false, error: appErr.message };
   }
 
