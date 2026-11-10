@@ -7,6 +7,7 @@ import {
   isEmailBlocked,
   normalizeJoinEmail,
 } from '@/lib/blockedEmail';
+import { gateTurnstile, readCaptchaToken } from '@/lib/turnstile/verify';
 
 const limiter = createRateLimiter('signup-email-check', 20);
 
@@ -25,15 +26,20 @@ export async function POST(request: NextRequest) {
   }
 
   let email = '';
+  let captchaToken = '';
   try {
     const body = (await request.json()) as { email?: string };
     email = normalizeJoinEmail(body?.email ?? '');
+    captchaToken = readCaptchaToken(body);
   } catch {
     email = '';
   }
   if (!email) {
     return NextResponse.json({ error: 'Email is required' }, { status: 400 });
   }
+
+  const denied = await gateTurnstile(request, 'signup-email-check', captchaToken);
+  if (denied) return denied;
 
   try {
     const blocked = await isEmailBlocked(email);

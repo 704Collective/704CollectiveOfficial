@@ -5,6 +5,7 @@ import { useState, useRef } from 'react';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { supabase } from '@/integrations/supabase/client';
 import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
+import { clientTurnstileCheck } from '@/lib/turnstile/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,7 +31,15 @@ export default function RequestAccess() {
     setError(null);
 
     try {
-      // Create auth account
+      const captcha = await clientTurnstileCheck('admin-request-access', captchaToken);
+      if (!captcha.ok) {
+        setError(captcha.error);
+        turnstileRef.current?.reset();
+        setCaptchaToken('');
+        setLoading(false);
+        return;
+      }
+      // Create auth account. Captcha was verified on /api/turnstile/check.
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -39,7 +48,6 @@ export default function RequestAccess() {
           data: {
             full_name: fullName.trim(),
           },
-          captchaToken: captchaToken || undefined,
         },
       });
 

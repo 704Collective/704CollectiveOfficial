@@ -137,7 +137,7 @@ export default function SignupPage() {
       const blockRes = await fetch('/api/signup-email-check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: normalizedEmail }),
+        body: JSON.stringify({ email: normalizedEmail, captchaToken }),
       });
       const blockJson = (await blockRes.json().catch(() => null)) as
         | { blocked?: boolean; error?: string }
@@ -149,11 +149,13 @@ export default function SignupPage() {
       }
       if (!blockRes.ok) {
         toast.error(blockJson?.error || 'Unable to verify this email. Please try again.');
+        turnstileRef.current?.reset();
+        setCaptchaToken('');
         setLoading(false);
         return;
       }
 
-      // Sign up with Supabase auth
+      // Sign up with Supabase auth. Captcha was verified on signup-email-check.
       const { data, error } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,
@@ -165,7 +167,6 @@ export default function SignupPage() {
           emailRedirectTo: signupRedirectTarget() === '/apply/business'
             ? `${window.location.origin}/auth/callback?source=business-apply`
             : `${window.location.origin}/auth/callback`,
-          captchaToken: captchaToken || undefined,
         },
       });
 

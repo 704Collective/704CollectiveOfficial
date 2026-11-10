@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
+import { clientTurnstileCheck } from '@/lib/turnstile/client';
 import { OAUTH_NO_ACCOUNT_MESSAGE, isOauthNoAccountDescription } from '@/lib/auth/oauthNoAccount';
 
 function AmbassadorLoginInner() {
@@ -45,10 +46,16 @@ function AmbassadorLoginInner() {
     setLoading(true);
     setError(null);
     try {
+      const captcha = await clientTurnstileCheck('ambassador-login', captchaToken);
+      if (!captcha.ok) {
+        setError(captcha.error);
+        resetCaptcha();
+        setLoading(false);
+        return;
+      }
       const { data, error: authErr } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
-        options: { captchaToken: captchaToken || undefined },
       });
       if (authErr || !data.user) {
         setError('Invalid email or password');
@@ -110,12 +117,18 @@ function AmbassadorLoginInner() {
     setLoading(true);
     setError(null);
     try {
+      const captcha = await clientTurnstileCheck('ambassador-magic-link', captchaToken);
+      if (!captcha.ok) {
+        setError(captcha.error);
+        resetCaptcha();
+        setLoading(false);
+        return;
+      }
       const { error: otpErr } = await supabase.auth.signInWithOtp({
         email: email.trim().toLowerCase(),
         options: {
           emailRedirectTo: `${window.location.origin}/ambassadors/dashboard`,
           shouldCreateUser: false,
-          captchaToken: captchaToken || undefined,
         },
       });
       if (otpErr) {

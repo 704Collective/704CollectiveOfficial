@@ -12,6 +12,7 @@ import { Loader2, CheckCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { z } from 'zod';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
+import { clientTurnstileCheck } from '@/lib/turnstile/client';
 
 const emailSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -84,9 +85,15 @@ export default function ResetPassword() {
     }
 
     setSending(true);
+    const captcha = await clientTurnstileCheck('reset-password', captchaToken);
+    if (!captcha.ok) {
+      setRequestError(captcha.error);
+      resetCaptcha();
+      setSending(false);
+      return;
+    }
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?source=recovery`,
-      captchaToken: captchaToken || undefined,
     });
     setSending(false);
 

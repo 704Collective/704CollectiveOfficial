@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MarketingPageRoot } from "@/components/MarketingPageRoot";
 import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from "@/components/TurnstileWidget";
+import { clientTurnstileCheck } from "@/lib/turnstile/client";
 
 const partnerTypeOptions = [
   {
@@ -58,7 +59,16 @@ export default function PartnerSignup() {
       return;
     }
 
-    // Create auth user
+    const captcha = await clientTurnstileCheck("partners-signup", captchaToken);
+    if (!captcha.ok) {
+      setError(captcha.error);
+      turnstileRef.current?.reset();
+      setCaptchaToken("");
+      setLoading(false);
+      return;
+    }
+
+    // Create auth user. Captcha was verified on /api/turnstile/check.
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
@@ -68,7 +78,6 @@ export default function PartnerSignup() {
           contact_name: contactName,
           role: "partner",
         },
-        captchaToken: captchaToken || undefined,
       },
     });
 

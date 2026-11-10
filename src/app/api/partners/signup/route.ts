@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createRateLimiter } from '@/lib/upstash';
 import { getRequestIp } from '@/lib/getRequestIp';
 import { runPartnerSignupFromFormData } from '@/lib/partnerSignupCore';
+import { gateTurnstile } from '@/lib/turnstile/verify';
 
 const limiter = createRateLimiter('partner-signup', 5);
 
@@ -32,6 +33,10 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
+
+  const captchaToken = String(formData.get('captchaToken') ?? formData.get('turnstileToken') ?? '');
+  const denied = await gateTurnstile(request, 'partner-signup', captchaToken);
+  if (denied) return denied;
 
   const result = await runPartnerSignupFromFormData(formData);
 

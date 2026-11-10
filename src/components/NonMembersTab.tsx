@@ -7,6 +7,7 @@ import { SOCIAL_TIER } from '@/lib/pricing';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
+import { clientTurnstileCheck } from '@/lib/turnstile/client';
 import { toast } from 'sonner';
 import {
   Crown, Briefcase, Calendar, Settings, FileText,
@@ -288,9 +289,15 @@ export function NonMemberDashboard({ profile, application }: NonMemberDashboardP
                   className="w-full"
                   disabled={TURNSTILE_ENABLED && !resetCaptchaToken}
                   onClick={async () => {
+                    const captcha = await clientTurnstileCheck('nonmember-reset', resetCaptchaToken);
+                    if (!captcha.ok) {
+                      toast.error(captcha.error);
+                      resetTurnstileRef.current?.reset();
+                      setResetCaptchaToken('');
+                      return;
+                    }
                     const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
                       redirectTo: `${window.location.origin}/auth/callback?next=/settings`,
-                      captchaToken: resetCaptchaToken || undefined,
                     });
                     resetTurnstileRef.current?.reset();
                     setResetCaptchaToken('');

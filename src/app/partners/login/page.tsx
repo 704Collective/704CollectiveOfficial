@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MarketingPageRoot } from "@/components/MarketingPageRoot";
 import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from "@/components/TurnstileWidget";
+import { clientTurnstileCheck } from "@/lib/turnstile/client";
 
 function PartnerLoginForm() {
   const router = useRouter();
@@ -23,10 +24,18 @@ function PartnerLoginForm() {
     setError("");
     setLoading(true);
 
+    const captcha = await clientTurnstileCheck("partner-login", captchaToken);
+    if (!captcha.ok) {
+      setError(captcha.error);
+      turnstileRef.current?.reset();
+      setCaptchaToken("");
+      setLoading(false);
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
-      options: { captchaToken: captchaToken || undefined },
     });
 
     if (error) {

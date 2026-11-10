@@ -14,6 +14,7 @@ import {
   SELF_NAME_MESSAGE,
 } from '@/lib/referralRules';
 import { JOIN_BLOCKED_EMAIL_MESSAGE, isEmailBlocked } from '@/lib/blockedEmail';
+import { gateTurnstile, readCaptchaToken } from '@/lib/turnstile/verify';
 
 const limiter = createRateLimiter('business-application', 10);
 
@@ -88,6 +89,7 @@ interface Body {
   anythingElse?: string;
   referralCode?: string;
   referrerName?: string;
+  captchaToken?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -120,6 +122,9 @@ export async function POST(request: NextRequest) {
   } catch {
     return bad('Malformed request body');
   }
+
+  const denied = await gateTurnstile(request, 'business-application', readCaptchaToken(body));
+  if (denied) return denied;
 
   const str = (v: string | undefined) => (v ?? '').trim();
 

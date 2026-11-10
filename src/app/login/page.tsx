@@ -16,6 +16,7 @@ import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
 import { postAuthDestination } from '@/lib/postAuthRedirect';
 import { OAUTH_NO_ACCOUNT_MESSAGE } from '@/lib/auth/oauthNoAccount';
+import { clientTurnstileCheck } from '@/lib/turnstile/client';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -155,10 +156,16 @@ function Login() {
     }
 
     setLoading(true);
+    const captcha = await clientTurnstileCheck('login', captchaToken);
+    if (!captcha.ok) {
+      toast.error(captcha.error);
+      resetCaptcha();
+      setLoading(false);
+      return;
+    }
     const { error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
-      options: { captchaToken: captchaToken || undefined },
     });
 
     if (error) {
@@ -229,12 +236,18 @@ function Login() {
 
     setMagicLinkLoading(true);
     try {
+      const captcha = await clientTurnstileCheck('login-magic-link', captchaToken);
+      if (!captcha.ok) {
+        setMagicLinkError({ message: captcha.error, showSignupCta: false });
+        resetCaptcha();
+        setMagicLinkLoading(false);
+        return;
+      }
       const { error } = await supabase.auth.signInWithOtp({
         email: emailToUse,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
           shouldCreateUser: false,
-          captchaToken: captchaToken || undefined,
         },
       });
       if (error) {
@@ -294,12 +307,18 @@ function Login() {
 
     setMagicLinkLoading(true);
     try {
+      const captcha = await clientTurnstileCheck('login-magic-link', captchaToken);
+      if (!captcha.ok) {
+        setMagicLinkError({ message: captcha.error, showSignupCta: false });
+        resetCaptcha();
+        setMagicLinkLoading(false);
+        return;
+      }
       const { error } = await supabase.auth.signInWithOtp({
         email: magicLinkEmail.trim(),
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
           shouldCreateUser: false,
-          captchaToken: captchaToken || undefined,
         },
       });
       if (error) {

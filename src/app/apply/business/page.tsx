@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Nav from '@/components/Nav';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
@@ -20,6 +20,7 @@ import {
   checkOneSource,
   hasReferrerName,
 } from '@/lib/referralRules';
+import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -149,6 +150,8 @@ function BusinessApplicationInner() {
   const { user, loading: authLoading } = useAuth();
   const [step, setStep] = useState<Step>('apply');
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
   const [form, setForm] = useState<FormData>(INITIAL_FORM);
   const [accountEmail, setAccountEmail] = useState('');
 
@@ -360,6 +363,7 @@ function BusinessApplicationInner() {
           anythingElse: form.anythingElse.trim(),
           referralCode: referralCode || '',
           referrerName: form.referrerName.trim(),
+          captchaToken,
         }),
       });
 
@@ -369,6 +373,8 @@ function BusinessApplicationInner() {
         const message = (data as { error?: string }).error ?? 'Submission failed. Please try again.';
         setReferralRuleError(message);
         toast.error(message);
+        turnstileRef.current?.reset();
+        setCaptchaToken('');
         setLoading(false);
         return;
       }
@@ -875,10 +881,18 @@ function BusinessApplicationInner() {
               ))}
             </div>
 
+            <TurnstileWidget
+              ref={turnstileRef}
+              className="flex justify-center"
+              onSuccess={setCaptchaToken}
+              onExpire={() => setCaptchaToken('')}
+              onError={() => setCaptchaToken('')}
+            />
+
             <Button
               type="submit"
               className="w-full"
-              disabled={loading || (codeApplied && nameGiven)}
+              disabled={loading || (codeApplied && nameGiven) || (TURNSTILE_ENABLED && !captchaToken)}
               size="lg"
             >
               {loading

@@ -98,6 +98,7 @@ export function PartnerApplyForm({
       fd.set('terms', 'true');
       fd.set('partnerTypes', JSON.stringify(partnerTypes()));
       if (inviteToken) fd.set('inviteToken', inviteToken);
+      fd.set('captchaToken', captchaToken);
       fd.set('logo', logoFile);
       extraPhotos.forEach((f) => fd.append('photos', f));
 
@@ -114,7 +115,6 @@ export function PartnerApplyForm({
       const { error: signErr } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
-        options: { captchaToken: captchaToken || undefined },
       });
       if (signErr) {
         toast.message('Application submitted - sign in with your new password.');

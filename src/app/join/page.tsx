@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useState, useEffect, useRef, Suspense } from 'react';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
+import { clientTurnstileCheck } from '@/lib/turnstile/client';
 import { addDays, format } from 'date-fns';
 import { Calendar, MapPin, Users, ArrowRight, Loader2 } from 'lucide-react';
 import { SOCIAL_TIER, BUSINESS_TIER, FLASH_SALE } from '@/lib/pricing';
@@ -405,6 +406,17 @@ function JoinInner() {
     setSubmitting(true);
     setFormError(null);
 
+    if (willSignUp) {
+      const captcha = await clientTurnstileCheck('join', captchaToken);
+      if (!captcha.ok) {
+        setFormError(captcha.error);
+        turnstileRef.current?.reset();
+        setCaptchaToken('');
+        setSubmitting(false);
+        return;
+      }
+    }
+
     const cleanPhone = phone.replace(/\D/g, '');
     const consentTimestamp = smsConsent ? new Date().toISOString() : null;
     const consentUserAgent = smsConsent ? navigator.userAgent : null;
@@ -443,7 +455,6 @@ function JoinInner() {
             primary_goal: goal,
           },
           emailRedirectTo: `${window.location.origin}/auth/callback`,
-          captchaToken: captchaToken || undefined,
         },
       });
       if (signUpError && signUpError.message !== 'User already registered') {
@@ -806,12 +817,14 @@ function JoinInner() {
                     <p style={{ fontSize: '0.875rem', color: '#ef4444', margin: 0 }}>{formError}</p>
                   )}
 
+                  {willSignUp && (
                   <TurnstileWidget
                     ref={turnstileRef}
                     onSuccess={setCaptchaToken}
                     onExpire={() => setCaptchaToken('')}
                     onError={() => setCaptchaToken('')}
                   />
+                  )}
 
                   {/* Submit */}
                   <button

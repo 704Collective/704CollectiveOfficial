@@ -7468,6 +7468,36 @@ export type Database = {
           },
         ]
       }
+      turnstile_checks: {
+        Row: {
+          created_at: string
+          error_codes: string[]
+          form: string
+          id: string
+          ip_hash: string | null
+          ok: boolean
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_codes?: string[]
+          form: string
+          id?: string
+          ip_hash?: string | null
+          ok: boolean
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_codes?: string[]
+          form?: string
+          id?: string
+          ip_hash?: string | null
+          ok?: boolean
+          reason?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null

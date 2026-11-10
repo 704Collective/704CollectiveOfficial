@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
+import { clientTurnstileCheck } from '@/lib/turnstile/client';
 import { Loader2, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { z } from 'zod';
 import { MarketingPageRoot } from '@/components/MarketingPageRoot';
@@ -90,9 +91,16 @@ export default function SetupPassword() {
       return;
     }
     setResendLoading(true);
+    const captcha = await clientTurnstileCheck('setup-password', captchaToken);
+    if (!captcha.ok) {
+      setResendError(captcha.error);
+      turnstileRef.current?.reset();
+      setCaptchaToken('');
+      setResendLoading(false);
+      return;
+    }
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/setup-password`,
-      captchaToken: captchaToken || undefined,
     });
     setResendLoading(false);
     if (error) {

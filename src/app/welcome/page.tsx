@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, CheckCircle, XCircle, Eye, EyeOff, MapPin, Calendar } from 'lucide-react';
 import TurnstileWidget, { TURNSTILE_ENABLED, type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
+import { clientTurnstileCheck } from '@/lib/turnstile/client';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
@@ -317,6 +318,14 @@ function WelcomeContent() {
     setSubmitting(true);
 
     try {
+      const captcha = await clientTurnstileCheck('welcome', captchaToken);
+      if (!captcha.ok) {
+        setFormErrors({ password: captcha.error });
+        turnstileRef.current?.reset();
+        setCaptchaToken('');
+        setSubmitting(false);
+        return;
+      }
       const { data, error } = await supabase.functions.invoke('set-initial-password', {
         body: {
           session_id: sessionId,
@@ -336,7 +345,6 @@ function WelcomeContent() {
           const { error: signInErr } = await supabase.auth.signInWithPassword({
             email: form.email,
             password: form.password,
-            options: { captchaToken: captchaToken || undefined },
           });
           if (signInErr) {
             setFormErrors({ password: 'This account is already set up. Try signing in.' });
@@ -356,7 +364,6 @@ function WelcomeContent() {
       const { error: signInErr } = await supabase.auth.signInWithPassword({
         email: form.email,
         password: form.password,
-        options: { captchaToken: captchaToken || undefined },
       });
 
       if (signInErr) {
