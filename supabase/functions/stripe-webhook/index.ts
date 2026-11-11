@@ -1925,29 +1925,40 @@ async function handleSubscriptionUpdated(
       prevStatus !== "active" &&
       prevStatus !== "trialing";
     if (becameLive) {
+      // After profile/people writes. Fire-and-forget: never await, never throw.
+      // 3s abort so a hung wallet function cannot pin the isolate. Webhook stays 200.
       try {
         const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
         const serviceKey = Deno.env.get("WALLET_PUSH_SECRET") ?? "";
-        fetch(`${supabaseUrl}/functions/v1/send-apple-wallet-push`, {
+        const signal = AbortSignal.timeout(3000);
+        const headers = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${serviceKey}`,
+        };
+        void fetch(`${supabaseUrl}/functions/v1/send-apple-wallet-push`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${serviceKey}`,
-          },
+          headers,
           body: JSON.stringify({ serialNumber: profile.id }),
-        }).catch((e: unknown) =>
-          log("send-apple-wallet-push reactivate dispatch failed (non-blocking)", { error: String(e) }),
-        );
-        fetch(`${supabaseUrl}/functions/v1/update-google-wallet-pass`, {
+          signal,
+        })
+          .then((res) => log("send-apple-wallet-push reactivate result", { status: res.status }))
+          .catch((e: unknown) =>
+            log("send-apple-wallet-push reactivate dispatch skipped/failed (non-blocking)", {
+              error: String(e),
+            }),
+          );
+        void fetch(`${supabaseUrl}/functions/v1/update-google-wallet-pass`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${serviceKey}`,
-          },
+          headers,
           body: JSON.stringify({ serialNumber: profile.id, active: true }),
-        }).catch((e: unknown) =>
-          log("update-google-wallet-pass reactivate dispatch failed (non-blocking)", { error: String(e) }),
-        );
+          signal,
+        })
+          .then((res) => log("update-google-wallet-pass reactivate result", { status: res.status }))
+          .catch((e: unknown) =>
+            log("update-google-wallet-pass reactivate dispatch skipped/failed (non-blocking)", {
+              error: String(e),
+            }),
+          );
         log("Wallet reactivation dispatched", { serialNumber: profile.id, prevStatus });
       } catch (reactivateErr) {
         log("Wallet reactivation block threw (non-blocking)", {

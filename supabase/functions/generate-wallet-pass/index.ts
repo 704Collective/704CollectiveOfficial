@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   googleWalletClassId,
+  googleWalletClassSuffix,
   googleWalletJwtOrigins,
   googleWalletObjectId,
 } from "../_shared/googleWalletClass.ts";
@@ -144,16 +145,30 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Class mapping is independent of secrets so develop can confirm the tier
+    // even when Google Wallet is not configured.
+    const classSuffix = googleWalletClassSuffix(profile.member_type);
+    console.log("[WALLET] class mapping", {
+      memberType: profile.member_type,
+      classSuffix,
+    });
+
     // ── Google Wallet secrets ──
     const issuerId = Deno.env.get("GOOGLE_WALLET_ISSUER_ID");
     const serviceAccountEmail = Deno.env.get("GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL");
     const privateKey = Deno.env.get("GOOGLE_WALLET_PRIVATE_KEY");
 
     if (!issuerId || !serviceAccountEmail || !privateKey) {
-      return new Response(JSON.stringify({ error: "Google Wallet not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          error: "Google Wallet not configured",
+          classSuffix,
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
     // ── Build pass ──
