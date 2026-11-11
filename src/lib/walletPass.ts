@@ -10,6 +10,7 @@
  * - GOOGLE_WALLET_PRIVATE_KEY
  * - GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL
  * Optional: GOOGLE_WALLET_JWT_ORIGINS (comma-separated) for Save-to-Wallet JWT `origins`.
+ * If unset, generate-wallet-pass defaults to apex, www, localhost:3000, localhost:3001.
  */
 export const GENERATE_WALLET_PASS_FUNCTION = 'generate-wallet-pass' as const;
 

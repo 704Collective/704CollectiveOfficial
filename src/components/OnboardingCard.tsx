@@ -61,7 +61,9 @@ export function OnboardingCard({ userId }: OnboardingCardProps) {
   }, [router]);
 
   const goWallet = useCallback(() => {
-    const el = document.getElementById('wallet-section');
+    const el =
+      document.getElementById('wallet-section') ??
+      document.getElementById('member-tools-section');
     if (el) el.scrollIntoView({ behavior: 'smooth' });
     else router.push('/dashboard#wallet-section');
   }, [router]);

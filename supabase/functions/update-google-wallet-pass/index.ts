@@ -1,5 +1,7 @@
 // update-google-wallet-pass
-// Flips a member's Google Wallet membership pass to "Membership Inactive".
+// Expire: subheader "Membership Inactive" + state EXPIRED.
+// Reactivate: POST { serialNumber, active: true } -> state ACTIVE.
+// generate-wallet-pass also writes state ACTIVE on (re)issue.
 //
 // Google Wallet has no push: the genericObject lives on Google's servers and
 // every device holding the pass reflects whatever that object currently says.
@@ -7,13 +9,15 @@
 // propagates the change to all devices automatically.
 //
 // Invocation (internal, service-only):
-//   POST { "serialNumber": "<profile id>" }
+//   POST { "serialNumber": "<profile id>", "active"?: boolean }
 //   Authorization: Bearer <WALLET_PUSH_SECRET>
 //
-// Object ID scheme MUST match generate-wallet-pass exactly:
-//   `${issuerId}.member_${userId.replace(/-/g, "_")}`
+// Class / object IDs MUST match generate-wallet-pass (googleWalletClass.ts).
 //
 // Deploy:  supabase functions deploy update-google-wallet-pass --no-verify-jwt
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { googleWalletClassId, googleWalletObjectId } from "../_shared/googleWalletClass.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -112,6 +116,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => null);
     const serialNumber =
       body && typeof body === "object" ? body.serialNumber : null;
+    const activate = Boolean(body && typeof body === "object" && body.active === true);
     if (typeof serialNumber !== "string" || !serialNumber) {
       return new Response(JSON.stringify({ error: "serialNumber required" }), {
         status: 400,
@@ -131,9 +136,28 @@ Deno.serve(async (req) => {
       });
     }
 
-    // -- Object ID: MUST match generate-wallet-pass exactly --
-    const objectId = `${issuerId}.member_${serialNumber.replace(/-/g, "_")}`;
-    logStep("Resolved object id", { objectId });
+    let memberType: string | null = null;
+    try {
+      const adminClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+        { auth: { persistSession: false } },
+      );
+      const { data: profile } = await adminClient
+        .from("profiles")
+        .select("member_type")
+        .eq("id", serialNumber)
+        .maybeSingle();
+      memberType = (profile?.member_type as string | null) ?? null;
+    } catch (err) {
+      logStep("Profile lookup failed (continuing)", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
+    const classId = googleWalletClassId(issuerId, memberType);
+    const objectId = googleWalletObjectId(issuerId, serialNumber);
+    logStep("Resolved object id", { objectId, classId, memberType, activate });
 
     // -- Access token --
     let accessToken: string;
@@ -148,13 +172,29 @@ Deno.serve(async (req) => {
       });
     }
 
-    // -- PATCH the genericObject: flip subheader to "Membership Inactive" --
     // PATCH only sends the fields we want to change; Google merges them.
-    const patchBody = {
-      subheader: {
-        defaultValue: { language: "en", value: "Membership Inactive" },
-      },
-    };
+    const nowIso = new Date().toISOString();
+    const patchBody = activate
+      ? {
+          classId,
+          state: "ACTIVE",
+          subheader: {
+            defaultValue: {
+              language: "en",
+              value: memberType === "business" ? "Business Member" : "Social Member",
+            },
+          },
+        }
+      : {
+          classId,
+          state: "EXPIRED",
+          subheader: {
+            defaultValue: { language: "en", value: "Membership Inactive" },
+          },
+          validTimeInterval: {
+            end: { date: nowIso },
+          },
+        };
 
     const patchRes = await fetch(
       `https://walletobjects.googleapis.com/walletobjects/v1/genericObject/${encodeURIComponent(objectId)}`,
@@ -188,8 +228,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    logStep("Object updated to Membership Inactive", { objectId });
-    return new Response(JSON.stringify({ ok: true, updated: true }), {
+    logStep(activate ? "Object reactivated to ACTIVE" : "Object expired", { objectId });
+    return new Response(JSON.stringify({ ok: true, updated: true, active: activate }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

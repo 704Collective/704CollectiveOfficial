@@ -1,4 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  googleWalletClassId,
+  googleWalletJwtOrigins,
+  googleWalletObjectId,
+} from "../_shared/googleWalletClass.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -152,8 +157,8 @@ Deno.serve(async (req) => {
     }
 
     // ── Build pass ──
-    const classId = `${issuerId}.704collective_social`;
-    const objectId = `${issuerId}.member_${userId.replace(/-/g, "_")}`;
+    const classId = googleWalletClassId(issuerId, profile.member_type);
+    const objectId = googleWalletObjectId(issuerId, userId);
 
     const memberSince = profile.member_since || profile.created_at;
     const memberSinceFormatted = memberSince
@@ -199,6 +204,7 @@ Deno.serve(async (req) => {
         value: profile.id,
         alternateText: profile.id.substring(0, 8).toUpperCase(),
       },
+      state: "ACTIVE",
     };
 
     // ── Ensure class exists ──
@@ -270,12 +276,8 @@ Deno.serve(async (req) => {
 
     // ── Build save URL ──
     // JWT `origins` must include the exact page origin that opens the save link, or Google rejects it.
-    // Set GOOGLE_WALLET_JWT_ORIGINS in Supabase secrets (comma-separated), e.g.:
-    //   https://704collective.com,https://www.704collective.com,http://localhost:3000
-    const originsRaw = Deno.env.get("GOOGLE_WALLET_JWT_ORIGINS");
-    const origins = originsRaw
-      ? originsRaw.split(",").map((s) => s.trim()).filter(Boolean)
-      : ["https://704collective.com", "http://localhost:3000", "http://127.0.0.1:3000"];
+    // Optional GOOGLE_WALLET_JWT_ORIGINS (comma-separated) overrides the default list.
+    const origins = googleWalletJwtOrigins(Deno.env.get("GOOGLE_WALLET_JWT_ORIGINS"));
 
     const claims = {
       iss: serviceAccountEmail,
@@ -298,6 +300,24 @@ Deno.serve(async (req) => {
     const saveJwt = `${jwtInput}.${base64url(sig)}`;
 
     const walletUrl = `https://pay.google.com/gp/v/save/${saveJwt}`;
+
+    try {
+      const adminClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+        { auth: { persistSession: false } },
+      );
+      const { error: issueLogError } = await adminClient.from("wallet_pass_issues").insert({
+        profile_id: userId,
+        platform: "google",
+        object_or_serial: objectId,
+      });
+      if (issueLogError) {
+        console.error("wallet_pass_issues insert failed:", issueLogError.message);
+      }
+    } catch (logErr) {
+      console.error("wallet_pass_issues insert threw:", logErr);
+    }
 
     return new Response(JSON.stringify({ walletUrl, available: true }), {
       status: 200,

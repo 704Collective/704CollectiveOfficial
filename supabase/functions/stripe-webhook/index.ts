@@ -526,6 +526,7 @@ async function syncPersonAndCredential(
       event_id: null,
       credential_type: "member",
       status: "active",
+      // Deprecated leftover on attendance_credentials. Issuance is wallet_pass_issues.
       wallet_status: "not_issued",
       metadata: { source: "stripe_webhook" },
     });
@@ -1915,6 +1916,44 @@ async function handleSubscriptionUpdated(
       }
     } catch (syncErr) {
       log("People sync failed (non-blocking)", { error: syncErr instanceof Error ? syncErr.message : String(syncErr), source: "subscription.updated" });
+    }
+
+    const prevStatus = (event.data.previous_attributes as { status?: string } | undefined)?.status;
+    const becameLive =
+      mappedStatus === "active" &&
+      typeof prevStatus === "string" &&
+      prevStatus !== "active" &&
+      prevStatus !== "trialing";
+    if (becameLive) {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+        const serviceKey = Deno.env.get("WALLET_PUSH_SECRET") ?? "";
+        fetch(`${supabaseUrl}/functions/v1/send-apple-wallet-push`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${serviceKey}`,
+          },
+          body: JSON.stringify({ serialNumber: profile.id }),
+        }).catch((e: unknown) =>
+          log("send-apple-wallet-push reactivate dispatch failed (non-blocking)", { error: String(e) }),
+        );
+        fetch(`${supabaseUrl}/functions/v1/update-google-wallet-pass`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${serviceKey}`,
+          },
+          body: JSON.stringify({ serialNumber: profile.id, active: true }),
+        }).catch((e: unknown) =>
+          log("update-google-wallet-pass reactivate dispatch failed (non-blocking)", { error: String(e) }),
+        );
+        log("Wallet reactivation dispatched", { serialNumber: profile.id, prevStatus });
+      } catch (reactivateErr) {
+        log("Wallet reactivation block threw (non-blocking)", {
+          error: reactivateErr instanceof Error ? reactivateErr.message : String(reactivateErr),
+        });
+      }
     }
   } else {
     log("WARNING: No profile found for subscription.updated", { stripeCustomerId });

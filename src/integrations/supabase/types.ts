@@ -755,6 +755,7 @@ export type Database = {
       }
       attendance_credentials: {
         Row: {
+          /** @deprecated Unused. Wallet issuance is public.wallet_pass_issues. */
           apple_pass_serial: string | null
           checked_in_at: string | null
           checked_in_by: string | null
@@ -764,6 +765,7 @@ export type Database = {
           credential_type: string
           event_id: string | null
           expires_at: string | null
+          /** @deprecated Unused. Wallet issuance is public.wallet_pass_issues. */
           google_pass_object_id: string | null
           id: string
           issued_by_person_id: string | null
@@ -774,6 +776,7 @@ export type Database = {
           updated_at: string
           used_at: string | null
           void_reason: string | null
+          /** @deprecated Unused. Wallet issuance is public.wallet_pass_issues. */
           wallet_status: string | null
         }
         Insert: {

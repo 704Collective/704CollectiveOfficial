@@ -444,6 +444,17 @@ serve(async (req) => {
       });
     }
 
+    if (!isServiceCall) {
+      const { error: issueLogError } = await adminClient.from("wallet_pass_issues").insert({
+        profile_id: profile.id,
+        platform: "apple",
+        object_or_serial: passSerial,
+      });
+      if (issueLogError) {
+        logStep("wallet_pass_issues insert failed", { error: issueLogError.message });
+      }
+    }
+
     // Done
     return new Response(pkpassBytes, {
       status: 200,

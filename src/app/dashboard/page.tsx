@@ -614,7 +614,10 @@ export default function Dashboard() {
           >
             <div className="flex flex-col items-stretch gap-5 md:flex-row md:items-start md:gap-6">
               {/* Left column (top on mobile): Card + Wallet buttons */}
-              <div className="flex flex-col items-center gap-5 md:w-1/2">
+              <div
+                id="wallet-section"
+                className="flex flex-col items-center gap-5 scroll-mt-28 md:w-1/2"
+              >
                 <div className="w-full max-w-sm">
                   <MembershipTierBadge />
                 </div>
