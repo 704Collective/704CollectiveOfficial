@@ -8,6 +8,9 @@ import { usePathname } from 'next/navigation';
  * NEXT_PUBLIC_META_PIXEL_ID is absent nothing is injected and every helper is
  * a no-op, so develop/CI never load fbevents.js.
  *
+ * - NEXT_PUBLIC_META_PIXEL_ID holds one pixel id or a comma-separated list.
+ *   Every valid id is initialised, in order; fbevents.js then sends each track
+ *   call to every initialised pixel, so the track calls below stay single.
  * - Base script is injected lazily on the first eligible pathname, never on
  *   admin surfaces, so an admin who opens /admin first loads nothing.
  * - PageView fires on mount and on every SPA route change (App Router does not
@@ -17,8 +20,15 @@ import { usePathname } from 'next/navigation';
  *   stops a refresh of the success page from firing twice.
  */
 
-const PIXEL_ID = (process.env.NEXT_PUBLIC_META_PIXEL_ID ?? '').trim();
-export const META_PIXEL_ENABLED = /^\d{6,20}$/.test(PIXEL_ID);
+const PIXEL_IDS: string[] = Array.from(
+  new Set(
+    (process.env.NEXT_PUBLIC_META_PIXEL_ID ?? '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter((id) => id !== '' && /^\d{6,20}$/.test(id)),
+  ),
+);
+export const META_PIXEL_ENABLED = PIXEL_IDS.length > 0;
 
 const EXCLUDED_PREFIXES = ['/admin', '/partners/admin', '/api', '/auth/callback'];
 
@@ -65,7 +75,7 @@ function ensureBase(): boolean {
     s.src = 'https://connect.facebook.net/en_US/fbevents.js';
     document.head.appendChild(s);
   }
-  window.fbq('init', PIXEL_ID);
+  for (const id of PIXEL_IDS) window.fbq('init', id);
   return true;
 }
 
